@@ -1,14 +1,13 @@
 *** Settings ***
 Documentation     The common set of Robot imports and keywords for Thunderdome.
 ...               This file should be imported as a Resource in each Thunderdome test suite.
-Library           GATSNG
 Library           LinuxCoreUtilities
 Library           LinuxToolUtilities
 Library           LinuxFSUtilities
+Library           LocalBoxUtilities
+Library           FMUtilities
 Library           Collections
 Library           OperatingSystem
-Library           FMUtilities
-Library           LocalBoxUtilities
 Library           String
 
 *** Keywords ***
