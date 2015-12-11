@@ -2,9 +2,9 @@ import re
 import os
 import glob
 
-from GATSNG.utils.rc import _rc
-from GATSNG.utils.localconfig import LocalTemp
-from GATSNG.utils.local import _run_local_command
+from utils.rc import _rc
+from utils.localconfig import LocalTemp
+from utils.local import _run_local_command
 
 class _ToolUtil():
     def _run_local_das(self, InstallPath, PcapFile, parameterfile, outputfile, ProtocolType, source, rule):

@@ -11,7 +11,7 @@ import re
 from rc import _rc
 
 
-from GATSNG.utils.SSHLibrary.library import SSHLibrary
+from SSHLibrary.library import SSHLibrary
 
 G_SSHInstance = SSHLibrary()
 

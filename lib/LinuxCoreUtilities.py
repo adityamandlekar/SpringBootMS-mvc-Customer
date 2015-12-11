@@ -11,11 +11,11 @@ import sys
 
 from datetime import datetime, timedelta, date
 
-from GATSNG.version import get_version
-from GATSNG.utils.rc import _rc
+from utils.version import get_version
+from utils.rc import _rc
 
-from GATSNG.utils.ssh import _check_process, _exec_command, _get_datetime, _set_datetime, _return_pslist, _kill_process
-from GATSNG.utils.ssh import G_SSHInstance
+from utils.ssh import _check_process, _exec_command, _get_datetime, _set_datetime, _return_pslist, _kill_process
+from utils.ssh import G_SSHInstance
        
 class LinuxCoreUtilities():    
     """A test library providing keywords for common basic operations.

@@ -5,7 +5,7 @@ Created on Aug 27, 2015
 
 '''
 from __future__ import with_statement
-from GATSNG.version import get_version
+from utils.version import get_version
 
 import os
 import re
@@ -20,11 +20,11 @@ import csv
 from xml.dom import minidom
 from subprocess import Popen, PIPE
 from LinuxToolUtilities import LinuxToolUtilities
-from _ToolUtil import _ToolUtil
+from utils._ToolUtil import _ToolUtil
 from sets import Set
-from GATSNG.utils.local import _run_local_command
+from utils.local import _run_local_command
 from LinuxFSUtilities import LinuxFSUtilities
-from _FSUtil import _FSUtil
+from utils._FSUtil import _FSUtil
 
 FID_CONTEXTID = '5357'
 
