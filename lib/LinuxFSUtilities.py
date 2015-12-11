@@ -8,10 +8,10 @@ import re
 import os
 import time
 
-from utils.version import get_version
+from GATSNG.version import get_version
 
-from utils.ssh import _delete_file,_search_file, _count_lines,_run_command,_exec_command
-from utils.ssh import G_SSHInstance
+from GATSNG.utils.ssh import _delete_file,_search_file, _count_lines,_run_command,_exec_command
+from GATSNG.utils.ssh import G_SSHInstance
 
 class LinuxFSUtilities():
     """A test library providing keywords for file and directory related operations.
@@ -138,8 +138,63 @@ class LinuxFSUtilities():
                 returnMatchLines.append(line.split(':',1)[1])
         return returnMatchLines
     
-    
-    
-    
+    def tail_remote_file(self, path, lines=0):
+        """
+        Tail a remote file.\n
+        
+        path is the full path of the file.\n
+        lines is the number of lines from the bottom of the file to start the output.\n
+        
+        This is generally used in conjunction with remote_tail_should_contain or remote_tail_should_contain_regexp
+        
+        Return null.
+        
+        Examples:
+        | tail remote file | /tmp/1.txt  |
+        | tail remote file | /tmp/1.txt  | 20 |
+        """
+        cmd = 'tail --lines=%d --follow=name --retry %s' %(lines,path)
+        G_SSHInstance.write(cmd)
 
-
+    def remote_tail_should_contain(self, text, maxwait='60 seconds'):
+        """
+        Read the results from a previous call to tail_remote_file and verify that it contains the specified string.
+        
+        text is a plain text string.
+        maxwait is the maximum time to wait/process the search (default is 60 seconds)
+        
+        See also remote_tail_should_contain_regexp to search for a regular expression
+        
+        Returns null.  Fails if string not found within maxwait time
+        
+        Example:
+        | remote file should contain | some text  |
+        | remote file should contain | some text  | maxwait=2 minutes |
+        """
+        defaultTimeout = G_SSHInstance.get_connection(timeout=True)
+        G_SSHInstance.set_client_configuration(timeout=maxwait)
+        G_SSHInstance.read_until(text)
+        G_SSHInstance.set_client_configuration(timeout=defaultTimeout)
+    
+    def remote_tail_should_contain_regexp(self, pattern, maxwait='60 seconds'):
+        """
+        Read the results from a previous call to tail_remote_file and verify that it contains the specified pattern.
+        
+        Pattern is in Python regular expression syntax, http://docs.python.org/2/library/re.html|re module
+        Pattern matching is case-sensitive regardless the local or remote operating system
+        
+        maxwait is the maximum time to wait/process the search (default is 60 seconds)
+        
+        See also remote_tail_should_contain to search for a simple string
+        
+        Returns null.  Fails if pattern not found within maxwait time
+        
+        Example:
+        | remote file should contain regexp | Processing.*start.*${MTE} |
+        | remote file should contain regexp | Processing.*start.*${MTE} | maxwait=2 minutes |
+        """
+        defaultTimeout = G_SSHInstance.get_connection(timeout=True)
+        G_SSHInstance.set_client_configuration(timeout=maxwait)
+        G_SSHInstance.read_until_regexp(pattern)
+        G_SSHInstance.set_client_configuration(timeout=defaultTimeout)
+    

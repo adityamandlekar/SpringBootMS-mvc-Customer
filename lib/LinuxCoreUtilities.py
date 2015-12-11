@@ -11,11 +11,11 @@ import sys
 
 from datetime import datetime, timedelta, date
 
-from utils.version import get_version
-from utils.rc import _rc
+from GATSNG.version import get_version
+from GATSNG.utils.rc import _rc
 
-from utils.ssh import _check_process, _exec_command, _get_datetime, _set_datetime, _return_pslist, _kill_process
-from utils.ssh import G_SSHInstance
+from GATSNG.utils.ssh import _check_process, _exec_command, _get_datetime, _set_datetime, _return_pslist, _kill_process
+from GATSNG.utils.ssh import G_SSHInstance
        
 class LinuxCoreUtilities():    
     """A test library providing keywords for common basic operations.
@@ -121,7 +121,7 @@ class LinuxCoreUtilities():
         """
         return date(int(year), int(month), int(day)).strftime('%a').upper()
     
-    def add_seconds_to_date(self, year, month, day, hour, minute, second, offset):
+    def add_seconds_to_date(self, year, month, day, hour, minute, second, offset, padZero=False):
         """
         Add the specified number of seconds to the date specified.
         If a negative value is specified, it will subtract that number of seconds from the date.
@@ -133,11 +133,17 @@ class LinuxCoreUtilities():
         is available only in Robot Framework version 2.8.5 and later.
         After upgrading to 2.8.5, this KW should be deprecated and 'Add Time To Date' used instead.
 
+        For some case, padZero for month, day, hour, minute, second is needed, set padZero=True would return datetime with zero-padding
+
         Examples:
         | ${year} | ${month} | ${day} | ${hour} | ${minute} | $second} = | add seconds to date | 2014 | 05 | 28 | 12 | 5 | 0 | 5 |
         | ${year} | ${month} | ${day} | ${hour} | ${minute} | $second} = | add seconds to date | 2014 | 05 | 28 | 12 | 5 | 0 | -60 |
         """
         newDate = datetime(int(year), int(month), int(day), int(hour), int(minute), int(second)) + timedelta(seconds=int(offset))
+        
+        if (padZero):
+            return newDate.year, "%02d"%newDate.month, "%02d"%newDate.day, "%02d"%newDate.hour, "%02d"%newDate.minute, "%02d"%newDate.second
+        
         return newDate.year, newDate.month, newDate.day, newDate.hour, newDate.minute, newDate.second
 
     def set_date_and_time(self, year, month,day,hour,min,sec):

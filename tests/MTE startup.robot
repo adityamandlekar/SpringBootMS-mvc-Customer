@@ -20,7 +20,7 @@ Full Reorg on Startup
 Partial REORG on Startup
     [Documentation]    Verify Partial REORG behaviour of MTE http://www.iajira.amers.ime.reuters.com/browse/CATF-1755
     Start MTE    ${MTE}
-    ${service}    Get FMS Service Name    ${MTE}
+    ${service}    Get FMS Service Name
     Load All EXL Files    ${service}    ${CHE_IP}
     Stop MTE    ${MTE}
     Persist File Should Exist    ${MTE}    ${VENUE_DIR}

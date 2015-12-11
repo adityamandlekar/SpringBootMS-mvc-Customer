@@ -2,9 +2,10 @@
 Created on Aug 27, 2015
 
 @author: jason.lo
+
 '''
 from __future__ import with_statement
-from utils.version import get_version
+from GATSNG.version import get_version
 
 import os
 import re
@@ -15,11 +16,15 @@ import os.path
 from datetime import datetime, timedelta
 import xml
 import xml.etree.ElementTree as ET
+import csv
 from xml.dom import minidom
 from subprocess import Popen, PIPE
 from LinuxToolUtilities import LinuxToolUtilities
-from utils._ToolUtil import _ToolUtil
+from _ToolUtil import _ToolUtil
 from sets import Set
+from GATSNG.utils.local import _run_local_command
+from LinuxFSUtilities import LinuxFSUtilities
+from _FSUtil import _FSUtil
 
 FID_CONTEXTID = '5357'
 
@@ -28,8 +33,6 @@ class LocalBoxUtilities(_ToolUtil):
     ROBOT_LIBRARY_SCOPE = 'GLOBAL'
     ROBOT_LIBRARY_VERSION = get_version()   
     
-    linuxToolUtilInst = LinuxToolUtilities()
-
     def _xml_parse_get_all_elements_by_name (self,xmlfile,tagName):
         """ get iterator for all elements with tag=tagName from xml file
             xmlfile : xml fullpath
@@ -48,19 +51,29 @@ class LocalBoxUtilities(_ToolUtil):
             
         return  retIter
     
-    def _xml_parse_get_PermissionInfo_for_messageNode (self,messageNode):
-        """ get PE from <PermissionInfo> of header from a message node
+    def _xml_parse_get_HeaderTag_Value_for_messageNode (self,messageNode,headerTag,fieldName):
+        """ get specific header tag info from a message node
             messageNode : iterator pointing to one message node
-            return : PE value
-            Assertion : <PermissionInfo> not found
+            headerTag: the Tag is searched for in the message node.
+            fieldName: the field is within the headerTag, the value for this field will be returned
+            return : the value of the specified field within the headerTag
+            Assertion : <headerTag> not found
+            Example:
+            <Message>
+              <MsgBase>
+                <ContainerType value="NoData"/>
+              </MsgBase>
+            </Message>    
+            |_xml_parse_get_HeaderTag_Value_for_messageNode | Message[0] | MsgBase | ContainerType |
+            
         """
                             
-        for fieldEntry in messageNode.getiterator('PermissionInfo'):
-            pe = fieldEntry.find('PE')
-            if (pe != None):                   
-                return pe.attrib['value']
+        for fieldEntry in messageNode.getiterator(headerTag):
+            foundfield = fieldEntry.find(fieldName)
+            if (foundfield != None):                   
+                return foundfield.attrib['value']
 
-        raise AssertionError('*ERROR* Missing <PermissionInfo>')
+        raise AssertionError('*ERROR* Missing %s'%(headerTag))
         
     def _xml_parse_get_fidsAndValues_for_messageNode (self,messageNode):
         """ get FIDs and corresponding value from a message node
@@ -232,7 +245,7 @@ class LocalBoxUtilities(_ToolUtil):
             raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
 
         #Get the fidfilter and checking input argument context ID and constituent is valid in FIDFilter.txt
-        fidfilter = self.linuxToolUtilInst.get_contextId_fids_constit_from_fidfiltertxt(venuedir)
+        fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt(venuedir)
         if (fidfilter.has_key(contextId) == False):
             raise AssertionError('*ERROR* required context ID %s not found in FIDFilter.txt '%contextId)
         elif ((fidfilter[contextId].has_key(constit) == False)):
@@ -399,7 +412,7 @@ class LocalBoxUtilities(_ToolUtil):
         outputxmlfilelist_1 = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,'fidfilterVspcapC1',20)
         
         #Get the fidfilter
-        fidfilter = self.linuxToolUtilInst.get_contextId_fids_constit_from_fidfiltertxt(venuedir)
+        fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt(venuedir)
         
         for outputxmlfile in outputxmlfilelist_1:
             self._verify_FIDfilter_FIDs_are_in_message_from_das_xml(outputxmlfile, fidfilter, ricsDict)
@@ -410,7 +423,7 @@ class LocalBoxUtilities(_ToolUtil):
         outputxmlfilelist_0 = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,'fidfilterVspcapC0',20)
         
         #Get the fidfilter
-        fidfilter = self.linuxToolUtilInst.get_contextId_fids_constit_from_fidfiltertxt(venuedir)
+        fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt(venuedir)
         
         for outputxmlfile in outputxmlfilelist_0:
             self._verify_FIDfilter_FIDs_are_in_message_from_das_xml(outputxmlfile, fidfilter, ricsDict)        
@@ -425,29 +438,137 @@ class LocalBoxUtilities(_ToolUtil):
             os.remove(delFile)          
         os.remove(os.path.dirname(outputxmlfilelist_1[0]) + "/fidfilterVspcapC0xmlfromDAS.log")
     
-    def verify_unsolicited_resp_for_ric_are_in_message(self,pcapfile,venuedir,dasdir,ricname):
+    
+    def verify_message_fids_are_in_FIDfilter(self, localPcap, venuedir, dasdir, ric, domain, contextId):
+        '''
+         verify that message's fids set from pcap for the ric, with domain, contextId is the subset of the fids set defined in FidFilter file for a particular constituent under the context id
+        '''
+        constituents = self.get_constituents_from_FidFilter(venuedir, contextId)
+        for constituent in constituents:
+            # create fidfilter fids set under contextId and constituent
+            contextIdMap = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt(venuedir)
+            constitWithFIDs = contextIdMap[contextId]
+            fidsdict = constitWithFIDs[constituent]
+            fidsList = fidsdict.keys()
+            filterFilefidsSet = frozenset(fidsList);
+            
+            # create filter string for each constituent to get the message fids set
+            filterDomain = 'TRWF_TRDM_DMT_'+ domain
+            filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, Response_constitNum = &quot;%s&quot;))'%(filterDomain, ric, constituent)
+            outputfile = self._get_extractorXml_from_pcap(dasdir, localPcap, filterstring, "out1")
+            msgFidSet = self.get_all_fids_name_from_DASXml(outputfile[0])
+           
+            # test messages' fids set are sub-set of the fidfilter's fids set for the constituent under contextId
+            # this also reflect that there are no duplicated payload FIDs between constituent (C0, C1 etc)
+            os.remove(outputfile[0])
+            
+            if filterFilefidsSet.issuperset(msgFidSet):
+                print '*INFO* fids from messages match fids defined in fidfilter file for contextID %s, constituent %s with RIC %s, domain %s' %(contextId, constituent, ric, domain)
+            else:
+                commonFids = msgFidSet.intersection(filterFilefidsSet)
+                unmatchedFids = msgFidSet - commonFids
+                raise AssertionError('*ERROR* not all fids from messages match fids defined in fidfilter file.\n       Unmatched fids are %s' % unmatchedFids) 
+            
+            # if constituent is 63 verify all FIDs are negative
+            if constituent == '63':
+                for fid in msgFidSet:
+                    if fid > 0:
+                        raise AssertionError ('*ERROR* NONE negtive fid exists for contextID %s, constituent %s with RIC %s, domain %s' %(contextId, constituent, ric, domain))
+            
+            
+            
+    def get_constituents_from_FidFilter(self, venue_dir, context_id):
+        """ 
+            Return : constituent list which contains unique constituents defined in venue FidFilter.txt file for the context_id
+        """ 
+        fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt(venue_dir)
+        if (fidfilter.has_key(context_id) == False):
+            raise AssertionError('*ERROR* Context ID %s does not exist in FIDFilter.txt file' %(context_id))  
+        
+        fidDic = fidfilter[context_id]
+        if len(fidDic.keys()) == 0:
+            raise AssertionError('*ERROR* No FID dictionary exists in FIDFilter.txt file for Context ID %s' %(context_id))  
+        
+        return fidDic.keys()
+             
+           
+    def verify_solicited_response_in_capture(self, pcapfile, das_dir, ric, domain, constituent_list):
+        """ verify the pcap file contains solicited response messages for all possible constituents defined in fidfilter.txt
+            Argument : pcapfile : MTE output capture pcap file fullpath
+                       das_dir : path for DAS tool
+                       ric : published RIC
+                       domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                       constituent_list: list contains all possible constituents
+             return : Nil      
+        """ 
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* Pcap file is not found at %s' %pcapfile) 
+        
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        outputfileprefix = 'req_response_'
+       
+        for constit in constituent_list:
+            filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, AND(Response_responseTypeNum= &quot;TRWF_TRDM_RPT_SOLICITED_RESP&quot;, Response_constitNum = &quot;%s&quot;))))'%(filterDomain, ric, constit)
+            outputxmlfile = self._get_extractorXml_from_pcap(das_dir, pcapfile, filterstring, outputfileprefix)
+            
+            for exist_file in outputxmlfile:
+                os.remove(exist_file)
+            
+            os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
+    
+    def verify_unsolicited_response_in_capture (self,pcapfile, das_dir, ric, domain, constituent_list):
         """ verify if unsolicited response for RIC has found in MTE output pcap message
-            pcapFile : is the pcap fullpath at local control PC  
-            venuedir : location from remote TD box for search FIDFilter.txt
-            dasdir : location of DAS tool  
-            ricname : target ric name    
+            Argument : pcapfile : MTE output capture pcap file fullpath
+                       das_dir : path for DAS tool
+                       ric : published RIC
+                       domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                       constituent_list: list contains all possible constituents 
             return : Nil
         """           
-        #Check if pcap file exist
+
         if (os.path.exists(pcapfile) == False):
             raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
         
-        #[ConstitNum = 1]
-        #Convert pcap file to xml
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
         outputfileprefix = 'unsolpcap'
-        filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, Response_responseTypeNum = &quot;TRWF_TRDM_RPT_UNSOLICITED_RESP&quot;)'%(ricname)
-        outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
-                
-        for delFile in outputxmlfilelist:
-            os.remove(delFile)
         
-        os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
-                          
+        for constit in constituent_list:
+            filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, AND(Response_responseTypeNum= &quot;TRWF_TRDM_RPT_UNSOLICITED_RESP&quot;, Response_constitNum = &quot;%s&quot;))))'%(filterDomain, ric, constit)
+            outputxmlfile = self._get_extractorXml_from_pcap(das_dir, pcapfile, filterstring, outputfileprefix)                
+                
+            for exist_file in outputxmlfile:
+                os.remove(exist_file)
+        
+            os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
+
+    def verify_unsolicited_response_NOT_in_capture (self,pcapfile, das_dir, ric, domain, constituent_list):
+        """ verify if unsolicited response for RIC has found in MTE output pcap message
+            Argument : pcapfile : MTE output capture pcap file fullpath
+                       das_dir : path for DAS tool
+                       ric : published RIC
+                       domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                       constituent_list: list contains all possible constituents 
+            return : Nil
+        """           
+
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        outputfileprefix = 'unsolpcap'
+        
+        for constit in constituent_list:
+            try:
+                filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, AND(Response_responseTypeNum= &quot;TRWF_TRDM_RPT_UNSOLICITED_RESP&quot;, Response_constitNum = &quot;%s&quot;))))'%(filterDomain, ric, constit)
+                outputxmlfile = self._get_extractorXml_from_pcap(das_dir, pcapfile, filterstring, outputfileprefix)                
+            except AssertionError:
+                return
+            
+            for exist_file in outputxmlfile:
+                os.remove(exist_file)
+        
+            os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
+                              
     def _verify_PE_change_in_message_c0(self,pcapfile,dasdir,ricname,newPE):
         """ internal function used to verify PE Change response (C0) for RIC in MTE output pcap message
             pcapFile : is the pcap fullpath at local control PC  
@@ -469,7 +590,7 @@ class LocalBoxUtilities(_ToolUtil):
         
         if (len(messages) == 1):
             #1st C0 message : C0 Response, new PE in header
-            headerPE = self._xml_parse_get_PermissionInfo_for_messageNode(messages[0])
+            headerPE = self._xml_parse_get_HeaderTag_Value_for_messageNode(messages[0],'PermissionInfo','PE')
             if (headerPE != newPE):
                 raise AssertionError('*ERROR* C0 message : New PE in header (%s) not equal to (%s)'%(headerPE,newPE))                   
         else:
@@ -496,7 +617,7 @@ class LocalBoxUtilities(_ToolUtil):
         """ 
                 
         outputfileprefix = 'peChgCheckC1'
-        filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;1&quot;))'%(ricname)
+        filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, AND(Response_itemSeqNum != &quot;0&quot;, Response_constitNum = &quot;1&quot;)))'%(ricname)
         outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
         
         parentName  = 'Message'
@@ -511,16 +632,16 @@ class LocalBoxUtilities(_ToolUtil):
             else:
                 raise AssertionError('*ERROR* 1st C1 message : Missing FID 1 (PROD_PERM) in payload')
             
-            headerPE = self._xml_parse_get_PermissionInfo_for_messageNode(messages[0])
+            headerPE = self._xml_parse_get_HeaderTag_Value_for_messageNode(messages[0],'PermissionInfo','PE')
             if (headerPE != oldPE):
                 raise AssertionError('*ERROR* 1st C1 message : Old PE in header (%s) not equal to (%s)'%(headerPE,oldPE))
             
             #2nd C1 message : C1 Response, new PE in header, all payload FIDs included
             dummyricDict = {}
-            fidfilter = self.linuxToolUtilInst.get_contextId_fids_constit_from_fidfiltertxt(venuedir)   
+            fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt(venuedir)   
             self._verify_FIDfilter_FIDs_in_single_message(messages[1],fidfilter, dummyricDict)    
             
-            headerPE = self._xml_parse_get_PermissionInfo_for_messageNode(messages[1])
+            headerPE = self._xml_parse_get_HeaderTag_Value_for_messageNode(messages[1],'PermissionInfo','PE')
             if (headerPE != newPE):
                 raise AssertionError('*ERROR* 2nd C1 message : New PE in header (%s) not equal to (%s)'%(headerPE,newPE))
         else:
@@ -544,7 +665,7 @@ class LocalBoxUtilities(_ToolUtil):
             1. C63 Response, new PE in header, all payload FIDs included.
         """         
         hasC63 = False
-        fidfilter = self.linuxToolUtilInst.get_contextId_fids_constit_from_fidfiltertxt(venuedir)
+        fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt(venuedir)
         contextIDs = fidfilter.keys()
         for contextID in contextIDs:
             constitIDs = fidfilter[contextID].keys()
@@ -570,7 +691,7 @@ class LocalBoxUtilities(_ToolUtil):
             dummyricDict = {}
             self._verify_FIDfilter_FIDs_in_single_message(messages[0],fidfilter, dummyricDict)                
             
-            headerPE = self._xml_parse_get_PermissionInfo_for_messageNode(messages[0])
+            headerPE = self._xml_parse_get_HeaderTag_Value_for_messageNode(messages[0],'PermissionInfo','PE')
             if (headerPE != newPE):
                 raise AssertionError('*ERROR* C63 message : New PE in header (%s) not equal to (%s)'%(headerPE,newPE))                
         else:
@@ -611,6 +732,100 @@ class LocalBoxUtilities(_ToolUtil):
         #C63
         self._verify_PE_change_in_message_c63(pcapfile,venuedir,dasdir,ricname,newPE)
   
+    def verify_DROP_message_in_itemstatus_messages(self,pcapfile,venuedir,dasdir,ricname):
+        """ verify DROP message for RIC in MTE output pcap message
+            pcapFile : is the pcap fullpath at local control PC  
+            venuedir : location from remote TD box for search FIDFilter.txt
+            dasdir : location of DAS tool  
+            ricname : target ric name    
+            return : Nil
+            
+            Verify:
+            1. C0 Item Status, ContainerType value is NoData 
+            2. C1 Item Status, ContainerType value is NoData
+            3. C63 Item Status, ContainerType value is NoData
+            
+            Examples:
+            | verify DROP message in itemstatus messages  | C:\\temp\\capture_local.pcap  |  /ThomsonReuters/Venues/ | C:\\Program Files\\Reuters Test Tools\\DAS |   AAAAX.O |              
+        """           
+        #Check if pcap file exist
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        #C0
+        self._verify_DROP_message_in_specific_constit_message(pcapfile,dasdir,ricname,0)
+        
+        #C1
+        self._verify_DROP_message_in_specific_constit_message(pcapfile,dasdir,ricname,1)
+        
+        #C63
+        self._verify_DROP_message_in_specific_constit_message(pcapfile,dasdir,ricname,63)
+    
+    def _verify_DROP_message_in_specific_constit_message(self,pcapfile,dasdir,ricname,constnum):
+        """ internal function used to verify DROP message (C0) for RIC in MTE output pcap message
+            pcapFile : is the pcap fullpath at local control PC  
+            dasdir : location of DAS tool  
+            ricname : target ric name 
+            constnum:  the constitNum in itemstatus message   
+            return : Nil
+            
+            Verify:
+            1. Drop message: msg class: Item Status, ContainerType should be NoData
+        """         
+        
+        outputfileprefix = 'peChgCheckC'+str(constnum)
+        filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_ITEM_STATUS&quot;, AND(ItemStatus_itemSeqNum != &quot;0&quot;, ItemStatus_constitNum = &quot;%s&quot;)))'%(ricname,constnum)
+        outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
+        
+        parentName  = 'Message'
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+        
+        if (len(messages) == 1):
+            containterType = self._xml_parse_get_HeaderTag_Value_for_messageNode (messages[0],'MsgBase','ContainerType')
+            if (containterType != 'NoData'):
+                raise AssertionError('*ERROR* C%s message : Drop message for RIC (%s) not found'%(constnum,ricname))                   
+        else:
+            raise AssertionError('*ERROR* No. of C%s message received not equal to 1 for RIC %s during RIC drop, received (%d) message(s)'%(constnum,ricname,len(messages)))        
+        
+        for delFile in outputxmlfilelist:
+            os.remove(delFile)
+        
+        os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
+        
+    def verify_ClosingRun_message_in_messages(self,pcapfile,dasdir,ricname):
+        """ verify ClosingRun message for RIC in MTE output pcap message
+            pcapFile : is the pcap fullpath at local control PC
+            dasdir : location of DAS tool  
+            ricname : target ric name    
+            return : Nil
+            
+            Examples:
+            | verify ClosingRun message in messages  | C:\\temp\\capture_local.pcap  |  /ThomsonReuters/Venues/ | C:\\Program Files\\Reuters Test Tools\\DAS |   AAAAX.O |              
+        """           
+        #Check if pcap file exist
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        outputfileprefix = 'ClosingRun'
+        filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, AND(Update_itemSeqNum != &quot;0&quot;, Update_constitNum = &quot;1&quot;)))'%(ricname)
+        outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
+        
+        parentName  = 'Message'
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+        
+        if (len(messages) == 1):
+            updateType = self._xml_parse_get_field_for_messageNode (messages[0],'UpdateTypeNum')
+            if (updateType != '6'):
+                raise AssertionError('*ERROR* ClosingRun message for RIC (%s) not found'%(ricname))                   
+        else:
+            raise AssertionError('*ERROR* No. of ClosingRun message received not equal to 1 for RIC %s during RIC ClosingRun, received (%d) message(s)'%(ricname,len(messages)))        
+        
+        for delFile in outputxmlfilelist:
+            os.remove(delFile)
+        
+        os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
+        
+    
     def verify_MTE_heartbeat_in_message(self,pcapfile,dasdir,intervalInSec):
         """ verify MTE heartbeat in  MTE output pcap message
             pcapFile : is the pcap fullpath at local control PC  
@@ -721,13 +936,13 @@ class LocalBoxUtilities(_ToolUtil):
         
         os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
            
-    def get_EXL_files(self,fmsDir,fileType):
+    def _get_EXL_files(self,fmsDir,fileType):
         """ Get EXL file(s) for fileType:
             http://www.iajira.amers.ime.reuters.com/browse/CATF-1687
 
             fileType options: ['Closing Run', 'DST', 'Feed Time', 'Holiday', 'OTFC', 'Trade Time', 'All']
             
-            return : List containing full directory path and name of EXL file(s), if found. 
+            return : List containing full path name of EXL file(s), if found. 
                      If none found, will raise an error.
         """ 
         
@@ -761,91 +976,33 @@ class LocalBoxUtilities(_ToolUtil):
         exlFiles = p.stdout.read().strip().split(os.linesep)
         if len(exlFiles) < 1 or exlFiles[0].lower() == "file not found" or exlFiles[0] == '':
             raise AssertionError('*ERROR* Search returned no results for: %s' %cmdstr)
-        return exlFiles
-        
-    def get_EXL_file_from_domain(self, fmsDir, domain):
-        """ Get EXL file(s) for fileType:
-            http://www.iajira.amers.ime.reuters.com/browse/CATF-1795
-            Argument: 
-                fmsDir: The Location of the FMS on the local machine
-                domain: The market domain ['MARKET_PRICE', 'MARKET_BY_ORDER', 'MARKET_BY_ORDER']
-            
-            return : Full file path and name of an EXL file containing at least one RIC with the given domain 
-        """ 
-        exlFiles = self.get_EXL_files(fmsDir, "All")
-
-        for exlFile in exlFiles:
-            # Open up the source EXL file with an XML parser
-            xmlParser = None
-            try:
-                xmlParser = xml.dom.minidom.parse(exlFile)  
-            except Exception, exception:
-                raise AssertionError('XML DOM parser failed to open EXL file %s Exception: %s' % (exlFile, exception))
-                return 1
+        return exlFiles      
     
-            # It might help explain the code below, to understand that the structure of 
-            # an EXL file.  A RIC definition is an "exlObject".  Example:
-            # <exlObjects>
-            #     <exlObject>
-            #         <it:SYMBOL>BBFIX</it:SYMBOL>
-            #         <it:RIC>BBFIX.O</it:RIC>
-            #         <it:DOMAIN>MARKET_PRICE</it:DOMAIN>
-            #         <it:INSTRUMENT_TYPE>NORMAL_RECORD</it:INSTRUMENT_TYPE>
-            #         <exlObjectFields>
-            #             <it:DSPLY_NAME>WM BLAIR BD INST</it:DSPLY_NAME>
-            #             <it:OFFCL_CODE>000969251305</it:OFFCL_CODE>
-            #        </exlObjectFields>
-            #    </exlObject>
-            #    <!-- Additional exlObject Tags --->
-            # </exlObjects>
-    
-            # Get the exlObjects section of the data.  This is where the RIC definitions 
-            # are.  If this section doesn't exist in the given EXL file thats an error.
-            exlObjectNode = xmlParser.getElementsByTagName('exlObjects') 
-            if(len(exlObjectNode) == 0):
-                continue
-
-            # Get the exlObjects withing the exlObjects tag and make sure at least 
-            # one RIC definition exists.  There will be only one exlObjects tag so its
-            # okay to only look at array index 0.
-            ricNodes = exlObjectNode[0].getElementsByTagName('exlObject')
-            if(len(ricNodes) == 0):
-                continue
-    
-            # The XML parser treats the value of a tag as a child node of that tag.  To get 
-            # the actual value you must call the "nodeValue" method on that child node.  As shown
-            # above in our EXL file example we expect a single "it:DOMAIN" tag with a single value.
-            for ricNode in ricNodes:
-                ricNodeDomainTag = ricNode.getElementsByTagName("it:DOMAIN")  
-                if(len(ricNodeDomainTag) != 1): # We always expect one it:DOMAIN tag
-                    continue
-                if(len(ricNodeDomainTag[0].childNodes) != 1):  # We always expect one it:DOMAIN value
-                    continue
-                valueNode = ricNodeDomainTag[0].childNodes[0]  # Get the value of the it:DOMAIN tag
-                if(valueNode.nodeValue == domain):
-                    return exlFile
-
-        raise AssertionError('*ERROR* Failed to find any EXL files in %s with data for domain %s' % (fmsdir, domain))
-        
-    def get_EXL_from_RIC_and_domain(self,ricName,domainName,fmsDir,fileType):
-        """ Get EXL file from given RIC and domain pair:
+    def get_state_EXL_file(self,ricName,domainName,service,fmsDir,fileType):
+        """ Get EXL file from given RIC, domain, and service:
             http://www.iajira.amers.ime.reuters.com/browse/CATF-1737
 
             fileType options: ['Closing Run', 'DST', 'Feed Time', 'Holiday', 'OTFC', 'Trade Time', 'All']
             
-            return : Full directory path and name of EXL file, if found. 
+            return : Full path name of EXL file, if found. 
                      If multiple files or none found, will raise an error.
         """ 
         
-        exlFiles = self.get_EXL_files(fmsDir, fileType)
+        exlFiles = self._get_EXL_files(fmsDir, fileType)
         
         matchedExlFiles = []
         
         for exlFile in exlFiles:
-            dom = xml.dom.minidom.parse(exlFile)  
-            iteratorlist = dom.getElementsByTagName('exlObject') 
+            dom = xml.dom.minidom.parse(exlFile)
+            
+            # skip file if service does not match
+            fieldNames = ['SERVICE']
+            result = self._get_EXL_header_values(dom,fieldNames)
+            if result['SERVICE'] != service:
+                continue
             
             #find the ric and domain
+            iteratorlist = dom.getElementsByTagName('exlObject') 
             for node in iteratorlist:
                 foundRic = False
                 foundDomain = False
@@ -866,60 +1023,118 @@ class LocalBoxUtilities(_ToolUtil):
         else:
             return matchedExlFiles[0]
     
-    def get_ric_and_domain_from_EXL(self,exlFile):
-        """ Get RIC and domain from EXL
-            http://www.iajira.amers.ime.reuters.com/browse/CATF-1733
-
-            return : First discovered RIC and domain pair in EXL file, if found. Otherwise, returns 'Not Found'.
+    def get_EXL_for_RIC(self, fmsDir, domain, service, ric):
+        """ Find the EXL file with the specified RIC, domain, and service
+            
+            Argument: 
+                fmsDir:  The Location of the FMS on the local machine
+                domain:  The market domain ['MARKET_PRICE', 'MARKET_BY_ORDER', 'MARKET_BY_ORDER']
+                service: The service name
+                ricName:  The RIC to find
+            
+            return : Full EXL file path name
         """ 
         
-        dom = xml.dom.minidom.parse(exlFile)  
-        iteratorlist = dom.getElementsByTagName('exlObject') 
+        exlFiles = self._get_EXL_files(fmsDir, "All")
         
-        #find the ric and domain
-        for node in iteratorlist:
-            ric = "Not Found"
-            domain = "Not Found"
-            for subnode in node.childNodes:
-                if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:RIC':
-                    ric = subnode.firstChild.data
-                if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:DOMAIN':
-                    domain = subnode.firstChild.data
-            if ric != "Not Found" and domain != "Not Found":
-                break
-
-        if ric == "Not Found" or domain == "Not Found":
-            raise AssertionError('*ERROR* Missing RIC/domain pair: RIC(%s), domain(%s)' %(ric, domain))
+        for exlFile in exlFiles:
+            dom = xml.dom.minidom.parse(exlFile)
             
-        return ric, domain
+            # skip file if service does not match
+            fieldNames = ['SERVICE']
+            result = self._get_EXL_header_values(dom,fieldNames)
+            if result['SERVICE'] != service:
+                continue
+            
+            #find the ric and domain
+            iteratorlist = dom.getElementsByTagName('exlObject') 
+            for node in iteratorlist:
+                foundRic = False
+                foundDomain = False
+                for subnode in node.childNodes:
+                    if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:RIC':
+                        if subnode.firstChild.data == ric:
+                            foundRic = True
+                    if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:DOMAIN':
+                        if subnode.firstChild.data == domain:
+                            foundDomain = True
+                if foundRic == True and foundDomain == True:
+                    return exlFile
     
-    def get_DST_and_holiday_RICs_from_EXL(self,exlFile):
+        raise AssertionError('*ERROR* RIC %s, domain %s, service %s not found in any EXL file:' %(ric,domain,service))
+    
+    def get_EXL_and_RIC_from_domain_and_service(self, fmsDir, domain, service):
+        """ Find first non-state-ric EXL file with a RIC for the specified domain and service
+            The following state ric files are ignored:
+            '*_cs_run', '*_dl_sav', '*_fd_time', '*_mk_holiday', '*_otfc','*_trd_time', '*_venue_heartbeat'
+            
+            Argument: 
+                fmsDir: The Location of the FMS on the local machine
+                domain: The market domain ['MARKET_PRICE', 'MARKET_BY_ORDER', 'MARKET_BY_ORDER']
+                service: The service name
+            
+            return : Full EXL file path name and first RIC name
+            
+            http://www.iajira.amers.ime.reuters.com/browse/CATF-1795
+        """ 
+        # It might help explain the code below, to understand that the structure of 
+        # an EXL file.  A RIC definition is an "exlObject".  Example:
+        # <exlObjects>
+        #     <exlObject>
+        #         <it:SYMBOL>BBFIX</it:SYMBOL>
+        #         <it:RIC>BBFIX.O</it:RIC>
+        #         <it:DOMAIN>MARKET_PRICE</it:DOMAIN>
+        #         <it:INSTRUMENT_TYPE>NORMAL_RECORD</it:INSTRUMENT_TYPE>
+        #         <exlObjectFields>
+        #             <it:DSPLY_NAME>WM BLAIR BD INST</it:DSPLY_NAME>
+        #             <it:OFFCL_CODE>000969251305</it:OFFCL_CODE>
+        #        </exlObjectFields>
+        #    </exlObject>
+        #    <!-- Additional exlObject Tags --->
+        # </exlObjects>
+        
+        list_of_state_ric_exl = ['_cs_run', '_dl_sav', '_fd_time', '_mk_holiday', '_otfc','_trd_time', '_venue_heartbeat']
+        exlFiles = self._get_EXL_files(fmsDir, "All")
+
+        for exlFile in exlFiles:
+            # ignore state ric files
+            if self._list_item_is_substring_of_searched_item(exlFile, list_of_state_ric_exl):
+                continue
+            dom = xml.dom.minidom.parse(exlFile)
+            
+            # skip file if service does not match
+            fieldNames = ['SERVICE']
+            result = self._get_EXL_header_values(dom,fieldNames)
+            if result['SERVICE'] != service:
+                continue
+            
+            #find first ric for the domain
+            iteratorlist = dom.getElementsByTagName('exlObject') 
+            for node in iteratorlist:
+                ric = "Not Found"
+                exlDomain = "Not Found"
+                for subnode in node.childNodes:
+                    if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:RIC':
+                        ric = subnode.firstChild.data
+                    if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:DOMAIN':
+                        exlDomain = subnode.firstChild.data
+                if ric != "Not Found" and exlDomain == domain:
+                    return exlFile, ric
+    
+        raise AssertionError('*ERROR* No RIC found for domain %s and service %s in any EXL file:' %(domain,service))
+    
+    def get_DST_and_holiday_RICs_from_EXL(self,exlFile,ricName):
         """ Get DST RIC and holiday RIC from EXL
             http://www.iajira.amers.ime.reuters.com/browse/CATF-1735
 
             return : DST RIC and holiday RIC, if found. Otherwise, returns 'Not Found'.
         """ 
         
-        dom = xml.dom.minidom.parse(exlFile)  
-        iteratorlist = dom.getElementsByTagName('exlHeaderFields') 
-        
-        #find the RICs
-        for node in iteratorlist:
-            dstRic = "Not Found"
-            holidayRic = "Not Found"
-            for subnode in node.childNodes:
-                if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:DST_REF':
-                    dstRic = subnode.firstChild.data
-                if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:HOLIDAYS_REF1':
-                    holidayRic = subnode.firstChild.data
-
-        if dstRic == "Not Found" or holidayRic == "Not Found":
-            raise AssertionError('*ERROR* Missing DST and holiday RICs from EXL: %s' %(exlFile))
-            
-        return dstRic, holidayRic
+        return self.get_ric_fields_from_EXL(exlFile,ricName,'DST_REF','HOLIDAYS_REF1')
     
     def get_ric_fields_from_EXL(self,exlFile,ricName,*fieldnames):
-        """ Get field values of RIC from EXL
+        """ Get field values of RIC from EXL.
+           Looks for field in exlObject, if not found in exlObject, looks for field in exlHeader
            Argument:
                exlFile : full path of exlfile			   
                ricName : ric 
@@ -931,60 +1146,65 @@ class LocalBoxUtilities(_ToolUtil):
         """
          
         retList = []
-        heanderDict = self._get_exlHeaderField_value_from_EXL(exlFile,fieldnames)        
-        ObjDict = self._get_exlObject_field_value_of_ric_from_EXL(exlFile,ricName,fieldnames)
+        dom = xml.dom.minidom.parse(exlFile) 
+        heanderDict = self._get_EXL_header_values(dom,fieldnames)
+        ObjDict = self._get_EXL_object_values(dom,ricName,fieldnames)
         
         for fieldname in fieldnames:
-            if (ObjDict[fieldname] != "NOT Found"):
+            if (ObjDict[fieldname] != "Not Found"):
                 retList.append(ObjDict[fieldname])
-            elif (heanderDict[fieldname] != "NOT Found"):
+            elif (heanderDict[fieldname] != "Not Found"):
                 retList.append(heanderDict[fieldname])
             else:
                 raise AssertionError('*ERROR* %s not found for RIC(%s) in %s' %(fieldname, ricName, exlFile))
 
         return retList
          
-    def _get_exlHeaderField_value_from_EXL(self,exlFile,fieldnames):
-        """ Get field value(s) from EXL exlHeaderField
-            Argument:
+    def _get_EXL_header_values(self,dom,fieldnames):
+        """ Get field value(s) from EXL Header
+            Arguments:
+                dom: Dom object from parsing EXL file
                 fieldnames : list of fields name
            Return : Dictionary with key = item found in fieldnames list
            [Remark] WE don't raise assertion for field not found case, as for some case we just want to check if field is exist
         """ 
-        
-        dom = xml.dom.minidom.parse(exlFile)  
-        iteratorlist = dom.getElementsByTagName('exlHeaderFields')
+
+        iteratorlist = dom.getElementsByTagName('exlHeader')
         
         #find the field
         fieldValues = {}
         for fieldname in fieldnames:
-            fieldValues[fieldname] = "NOT Found"
+            fieldValues[fieldname] = "Not Found"
             
         for node in iteratorlist:
             for subnode in node.childNodes:
                 for fieldname in fieldnames:
-                    if (subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:'+fieldname):               
-                        fieldValues[fieldname] = subnode.firstChild.data
-                    
+                    if subnode.nodeType == node.ELEMENT_NODE:
+                            if subnode.nodeName == 'it:'+fieldname:        
+                                fieldValues[fieldname] = subnode.firstChild.data
+                            elif subnode.nodeName == 'exlHeaderFields':
+                                for subnode_child in subnode.childNodes:
+                                    if subnode_child.nodeName == 'it:'+fieldname:
+                                        fieldValues[fieldname] = subnode_child.firstChild.data
         return fieldValues 
     
-    def _get_exlObject_field_value_of_ric_from_EXL(self,exlFile,ricName,fieldnames):
+    def _get_EXL_object_values(self,dom,ricName,fieldnames):
         """ Get field value(s) from EXL exlObject given the ricname
-            Argument:
+            Arguments:
+                dom: Dom object from parsing EXL file
                 ricName : ric name
                 fieldnames : list of fields name
             Return : Dictionary with key = item found in fieldnames list
            [Remark] WE don't raise assertion for field not found case, as for some case we just want to check if field is exist
         """ 
         
-        dom = xml.dom.minidom.parse(exlFile)  
         iteratorlist = dom.getElementsByTagName('exlObject') 
         
         #find the ric and field
         fieldValues = {}            
         for node in iteratorlist:
             for fieldname in fieldnames:
-                fieldValues[fieldname] = "NOT Found"
+                fieldValues[fieldname] = "Not Found"
             
             ric = ""
             for subnode in node.childNodes:
@@ -999,108 +1219,11 @@ class LocalBoxUtilities(_ToolUtil):
                             for subnode_child in subnode.childNodes:
                                 if subnode_child.nodeName == 'it:'+fieldname:
                                     fieldValues[fieldname] = subnode_child.firstChild.data
-                    
             if ric != "":
                 break                
-                
-        if (ric == ""):
-            raise AssertionError('*ERROR* RIC(%s) not found in %s' %(ricName, exlFile))
                         
         return fieldValues      
-       
-    def get_all_data_from_cachedump(self, cachedump_file_name):
-        """Returns a dictionary with key = 1st row found in cachdump csv file and each key corresponding a list of data
-         Argument : 
-         cachedump_file_name : cache dump file full path
-         
-         Keys found in cacheddump are :
-         
-         ITEM_ID,RIC,DOMAIN,TYPE,SIC,PUBLISH_KEY,CONTEXT_ID,STALE,PUBLISHABLE,CURR_SEQ_NUM,OTF_STATUS,
-         C++_TYPE,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,DELETION_DELAY_DAYS_REMAINING,RIC_LOOKUP_STATUS,
-         SIC_LOOKUP_STATUS,MANGLING_RULE,NON_PUBLISHABLE_REASONS,THREAD_ID,ITEM_FAMILY
-
-        Examples:
-        | get all data from cachedump | cachedump file name |     
-        """
-        if not os.path.exists(cachedump_file_name):
-            raise AssertionError('*ERROR*  %s is not available' %cachedump_file_name)
-        
-        dataMap = {}
-        
-        n = 0
-        try:
-            with open(cachedump_file_name) as fileobj:
-                for line in fileobj:
-                    n = n+1
-                    if n == 1:
-                        keys = line.strip("\n").split(",")
-                        for key in keys:
-                            dataMap[key] = list([])
-                    if n>1:
-                        records = line.strip("\n").split(",")
-                        idx = 0
-                        for record in records:
-                            dataMap[keys[idx]].append(record)
-                            idx = idx + 1
-                            
-        except IOError:
-            raise AssertionError('*ERROR* failed to open file %s' %cachedump_file_name)
-                            
-        return dataMap      
     
-    def get_ric_names_from_cachedump(self, cachedump_file_name, no_ric=1, domain='MarketPrice'):
-        """Returns a list of rics given domain and no. of sample is required
-         Argument : 
-         cachedump_file_name : cache dump file full path
-         num_ric : expected number of ric names
-         domain : either MarketPrice, MarketByPrice, MarketByOrder         
-
-        Examples:
-        | get ric names from cachedump | cachedump file name | 10
-        """
-        
-        dataMap = self.get_all_data_from_cachedump(cachedump_file_name)
-        domainKey = 'DOMAIN'
-        ricKey = 'RIC'
-        publishableKey = 'PUBLISHABLE'
-        out_rics_list = []
-        
-        if (len(dataMap) > 0):
-            if (len(dataMap[domainKey]) > 0):
-                if (len(dataMap[ricKey]) > 0):
-                    if (len(dataMap[publishableKey]) > 0):
-                        domain_list = dataMap[domainKey]
-                        rics_list = dataMap[ricKey]
-                        publishablekey_list = dataMap[publishableKey]
-                        
-                        idx = 0
-                        for ric in rics_list:
-                            if (domain_list[idx] == domain and publishablekey_list[idx] == 'TRUE'):
-                                out_rics_list.append(ric)
-                            
-                            if (len(out_rics_list) >= int(no_ric)):
-                                break
-                            
-                            idx = idx + 1
-                            
-                    else:
-                        raise AssertionError('*ERROR*  %s data is missing in %s' %(publishableKey,cachedump_file_name))                         
-                else:
-                    raise AssertionError('*ERROR*  %s data is missing in %s' %(ricKey,cachedump_file_name))                  
-            else:
-                raise AssertionError('*ERROR*  %s data is missing in %s' %(domainKey,cachedump_file_name))  
-        else:
-            raise AssertionError('*ERROR* No data found in %s' %cachedump_file_name)
-        
-        
-        if (len(out_rics_list) == 0):
-            raise AssertionError('*ERROR* No Ric found for domain %s in %s' %(domain, cachedump_file_name))
-        
-        if (len(out_rics_list) < int(no_ric)):
-            raise AssertionError('*ERROR* Number of Ric found (%d) for %s domain in %s is less than required (%s)' %(len(out_rics_list), domain, cachedump_file_name, no_ric))
-        
-        return out_rics_list
-
     def verify_no_duplicate_fids_between_constituents(self, das_path, pcapfile, constituNum1, constituMum2):
         """ compare two set of Fids name based on the input constituNums
             return : true if two set data are unique
@@ -1192,12 +1315,12 @@ class LocalBoxUtilities(_ToolUtil):
          Argument : DAS extractor's xml output file name    
         """ 
         treeRoot = ET.parse(xmlfile).getroot()
-        constituNumSet = Set();
+        fidSet = Set();
         for atype in treeRoot.findall('.//FieldID'):
             val_result = atype.get('value')
-            constituNumSet.add(val_result)
+            fidSet.add(val_result)
         
-        return constituNumSet         
+        return fidSet         
 
     def blank_out_holidays(self, srcExlFile, destExlFile):
         """ removes any defined holidays in the given srcExlFile and saves it to destExlFile
@@ -1258,93 +1381,6 @@ class LocalBoxUtilities(_ToolUtil):
 
         return 0
     
-    def get_first_ric_for_domain_from_exl(self, domain, fms_dir):
-        """Find first non-state-ric with specified domain from exl files located at LOCAL_FMS_DIR and its sub-directories
-         Returns : [ric name, fms service name, full path file name of Exl]
-         example of result list
-         ['AAAAX.O',  'MFDS', 'D:\tools\FMSCMD\config\DataFiles\Groups\RAM\MFDS\EXL Files\nasmf_a.exl']
-         Argument : 
-            domain : either MARKET_PRICE,MARKET_BY_PRICE,MARKET_BY_ORDER
-        """ 
-                        
-        list_of_state_ric_exl = ['_cs_run', '_dl_sav', '_fd_time', '_mk_holiday', '_otfc','_trd_time', '_venue_heartbeat']
-        filestr = '*.exl'
-        
-        for root, dirnames, filenames in os.walk(fms_dir):
-            for filename in fnmatch.filter(filenames, filestr):
-                if not self._list_item_is_substring_of_searched_item(filename, list_of_state_ric_exl):
-                    dict = self.get_first_ric_domain_service_from_exl(os.path.join(root, filename))
-                    if (dict['DOMAIN'] == domain):
-                        return dict['RIC'], dict['SERVICE'], os.path.join(root, filename)
-                
-        raise AssertionError('*ERROR* non-state-ric for domain %s not found in directory %s and its sub-directories' %(domain,fms_dir))       
-    
-    def get_first_ric_domain_service_from_exl(self, non_state_ric_exl_file):
-        """Get first occurrence of service name, RIC and domain in exl file
-         Returns a dictionary contains service, RIC and domain information
-         example of result {'DOMAIN' : 'MARKET_PRICE', 'RIC' : 'AAAAX.O', 'SERVICE' : 'MFDS'}
-         Argument : full path name to exl file 
-        """ 
-        
-        if not non_state_ric_exl_file:
-            raise AssertionError('*ERROR* non-state-ric exl file name %s is invalid' %non_state_ric_exl_file)
-        
-        if not os.path.exists(non_state_ric_exl_file):
-            raise AssertionError('*ERROR*  %s is not available' %non_state_ric_exl_file)
-        
-        dict1 = {}
-        doc = xml.dom.minidom.parse(non_state_ric_exl_file)
-        tag = 'it:SERVICE'
-        dict1['SERVICE'] = self._find_first_node_data(non_state_ric_exl_file, doc, tag) 
-        
-        tag = 'it:RIC'
-        dict1['RIC'] = self._find_first_node_data(non_state_ric_exl_file, doc, tag) 
-        
-        tag = 'it:DOMAIN'
-        dict1['DOMAIN'] = self._find_first_node_data(non_state_ric_exl_file, doc, tag) 
-                
-        if len(dict1)!=3:
-            raise AssertionError('*ERROR* could not get DOMAIN, RIC, SERVICE information from exl file %s' %non_state_ric_exl_file)
-        
-        return  dict1 
-               
-    def _find_first_node_data(self, exl_file, doc, tag):
-        """Get first occurrence of node data by given the node tag and dom parsed doc   
-        """ 
-        nodelist = doc.getElementsByTagName(tag)
-        if len(nodelist)<1:
-            raise AssertionError('*ERROR* could not get %s nodes from exl file %s' %(tag, exl_file))
-            
-        name = ''    
-        for node in nodelist:
-            name = node.firstChild.data
-            break
-            
-        if not name:
-            raise AssertionError('*ERROR* invalid first node %s data in node %s from exl file %s' %(name, tag, exl_file))    
-        return name
-                
-    def find_first_non_state_ric_exl_file(self, fms_dir, list_of_state_ric_exl):
-        """Find first non-state-ric exl file from LOCAL_FMS_DIR and its sub-directories
-         Returns a list contains filename, file path, full path file name
-         example of result list
-         ['nasmf_a.exl', 
-         'D:\tools\FMSCMD\config\DataFiles\Groups\RAM\MFDS\EXL Files\', 
-         'D:\tools\FMSCMD\config\DataFiles\Groups\RAM\MFDS\EXL Files\nasmf_a.exl']
-         Argument : fms file directory and list contains state ric exl file name keyword ['_cs_run', '_dl_sav', '_fd_time', '_mk_holiday', '_otfc','_trd_time', '_venue_heartbeat']
-        """ 
-        filestr = '*.exl'
-        find_file_list = []
-        for root, dirnames, filenames in os.walk(fms_dir):
-            for filename in fnmatch.filter(filenames, filestr):
-                if not self._list_item_is_substring_of_searched_item(filename, list_of_state_ric_exl):
-                    find_file_list.append(filename)
-                    find_file_list.append(root)
-                    find_file_list.append(os.path.join(root, filename))
-                    return find_file_list
-            
-        raise AssertionError('*ERROR* non-state-ric exl file could not be found in directory %s and its sub-directories' %fms_dir)
-                         
     def _list_item_is_substring_of_searched_item(self, search_str, list_of_state_ric_exl):
         """check if list item is substring of the search_str
         Return True if find matched item.
@@ -1356,25 +1392,6 @@ class LocalBoxUtilities(_ToolUtil):
             
         return False
 
-    def verify_ric_in_cachedump(self, cachedump_file_name, long_ric):
-        """verify ric in cachedump file
-        Returns True if long ric exists in file.
-        Argument : cache dump file, long ric    
-        """ 
-        if not os.path.exists(cachedump_file_name):
-            raise AssertionError('*ERROR*  %s is not available' %cachedump_file_name)
-        
-        try:
-            with open(cachedump_file_name) as fileobj:
-                for line in fileobj:
-                    if long_ric in line:
-                        return True
-        except IOError:
-            raise AssertionError('*ERROR* failed to open file %s' %cachedump_file_name)
-        
-                
-        raise AssertionError('*ERROR* RIC %s cannot be found in cachedump file %s' %(long_ric,cachedump_file_name))
-             
     def convert_to_lowercase_workaround(self, str1):
         """This KW is temporary because 'Convert to lowercase' KW is not available until Robot Framework 2.8.6.   
         After upgrading to Robot 2.8.6, this KW should be deprecated and 'Convert to Lowercase' used
@@ -1586,7 +1603,7 @@ class LocalBoxUtilities(_ToolUtil):
             
         return foundConfigValues
     
-    def get_MTE_config_list(self,venueConfigFile,*xmlPath):
+    def get_MTE_config_list_by_path(self,venueConfigFile,*xmlPath):
         """ Gets value(s) from venue config file
             http://www.iajira.amers.ime.reuters.com/browse/CATF-1798
             
@@ -1656,3 +1673,771 @@ class LocalBoxUtilities(_ToolUtil):
             raise AssertionError('*ERROR*  Found more than 1 value [%s] in venue config file: %s' %(', '.join(foundConfigValues), venueConfigFile))
         else:
             return foundConfigValues[0]
+        
+        
+        
+    def get_MTE_config_list_by_section(self, venueConfigFile, section, tag):
+        """ Gets value(s) from venue config file based on the venue config file section node name and subelement node name (tag)
+            Argument : venueConfigFile : full path to local copy of venue configuration file
+                     section : top section node in venueConfigFile
+                     tag : subelement node name under section appeared in venueConfigFile
+            Return : value list of given node name, if found. Otherwise, returns 'Not Found'.
+            Examples :
+            | ${labelIDs}= | get MTE config value list| venue_config_file| Publishing | LabelID |
+             
+        """ 
+        if not os.path.exists(venueConfigFile):
+            raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
+         
+        with open (venueConfigFile, "r") as myfile:
+            linesRead = myfile.readlines()
+        # Note that the following workaround is needed to make the venue config file a valid XML file.
+        linesRead = "<GATS>" + ''.join(linesRead) + "</GATS>"
+        root = ET.fromstring(linesRead)
+        sectionNode = root.find(section)
+        if sectionNode is None:
+            raise AssertionError('*ERROR*  Missing [%s] element from venue config file: %s' %(section, venueConfigFile))
+            
+        labelIDNode = sectionNode.findall('.//%s'%tag)
+        if labelIDNode is None:
+            raise AssertionError('*ERROR*  Missing %s element under section %s from venue config file: %s' %(tag, section, venueConfigFile))
+        
+        LabelIdList = []
+        for val in labelIDNode:
+            if val.text:
+                LabelIdList.append(val.text)
+                
+        if not len(LabelIdList):  
+            raise AssertionError('*ERROR*  Missing %s element text from venue config file: %s' %(tag, venueConfigFile))
+        
+        return LabelIdList
+    
+            
+    def remove_xinclude_from_labelfile(self, ddnLabels_file, updated_ddnLabels_file):
+        '''  
+            Argument : ddnLabels_file : local ddnLabels.xml file or ddnReqLabels.xml
+                       updated_ddnLabels_file : output file name
+            Return : updated_ddnLabels_file with line <xi:include href="ddnServers.xml"/> removed from ddnLabels_file
+        '''
+        xi_include = 'xi:include' 
+        label_file = open(ddnLabels_file,'r')
+        modified_label_file = open(updated_ddnLabels_file,'w')
+        
+        label_file_lines = label_file.readlines()
+        for line in label_file_lines:
+            if xi_include not in line:
+                modified_label_file.write(line)
+              
+        label_file.close()
+        modified_label_file.close()
+        
+    
+    def get_multicast_address_from_lable_file(self, ddnLabels_file, labelID):
+        ''' Extract multicast IP and port from label file based on the labelID
+            Argument : ddnLabels_file:  ddnLabels or ddnReqLabels file
+                       labelID : labelID defined in venue config file
+            Return : list contains multicast ip and port
+        '''     
+        tree = ET.parse(ddnLabels_file)
+        root = tree.getroot()
+        
+        labelNode = root.findall('.//label')
+        if not labelNode: 
+            raise AssertionError('*ERROR* label element does not exist in %s' % ddnLabels_file)
+        
+        for node in labelNode:
+            if node.get('ID') == labelID:
+                multTagText = node.find('multTag').text
+                break
+        
+        if not multTagText:
+            raise AssertionError('*ERROR* could not find multTag text for labelID %s' % labelID)
+        
+        multAddrNode = root.findall('.//multAddr')    
+        for node in multAddrNode:
+            if node.get('TAG') == multTagText:
+                multicast_ip = node.get('ADDR')
+                multicast_port_tag = node.get('PORT')
+                break;
+            
+        if not multicast_port_tag:
+            raise AssertionError('*ERROR* could not find port for multAddr node %s' % multTagText)
+        
+        for node in root.findall('.//port'):
+            if node.get('ID') == multicast_port_tag:
+                multicast_port = node.text
+                
+        if not multicast_ip and not multicast_port: 
+            raise AssertionError('*ERROR* failed to get multicast address for LabelID %s' % labelID)
+        
+        multicast_address = []        
+        multicast_address.append(multicast_ip)
+        multicast_address.append(multicast_port)
+        
+        return multicast_address
+    
+    
+    def map_to_PMAT_numeric_domain(self, domain):
+        ''' Map string domain to PMAT numeric domain
+            Argument : domain : Data domain in following format
+                                MarketByOrder, MarketByPrice, MarketMaker, MarketPrice, symbolList.
+            Return : 0 for MarketByOrder, 1 for MarketByPrice, 2 for MarketMaker, 3 for MarketPrice, 4 for symbolList.
+        ''' 
+        domainDict = {'MARKETBYORDER': 0, 'MARKETBYPRICE': 1, 'MARKETMAKER': 2, 'MARKETPRICE': 3, 'SYMBOLList':4}
+        domainUpper = domain.upper()
+        ret = domainDict[domainUpper]
+        if not (ret >= 0 and ret <=4):
+            raise AssertionError('*ERROR* invalid domain %s for PMAT' %domain)
+        
+        return ret
+        
+        
+    def run_PMAT(self, pmat_dir, action,*params):    
+        ''' Call PMAT.exe  
+            PMAT doc is available at https://thehub.thomsonreuters.com/docs/DOC-110727
+            Argument : pmat_dir : PMAT installed directory
+                       action : possible values are Dump, Drop, Modify, Upgrade, Insert
+                       params : a variable list of  arguments based on action.
+            Return : rc should be 0.  
+            examples : | ${ret}= | run PMAT| dump | --dll Schema_v6.dll | --db local_persist_file.DAT | --ric AAAAX.O | --domain 3 | --outf c:/tmp/pmat_dump.xml |
+                       | ${ret}= | run PMAT| drop | --dll Schema_v5.dll | --db local_persist_file.DAT | --id 2 |
+                       | ${ret}= | run PMAT| upgrade | --dll upgrade_Schema_v5.Schema_v6.dll | --db c:\PERSIST_CXA_V5.DAT | --newdb c:\PERSIST_CXA_V6.DAT
+                       | ${ret}= | run PMAT| modify | --dll <modify dll> | --db <database file> | --xml <xml command file>
+        '''
+        #output_file = 'pmat_dump.txt'
+        #cmdstr = 'pmat dump --dll Schema_v6.dll --db %s --ric %s --domain %d --outf %s'%(local_persist_file, ric, domain_no, output_file)
+        
+        cmd = 'PMAT %s' %action
+        cmd = cmd + ' ' + ' '.join(map(str, params))
+    
+        rc,stdout,stderr  = _run_local_command(cmd, True, pmat_dir)
+        if rc != 0:
+            raise AssertionError('*ERROR* in running PMAT %s' %stderr)  
+        
+        return rc
+        
+        
+    def verify_ric_in_persist_dump_file(self, persist_dump_file, ric, domain):
+        ''' Check if ric and domain appeared in the persist_dump_file. 
+            persist_dump_file usually contains one RIC and Domain if user applies RIC and Domain filter in running PMAT dump.
+            Argument : persist_dump_file:  the output file generated by runing PMAT with dump option
+                       ric :  ric that need to be checked
+                       domain : data domain for the ric in PMAT domain format: MarketPrice, MarketByOrder etc
+            Return : Nil
+        '''     
+        if not os.path.exists(persist_dump_file):
+            raise AssertionError('*ERROR*  %s is not available' %persist_dump_file) 
+        
+        tree = ET.parse(persist_dump_file)
+        root = tree.getroot() 
+        
+        ric_path = './/DatabaseEntry/RIC'
+        domain_path = './/DatabaseEntry/DOMAIN'
+    
+        ric_nodes = root.findall(ric_path)
+        if ric_nodes is None:
+            raise AssertionError('*ERROR*  Missing RIC element under %s from file: %s' %(ric_path, persist_dump_file))
+
+        ric_exist = False
+        for val in ric_nodes:
+            if val.text == ric:
+                ric_exist = True
+                break
+                
+        if not ric_exist:  
+            raise AssertionError('*ERROR* ric %s is not found in persist file %s' %(ric, persist_dump_file))  
+        
+        domain_exist = False
+        domain_nodes = root.findall(domain_path)
+        if domain_nodes is None:
+            raise AssertionError('*ERROR*  Missing DOMAIN element under %s from file: %s' %(domain_path, persist_dump_file))
+        
+        for val in domain_nodes:
+            if val.text.upper() == domain.upper():
+                domain_exist = True
+                break
+                
+        if not domain_exist:  
+            raise AssertionError('*ERROR* domain %s is not found in persist file %s' %(domain, persist_dump_file))  
+    def get_all_fids_from_PersistXml(self, xmlfile):
+        """get all fids from PMAT extactor's xml output file
+         Returns a list of fids appeared in the file.
+         Argument : PMAT extractor's xml output file name    
+        """ 
+        treeRoot = ET.parse(xmlfile).getroot()
+        fidsSet = [];
+        for atype in treeRoot.findall('.//FIELD'):
+            fid = atype.get('id')
+            fidsSet.append(fid)
+            print fid
+        
+        return fidsSet
+    
+    def get_sps_ric_name_from_label_file(self, ddnLabelFile, MTEName, labelID):
+        ''' Extract multicast IP and port from label file based on the labelID
+        
+            Argument : ddnLabelsFile - the local ddnLabels file name e.g. c:\temp\ddnLabel.xml
+                       MTEName - the MTE name, e.g. MFDS1M
+                       labelID - labelID defined in venue config file
+
+            Return : the text of SPS RIC name
+            
+            Examples :
+            ${spsRicName} | get sps ric name from label file | c:\temp\ddnLabel.xml | MFDS1M | 1234 |
+            
+        '''     
+        tree = ET.parse(ddnLabelFile)
+        root = tree.getroot()
+        
+        labelNodes = root.findall('.//label')
+        if not labelNodes: 
+            raise AssertionError('*ERROR* label element does not exist in %s' % ddnLabelFile)
+        
+        for labelNode in labelNodes:
+            if labelNode.get('ID') == labelID:
+                providerNodes = labelNode.findall('provider')
+                for providerNode in providerNodes:
+                    if providerNode.get('NAME') == MTEName:
+                        spsText = providerNode.find('sps').text
+                        return spsText
+                break
+        
+        if not spsText:
+            raise AssertionError('*ERROR* could not find sps ric text for labelID %s' % labelID)
+    
+    def _and_DAS_filter_string(self, filterString1, filterStirng2):
+        """  Combine two filterStrings with AND keyword
+        
+            Argument : filterString1 - left filter string
+                       filterStirng2 - right filter string
+                       
+            Return : the combined filfer string
+        """
+        if(filterString1 != None and filterString1 != ''):
+            if (filterStirng2 != None and filterStirng2 != ''):
+                return 'AND(' + filterString1 + ', ' + filterStirng2 + ')'
+            else:
+                return filterString1
+        else:
+            if (filterStirng2 != None and filterStirng2 != ''):
+                return filterStirng2
+            else:
+                return ''
+        
+
+    def _build_DAS_filter_string(self, msgClass = '*', ric = '*', constitNum = '*'):
+        """ Build the DAS filter string by specified condition
+        
+            Argument : msgClass - to filter the pcap message by Response or Update, it should be 'Response' or 'Update' or '*' (by default)
+                       ric - to filter the pcap by ric name, it can be a ric name (e.g. AAXRY.O) or '*' (by default)
+                       constitNum - to filter the pcap by constitNum, it can be '0' or '1' or '63' or '*' (by default)
+            
+            Return : The filter string e.g. 'All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot'
+            
+            Examples :
+            filterstring = _build_DAS_filter_string('Response', '*', 1)
+            Build a filter string for DAS, DAS will only show the response message whose constitNum = 1
+        
+        """
+        filterstring = ''
+        if msgClass == 'Response':
+            filterstring = 'All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;'
+        elif msgClass == 'Update':
+            filterstring = 'All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;'
+        elif msgClass == '*':
+            pass
+        
+        if ric != '*':
+            filterstring_for_ric = 'All_msgBase_msgKey_name = &quot;%s&quot;' % ric
+            filterstring = self._and_DAS_filter_string(filterstring, filterstring_for_ric)
+        else:
+            pass
+        
+        if constitNum != '*':
+            filterstring_for_constitNum = 'Response_constitNum = &quot;%s&quot;' % constitNum
+            filterstring = self._and_DAS_filter_string(filterstring, filterstring_for_constitNum)
+        else:
+            pass
+        
+        return filterstring
+
+    def verify_fid_value_in_message(self, pcapfile, dasdir, ric, constitNum, fidList=[], valueList=[]):
+        """ Verify if the fid value equals to the specified value
+
+            Argument : pcapfile - the full name of pacpfile, it should be local path e.g. C:\\temp\\capture.pcap
+                       dasdir - the installation folder of DAS, e.g. C:\\Program Files\\Reuters Test Tools\\DAS
+                       ric - the specified ric name if you want to check
+                       constitNum - the constitNum you want to check, should be 0, 1 or 63
+                       fidList - a list specify the fid you want to check
+                       valueList - a list specify the value you want to compare, it should 1:1 correspond with valueList
+
+            Return : Nil
+            
+            Examples :
+            verify fid in message | capture.pcap | C:\\Program Files\\Reuters Test Tools\\DAS | AAAX.O | 1 | ['6401', '6480'] | ['12345','.[SPSMFDS1M_0'] |
+            
+            The example shows to verify if the RIC publishs the DDS_DSO_ID(6401) equals 12345 and SPS_SP_RIC(6480) equals .[SPSMFDS1M_0.
+        """        
+        #Check if pcap file exist
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)
+        #Build the filterstring
+        filterstring = self._build_DAS_filter_string('Response', ric, constitNum);
+        
+        outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,'fidVerificationVspcap',20)
+        
+        messageNode = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
+        
+        fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messageNode[0])
+
+        ricname = self._xml_parse_get_field_from_MsgKey(messageNode[0],'Name')
+
+        if (len(fidsAndValues) == 0):            
+            raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ricname)
+        
+        if (len(fidList) != len(valueList)):
+            raise AssertionError('*ERROR* The item number of fidList and valueList is not same' )
+        
+        i = 0
+        for fid in fidList:
+            if (fid == None):
+                raise AssertionError('*ERROR* One fid in fidList is None' )
+            if (valueList[i] == None):
+                raise AssertionError('*ERROR* One value in valueList is None' )
+            self._verify_FID_value_in_message(fidsAndValues, fid, valueList[i])
+            i += 1
+            
+        for delFile in outputxmlfilelist:
+            os.remove(delFile)
+
+    def verify_CMP_NME_ET_in_message(self, pcapfile, dasdir, ric):
+        """ Verify CMP_NME_ET in message, it should be 0 or 1 or 2 or 3
+
+            Argument : pcapfile - the full name of pacpfile, it should be local path e.g. C:\\temp\\capture.pcap
+                       dasdir - the installation folder of DAS, e.g. C:\\Program Files\\Reuters Test Tools\\DAS
+                       ric - the specified ric name if you want to check
+
+            Return : Nil
+            
+            Examples :
+            verify CMP_NME_ET in message | capture.pcap | C:\\Program Files\\Reuters Test Tools\\DAS | AAAX.O |
+            
+        """
+        #Check if pcap file exist
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)
+        #Build the filterstring
+        filterstring = self._build_DAS_filter_string('*', ric, 0);
+        
+        outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,'setIDVerificationVspcap',20)
+        
+        messageNode = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
+        
+        fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messageNode[0])
+
+        ricname = self._xml_parse_get_field_from_MsgKey(messageNode[0],'Name')
+
+        if (len(fidsAndValues) == 0):            
+            raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ricname)
+        
+        FID = '6397'
+        if (fidsAndValues.has_key(FID)):                        
+            if (fidsAndValues[FID] != '0' and fidsAndValues[FID] != '1' and fidsAndValues[FID] != '2' and fidsAndValues[FID] != '3'):
+                raise AssertionError('*ERROR* CMP_NME_ET in message (%s) not equal to 0 or 1 or 2 or 3')
+        else:
+            raise AssertionError('*ERROR* Missing FID (%s) in message '%FID)
+        
+        for delFile in outputxmlfilelist:
+            os.remove(delFile)
+
+    def verify_setID_in_message(self, pcapfile, dasdir, ric, expectedSetID, msgType):
+        """ Verify if the SetID in message equals with expected value 
+
+            Argument : pcapfile - the full name of pacpfile, it should be local path e.g. C:\\temp\\capture.pcap
+                       dasdir - the installation folder of DAS, e.g. C:\\Program Files\\Reuters Test Tools\\DAS
+                       ric - the specified ric name if you want to check
+                       expectedSetID - the number for SetID, it should be 10 or 12 or 14 or 30
+                       msgType - should be 'Resopnse' or 'Update'
+
+            Return : Nil
+            
+            Examples :
+            verify setID in message | capture.pcap | C:\\Program Files\\Reuters Test Tools\\DAS | AAAX.O | 30 |
+            
+        """        
+        #Check if pcap file exist
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)
+        #Build the filterstring
+        filterstring = self._build_DAS_filter_string('*', ric);
+        
+        outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,'setIDVerificationVspcap',20)
+        
+        messageNode = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
+        
+        for msgkey in messageNode[0].getiterator('MsgBase'):
+            element = msgkey.find('SetID')
+            if (element != None):
+                if element.get('value') != expectedSetID:
+                    raise AssertionError('*ERROR* The set id in message is %s does not equal the expected %s' % (element.text, expectedSetID))
+                
+        for delFile in outputxmlfilelist:
+            os.remove(delFile)
+            
+    def verify_key_compression_in_message(self, pcapfile, dasdir, ric):
+        """ Verify if the key name compression is enabled 
+
+            Argument : pcapfile - the full name of pacpfile, it should be local path e.g. C:\\temp\\capture.pcap
+                       dasdir - the installation folder of DAS, e.g. C:\\Program Files\\Reuters Test Tools\\DAS
+                       ric - the specified ric name if you want to check
+            Return : Nil
+            
+            Examples :
+            verify key compression in message | capture.pcap | C:\\Program Files\\Reuters Test Tools\\DAS | AAAX.O | 
+            
+        """        
+        #Check if pcap file exist
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)
+        #Build the filterstring
+        filterstring = self._build_DAS_filter_string('*', ric);
+        
+        outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,'setIDVerificationVspcap',20)
+        
+        messageNode = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
+        for node in messageNode:
+            NameEncodingType = self._xml_parse_get_field_from_MsgKey(node,'NameEncodingType')
+            print NameEncodingType
+            if NameEncodingType == '0':
+                    raise AssertionError('*ERROR* The compression in message is %s ' % (NameEncodingType))
+        
+        #for delFile in outputxmlfilelist:
+        #    os.remove(delFile)
+            
+    def get_mangling_rule_content(self,localTmpDir,venueDir,rule,configFile="manglingConfiguration.xml"):
+        """ Get the setting for specific mangling rule found in manglingConfiguration.xml
+            This include 
+            tag <RIC> : enabled , Prefix, Suffix
+            tag <PE> : enabled, PE value
+            tag <IMSOUT> : enabled, IMSOUT value
+
+            Argument : localTmpDir - location for Control PC that configFile will copy to
+                       venueDir - The location we search for configFile
+                       rule -  'SOU', 'BETA', RRG', 'UNMANGLED'
+                       configFile - name of mangling config file
+                       
+            Return : dictionary of setting e.g.
+                 {'RIC': {'Prefix': '![', 'enabled': 'true', 'Suffix': None}, 
+                  'PE': {'enabled': 'false', 'text': '0'}, 
+                  'IMSOUT': {'enabled': 'false', 'text': '0'}}
+            
+            Examples :
+            | &{manglingRuleContent}| get mangling rule content | C:\\temp\\ | /ThomsonReuters/Venues/ |SOU |
+        """
+        
+        manglingFilePath = LinuxFSUtilities().search_remote_files(venueDir, configFile, True)
+        if (len(manglingFilePath) == 0):
+            raise AssertionError('*ERROR* Missing mangling configuration file %s '%configFile)
+        
+        manglingFileLocalPath = localTmpDir + "/" + configFile
+        LinuxFSUtilities().get_remote_file(manglingFilePath[0], manglingFileLocalPath)
+        
+        #safe check for rule value
+        if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
+            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)    
+        
+        retContent= {}
+        tree = ET.parse(manglingFileLocalPath)
+        root = tree.getroot()
+        retIter = root.iter('Rule')
+        for child in retIter:
+            if (child.attrib['id'] == LinuxToolUtilities().MANGLINGRULE[rule]):
+                for index in range(len(child)):
+                    retContent[child[index].tag] = child[index].attrib
+                    if (child[index].tag == 'RIC'):
+                        for sub_index in range(len(child[index])):
+                            retContent[child[index].tag][child[index][sub_index].tag] = child[index][sub_index].text 
+                    else:
+                        retContent[child[index].tag]['text'] = child[index].text
+        
+        #Remove tempoary file
+        os.remove(manglingFileLocalPath)
+
+        if (len(retContent) == 0):
+            raise AssertionError('*ERROR* Missing mangling configuration for rule %s in %s'%(rule,configFile))
+            
+        return retContent
+    
+    def create_mangling_rule_content(self,ricEnabled,prefix,suffix,peEnabled,pe,imsoutEnabled,imsout):
+        """ Create dictionary of setting for a mangling rule
+            This include 
+            tag <RIC> : enabled , Prefix, Suffix
+            tag <PE> : enabled, PE value
+            tag <IMSOUT> : enabled, IMSOUT value
+
+            Argument : ricEnabled - refer to attribute of tag <RIC> either 'false' or 'true'
+                       prefix -  value of <Prefix> under tag <RIC>
+                       suffix -  value of <Suffix> under tag <RIC>
+                       peEnabled - refer to attribute of tag <PE> either 'false' or 'true'
+                       pe -  value of tag <PE>
+                       imsoutEnabled - refer to attribute of tag <IMSOUT> either 'false' or 'true'
+                       imsout - value of tag <IMSOUT>
+                       
+                       Remark:
+                       if ricEnabled, peEnabled, imsoutEnabled = ${Empty}, skip generate corresponding setting.
+                       To create a empty element, you could specific 'None'
+                       
+            Return : dictionary of setting e.g.
+                 {'RIC': {'Prefix': '![', 'enabled': 'true', 'Suffix': None}, 
+                  'PE': {'enabled': 'false', 'text': '0'}, 
+                  'IMSOUT': {'enabled': 'false', 'text': '0'}}
+            
+            Examples :
+            | &{manglingRuleContent} | create mangling rule content | true | ![ | None | false | 0 | ${Empty} | ${Empty}    
+        """
+                
+        retContent = {}
+        
+        if (not (ricEnabled == '')):
+            retContent['RIC'] = {}
+            retContent['RIC']['enabled'] = ricEnabled
+            retContent['RIC']['Prefix']  = prefix
+            if (prefix == 'None'):
+                retContent['RIC']['Prefix']  = None
+            retContent['RIC']['Suffix']  = suffix
+            if (suffix == 'None'):
+                retContent['RIC']['Suffix']  = None
+                       
+        if (not (peEnabled == '')):
+            retContent['PE'] = {}
+            retContent['PE']['enabled'] = peEnabled
+            retContent['PE']['text']  = pe
+       
+        if (not (imsoutEnabled == '')):
+            retContent['IMSOUT'] = {}
+            retContent['IMSOUT']['enabled'] = imsoutEnabled
+            retContent['IMSOUT']['text']  = imsout
+        
+        return retContent
+    
+    def set_mangling_rule_content(self,fullManglingFile,rule,content):
+        """ override setting for specific mangling rule found in manglingConfiguration.xml
+            The manglingConfiguration.xml file would be override directly.
+            
+            This include 
+            tag <RIC> : enabled , Prefix, Suffix
+            tag <PE> : enabled, PE value
+            tag <IMSOUT> : enabled, IMSOUT value
+
+            Argument : fullManglingFile - the full name of mangling file, it should be local path e.g. C:\\temp\\manglingConfiguration.xml
+                       rule -  'SOU', 'BETA', RRG', 'UNMANGLED'
+                       content - dictonary of setting (could use create_mangling_rule_content() to generate)
+                       
+            Return : N/A
+            
+            Examples :
+            |set mangling rule content |  C:\\temp\\manglingConfiguration.xml | SOU | ${content}   
+        """
+                     
+        #safe check for rule value
+        if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
+            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)    
+        
+        tree = ET.parse(fullManglingFile)
+        root = tree.getroot()
+        retIter = root.iter('Rule')
+        for child in retIter:
+            if (child.attrib['id'] == LinuxToolUtilities().MANGLINGRULE[rule]):
+                for index in range(len(child)):
+                    tagName = child[index].tag
+                    if (content.has_key(tagName)):                        
+                        if (content[tagName].has_key('enabled')):
+                            child[index].set('enabled',content[tagName]['enabled'])
+                        if (content[tagName].has_key('text')):
+                            child[index].text = content[tagName]['text']
+                        if (tagName == 'RIC'):
+                            for sub_index in range(len(child[index])):
+                                subTagName = child[index][sub_index].tag
+                                if (content[tagName].has_key(subTagName)):
+                                    child[index][sub_index].text = content[tagName][subTagName]
+        tree.write(fullManglingFile)        
+    
+    def convert_dataView_response_to_dictionary(self,dataview_response):
+        """ capture the FID Name and FID value from DateView output which return from run  run_dataview
+
+            Argument : dataview_response - stdout return from run_dataview
+                       
+            Return : dictionary with key=FID NAME and value=FID value
+            
+            Examples :
+            |convert dataView response to dictionary |  response |
+        """        
+        
+        fidsAndValuesDict = {}
+        lines = dataview_response.split('\n')
+        for line in lines:
+            if (line.find('->') != -1):
+                fidAndValue = line.split(',')                
+                if (len(fidAndValue) == 2):
+                    fidIdAndfidName = fidAndValue[0].split()
+                    if (len(fidIdAndfidName) == 3):
+                        fidsAndValuesDict[fidIdAndfidName[2].strip()] = fidAndValue[1].strip()
+                    else:
+                        raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)',line) 
+                else:
+                    raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)',line)
+        
+        return fidsAndValuesDict
+    
+    def verify_mangling_from_dataview_response(self,dataview_response,expected_pe,expected_ricname):
+        """ Based on the DataView response to check if the expected Ric could be retrieved from MTE and having expected PE value
+
+            Argument : dataview_response - stdout return from run_dataview
+                       expected_pe - expected PE value
+                       expected_ricname - expected RIC name
+                       
+            Return : N/A
+            
+            Examples :
+            |verify mangling from dataview response |  response | 4247 | ![HSIU5
+        """   
+                
+        fidsAndValues = self.convert_dataView_response_to_dictionary(dataview_response)
+        if (len(fidsAndValues) > 0):
+            if (fidsAndValues.has_key('PROD_PERM')):
+                if (fidsAndValues['PROD_PERM'] != expected_pe):
+                    raise AssertionError('*ERROR* Ric (%s) has PE (%s) not equal to expected value (%s) ' %(expected_ricname, fidsAndValues['PROD_PERM'], expected_pe))
+            else:
+                raise AssertionError('*ERROR* Missing FID (PROD_PERM) from dataview response ')
+        else:
+            raise AssertionError('*ERROR* Cannt retrieve Ric (%s) from MTE' %expected_ricname)   
+    
+    def _verify_rebuild_message_num_response(self,pcapfile,venuedir,dasdir,ricname,constnum):
+        """ Based on the DataView response to check if the expected Ric could be retrieved from MTE 
+
+            Argument : pcapFile : is the pcap fullpath at local control PC  
+            venuedir : location from remote TD box for search FIDFilter.txt
+            dasdir : location of DAS tool  
+            ricname : target ric name    
+            constnum: Response_constitNum       
+            return : Nil
+                       
+            Return : N/A
+            
+            Examples :
+            |verify mangling from dataview response |  response | 4247 | ![HSIU5
+        """  
+        if (constnum == 63):
+            hasC = False
+            fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt(venuedir)
+            contextIDs = fidfilter.keys()
+            for contextID in contextIDs:
+                constitIDs = fidfilter[contextID].keys()
+                if (constnum in constitIDs):
+                    hasC = True
+                    break
+            
+            if (hasC == False):
+                print '*INFO* NO C63 found in FIDFilter.txt, skip C63 requirement checking'
+                return   
+        
+        outputfileprefix = 'rebuildCheckC'
+        filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;%s&quot;))'%(ricname,constnum)
+        
+        parentName  = 'Message'        
+        outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+        if (len(messages) == 0):
+            raise AssertionError('*ERROR* no C%s message found'%constnum) 
+        if (len(messages) > 2):
+            raise AssertionError('*ERROR* more than 2 C%s message found, the num is %s'%(constnum,len(messages))) 
+        else:
+            print '*INFO* message C%s number is  %s'%(constnum,len(messages))
+        
+        for delFile in outputxmlfilelist:
+            os.remove(delFile)
+        
+        os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log") 
+        
+    def verify_FMS_rebuild_in_message(self,pcapfile,venuedir,dasdir,ricname):
+        """ internal function used to verify FMS rebuild for RIC in MTE output pcap message, 
+            pcapFile : is the pcap fullpath at local control PC  
+            venuedir : location from remote TD box for search FIDFilter.txt
+            dasdir : location of DAS tool  
+            ricname : target ric name            
+            return : Nil
+            
+            Verify:
+            1. C0 , C1 and C63 message response, all payload FIDs included.
+        """   
+        self._verify_rebuild_message_num_response(pcapfile,venuedir,dasdir,ricname,0)    
+        self._verify_rebuild_message_num_response(pcapfile,venuedir,dasdir,ricname,1)    
+        self._verify_rebuild_message_num_response(pcapfile,venuedir,dasdir,ricname,63)   
+
+    def get_DVT_rule_file(self, dir):
+        """ Search a local DVT rule file in the specified folder, and return it.
+            This founction will find the latest DVT rule if multiple files is found.
+            The rule of deciding the latest rule file is checking the digit in the file name.
+            Normally, the file name should be 'TRWFRules-72_L7_v2.1.0_SNFDCMPLR_20151118.xml', '72' can be used for sorting the file.
+            
+            Argument:
+            dir : the local folder you want to search, normally it should be ${DAS_DIR}, e.g. 'C:\Program Files\Reuters Test Tools\DAS'
+            return : the DVT rule file name
+            
+            Example:
+            ${ruleFilePath} | get_DVT_rule_file | ${DAS_DIR}
+        """   
+        
+        files = _FSUtil().search_local_files(dir, 'TRWFRules')
+        if len(files) == 0:
+            raise AssertionError('*ERROR* Cannot find DVT rule file in %s' %dir)
+        files.sort(key = lambda x:filter(str.isdigit, os.path.basename(x)))
+        return files[-1]
+
+    def validate_DVT_rule(self,pcapfile,dasdir,rulefile):
+        """ Perform DVT Validation
+            
+            Argument:
+            pcapfile : the local pcap file path
+            dasdir: the das installed path
+            rulefile: the rule file path, see 'get_DVT_rule_file' founction
+            return : N/A
+            
+            Example:
+            validate_DVT_rule | c:\temp\local_capture.pcap | ${DAS_DIR} | ${ruleFilePath}
+        """   
+        
+    	#Check if pcap file exist
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)
+
+        #Check if rule file exist
+        if (os.path.exists(rulefile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %rulefile)
+
+        pcappath = os.path.dirname(pcapfile)
+        outputfile = pcappath + '/' + 'DVT_output.csv'
+        print outputfile
+        res = self.run_das_dvt_locally(dasdir, pcapfile, outputfile, 'CHE', '', rulefile)
+        if res != 0:
+            raise AssertionError('*ERROR* DVT validate output file is not generated')
+        
+        csvfile = file(outputfile, 'rb')
+        reader = csv.reader(csvfile)
+        foundError = 0
+        errors = []
+        for line in reader:
+            if len(line) != 0:
+                if line[0] == 'Packet#':
+                    foundError = 1
+                    continue
+                if foundError == 1:
+                    errors.append(' '.join(line))
+        csvfile.close()
+        if len(errors) != 0:
+            for str in errors:
+                print '*ERROR* DVT Violation: %s' %str
+            raise AssertionError('*ERROR* Found DVT violation')
+        os.remove(outputfile)
+        
+        

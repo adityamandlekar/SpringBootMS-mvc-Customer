@@ -5,6 +5,26 @@ Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
 *** Test Cases ***
+Validate Downstream FID publication
+    [Documentation]    Verify if MTE has publish fids that matches fids defined in fidfilter file
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1632
+    Start MTE    ${MTE}
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    ${contextIds}    get contextID from FidFilter    ${VENUE_DIR}
+    : FOR    ${contextId}    IN    @{contextIds}
+    \    ${ricFiledList}    get ric fields from cache    ${MTE}    ${VENUE_DIR}    1    ${EMPTY}
+    \    ...    ${contextId}
+    \    ${pubRic}=    set variable    ${ricFiledList[0]['PUBLISH_KEY']}
+    \    ${domain}=    set variable    ${ricFiledList[0]['DOMAIN']}
+    \    Start Capture MTE Output    ${MTE}    ${remoteCapture}
+    \    Send TRWF2 Refresh Request    ${MTE}    ${pubRic}    ${domain}
+    \    Stop Capture MTE Output    ${MTE}    60
+    \    get remote file    ${remoteCapture}    ${localCapture}
+    \    Verify Message Fids are in FIDfilter    ${localCapture}    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}    ${domain}
+    \    ...    ${contextId}
+    [Teardown]    case teardown    ${localCapture}
+
 Validate Downstream FID publication from Reconcile
     [Documentation]    Validate output from MTE after manual triggered Reconcile against FIDFilter.txt
     Start Capture MTE Output    ${MTE}    ${REMOTE_TMP_DIR}/capture.pcap
@@ -26,3 +46,210 @@ Verify Outbound Heartbeats
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     verify_MTE_heartbeat_in_message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${DAS_DIR}    1
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
+
+Verify Downstream Recovery Functions
+    [Documentation]    This test uses DataView to send refresh request. MTE response will be captured in pcap and analysed with solicited flag for all possible constituents for the RIC
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1707
+    Start MTE    ${MTE}
+    ${domain}=    Get Preferred Domain
+    ${ric_contextid_list}=    get RIC fields from cache    ${MTE}    ${VENUE_DIR}    1    ${domain}    ${EMPTY}
+    ${ric}=    set variable    ${ric_contextid_list[0]['RIC']}
+    ${contextId}=    set variable    ${ric_contextid_list[0]['CONTEXT_ID']}
+    ${pubRic}=    set variable    ${ric_contextid_list[0]['PUBLISH_KEY']}
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    Start Capture MTE Output    ${MTE}    ${remoteCapture}
+    Send TRWF2 Refresh Request    ${MTE}    ${pubRic}    ${domain}
+    Stop Capture MTE Output    ${MTE}    5    10
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    ${constituents}=    get constituents from FidFilter    ${VENUE_DIR}    ${contextId}
+    Verify Solicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${pubRic}    ${domain}    ${constituents}
+    [Teardown]    case teardown    ${localCapture}
+
+Verify Common Required FID output
+    [Documentation]    Verify the common fid in the output, http://www.iajira.amers.ime.reuters.com/browse/CATF-1847
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    ${serviceName}    Get FMS Service Name
+    Start MTE    ${MTE}
+    Start Capture MTE Output    ${MTE}    ${remoteCapture}
+    ${currentDateTime}    get date and time
+    Rebuild FMS service    ${serviceName}
+    wait smf log message after time    Finished Sending Images    ${currentDateTime}
+    Stop Capture MTE Output    ${MTE}
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    ${mteConfigFile}=    Get MTE Config File
+    ${domain}=    Get Preferred Domain
+    @{ric_contextid_list}    get ric fields from cache    ${MTE}    ${VENUE_DIR}    1    ${domain}    ${EMPTY}
+    ${publishKey}=    set variable    ${ric_contextid_list[0]['PUBLISH_KEY']}
+    ${contextId}=    set variable    ${ric_contextid_list[0]['CONTEXT_ID']}
+    Verify DDS_DSO_ID    ${localCapture}    ${publishKey}
+    @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
+    Verify SPS_SP_RIC    ${localCapture}    ${publishKey}    ${labelIDs[0]}
+    Verify CONTEXT_ID    ${localCapture}    ${publishKey}    ${contextId}
+    Verify MC_LABEL    ${localCapture}    ${publishKey}    ${labelIDs[0]}
+    Verify MC_REC_LAB    ${localCapture}    ${publishKey}    ${labelIDs[0]}
+    Verify UNCOMP_NAM    ${localCapture}    ${publishKey}
+    Verify CMP_NME_ET    ${localCapture}    ${publishKey}
+    Verify SetID In Response    ${localCapture}    ${publishKey}
+    [Teardown]    case teardown    ${localCapture}
+
+Verify Message Key Name is Compressed
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1884
+    ...    ensure all TD CHE releases message key name compression is enabled
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    ${serviceName}    Get FMS Service Name
+    Start MTE    ${MTE}
+    Start Capture MTE Output    ${MTE}    ${remoteCapture}
+    ${currentDateTime}    get date and time
+    Rebuild FMS service    ${serviceName}
+    wait smf log message after time    Finished Sending Images    ${currentDateTime}
+    Stop Capture MTE Output    ${MTE}
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    ${domain}=    Get Preferred Domain
+    @{ric_contextid_list}    get ric fields from cache    ${MTE}    ${VENUE_DIR}    1    ${domain}    ${EMPTY}
+    ${pubRic}=    set variable    ${ric_contextid_list[0]['PUBLISH_KEY']}
+    verify key compression in message    ${localCapture}    ${DAS_DIR}    ${pubRic}
+
+Verify SPS RIC is published
+    [Documentation]    Verify SPS RIC is published
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1757
+    ${domain}=    Get Preferred Domain
+    ${currentDateTime}    get date and time
+    ${serviceName}=    Get FMS Service Name
+    ${published_SPS_ric_sub_provider}=    set variable    .[SPS${MTE}L1_D
+    ${published_SPS_ric_input_stats}=    set variable    .[SPS${MTE}L1_D_INS
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    Start Capture MTE Output    ${MTE}    ${remoteCapture}
+    Rebuild FMS service    ${serviceName}
+    wait smf log message after time    Finished Sending Images    ${currentDateTime}
+    Stop Capture MTE Output    ${MTE}    1    5
+    get remote file    ${remoteCapture}    ${localCapture}
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_SPS_ric_sub_provider}    ${domain}    ${constituents}
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_SPS_ric_input_stats}    ${domain}    ${constituents}
+    [Teardown]    case teardown    ${localCapture}
+
+Verify DDS RIC is published
+    [Documentation]    Verify DDS RIC is published
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1758
+    ${mteConfigFile}=    Get MTE Config File
+    ${domain}=    Get Preferred Domain
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    ${serviceName}=    Get FMS Service Name
+    @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
+    : FOR    ${labelID}    IN    @{labelIDs}
+    \    ${currentDateTime}    get date and time
+    \    ${published_DDS_ric}=    set variable    .[----${MTE}${label_ID}
+    \    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    \    Start Capture MTE Output    ${MTE}    ${remoteCapture}
+    \    Rebuild FMS service    ${serviceName}
+    \    Wait Smf Log Message After Time    Finished Sending Images    ${currentDateTime}
+    \    Stop Capture MTE Output    ${MTE}    1    5
+    \    get remote file    ${remoteCapture}    ${localCapture}
+    \    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_DDS_ric}    ${domain}    ${constituents}
+    [Teardown]    case teardown    ${localCapture}
+
+Perform DVT Validation - Process all EXL files
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1887
+    ...    Verify DVT rule when process all EXL files
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    Start MTE    ${MTE}
+    Start Capture MTE Output    ${MTE}    ${remoteCapture}
+    ${serviceName}    Get FMS Service Name
+    Load All EXL Files    ${serviceName}    ${CHE_IP}
+    Wait For Persist File Update    ${MTE}    ${VENUE_DIR}
+    Stop Capture MTE Output    ${MTE}
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    ${ruleFilePath}    get DVT rule file    ${DAS_DIR}
+    validate DVT rule    ${localCapture}    ${DAS_DIR}    ${ruleFilePath}
+    [Teardown]    case teardown    ${localCapture}
+
+Perform DVT Validation - Rebuild all EXL files
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1888
+    ...    Verify DVT rule when reload all exl files
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    Start MTE    ${MTE}
+    Start Capture MTE Output    ${MTE}    ${remoteCapture}
+    ${serviceName}    Get FMS Service Name
+    ${currentDateTime}    get date and time
+    Rebuild FMS service    ${serviceName}
+    wait smf log message after time    Finished Sending Images    ${currentDateTime}
+    Stop Capture MTE Output    ${MTE}
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    ${ruleFilePath}    get DVT rule file    ${DAS_DIR}
+    validate DVT rule    ${localCapture}    ${DAS_DIR}    ${ruleFilePath}
+    [Teardown]    case teardown    ${localCapture}
+
+*** Keywords ***
+Rebuild FMS service
+    [Arguments]    ${serviceName}
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}
+    ...    dbrebuild    --HandlerName ${MTE}    --Services ${serviceName}
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+
+Verify DDS_DSO_ID
+    [Arguments]    ${pcapfilename}    ${ricname}
+    [Documentation]    Verify DDO_DSO_ID should equal to provider id
+    ${mteConfigFile}=    Get MTE Config File
+    ${providerId}    Get MTE Config Value    ${mteConfigFile}    ProviderId
+    ${fids}    Create List    6401
+    ${values}    Create List    ${providerId}
+    verify fid value in message    ${pcapfilename}    ${DAS_DIR}    ${ricname}    1    ${fids}    ${values}
+
+Verify SPS_SP_RIC
+    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}
+    ${spsRicName}    Get SPS RIC From Label File    ${labelid}
+    ${fids}    Create List    6480
+    ${values}    Create List    ${spsRicName}
+    verify fid value in message    ${pcapfilename}    ${DAS_DIR}    ${ricname}    1    ${fids}    ${values}
+
+Verify CONTEXT_ID
+    [Arguments]    ${pcapfilename}    ${ricname}    ${contextID}
+    ${fids}    Create List    5357
+    ${values}    Create List    ${contextID}
+    verify fid value in message    ${pcapfilename}    ${DAS_DIR}    ${ricname}    1    ${fids}    ${values}
+
+Verify MC_LABEL
+    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}
+    ${fids}    Create List    6394
+    ${values}    Create List    ${labelid}
+    verify fid value in message    ${pcapfilename}    ${DAS_DIR}    ${ricname}    0    ${fids}    ${values}
+
+Verify CMP_NME_ET
+    [Arguments]    ${pcapfilename}    ${ricname}
+    verify CMP_NME_ET in message    ${pcapfilename}    ${DAS_DIR}    ${ricname}
+
+Get SPS RIC From Label File
+    [Arguments]    ${labelid}
+    ${ddnLabelfilepath}=    search remote files    ${BASE_DIR}    ddnLabels.xml    recurse=${True}
+    Length Should Be    ${ddnLabelfilepath}    1    ddnLabels.xml file not found (or multiple files found).
+    ${localddnLabelfile}=    set variable    ${LOCAL_TMP_DIR}/ddnLabel.xml
+    get remote file    ${ddnLabelfilepath[0]}    ${localddnLabelfile}
+    ${updatedddnlabelfile}=    set variable    ${LOCAL_TMP_DIR}/updated_ddnLabel.xml
+    remove_xinclude_from_labelfile    ${localddnLabelfile}    ${updatedddnlabelfile}
+    ${spsRicName}    get sps ric name from label file    ${updatedddnlabelfile}    ${MTE}    ${labelid}
+    remove file    ${localddnLabelfile}
+    remove file    ${updatedddnlabelfile}
+    [Return]    ${spsRicName}
+
+Verify UNCOMP_NAM
+    [Arguments]    ${pcapfilename}    ${ricname}
+    ${fids}    Create List    6395
+    ${values}    Create List    ${ricname}
+    verify fid value in message    ${pcapfilename}    ${DAS_DIR}    ${ricname}    0    ${fids}    ${values}
+
+Verify SetID In Response
+    [Arguments]    ${pcapfilename}    ${ricname}
+    verify setID in message    ${pcapfilename}    ${DAS_DIR}    ${ricname}    30    Resopnse
+
+Verify MC_REC_LAB
+    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}
+    ${fids}    Create List    9140
+    ${values}    Create List    ${labelid}
+    verify fid value in message    ${pcapfilename}    ${DAS_DIR}    ${ricname}    0    ${fids}    ${values}

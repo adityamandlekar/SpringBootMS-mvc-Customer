@@ -10,8 +10,8 @@ import xml
 from xml.dom import minidom
 import codecs
 
-from utils.version import get_version
-from utils.rc import _rc 
+from GATSNG.version import get_version
+from GATSNG.utils.rc import _rc 
 
 class _FMUtil:
     def keep_specified_exlobject(self, exlfilefullpath, RIC, Domain, outputfile):

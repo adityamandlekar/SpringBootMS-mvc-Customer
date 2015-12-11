@@ -6,22 +6,21 @@ Created on May 12, 2015
 
 from __future__ import with_statement
 
-from utils.version import get_version
-from utils.rc import _rc
+from GATSNG.version import get_version
+from GATSNG.utils.rc import _rc
 
-from utils.ssh import G_SSHInstance, _exec_command,_ls,_search_file,_start_command,_check_process
+from GATSNG.utils.ssh import G_SSHInstance, _exec_command,_ls,_search_file,_delete_file,_start_command,_check_process
 
 from datetime import date
 import time
 import string
+import re
 import os.path
 
 import xml.etree.ElementTree as ET
 
 from LinuxFSUtilities import LinuxFSUtilities
 from LinuxCoreUtilities import LinuxCoreUtilities
-
-SMFLOGDIR = '/ThomsonReuters/smf/log/'
 
 class LinuxToolUtilities():
     """A test library providing keywords for run all kinds of tool, for example wirehshark, das, dataview, FMSCMD etc.
@@ -32,7 +31,10 @@ class LinuxToolUtilities():
     ROBOT_LIBRARY_VERSION = get_version()
     
     COMMANDER = ''
+    HOSTMANAGER = ''
     STATBLOCKFIELDREADER = ''
+    SMFLOGDIR = ''
+    MANGLINGRULE = {'SOU': '3', 'BETA': '2', 'RRG': '1', 'UNMANGLED' : '0'};
     
     def setUtilPath(self, path):
         """Setting the Utilities paths by given base directory for searching
@@ -42,6 +44,8 @@ class LinuxToolUtilities():
          """
         self.COMMANDER = _search_file(path,'Commander',True)[0]
         self.STATBLOCKFIELDREADER = _search_file(path,'StatBlockFieldReader',True)[0]
+        self.HOSTMANAGER = _search_file(path,'HostManager',True)[0]
+        self.SMFLOGDIR = path + '/smf/log/'
 
     def run_commander(self, application, command):
         """Runs the Commander tool to execute the specified CHE command.
@@ -169,7 +173,7 @@ class LinuxToolUtilities():
         
         while time.time() <= maxtime:
             result = LinuxCoreUtilities().find_processes_by_pattern(pattern)
-            print '*DEBUG* result=%s' %result
+#             print '*DEBUG* result=%s' %result
             if len(result) > 0:
                 return
             time.sleep(waittime)
@@ -194,7 +198,7 @@ class LinuxToolUtilities():
         
         while time.time() <= maxtime:
             result = LinuxCoreUtilities().find_processes_by_pattern(pattern)
-            print '*DEBUG* result=%s' %result
+#             print '*DEBUG* result=%s' %result
             if len(result) == 0:
                 return
             time.sleep(waittime)
@@ -305,63 +309,41 @@ class LinuxToolUtilities():
             time.sleep(waittime)
         raise AssertionError('*ERROR* File %s did not change before timeout %ds' %(filename,timeout))
 
-    def get_smf_log_message(self, message):
-        """Reads the smf log file and wait for specific message to show up.
-
-        Argument :
-            message : target message going to find in smf log
-            waittime : specifies the time to wait between checks, in seconds.
-            timeout : specifies the maximum time to wait, in seconds.
-        
-        Return : list of messages found 
-
-        Examples:
-        | wait for smf log message  | FMS REORG DONE |
-        """
-        cmd = 'date +"%Y%m%d"'
-        stdout, stderr, rc = _exec_command(cmd)
-        
-        targetfile = 'smf log files.' + stdout.strip() + '.txt'
-        filenamefullpath = SMFLOGDIR + "/" + targetfile
-        LinuxFSUtilities().remote_file_should_exist(filenamefullpath)
-                
-        #Check message
-        foundlines = LinuxFSUtilities().grep_remote_file(filenamefullpath, message)
-
-        return foundlines
-
     def wait_smf_log_message_after_time(self,message,timeRef, waittime=2, timeout=60):
-        """Reads the smf log file and wait for specific message to show up
-           Check the message time is after given time (same message could appear many times in the smf.log)
+        """Wait until the SMF log file contains the specified message with a timestamp newer than the specified reference time
+        NOTE: This does not yet handle log file rollover at midnight
 
         Argument :
-            message : target message going to find in smf log
-            time : ref time (HH:MM:SS) to check against the message log time
+            message : target message in grep format to find in smf log
+            timeRef : UTC time message must be after. It is a list of values as returned by the get_date_and_time Keyword [year, month, day, hour, min, second]
             waittime : specifies the time to wait between checks, in seconds.
             timeout : specifies the maximum time to wait, in seconds.
         
         Return : Nil if success or raise error
 
         Examples:
-        | wait for smf log message after time | FMS REORG DONE | 06:15:00
+        | ${dt}= | get date and time |
+        | wait smf log message after time | FMS REORG DONE | ${dt} |
         """
-        refTime = time.strptime(timeRef,"%H:%M:%S")
+        refDate = '%s-%s-%s' %(timeRef[0], timeRef[1], timeRef[2])
+        refTime = '%s:%s:%s' %(timeRef[3], timeRef[4], timeRef[5])
+        dt = LinuxCoreUtilities().get_date_and_time()
+        currentFile = '%s/smf-log-files.%s%s%s.txt' %(self.SMFLOGDIR, dt[0], dt[1], dt[2])
 
         # convert  unicode to int (it is unicode if it came from the Robot test)
         timeout = int(timeout)
         waittime = int(waittime)
         maxtime = time.time() + float(timeout)
         while time.time() <= maxtime:            
-            retMessages = self.get_smf_log_message(message)
+            retMessages = LinuxFSUtilities().grep_remote_file(currentFile, message)
             if (len(retMessages) > 0):
                 logContents = retMessages[-1].split(';')
                 if (len(logContents) >= 2):
-                    logTime =  time.strptime(logContents[1].strip(),"%H:%M:%S")
-                    if (logTime >= refTime):
+                    if logContents[0].strip() >= refDate and logContents[1].strip() >= refTime:
                         return
             time.sleep(waittime)
-        raise AssertionError('*ERROR* Fail to get pattern %s from smf log before timeout %ds' %(message, timeout)) 
-             
+        raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smf log before timeout %ds' %(message, timeout)) 
+    
     def dump_cache(self, MTEName, venuedir, waittime=2, timeout=60):
         """Dump the MTE cache to a file (on the MTE machine).
 
@@ -378,8 +360,8 @@ class LinuxToolUtilities():
             raise AssertionError('*ERROR* dumpcache %s failed, %s' %(MTEName,stdout))
         
         # get path to the cache file
-        today = date.today().strftime("%Y%m%d")
-        filename = '%s_%s.csv' %(MTEName,today)
+        today = LinuxCoreUtilities().get_date_and_time()
+        filename = '%s_%s%s%s.csv' %(MTEName, today[0], today[1], today[2])
         foundfiles = self.wait_for_search_file(venuedir,filename,waittime,timeout)
         if len(foundfiles) > 1:
             raise AssertionError('*ERROR* Found more than one cache file: %s' %foundfiles)
@@ -392,7 +374,186 @@ class LinuxToolUtilities():
 #         filename = '%s/MTE/%s_%s.csv' %(venuedir,MTEName,today)
 #         G_SSHInstance.file_should_exist(filename)
 #         return filename
-
+    
+    def get_ric_fields_from_cache(self, MTEName, venuedir, numrows, domain, contextID):
+        """Get the first n rows' ric fields data for the specified domain or/and contextID from MTE cache.
+        Ignore RICs that contain 'TEST' and non-publishable RICs.
+        Returns an array of dictionary containing all fields for the match.  Returns empty dictionary if match are not found
+ 
+        Arguments:
+            MTEname:   MTE name
+            venuedir:  venue directory name
+            rows:      number of rows to return
+            domain:    RIC must belong to this domain if domain is not NONE
+            contextID: RIC must belong to this contextID if contextID is not NONE
+                       If domain and contextID are NONE, first PUBLISHABLE=TRUE will be checked
+                    
+        Returns an array of dictionaries containing fields for each RICs.
+        E.g. [ {RIC : ric1, SIC sic1, DOMAIN MarketPrice, CONTEXT_ID : 1052 ...}, {RIC : ric2, SIC sic2, DOMAIN MarketPrice, CONTEXT_ID : 1052 ...} ]
+ 
+        Example:
+        | get_ric_fields_from_cache  | ${MTE} | ${VENUE_DIR} | 1 | MARKET_PRICE |
+        | get_ric_fields_from_cache  | ${MTE} | ${VENUE_DIR} | 1 | ${EMPTY} | 1052 |
+        | get_ric_fields_from_cache  | ${MTE} | ${VENUE_DIR} | 2 | MARKET_PRICE | 1052 |
+        | get_ric_fields_from_cache  | ${MTE} | ${VENUE_DIR} | 2 |
+        """
+        if numrows != 'all':
+            numrows = int(numrows)
+            
+        if domain:
+            newDomain = self._convert_domain_to_cache_format(domain)
+            
+        cacheFile = self.dump_cache(MTEName, venuedir)
+        # create hash of header values
+        cmd = "head -1 %s | tr ',' '\n'" %cacheFile
+        stdout, stderr, rc = _exec_command(cmd)
+#         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        
+        headerList = stdout.strip().split()
+        index = 1;
+        headerDict = {}
+        for fieldName in headerList:
+            headerDict[fieldName] = index
+            index += 1
+        if not headerDict.has_key('DOMAIN') or not headerDict.has_key('PUBLISHABLE') or not headerDict.has_key('CONTEXT_ID'):
+            raise AssertionError('*ERROR* Did not find required column names in cache file (DOMAIN, PUBLISHABLE, CONTEXT_ID') 
+        
+        # get all fields for selected RICs
+        domainCol = headerDict['DOMAIN']
+        publishableCol = headerDict['PUBLISHABLE']
+        contextIDCol = headerDict['CONTEXT_ID']
+        
+        if contextID and domain:
+            if numrows == 'all':
+                cmd = "grep -v TEST %s | awk -F',' '$%d == \"%s\" && $%d == \"TRUE\" && $%d == \"%s\" {print}'" %(cacheFile, domainCol, newDomain, publishableCol, contextIDCol, contextID)
+            else:
+                cmd = "grep -v TEST %s | awk -F',' '$%d == \"%s\" && $%d == \"TRUE\" && $%d == \"%s\" {print}' | head -%d" %(cacheFile, domainCol, newDomain, publishableCol, contextIDCol,contextID, numrows)
+                
+        elif  domain: 
+            if numrows == 'all':
+                cmd = "grep -v TEST %s | awk -F',' '$%d == \"%s\" && $%d == \"TRUE\" {print}'" %(cacheFile, domainCol, newDomain, publishableCol)
+            else:
+                cmd = "grep -v TEST %s | awk -F',' '$%d == \"%s\" && $%d == \"TRUE\" {print}' | head -%d" %(cacheFile, domainCol, newDomain, publishableCol, numrows)
+                
+        elif  contextID:
+            if numrows == 'all':
+                cmd = "grep -v TEST %s | awk -F',' '$%d == \"%s\" && $%d == \"TRUE\" {print}'" %(cacheFile, contextIDCol, contextID, publishableCol)
+            else:
+                cmd = "grep -v TEST %s | awk -F',' '$%d == \"%s\" && $%d == \"TRUE\" {print}' | head -%d" %(cacheFile, contextIDCol, contextID, publishableCol, numrows)
+                
+        else:
+            if numrows == 'all':
+                cmd = "grep -v TEST %s | awk -F',' '$%d == \"TRUE\" {print}'" %(cacheFile, publishableCol)
+            else:
+                cmd = "grep -v TEST %s | awk -F',' '$%d == \"TRUE\" {print}' | head -%d" %(cacheFile, publishableCol, numrows)
+                
+        stdout, stderr, rc = _exec_command(cmd)
+#         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        rows = stdout.splitlines()
+        if numrows != 'all' and len(rows) != numrows:
+            raise AssertionError('*ERROR* Requested %d rows, Found %d rows' %(numrows,len(rows)))
+        
+        # get the requested fields
+        result = []
+        for row in rows:
+            values = row.split(',')
+            
+            if len(values) != len(headerList):
+                raise AssertionError('*ERROR* Number of values (%d) does not match number of headers (%d)' %(len(values), len(headerList)))
+            
+            fieldDict = {}
+            for i in range(0, len(values)):
+                if headerList[i] == 'DOMAIN':
+                    newdomain = self._convert_cachedomain_to_normal_format(values[i]) 
+                    fieldDict[headerList[i]] = newdomain
+                else:    
+                    fieldDict[headerList[i]] = values[i]
+               
+            result.append(fieldDict)
+                  
+        _delete_file(cacheFile,'',False)
+        return result 
+    
+    def get_all_fields_for_ric_from_cache(self, MTEName, venuedir, ric):
+        """Get the field values from the MTE cache for the specifed RIC.
+ 
+        Arguments:
+            MTEname:  MTE name
+            venuedir: venue directory name
+            ric:   RIC name
+         
+        Returns a dictionary containing all fields for the RIC.  Returns empty dictionary if RIC not found.
+ 
+        Example:
+        | get random RICs from cache  | ${MTE} | ${VENUE_DIR} | TESTRIC |
+        """
+        cacheFile = self.dump_cache(MTEName, venuedir)
+         
+        # create hash of header values
+        cmd = "head -1 %s | tr ',' '\n'" %cacheFile
+        stdout, stderr, rc = _exec_command(cmd)
+#         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        ricCol = 0
+        header = stdout.strip().split()
+        for i in range(0, len(header)):
+            if header[i] == 'RIC':
+                ricCol = i+1 # for awk, col numbers start at 1, so add 1 to index
+                break
+        if not ricCol:
+            raise AssertionError('*ERROR* Did not find required column name in cache file (RIC)')
+         
+        # get all fields for the RIC
+        cmd = "awk -F',' '$%d == \"%s\" {print}' %s" %(ricCol, ric, cacheFile)
+        stdout, stderr, rc = _exec_command(cmd)
+#         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        rows = stdout.strip().split('\n')
+        if len(rows) > 1:
+            raise AssertionError('*ERROR* Multiple rows found for RIC %s rows.  %s' %(ric,rows))
+        
+        # put fields into dictionary
+        values = rows[0].split(',')
+        if len(values) <= 1:
+            return {}
+        if len(values) != len(header):
+            raise AssertionError('*ERROR* Number of values (%d) does not match number of headers (%d)' %(len(values), len(header)))
+        valuesToReturn = {}
+        for i in range(0, len(values)):
+                valuesToReturn[header[i]] = values[i]
+         
+        _delete_file(cacheFile,'',False)
+        return valuesToReturn
+    
+    def _convert_domain_to_cache_format(self,domain):
+        newDomain = domain.replace('_','')
+        if newDomain.lower() == 'marketprice':
+            newDomain = 'MarketPrice'
+        elif newDomain.lower() == 'marketbyprice':
+            newDomain = 'MarketByPrice'
+        elif newDomain.lower() == 'marketbyorder':
+            newDomain = 'MarketByOrder'
+        else:
+            raise AssertionError('*ERROR* Unsupported domain %d' %domain)
+        return newDomain
+    
+    def _convert_cachedomain_to_normal_format(self,domain):
+        if domain.lower() == 'marketprice':
+            newDomain = 'MARKET_PRICE'
+        elif domain.lower() == 'marketbyprice':
+            newDomain = 'MARKET_BY_PRICE'
+        elif domain.lower() == 'marketbyorder':
+            newDomain = 'MARKET_BY_ORDER'
+        else:
+            raise AssertionError('*ERROR* Unsupported domain %d' %domain)
+        return newDomain
+    
     def start_smf(self):
         """Start the Server Management Foundation process.
 
@@ -418,7 +579,28 @@ class LinuxToolUtilities():
         if stdout.find('SMF service is already started')!= -1 or stdout.find(r'SMF is started.')!= -1:
             print '*INFO* %s' %stdout
         else:
-            raise AssertionError('*ERROR* cmd=%s, %s' %(cmd,stdout))     
+            raise AssertionError('*ERROR* cmd=%s, %s' %(cmd,stdout)) 
+            
+    def stop_smf(self):
+        """Stop the Server Management Foundation process.
+        Does not return a value.
+
+        Example:
+        | Stop SMF  |
+        """
+        cmd = 'service smf status'
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc == 3: # rc==3 means SMF is not running
+                print '*INFO* %s' %stdout
+                return 0
+        cmd = 'service smf stop'
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        if stdout.find('SMF is stopped successfully')!= -1:
+            print '*INFO* %s' %stdout
+        else:
+            raise AssertionError('*ERROR* cmd=%s, %s' %(cmd,stdout))            
  
     def _get_alias_ip(self,alias):
         """Get ip address by given alias name
@@ -522,22 +704,22 @@ class LinuxToolUtilities():
         
         return interfaceName
     
-    def get_multicast_address_and_port_for_mte(self,mte):
-        """Get multicast address and port for TD MTE
-
-        Argument shortname specifies shortname for MTE
+    def get_outputAddress_and_port_for_mte(self,mte,field='multicast'):
+        """Get ip address (based on type) and port for TD MTE
         
-        Returns list = [ip,port] or prompt error
+        mte        : instance name of MTE
+        field      : 'multicast', 'primary', 'secondary'
+        Returns    : list = [ip,port] 
 
         Examples:
-        | get multicast address and port by shortname | MFDS1M |
-         """         
+        | get ip address and port for different field of specific MTE | MFDS1M |
+        """                  
                 
         statblockNames = self.get_stat_blocks_for_category(mte, 'OutputStats')
                                    
-        ipAndPort = self.get_stat_block_field(mte, statblockNames[-1], 'multicastOutputAddress').strip().split(':')
+        ipAndPort = self.get_stat_block_field(mte, statblockNames[-1], field + 'OutputAddress').strip().split(':')
         if (len(ipAndPort) != 2):            
-            raise AssertionError('*ERROR* Fail to obatin multicast address and port (return %s)'%'|'.join(ipAndPort)) 
+            raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port (return %s)'%(field))
         
         return ipAndPort
     
@@ -725,6 +907,10 @@ class LinuxToolUtilities():
         else:   
             print '*INFO* tcpdump process stop successfully'
 
+    def get_contextID_from_FidFilter(self, venue_dir):
+        fidfilter = self.get_contextId_fids_constit_from_fidfiltertxt(venue_dir)
+        return fidfilter.keys()
+    
     def get_contextId_fids_constit_from_fidfiltertxt(self,venuedir):
         """Get context ID, FIDs and Constituent from FIDFilter.txt
         Argument : NIL
@@ -770,7 +956,7 @@ class LinuxToolUtilities():
                     if (len(content) == 2):
                         fid = content[0]
                         constit = content[1]
-                        if (fid.isdigit() and constit.isdigit() and len(contextID) > 0):
+                        if re.match(r'-?\d+$',fid) and re.match(r'-?\d+$',constit):
                             if (constitWithFIDs.has_key(constit) == False):
                                 constitWithFIDs[constit] = {}
                             constitWithFIDs[constit][fid]='1'
@@ -984,3 +1170,162 @@ class LinuxToolUtilities():
         originalNoOfBackupFile = 1 + int(keepDays) + 1
         if not ((originalNoOfBackupFile - len(listOfPersistBackupFiles)) == 1):
             raise AssertionError('*ERROR* Expected no. of backup file remain after cleanup (%d), but (%d) has found' %(originalNoOfBackupFile-1,len(listOfPersistBackupFiles)))
+    
+    def set_mangling_rule_default_value(self,rule,cfgfile):
+        """set the mangling rule (defaultRule) in manglingConfiguration.xml
+        
+        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
+        cfgfile : full path of mangling config file xml
+        Returns : Nil
+
+        Examples:
+        | set mangling rule default value | SOU | /ThomsonReuters/Venues/MFDS/MTE/manglingConfiguration.xml |
+        """
+        
+        #safe check for rule value
+        if (self.MANGLINGRULE.has_key(rule.upper()) == False):
+            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
+            
+        #Find configuration file
+        LinuxFSUtilities().remote_file_should_exist(cfgfile)
+
+        #Check if defaultRule attribute (found under <Partitions> tag) is exist
+        searchKeyWord = "defaultRule="
+        foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
+        if (len(foundlines) == 0):
+            raise AssertionError('*ERROR* defaultRule attribute is missing in %s' %cfgfile)
+         
+        cmd = "sed -i 's/defaultRule=\"[^\"]*\"/defaultRule=\"%s\"/' "%self.MANGLINGRULE[rule.upper()] + cfgfile
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))        
+        
+    def set_mangling_rule_partition_value(self,rule,cfgfile,listOfvalues=[]):
+        """set the mangling rule in manglingConfiguration.xml
+        
+        listOfvalues    : list of data of attribute for <Partition> 'value'
+        rule            : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
+        cfgfile         : full path of mangling config file xml
+        Returns         : Nil
+
+        Examples:
+        | set mangling rule partition value | SOU | /ThomsonReuters/Venues/MFDS/MTE/manglingConfiguration.xml |[]|
+        """         
+               
+        #safe check for rule value
+        if (self.MANGLINGRULE.has_key(rule.upper()) == False):
+            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
+            
+        #Find configuration file
+        LinuxFSUtilities().remote_file_should_exist(cfgfile)
+        
+        #Optional (If the config file has <Partition> under <Partitions> also replace all the rule value with required one
+        if (len(listOfvalues) == 0):
+            #Empty List = Replace all <Partition> (if exist) with same rule
+            searchKeyWord = "rule="
+            foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
+            if (len(foundlines) > 0):
+                cmd = "sed -i 's/rule=\".*\"/rule=\"%s\"/' "%self.MANGLINGRULE[rule.upper()] + cfgfile
+                stdout, stderr, rc = _exec_command(cmd)
+                if rc !=0 or stderr !='':
+                    raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))             
+        else:
+            for value in listOfvalues:
+                searchKeyWord = "Partition value=\\\"%s\\\""%value
+                foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
+                if (len(foundlines) > 0):
+                    cmd = "sed -i 's/Partition value=\"%s\" rule=\".*\"/Partition value=\"%s\" rule=\"%s\"/' "%(value,value,self.MANGLINGRULE[rule.upper()]) + cfgfile
+                    stdout, stderr, rc = _exec_command(cmd)
+                    if rc !=0 or stderr !='':
+                        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+                else:
+                    print 'Partition value="%s" does not exist in %s' %(value,cfgfile)
+        
+    def run_dataview(self, dataviewPath, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain, *optArgs):
+        """ Argument :
+                dataviewPath : DataView full path
+                dataType : Could be TRWF2 or RWF
+                multicastIP : multicast IP DataView listen to
+                multicastPort : muticast port DataView used to get data
+                interfaceIP : interface IP (DDNA or DDNB)
+                LineID : lineID published by line handler
+                RIC : published RIC by MTE
+                Domain : published data domain
+                optargs : a variable list of optional arguments for refresh request and DataView run time.
+            Return: stdout.
+            examples:
+                DataView -TRWF2 -IM 232.2.19.229 -IH 10.91.57.71  -PM 7777 -L 4608 -R 1YWZ5_r -D MARKET_BY_PRICE  -O output_test.txt -REF -IMSG 232.2.9.0 -PMSG 9000 -S 0  -EXITDELAY 5
+                DataView -TRWF2 -IM 232.2.19.229 -IH 10.91.57.71  -PM 7777 -L 4096 -R .[SPSCB1L2_I -D SERVICE_PROVIDER_STATUS -EXITDELAY 5
+        """
+                            
+        cmd = '%s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (dataviewPath, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
+        cmd = cmd + ' ' + ' '.join( map(str, optArgs))
+        print '*INFO* ' + cmd
+        stdout, stderr, rc = _exec_command(cmd)
+                
+        if rc != 0:
+            raise AssertionError('*ERROR* %s' %stderr)    
+        
+        return stdout 
+
+    def run_HostManger(self, *optArgs):
+        """run HostManager with specific arguments
+        
+        optArgs    : argument that used to run HostManager
+        Returns    : stdout of after the command has executed 
+
+        Examples:
+        | run HostManager  | -readparams /HKF02M/LiveStandby|
+        """         
+        cmd = '%s ' %self.HOSTMANAGER
+        cmd = cmd + ' ' + ' '.join( map(str, optArgs))
+        print '*INFO* ' + cmd
+        stdout, stderr, rc = _exec_command(cmd)
+                
+        if rc != 0:
+            raise AssertionError('*ERROR* %s' %stderr)    
+        
+        return stdout
+    
+    def verify_MTE_state(self,mteName):
+        """verify MTE instance is LIVE or STANDBY
+        
+        mteName    : name of MTE instance
+        Returns    : either ENTITY_LIVE or ENTITY_STANDBY or assertion
+
+        Examples:
+        | verify MTE state | HKF02M |
+        """             
+        
+        cmd = '-readparams /%s/LiveStandby'%mteName
+        ret = self.run_HostManger(cmd).split('\n')
+        if (len(ret) == 0):
+            raise AssertionError('*ERROR* Running HostManger %s return empty response'%cmd)
+        
+        idx = '-1'
+        for line in ret:
+            print line
+            if (line.find('LiveStandby') != -1):
+                contents = line.split(' ')
+                idx = contents[-1].strip()
+                 
+        if (idx == '-1'):
+            raise AssertionError('*ERROR* Keyword LiveStandby does not found in response')
+        elif (idx == '1'):
+            return 'ENTITY_LIVE'
+        elif (idx == '0'):
+            return 'ENTITY_STANDBY'
+        else:
+            raise AssertionError('*ERROR* Unknown state %s found in response'%idx)
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
