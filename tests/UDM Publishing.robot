@@ -2,7 +2,7 @@
 Suite Setup       Suite Setup
 Suite Teardown    Suite Teardown
 Resource          core.robot
-Variables         VenueVariables.py
+Variables         ../lib/VenueVariables.py
 
 *** Test Cases ***
 Validate Downstream FID publication from Reconcile

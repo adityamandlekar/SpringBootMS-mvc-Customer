@@ -3,7 +3,7 @@ Documentation     Vehicle management functionality.
 Suite Setup       Suite Setup
 Suite Teardown    Suite Teardown
 Resource          core.robot
-Variables         VenueVariables.py
+Variables         ../lib/VenueVariables.py
 
 *** Variables ***
 

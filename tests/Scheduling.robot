@@ -5,7 +5,7 @@ Documentation     Verify scheduling of events by modifying EXL files and process
 Suite Setup       Scheduling Suite Setup
 Suite Teardown    Suite Teardown
 Resource          core.robot
-Variables         VenueVariables.py
+Variables         ../lib/VenueVariables.py
 
 *** Variables ***
 

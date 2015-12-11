@@ -6,10 +6,10 @@ Created on May 12, 2015
 
 from __future__ import with_statement
 
-from GATSNG.version import get_version
-from GATSNG.utils.rc import _rc
+from utils.version import get_version
+from utils.rc import _rc
 
-from GATSNG.utils.ssh import G_SSHInstance, _exec_command,_ls,_search_file,_start_command,_check_process
+from utils.ssh import G_SSHInstance, _exec_command,_ls,_search_file,_start_command,_check_process
 
 from datetime import date
 import time

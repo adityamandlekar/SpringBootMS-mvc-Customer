@@ -3,7 +3,7 @@ Documentation     Verify MTE functionality related to the PERSIST file creation,
 Suite Setup       Suite Setup
 Suite Teardown    Suite Teardown
 Resource          core.robot
-Variables         VenueVariables.py
+Variables         ../lib/VenueVariables.py
 
 *** Variables ***
 

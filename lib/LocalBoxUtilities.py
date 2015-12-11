@@ -4,7 +4,7 @@ Created on Aug 27, 2015
 @author: jason.lo
 '''
 from __future__ import with_statement
-from GATSNG.version import get_version
+from utils.version import get_version
 
 import os
 import re
@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from subprocess import Popen, PIPE
 from LinuxToolUtilities import LinuxToolUtilities
-from _ToolUtil import _ToolUtil
+from utils._ToolUtil import _ToolUtil
 from sets import Set
 
 FID_CONTEXTID = '5357'

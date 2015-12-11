@@ -8,10 +8,10 @@ import re
 import os
 import time
 
-from GATSNG.version import get_version
+from utils.version import get_version
 
-from GATSNG.utils.ssh import _delete_file,_search_file, _count_lines,_run_command,_exec_command
-from GATSNG.utils.ssh import G_SSHInstance
+from utils.ssh import _delete_file,_search_file, _count_lines,_run_command,_exec_command
+from utils.ssh import G_SSHInstance
 
 class LinuxFSUtilities():
     """A test library providing keywords for file and directory related operations.
