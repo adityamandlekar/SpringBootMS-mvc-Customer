@@ -177,7 +177,7 @@ class LinuxToolUtilities():
             if len(result) > 0:
                 return
             time.sleep(waittime)
-        raise AssertionError("*ERROR* Process '%s' does not exist (timeout %ds)" %(filename,timeout))
+        raise AssertionError("*ERROR* Process matching pattern '%s' does not exist (timeout %ds)" %(pattern,timeout))
 
     def wait_for_process_to_not_exist(self, pattern, waittime=2, timeout=60):
         """Wait until no process matching the specified pattern exists.
@@ -202,7 +202,7 @@ class LinuxToolUtilities():
             if len(result) == 0:
                 return
             time.sleep(waittime)
-        raise AssertionError("*ERROR* Process '%s' still exists (timeout %ds)" %(filename,timeout))
+        raise AssertionError("*ERROR* Process matching pattern '%s' still exists (timeout %ds)" %(pattern,timeout))
 
     def wait_for_search_file(self, topdir, filename, waittime=2, timeout=60):
         """Wait until the remote filename to exist somewhere under the specified directory.
