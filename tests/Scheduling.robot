@@ -90,10 +90,11 @@ Verify Manual Closing Runs
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1886
     ...
     ...    The test case is used to verify the manual closing run, including doing a Closing Run for a specific RIC, a Closing Run for a specific Exl file and a Closing Run for a specific Closing Run RIC
-    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    MARKET_PRICE
-    Manual ClosingRun for a RIC    ${sampleRic}
-    Manual ClosingRun for the EXL File including target Ric    ${sampleRic}
-    Manual ClosingRun for ClosingRun Rics
+    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache
+    ${domain}    Get Preferred Domain
+    Manual ClosingRun for a RIC    ${sampleRic}    ${publishKey}    ${domain}
+    Manual ClosingRun for the EXL File including target Ric    ${sampleRic}    ${publishKey}    ${domain}
+    Manual ClosingRun for ClosingRun Rics    ${serviceName}
 
 *** Keywords ***
 Check input port stats
@@ -125,16 +126,10 @@ Set datetimes for IN state
     ...    For end datetime, adds 3 days from given: ${year}, ${month}, ${day}, ${hour}, ${min}, ${sec}
     ...
     ...    Note that the above is needed to cover max possible GMT offset cases.
-    ${startDatetimeYear}    ${startDatetimeMonth}    ${startDatetimeDay}    ${startDatetimeHour}    ${startDatetimeMin}    ${startDatetimeSec}    add seconds to date
-    ...    ${year}    ${month}    ${day}    ${hour}    ${min}    ${sec}
-    ...    -259200
-    ${startDateTime}    create list    ${startDatetimeYear}    ${startDatetimeMonth}    ${startDatetimeDay}    ${startDatetimeHour}    ${startDatetimeMin}
-    ...    ${startDatetimeSec}
-    ${endDatetimeYear}    ${endDatetimeMonth}    ${endDatetimeDay}    ${endDatetimeHour}    ${endDatetimeMin}    ${endDatetimeSec}    add seconds to date
-    ...    ${year}    ${month}    ${day}    ${hour}    ${min}    ${sec}
-    ...    259200
-    ${endDateTime}    create list    ${endDatetimeYear}    ${endDatetimeMonth}    ${endDatetimeDay}    ${endDatetimeHour}    ${endDatetimeMin}
-    ...    ${endDatetimeSec}
+    ${startDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    -3 day
+    ${endDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day
+    ${startDateTime}    get time    year month day hour min sec    ${startDateTime}
+    ${endDateTime}    get time    year month day hour min sec    ${endDateTime}
     [Return]    ${startDatetime}    ${endDatetime}
 
 Set datetimes for OUT state
@@ -145,16 +140,10 @@ Set datetimes for OUT state
     ...    For end datetime, adds 4 days from given: ${year}, ${month}, ${day}, ${hour}, ${min}, ${sec}
     ...
     ...    Note that the above is needed to cover max possible GMT offset cases.
-    ${startDatetimeYear}    ${startDatetimeMonth}    ${startDatetimeDay}    ${startDatetimeHour}    ${startDatetimeMin}    ${startDatetimeSec}    add seconds to date
-    ...    ${year}    ${month}    ${day}    ${hour}    ${min}    ${sec}
-    ...    259200
-    ${startDateTime}    create list    ${startDatetimeYear}    ${startDatetimeMonth}    ${startDatetimeDay}    ${startDatetimeHour}    ${startDatetimeMin}
-    ...    ${startDatetimeSec}
-    ${endDatetimeYear}    ${endDatetimeMonth}    ${endDatetimeDay}    ${endDatetimeHour}    ${endDatetimeMin}    ${endDatetimeSec}    add seconds to date
-    ...    ${year}    ${month}    ${day}    ${hour}    ${min}    ${sec}
-    ...    345600
-    ${endDateTime}    create list    ${endDatetimeYear}    ${endDatetimeMonth}    ${endDatetimeDay}    ${endDatetimeHour}    ${endDatetimeMin}
-    ...    ${endDatetimeSec}
+    ${startDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day
+    ${endDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    4 day
+    ${startDateTime}    get time    year month day hour min sec    ${startDateTime}
+    ${endDateTime}    get time    year month day hour min sec    ${endDateTime}
     [Return]    ${startDatetime}    ${endDatetime}
 
 Set times for IN state
@@ -179,10 +168,9 @@ Calculate DST start date and check stat
     [Arguments]    ${dstRicName}    ${dstStartDatetime}
     ${normalGMTOffset}    get stat block field    ${mte}    ${dstRicName}    normalGMTOffset
     ${applyDstGmtOffset}    Evaluate    0 - int(${normalGMTOffset})
-    ${startYear}    ${startMonth}    ${startDay}    ${startHour}    ${startMin}    ${startSec}    add seconds to date
-    ...    ${dstStartDatetime[0]}    ${dstStartDatetime[1]}    ${dstStartDatetime[2]}    ${dstStartDatetime[3]}    ${dstStartDatetime[4]}    ${dstStartDatetime[5]}
-    ...    ${applyDstGmtOffset}
-    ${startDatetime}    set variable    ${startYear}-${startMonth}-${startDay}T${startHour}:${startMin}:${startSec}.0
+    ${datetime}    add time to date    ${dstStartDatetime[0]}-${dstStartDatetime[1]}-${dstStartDatetime[2]} ${dstStartDatetime[3]}:${dstStartDatetime[4]}:${dstStartDatetime[5]}    ${applyDstGmtOffset} second
+    ${datetime}    get time    year month day hour min sec    ${datetime}
+    ${startDatetime}    set variable    ${datetime[0]}-${datetime[1]}-${datetime[2]}T${datetime[3]}:${datetime[4]}:${datetime[5]}.0
     ${expectedStartDatetime}    convert EXL datetime to statblock format    ${startDatetime}
     wait for statBlock    ${mte}    ${dstRicName}    ${dstStartDateStatField}    ${expectedStartDatetime}    waittime=2    timeout=120
 
@@ -190,10 +178,9 @@ Calculate DST end date and check stat
     [Arguments]    ${dstRicName}    ${dstEndDatetime}
     ${dstGMTOffset}    get stat block field    ${mte}    ${dstRicName}    dstGMTOffset
     ${applyDstGmtOffset}    Evaluate    0 - int(${dstGMTOffset})
-    ${endYear}    ${endMonth}    ${endDay}    ${endHour}    ${endMin}    ${endSec}    add seconds to date
-    ...    ${dstEndDatetime[0]}    ${dstEndDatetime[1]}    ${dstEndDatetime[2]}    ${dstEndDatetime[3]}    ${dstEndDatetime[4]}    ${dstEndDatetime[5]}
-    ...    ${applyDstGmtOffset}
-    ${endDatetime}    set variable    ${endYear}-${endMonth}-${endDay}T${endHour}:${endMin}:${endSec}.0
+    ${datetime}    add time to date    ${dstEndDatetime[0]}-${dstEndDatetime[1]}-${dstEndDatetime[2]} ${dstEndDatetime[3]}:${dstEndDatetime[4]}:${dstEndDatetime[5]}    ${applyDstGmtOffset} second
+    ${datetime}    get time    year month day hour min sec    ${datetime}
+    ${endDatetime}    set variable    ${datetime[0]}-${datetime[1]}-${datetime[2]}T${datetime[3]}:${datetime[4]}:${datetime[5]}.0
     ${expectedEndDatetime}    convert EXL datetime to statblock format    ${endDatetime}
     wait for statBlock    ${mte}    ${dstRicName}    ${dstEndDateStatField}    ${expectedEndDatetime}    waittime=2    timeout=120
 
@@ -546,17 +533,16 @@ Go Into Closing Run Time For All Closing Run RICs
     \    Append to list    ${processedClosingrunRicName}    ${closingrunRicName}
     \    ${dt}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName[0]}
     \    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    \    ${startDatetimeYear}    ${startDatetimeMonth}    ${startDatetimeDay}    ${startDatetimeHour}    ${startDatetimeMin}    ${startDatetimeSec}
-    \    ...    add seconds to date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}    ${localVenueDateTime[3]}
-    \    ...    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}    120    ${True}
-    \    ${closingRunTimeStartTime}    set variable    ${startDatetimeHour}:${startDatetimeMin}:${startDatetimeSec}
+    \    ${startDatetime}    add time to date    ${localVenueDateTime[0]}-${localVenueDateTime[1]}-${localVenueDateTime[2]} ${localVenueDateTime[3]}:${localVenueDateTime[4]}:${localVenueDateTime[5]}    120 second
+    \    ${startDatetime}    get time    hour min sec    ${startDatetime}
+    \    ${closingRunTimeStartTime}    set variable    ${startDatetime[0]}:${startDatetime[1]}:${startDatetime[2]}
     \    ${closingRunExlfileModified}=    set variable    ${closingRunExlFile}_modified.exl
     \    modify EXL    ${closingRunExlFile}    ${closingRunExlfileModified}    ${closingrunRicName}    ${domain}    <it:SCHEDULE_${weekDay}>\n<it:TIME>${closingRunTimeStartTime}</it:TIME>\n</it:SCHEDULE_${weekDay}>
     \    Append to list    @{closingRunExlFiles}    ${closingRunExlFile}
     \    Load Single EXL File    ${closingRunExlfileModified}    ${serviceName}    ${CHE_IP}    25000
     \    remove files    ${closingRunExlfileModified}
     \    sleep    1 minutes 20 seconds
-    \    wait smf log message after time    Harmless; FMSAdapter : ClosingRunEventHandler for [0-9]*, TRIGGERING    ${dt}    5    120
+    \    wait smf log message after time    ClosingRunEventHandler for [0-9]*.*?TRIGGERING    ${dt}    5    120
     [Return]    @{processedClosingrunRicName}
 
 Initialize for Closing Run
@@ -582,43 +568,32 @@ Re-schedule Closing Run teardown
     Load Single EXL File    ${closingRunHolidayEXL}    ${serviceName}    ${CHE_IP}
     : FOR    ${closingRunExlFile}    IN    @{closingRunExlFiles}
     \    Load Single EXL File    ${closingRunExlFile}    ${serviceName}    ${CHE_IP}    25000
-    Remove Files    ${LOCAL_MTE_CONFIG_FILE}
 
 Manual ClosingRun for a RIC
-    [Arguments]    ${sampleRic}
+    [Arguments]    ${sampleRic}    ${publishKey}    ${domain}
     Start Capture MTE Output    ${MTE}
     ${currentDateTime}    get date and time
     ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}
-    ...    Close    --RIC ${sampleRic}    --Domain MARKET_PRICE
-    wait SMF log message after time    Harmless; FMSAdapter : Closing RIC: ${sampleRic}, Domain: MP;    ${currentDateTime}    2    60
+    ...    Close    --RIC ${sampleRic}    --Domain ${domain}
+    wait SMF log message after time    Closing RIC: ${sampleRic}    ${currentDateTime}    2    60
     Stop Capture MTE Output    ${MTE}
     ${localcapture}    set variable    ${LOCAL_TMP_DIR}/capture_local.pcap
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
-    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${DAS_DIR}    ${sampleRic}
+    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${DAS_DIR}    ${publishKey}
     remove files    ${localcapture}
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
 
 Manual ClosingRun for the EXL File including target Ric
-    [Arguments]    ${sampleRic}
-    ${serviceName}    Get FMS Service Name
-    ${sampleExlFile}    get_EXL_for_RIC    ${LOCAL_FMS_DIR}    MARKET_PRICE    ${serviceName}    ${sampleRic}
+    [Arguments]    ${sampleRic}    ${publishKey}    ${domain}
+    ${sampleExlFile}    get_EXL_for_RIC    ${LOCAL_FMS_DIR}    ${domain}    ${serviceName}    ${sampleRic}
     Start Capture MTE Output    ${MTE}
     ${currentDateTime}    get date and time
     ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}
     ...    Close    --Services ${serviceName}    --BypassFiltering ${True}    --SendOrphanedToAllHeadends ${True}    --ClosingRunRule 1000    --InputFile "${sampleExlFile}"
-    wait SMF log message after time    Harmless; FMSAdapter : Closing RIC: [^,;]*, Domain: MP;    ${currentDateTime}    2    60
+    wait SMF log message after time    Closing RIC:    ${currentDateTime}    2    60
     Stop Capture MTE Output    ${MTE}
     ${localcapture}    set variable    ${LOCAL_TMP_DIR}/capture_local.pcap
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
-    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${DAS_DIR}    ${sampleRic}
+    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${DAS_DIR}    ${publishKey}
     remove files    ${localcapture}
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
-
-Manual ClosingRun for ClosingRun Rics
-    @{closingrunRicList}    Get RIC List From StatBlock    ${MTE}    Closing Run
-    : FOR    ${closingrunRicName}    IN    @{closingrunRicList}
-    \    ${currentDateTime}    get date and time
-    \    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    25000
-    \    ...    ${LOCAL_FMS_BIN}    ClsRun    --RIC ${closingrunRicName}    --Services ${serviceName}    --Domain MARKET_PRICE
-    \    ...    --ClosingRunOperation Invoke    --HandlerName ${MTE}
-    \    wait SMF log message after time    Harmless; [\[]ClosingRun[\]] CloseItemGroup : Found [0-9]* closeable items out of [0-9]* items in group [0-9]*    ${currentDateTime}    2    60

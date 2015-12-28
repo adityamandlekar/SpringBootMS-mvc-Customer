@@ -18,18 +18,12 @@ GRS Control by SMF
     Should Contain    ${result}    GRS
     comment    kill process, smf will start it
     Kill Processes    GRS
-    sleep    2
-    ${result}=    find processes by pattern    GRS
-    Should Contain    ${result}    GRS
+    wait for process to exist    GRS
     comment    stop smf and check GRS
     stop smf
-    sleep    5
-    ${result}=    find processes by pattern    GRS
-    Should Be Empty    ${result}
+    wait for process to not exist    GRS
     start smf
-    sleep    8
-    ${result}=    find processes by pattern    GRS
-    Should Contain    ${result}    GRS
-    [Teardown]
+    wait for process to exist    GRS
+    [Teardown]    start smf
 
 *** Keywords ***

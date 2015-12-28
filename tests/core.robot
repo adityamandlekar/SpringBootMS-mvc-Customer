@@ -9,12 +9,15 @@ Library           FMUtilities
 Library           Collections
 Library           OperatingSystem
 Library           String
+Library           DateTime
 
 *** Keywords ***
 Switch To TD Box
     [Arguments]    ${che_ip}
     [Documentation]    To switch the current ssh session to specific CHE_X_IP
-    ${switchBox}    set variable if    '${che_ip}' == '${CHE_A_IP}'    ${CHE_A_Session}    ${CHE_B_Session}
+    ${switchBox}    Run Keyword If    '${che_ip}' == '${CHE_A_IP}'    set variable    ${CHE_A_Session}
+    ...    ELSE IF    '${che_ip}' == '${CHE_B_IP}'    set variable    ${CHE_B_Session}
+    ...    ELSE    Fail    Invaild IP
     switch connection    ${switchBox}
 
 Suite Setup Two TD Boxes
@@ -40,6 +43,8 @@ Suite Teardown
     [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
     close all connections
     ${localCfgFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
+    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    ${localCfgFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
     Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
 
 Case Teardown
@@ -89,9 +94,11 @@ Dump Persist File To XML
     [Return]    ${pmatXmlDumpfile}
 
 Get ConnectTimesIdentifier
-    [Arguments]    ${mteConfigFile}
+    [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
     [Documentation]    get the ConnectTimesIdentifier (feed times RIC) from venue config file.
-    ...    returns ConnectTimesIdentifier.
+    ...    returns
+    ...    1. either single ConnectTimesIdentifier if fhName is specified Or
+    ...    2. list with ConnectTimesIdentifier(s) if fhName = ${Empty}
     ...
     ...    Note that there are currently 2 different config file formats - MFDS and HKFE. MFDS may be the "old" way so will check that format if the initial search attempt fails.
     ...
@@ -114,12 +121,27 @@ Get ConnectTimesIdentifier
     ...    <ConnectTimesRIC>MUT%FD01</ConnectTimesRIC>
     ...    <HighActivityTimesRIC>MUT%TRD01</HighActivityTimesRIC>
     ...    <Inputs>
-    ${connectTimesIdentifier}=    get MTE config value    ${mteConfigFile}    Inputs    ${FH}    FHRealtimeLine    ConnectTimesIdentifier
-    return from keyword if    '${connectTimesIdentifier}' != 'NOT FOUND'    ${connectTimesIdentifier}
-    ${connectTimesIdentifier}=    get MTE config value    ${mteConfigFile}    ConnectTimesRIC
-    return from keyword if    '${connectTimesIdentifier}' != 'NOT FOUND'    ${connectTimesIdentifier}
+    ${len}    Get Length    ${fhName}
+    ${connectTimesIdentifier}=    Run Keyword If    ${len} > 0    get MTE config value    ${mteConfigFile}    Inputs    ${fhName}
+    ...    FHRealtimeLine    ConnectTimesIdentifier
+    return from keyword if    '${connectTimesIdentifier}' != 'None'    ${connectTimesIdentifier}
+    ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    FHRealtimeLine    ConnectTimesIdentifier
+    @{retList}    Create List
+    : FOR    ${ric}    IN    @{connectTimesIdentifier}
+    \    ${count}=    Get Count    ${retList}    ${ric}
+    \    Comment    To ensure no duplicate connectTimesIdenifiers are put in the list
+    \    Run Keyword if    ${count} == 0    append to list    ${retList}    ${ric}
+    ${len}    Get Length    ${retList}
+    return from keyword if    ${len} > 0    ${retList}
+    @{retList}    Create List
+    ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    ConnectTimesRIC
+    : FOR    ${ric}    IN    @{connectTimesIdentifier}
+    \    ${count}=    Get Count    ${retList}    ${ric}
+    \    Comment    To ensure no duplicate connectTimesIdenifiers are put in the list
+    \    Run Keyword if    ${count} == 0    append to list    ${retList}    ${ric}
+    ${len}    Get Length    ${retList}
+    return from keyword if    ${len} > 0    ${retList}
     FAIL    No ConnectTimesIdentifier found in venue config file: ${mteConfigFile}
-    [Return]    ${connectTimesIdentifier}
 
 Get HighActivityTimesIdentifier
     [Arguments]    ${mteConfigFile}
@@ -176,9 +198,9 @@ Get GMT Offset And Apply To Datetime
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1698
     ${currentGmtOffset}    get stat block field    ${MTE}    ${dstRicName}    currentGMTOffset
-    ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}    add seconds to date
-    ...    ${year}    ${month}    ${day}    ${hour}    ${min}    ${sec}
-    ...    ${currentGmtOffset}
+    ${newdate}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    ${currentGmtOffset} second
+    ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}    get Time
+    ...    year month day hour min sec    ${newdate}
     [Return]    ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}
 
 Get MTE Config File
@@ -261,6 +283,16 @@ Load Single EXL File
     ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${headendIP}    ${headendPort}    ${LOCAL_FMS_BIN}
     ...    Process    --Services ${service}    --InputFile "${exlFile}"    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+
+Manual ClosingRun for ClosingRun Rics
+    [Arguments]    ${servicename}
+    @{closingrunRicList}    Get RIC List From StatBlock    ${MTE}    Closing Run
+    : FOR    ${closingrunRicName}    IN    @{closingrunRicList}
+    \    ${currentDateTime}    get date and time
+    \    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    25000
+    \    ...    ${LOCAL_FMS_BIN}    ClsRun    --RIC ${closingrunRicName}    --Services ${serviceName}    --Domain MARKET_PRICE
+    \    ...    --ClosingRunOperation Invoke    --HandlerName ${MTE}
+    \    wait SMF log message after time    ClosingRun.*?CloseItemGroup.*?Found [0-9]* closeable items out of [0-9]* items    ${currentDateTime}    2    60
 
 Persist File Should Exist
     [Arguments]    ${mte}    ${venuedir}

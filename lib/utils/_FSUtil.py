@@ -1,6 +1,5 @@
-import time
+﻿import time
 import re
-import os
 
 class _FSUtil():
     def Modify_lines(self, oldFile, newFile, modifydic):
@@ -113,29 +112,4 @@ class _FSUtil():
                 break
             
         return returnMatchLines
-    
-    def search_local_files(self, dirpath, name):
-        """
-        Serach all files in specified folder
-
-        dirpath is the folder you want to search
-        name is the file name
-        
-        The return value is all matched files
-
-        Examples:
-        | @list | search local files | c:/ | Test |
-        list is all files whose name includes 'Test'
-        """
-        res = list()
-        dirs = os.listdir(dirpath)
-        for filename in dirs:
-            fullpath = os.path.join(dirpath, filename)
-            if os.path.isfile(fullpath) and name in filename:
-                res.append(fullpath);
-            elif os.path.isdir(fullpath):
-                subfiles = self.search_local_files(fullpath, name)
-                if len(subfiles) != 0:
-                    res += subfiles
-        return res;
         

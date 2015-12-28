@@ -9,18 +9,19 @@ Verify SOU Phase - Internal PE
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1818
     ...
     ...    Verify RIC prefic and PE mangling \ by switching to SOU Phase mangling
-    &{dict}    get_mangling_rule_content    ${LOCAL_TMP_DIR}    ${VENUE_DIR}    SOU
-    Dictionary Should Contain Key    ${dict}    RIC
-    Dictionary Should Contain Key    ${dict['RIC']}    Prefix
-    Dictionary Should Contain Key    ${dict}    PE
-    Dictionary Should Contain Key    ${dict['PE']}    text
-    ${expected_pe}    set variable    ${dict['PE']['text']}
-    ${expected_RicPrefix}    set variable    ${dict['RIC']['Prefix']}
+    ...
+    ...    Hard-coded following in test case
+    ...
+    ...    Expected Ric Prefix for SOU : ![
+    ...
+    ...    Expected PE for SOU : [4128 4245 4247]
+    @{expected_pe}    Create List    4128    4245    4247
+    ${expected_RicPrefix}    set variable    ![
     ${domain}    Get Preferred Domain
     ${sampleRic}    ${pubRic}    Get RIC from MTE Cache    ${domain}
     Set Mangling Rule    ${MTE}    SOU
     ${output}    Send TRWF2 Refresh Request    ${MTE}    ${expected_RicPrefix}${sampleRic}    ${domain}
-    verify mangling from dataview response    ${output}    ${expected_pe}    ${expected_RicPrefix}${sampleRic}
+    Run Keyword And Continue On Failure    verify mangling from dataview response    ${output}    ${expected_pe}    ${expected_RicPrefix}${sampleRic}
     Load Mangling Settings    ${MTE}
 
 Verify BETA Phase - Disable PE Mangling without Restart
@@ -67,7 +68,7 @@ Verify Electron RRG Phase - RIC Mangling change without Restart
     ${length}    Get Length    ${matchedLines}
     Should Be Equal    ${length}    ${0}    Phase wasn't changed successfully    ${False}
     Run Keyword And Continue On Failure    verify DROP message in itemstatus messages    ${localcapture}=    ${VENUE_DIR}    ${DAS_DIR}    ${beta_RicPrefix}${sampleRic}
-    Run Keyword And Continue On Failure    verify FMS rebuild in message    ${localcapture}=    ${VENUE_DIR}    ${DAS_DIR}    ${expected_RicPrefix}${sampleRic}
+    Run Keyword And Continue On Failure    verify all response message num    ${localcapture}=    ${VENUE_DIR}    ${DAS_DIR}    ${expected_RicPrefix}${sampleRic}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify IDN RRG Phase - RIC Mangling change without Restart
@@ -87,7 +88,7 @@ Verify IDN RRG Phase - RIC Mangling change without Restart
     ${length}    Get Length    ${matchedLines}
     Should Be Equal    ${length}    ${0}    Mangled isn't removed    ${False}
     Run Keyword And Continue On Failure    verify DROP message in itemstatus messages    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${rrg_RicPrefix}${sampleRic}
-    Run Keyword And Continue On Failure    verify FMS rebuild in message    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${sampleRic}
+    Run Keyword And Continue On Failure    verify all response message num    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${sampleRic}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 *** Keywords ***
@@ -101,3 +102,16 @@ Change Phase
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
     [Return]    ${localcapture}
+
+Get Mangling Config File
+    [Documentation]    Get the manglingConfiguration.xml from TD Box
+    ...    1. The file would be saved at Control PC and only removed at Suite Teardown
+    ...    2. Suite Variable ${LOCAL_MANGLING_CONFIG_FILE} has created to store the fullpath of the config file at Control PC
+    ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
+    Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
+    ${res}=    search remote files    ${VENUE_DIR}    manglingConfiguration.xml    recurse=${True}
+    Length Should Be    ${res}    1    manglingConfiguration.xml not found (or multiple files found).
+    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mangling_config_file.xml
+    get remote file    ${res[0]}    ${localFile}
+    Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${localFile}
+    [Return]    ${localFile}

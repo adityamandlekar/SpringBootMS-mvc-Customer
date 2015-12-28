@@ -90,7 +90,6 @@ Persistence file FIDs existence check
     ...    Make sure below fids don’t exist in the dumped persistence file:
     ...    6401 DDS_DSO_ID 6480 SPS_SP_RIC 6394 MC_LABEL
     Start MTE    ${MTE}
-    Wait For FMS Reorg    ${MTE}
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
@@ -99,12 +98,12 @@ Persistence file FIDs existence check
     ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
     ${pmatDumpfile}=    Dump Persist File To XML    ${MTE}    --ric ${ric}    --domain ${pmatDomain}
     ${fidsSet}    get all fids from PersistXML    ${pmatDumpfile}
-    Should Be True    '6401' not in ${fidsSet}
-    Should Be True    '6480' not in ${fidsSet}
-    Should Be True    '6394' not in ${fidsSet}
-    Should Be True    '1' in ${fidsSet}
-    Should Be True    '15' in ${fidsSet}
-    Should Be True    '5357' in ${fidsSet}
+    List Should Not Contain Value    ${fidsSet}    6401
+    List Should Not Contain Value    ${fidsSet}    6480
+    List Should Not Contain Value    ${fidsSet}    6394
+    List Should Contain Value    ${fidsSet}    1
+    List Should Contain Value    ${fidsSet}    15
+    List Should Contain Value    ${fidsSet}    5357
     [Teardown]    case teardown    ${pmatDumpfile}
 
 *** Keywords ***
@@ -133,10 +132,10 @@ Go Into EndOfDay time
     @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]    @{tdBoxDateTime}[3]
     ...    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
     ${offsetInSecond}=    set variable    120
-    @{endOfDay}=    add seconds to date    @{localDateTime}[0]    @{localDateTime}[1]    @{localDateTime}[2]    @{localDateTime}[3]    @{localDateTime}[4]
-    ...    @{localDateTime}[5]    ${offsetInSecond}    ${True}
+    ${endOfDay}    add time to date    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]    ${offsetInSecond} second
+    ${endOfDay}    get time    hour min sec    ${endOfDay}
     ${orgFile}    ${backupFile}    backup cfg file    ${VENUE_DIR}    ${mtecfgfile}
-    set value in MTE cfg    ${orgFile}    EndOfDayTime    @{endOfDay}[3]:@{endOfDay}[4]
+    set value in MTE cfg    ${orgFile}    EndOfDayTime    @{endOfDay}[0]:@{endOfDay}[1]
     stop MTE    ${MTE}
     start MTE    ${MTE}
     sleep    ${offsetInSecond}
@@ -145,41 +144,62 @@ Go Into EndOfDay time
     start MTE    ${MTE}
     [Teardown]
 
-Go into feed time and set end feed time
+Go Into Feed Time And Set End Feed Time
     [Arguments]    ${offsetInSecond}
     [Documentation]    1. Getting the time \ (GMT) of Thunderdome box and set it as start feed time
     ...    (need to convert back to local time of venue)
     ...    2. Adding ${offsetInSecond} seconds to feed start time and set it as end feed time
-    ...    3. Return full path of EXL file of feed time Ric (both original and modified file)
+    ...    3. Return
+    ...    3.1 ${exlFiles} : list of exlFiles that is modified by this KW
+    ...    3.2 ${exlBackupFiles} : list of exlFiles that renamed by this KW and reserve the original value of the EXL files
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
     ${mteConfigFile}=    Get MTE Config File
-    ${connectTimesIdentifier}=    Get ConnectTimesIdentifier    ${mteConfigFile}
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${Empty}
     ${serviceName}=    Get FMS Service Name
-    ${exlfile}=    get state EXL file    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
-    @{dstRic}=    get ric fields from EXL    ${exlfile}    ${connectTimesIdentifier}    DST_REF
-    @{tdBoxDateTime}=    get date and time
-    @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]    @{tdBoxDateTime}[3]
-    ...    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
-    ${startWeekDay}=    get day of week from date    @{localDateTime}[0]    @{localDateTime}[1]    @{localDateTime}[2]
-    ${startTime}=    set variable    @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]
-    @{endDateTime}=    add seconds to date    @{localDateTime}[0]    @{localDateTime}[1]    @{localDateTime}[2]    @{localDateTime}[3]    @{localDateTime}[4]
-    ...    @{localDateTime}[5]    ${offsetInSecond}
-    ${endWeekDay}=    get day of week from date    @{endDateTime}[0]    @{endDateTime}[1]    @{endDateTime}[2]
-    ${endTime}=    set variable    @{endDateTime}[3]:@{endDateTime}[4]:@{endDateTime}[5]
-    ${exlmodified} =    set variable    ${exlfile}_modified.exl
-    Set Feed Time In EXL    ${exlfile}    ${exlmodified}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}    ${endTime}
-    ...    ${startWeekDay}
-    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlfile}    ${exlmodified}    ${connectTimesIdentifier}    ${connectTimeRicDomain}
-    ...    ${startTime}    ${endTime}    ${endWeekDay}
+    @{exlBackupFiles}=    Create List
+    @{exlFiles}=    Create List
+    : FOR    ${connectTimesIdentifier}    IN    @{connectTimesIdentifierList}
+    \    ${exlFile}=    get state EXL file    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${serviceName}    ${LOCAL_FMS_DIR}
+    \    ...    Feed Time
+    \    ${count}=    Get Count    ${exlFiles}    ${exlFile}
+    \    ${exlBackupFile}    set variable    ${exlFile}.backup
+    \    Run Keyword if    ${count} == 0    append to list    ${exlFiles}    ${exlFile}
+    \    Run Keyword if    ${count} == 0    append to list    ${exlBackupFiles}    ${exlBackupFile}
+    \    Run Keyword if    ${count} == 0    Copy File    ${exlFile}    ${exlBackupFile}
+    \    @{dstRic}=    get ric fields from EXL    ${exlFile}    ${connectTimesIdentifier}    DST_REF
+    \    @{tdBoxDateTime}=    get date and time
+    \    @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]
+    \    ...    @{tdBoxDateTime}[3]    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
+    \    ${startWeekDay}=    get day of week from date    @{localDateTime}[0]    @{localDateTime}[1]    @{localDateTime}[2]
+    \    ${startTime}=    set variable    @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]
+    \    ${endDateTime}    add time to date    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] ${startTime}    ${offsetInSecond} second
+    \    ${endDateTime}    get Time    year month day hour min sec    ${endDateTime}
+    \    ${endWeekDay}=    get day of week from date    @{endDateTime}[0]    @{endDateTime}[1]    @{endDateTime}[2]
+    \    ${endTime}=    set variable    @{endDateTime}[3]:@{endDateTime}[4]:@{endDateTime}[5]
+    \    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
+    \    ...    ${endTime}    ${startWeekDay}
+    \    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}
+    \    ...    ${connectTimeRicDomain}    ${startTime}    ${endTime}    ${endWeekDay}
+    : FOR    ${exlFile}    IN    @{exlFiles}
+    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}    25000    25000
     [Teardown]
-    [Return]    ${exlfile}    ${exlmodified}
+    [Return]    ${exlFiles}    ${exlBackupFiles}
 
 Trigger Persistence File Backup
-    ${offsetInSecond}=    set variable    60
-    ${exlFile}    ${exlmodified}    Go into feed time and set end feed time    ${offsetInSecond}
-    ${serviceName}=    Get FMS Service Name
-    Load Single EXL File    ${exlmodified}    ${serviceName}    ${CHE_IP}    25000
+    [Documentation]    Trigger persistence file backup action by changing the connection Ric start time to current time and end time to current time + offsetInSecond
+    ...
+    ...    Restore the EXL value afterward
+    ${offsetInSecond}=    set variable    120
+    ${exlFiles}    ${exlBackupFiles}    Go Into Feed Time And Set End Feed Time    ${offsetInSecond}
     ${sleepTime}=    Evaluate    ${offsetInSecond} + 60
     sleep    ${sleepTime}
-    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}    25000
-    [Teardown]    Remove Files    ${exlmodified}
+    ${serviceName}=    Get FMS Service Name
+    Comment    Restore connection time changes
+    ${index}=    set variable    0
+    : FOR    ${exlBackupFile}    IN    @{exlBackupFiles}
+    \    Copy File    ${exlBackupFile}    @{exlFiles}[${index}]
+    \    ${index}=    Evaluate    ${index} + 1
+    \    Remove Files    ${exlBackupFile}
+    : FOR    ${exlFile}    IN    @{exlFiles}
+    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}    25000
+    [Teardown]

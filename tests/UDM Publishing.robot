@@ -11,7 +11,10 @@ Validate Downstream FID publication
     Start MTE    ${MTE}
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
-    ${contextIds}    get contextID from FidFilter    ${VENUE_DIR}
+    ${mteConfigFile}    Get MTE Config File
+    ${serviceName}    Get FMS Service Name
+    ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
+    ${contextIds}    get context ids from fms filter string    ${fmsFilterString}
     : FOR    ${contextId}    IN    @{contextIds}
     \    ${ricFiledList}    get ric fields from cache    ${MTE}    ${VENUE_DIR}    1    ${EMPTY}
     \    ...    ${contextId}
@@ -97,20 +100,24 @@ Verify Common Required FID output
 Verify Message Key Name is Compressed
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1884
     ...    ensure all TD CHE releases message key name compression is enabled
-    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
-    ${serviceName}    Get FMS Service Name
-    Start MTE    ${MTE}
-    Start Capture MTE Output    ${MTE}    ${remoteCapture}
-    ${currentDateTime}    get date and time
-    Rebuild FMS service    ${serviceName}
-    wait smf log message after time    Finished Sending Images    ${currentDateTime}
-    Stop Capture MTE Output    ${MTE}
-    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
-    get remote file    ${remoteCapture}    ${localCapture}
     ${domain}=    Get Preferred Domain
-    @{ric_contextid_list}    get ric fields from cache    ${MTE}    ${VENUE_DIR}    1    ${domain}    ${EMPTY}
-    ${pubRic}=    set variable    ${ric_contextid_list[0]['PUBLISH_KEY']}
-    verify key compression in message    ${localCapture}    ${DAS_DIR}    ${pubRic}
+    ${serviceName}=    Get FMS Service Name
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${EXLfullpath}=    Get EXL For RIC    ${LOCAL_FMS_DIR}    ${domain}    ${serviceName}    ${ric}
+    ${EXLfile}=    Fetch From Right    ${EXLfullpath}    \\
+    ${localEXLfile}=    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
+    ${long_ric}=    Create Unique RIC Name    32_chars_total
+    Set RIC In EXL    ${EXLfullpath}    ${localEXLfile}    ${ric}    ${domain}    ${long_ric}
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    Start Capture MTE Output    ${MTE}    ${remoteCapture}
+    Load Single EXL File    ${localEXLfile}    ${serviceName}    ${CHE_IP}    25000    --AllowRICChange true
+    Wait For Persist File Update    ${MTE}    ${VENUE_DIR}    5    60
+    Stop Capture MTE Output    ${MTE}    1    5
+    get remote file    ${remoteCapture}    ${localCapture}
+    verify key compression in message    ${localCapture}    ${DAS_DIR}    ${long_ric}
+    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    25000    --AllowRICChange true
+    [Teardown]    case teardown    ${localCapture}
 
 Verify SPS RIC is published
     [Documentation]    Verify SPS RIC is published
@@ -160,13 +167,14 @@ Perform DVT Validation - Process all EXL files
     Start MTE    ${MTE}
     Start Capture MTE Output    ${MTE}    ${remoteCapture}
     ${serviceName}    Get FMS Service Name
+    ${currentDateTime}    get date and time
     Load All EXL Files    ${serviceName}    ${CHE_IP}
-    Wait For Persist File Update    ${MTE}    ${VENUE_DIR}
+    wait smf log message after time    FMS REORG DONE    ${currentDateTime}    2    120
     Stop Capture MTE Output    ${MTE}
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
     ${ruleFilePath}    get DVT rule file    ${DAS_DIR}
-    validate DVT rule    ${localCapture}    ${DAS_DIR}    ${ruleFilePath}
+    validate messages against DVT rules    ${localCapture}    ${DAS_DIR}    ${ruleFilePath}
     [Teardown]    case teardown    ${localCapture}
 
 Perform DVT Validation - Rebuild all EXL files
@@ -183,7 +191,43 @@ Perform DVT Validation - Rebuild all EXL files
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
     ${ruleFilePath}    get DVT rule file    ${DAS_DIR}
-    validate DVT rule    ${localCapture}    ${DAS_DIR}    ${ruleFilePath}
+    validate messages against DVT rules    ${localCapture}    ${DAS_DIR}    ${ruleFilePath}
+    [Teardown]    case teardown    ${localCapture}
+
+Perform DVT Validation -- Restart MTE
+    [Documentation]    CATF-1890 Test Case - Perform DVT Validation - Restart
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1890
+    ...
+    ...    Veiry DVT Rule as restarting MTE
+    ...
+    ...    please note the DVT Rule has to be located at C:\Program Files\Reuters Test Tools\DAS where the \ DAS is at
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    Stop MTE    ${MTE}
+    Start Capture MTE Output    ${MTE}    ${remoteCapture}
+    ${currentDateTime}    get date and time
+    Start MTE    ${MTE}
+    wait SMF log message after time    Finished Sending Images    ${currentDateTime}    2    120
+    Stop Capture MTE Output    ${MTE}
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    delete remote files    ${remoteCapture}
+    ${ruleFilePath}    get DVT rule file    ${DAS_DIR}
+    validate messages against DVT rules    ${localCapture}    ${DAS_DIR}    ${ruleFilePath}
+    [Teardown]    case teardown    ${localCapture}
+
+Perform DVT Validation - Closing Run for all RICs
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1889
+    ...    Verify DVT rule when close all rics
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    Start MTE    ${MTE}
+    Start Capture MTE Output    ${MTE}    ${remoteCapture}
+    ${serviceName}=    Get FMS Service Name
+    Manual ClosingRun for ClosingRun Rics    ${serviceName}
+    Stop Capture MTE Output    ${MTE}
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    ${ruleFilePath}    get DVT rule file    ${DAS_DIR}
+    validate messages against DVT rules    ${localCapture}    ${DAS_DIR}    ${ruleFilePath}
     [Teardown]    case teardown    ${localCapture}
 
 *** Keywords ***

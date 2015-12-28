@@ -11,24 +11,28 @@ Verify Live Instance Publishing
     ...    1. Checking if LIVE Box has output
     ...    2. Checking if STANDBY Box has NO output
     [Setup]
-    Force MTE to State    ${CHE_A_IP}
+    Force MTE to Status    ${CHE_A_IP}    A    LIVE
     ${domain}=    Get Preferred Domain
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     Switch To TD Box    ${CHE_A_IP}
     ${ret}    Send TRWF2 Refresh Request    ${MTE}    ${pubRic}    ${domain}
-    Should Not be Empty    ${ret}
+    Should Not be Empty    ${ret}    CHE_A is LIVE box , should have output
     Switch To TD Box    ${CHE_B_IP}
     ${ret}    Send TRWF2 Refresh Request    ${MTE}    ${pubRic}    ${domain}
-    Should be Empty    ${ret}
+    Should be Empty    ${ret}    CHE_B is STANDBY box , should NOT have output
+    Force MTE to Status    ${CHE_A_IP}    B    LIVE
+    Switch To TD Box    ${CHE_B_IP}
+    ${ret}    Send TRWF2 Refresh Request    ${MTE}    ${pubRic}    ${domain}
+    Should Not be Empty    ${ret}    CHE_B is LIVE box , should have output
+    Switch To TD Box    ${CHE_A_IP}
+    ${ret}    Send TRWF2 Refresh Request    ${MTE}    ${pubRic}    ${domain}
+    Should be Empty    ${ret}    CHE_A is STANDBY box , should NOT have output
 
 *** Keywords ***
-Force MTE to State
-    [Arguments]    ${che_ip}    ${state}=ENTITY_LIVE
-    [Documentation]    Force specific MTE (by CHE_X_IP) to decided stat (ENTITY_LIVE or ENTITY_STANDBY)
-    ${StandbyBox} =    set variable if    ('${che_ip}' == '${CHE_B_IP}' and '${state}' == 'ENTITY_LIVE') or ('${che_ip}' == '${CHE_A_IP}' and '${state}' == 'ENTITY_STANDBY')    ${CHE_A_IP}    ${CHE_B_IP}
-    Switch To TD Box    ${StandbyBox}
-    stop MTE    ${MTE}
-    start MTE    ${MTE}
+Force MTE to Status
+    [Arguments]    ${che_ip}    ${Node}    ${state}
+    [Documentation]    Force specific MTE (by CHE_X_IP) to decided stat (LIVE or STANDBY)
+    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${Node}    ${state}    ${USERNAME}    ${PASSWORD}
+    ...    ${che_ip}
     Switch To TD Box    ${che_ip}
-    ${ret_state} =    verify MTE state    ${MTE}
-    Run Keyword unless    '${state}' == '{ret_state}'    Fail    Fail to force ${che_ip} to ${state}
+    verify MTE state    ${MTE}    ${state}

@@ -1,4 +1,4 @@
-'''
+﻿'''
 Created on May 12, 2015
 
 @author: xiaoqin.li
@@ -11,7 +11,7 @@ from utils.rc import _rc
 
 from utils.ssh import G_SSHInstance, _exec_command,_ls,_search_file,_delete_file,_start_command,_check_process
 
-from datetime import date
+from datetime import date, datetime, timedelta
 import time
 import string
 import re
@@ -46,6 +46,7 @@ class LinuxToolUtilities():
         self.STATBLOCKFIELDREADER = _search_file(path,'StatBlockFieldReader',True)[0]
         self.HOSTMANAGER = _search_file(path,'HostManager',True)[0]
         self.SMFLOGDIR = path + '/smf/log/'
+        self.BASE_DIR = path
 
     def run_commander(self, application, command):
         """Runs the Commander tool to execute the specified CHE command.
@@ -1140,8 +1141,8 @@ class LinuxToolUtilities():
         tdBoxDatetime = LinuxCoreUtilities().get_date_and_time()
         oneDayInSecond = 60*60*24*-1
         for dayCount in range(0, int(keepDays)+2):
-            dummyDatetime = LinuxCoreUtilities().add_seconds_to_date(tdBoxDatetime[0], tdBoxDatetime[1], tdBoxDatetime[2], '01', '00', '00', dayCount*oneDayInSecond)
-            targetFile = 'PERSIST_%s_%s%02d%02dT010000.DAT' %(MTEName,dummyDatetime[0],int(dummyDatetime[1]),int(dummyDatetime[2]))
+            dummyDatetime = datetime(int(tdBoxDatetime[0]), int(tdBoxDatetime[1]), int(tdBoxDatetime[2]), int('01'), int('00'), int('00')) + timedelta(seconds=int(dayCount*oneDayInSecond))
+            targetFile = 'PERSIST_%s_%s%02d%02dT010000.DAT' %(MTEName,dummyDatetime.year,dummyDatetime.month,dummyDatetime.day)
             cmd = "cp -a %s %s"%(listOfPersistBackupFiles[0], backupfileDir + '/' + targetFile)
             stdout, stderr, rc = _exec_command(cmd)
         
@@ -1287,45 +1288,102 @@ class LinuxToolUtilities():
         
         return stdout
     
-    def verify_MTE_state(self,mteName):
-        """verify MTE instance is LIVE or STANDBY
+    def verify_MTE_state(self,mteName,state):
+        """verify MTE instance is in specific state
         
-        mteName    : name of MTE instance
-        Returns    : either ENTITY_LIVE or ENTITY_STANDBY or assertion
+         Argument:
+            mteName  : name of MTE instance
+            state    : expected state of MTE (UNDEFINED,LIVE,STANDBY,LOCKED_LIVE,LOCKED_STANDBY)
+        
+        Returns    : 
 
         Examples:
-        | verify MTE state | HKF02M |
+        | verify MTE state | HKF02M | LIVE
         """             
+     
+        stateDict = {'0': 'UNDEFINED', '1': 'LIVE', '2': 'STANDBY', '3' : 'LOCKED_LIVE', '4' : 'LOCKED_STANDBY'};
+        
+        #verify if input 'state' is a valid one
+        if not (state in stateDict.values()):
+            raise AssertionError('*ERROR* Invalid input (%s). Valid value for state is UNDEFINED , LIVE , STANDBY , LOCKED_LIVE , LOCKED_STANDBY '%state)
         
         cmd = '-readparams /%s/LiveStandby'%mteName
-        ret = self.run_HostManger(cmd).split('\n')
+        ret = self.run_HostManger(cmd).splitlines()
         if (len(ret) == 0):
             raise AssertionError('*ERROR* Running HostManger %s return empty response'%cmd)
-        
+     
         idx = '-1'
         for line in ret:
-            print line
             if (line.find('LiveStandby') != -1):
                 contents = line.split(' ')
                 idx = contents[-1].strip()
                  
         if (idx == '-1'):
-            raise AssertionError('*ERROR* Keyword LiveStandby does not found in response')
-        elif (idx == '1'):
-            return 'ENTITY_LIVE'
-        elif (idx == '0'):
-            return 'ENTITY_STANDBY'
-        else:
+            raise AssertionError('*ERROR* Keyword LiveStandby was not found in response')
+        elif not (stateDict.has_key(idx)):
             raise AssertionError('*ERROR* Unknown state %s found in response'%idx)
+        elif (stateDict[idx] != state):
+                raise AssertionError('*ERROR* %s is not at %s (current state : %s)'%(mteName,state,stateDict[idx]))            
+        
+    def get_FID_Name_by_FIDId(self,FidId):
+        """get FID Name from TRWF2.DAT based on fidID
+        
+        fidID is the FID ID number. For example 22
+        return the corresponding FID Name
+
+        Examples:
+        |get FID Name by FIDId | 22 |     
+        """
+        
+        filelist = LinuxFSUtilities().search_remote_files(self.BASE_DIR, 'TRWF2.DAT',True)
+        if (len(filelist) == 0):
+            raise AssertionError('no file is found, can not located the field ID')
         
         
+        #sed -e '/^!/d' %s | sed 's/\"[^\"]*\"/ /'    the command is to remove the comments which begins with symbol ! 
+        #and remove the string beginning with " and ending with ", for example in file /reuters/Config/TRWF2.DAT, the 2nd column
+        #tr -s ' '  it is to remove repeat symbol ' '(space)
+        #cut -d ' ' f1,2  Use symbol ' '(space) as delimiter to split the line and delete the filed f1 and f2
+        cmd = "sed -e '/^!/d' %s | sed 's/\"[^\"]*\"/ /' | grep \" %s \" | tr -s ' ' | cut -d ' ' -f1,2 | grep \" %s$\""%(filelist[0],FidId,FidId)
+    
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))  
         
+        elements = stdout.split()
         
+        if (len(elements) == 2 ):
+            return elements[0]
+        else:
+            raise AssertionError('*ERROR* The FID can not be found')
+    
+    def get_FID_ID_by_FIDName(self,fieldName):
+        """get FID ID from TRWF2.DAT based on fidName
         
+        fieldName is the FID Name. For example BID, ASK
+        return the corresponding FID ID
+
+        Examples:
+        |get FID ID by FIDName | ASK |     
+        """
         
+        filelist = LinuxFSUtilities().search_remote_files(self.BASE_DIR, 'TRWF2.DAT',True)
+        if (len(filelist) == 0):
+            raise AssertionError('no file is found, can not located the field ID')
         
+        #sed 's/\"[^\"]*\"/ /' %s remove the string which begins with symbol " and end with symbol ", 
+        #for example in file /reuters/Config/TRWF2.DAT, remove the 2nd column
+        #tr -s ' ' remove repeat symbol ' '(space)
+        cmd = "sed 's/\"[^\"]*\"/ /' %s | grep \"^%s \" | tr -s ' '" %(filelist[0],fieldName)
         
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))  
         
+        elements = stdout.split()
         
-        
-        
+        if (len(elements) > 2 ):
+            return elements[1]
+        else:
+            raise AssertionError('*ERROR* The FID can not be found')        
+             
