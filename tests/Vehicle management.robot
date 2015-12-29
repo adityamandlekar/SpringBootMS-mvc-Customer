@@ -34,6 +34,7 @@ Verify Long RIC handled correctly
 
 Verify PE Change Behavior
     [Documentation]    Test Case - Verify PE Change Behavior : http://www.iajira.amers.ime.reuters.com/browse/CATF-1715
+    Set Mangling Rule    ${MTE}    UNMANGLED
     ${domain}    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
@@ -49,6 +50,7 @@ Verify PE Change Behavior
     Run Keyword And Continue On Failure    verify PE Change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}    @{pe}[0]
     ...    ${penew}
     Load Single EXL File    ${exlfile}    ${serviceName}    ${CHE_IP}    25000
+    Load Mangling Settings    ${MTE}
     Wait For Persist File Update    ${MTE}    ${VENUE_DIR}
     [Teardown]    case teardown    ${exlmodified}    ${LOCAL_TMP_DIR}/capture_local.pcap
 
