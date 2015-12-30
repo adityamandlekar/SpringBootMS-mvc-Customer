@@ -187,8 +187,8 @@ Get Domain Names
 Get FMS Service Name
     [Documentation]    get the Service name from statBlock
     ${categories}=    get stat blocks for category    ${MTE}    FMS
-    ${services}=    get matches workaround    ${categories}    Service_*
-    ${serviceName}    get stat block field    ${MTE}    ${services[0]}    serviceName
+    ${services}=    Get Matches    ${categories}    Service_*
+    ${serviceName}    get stat block field    ${MTE}    ${services}    serviceName
     [Return]    ${serviceName}
 
 Get GMT Offset And Apply To Datetime
@@ -202,6 +202,13 @@ Get GMT Offset And Apply To Datetime
     ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}    get Time
     ...    year month day hour min sec    ${newdate}
     [Return]    ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}
+
+Get Matches
+    [Arguments]    ${inputList}    ${pattern}
+    : FOR    ${input}    IN    @{inputList}
+    \    ${result}    Get Regexp Matches    ${input}    ${pattern}
+    \    Return From Keyword If    ${result}    ${input}
+    [Return]    ${result}
 
 Get MTE Config File
     [Documentation]    Get the MTE config file (MTE.xml) from the remote machine and save it as a local file.
@@ -230,8 +237,8 @@ Get Preferred Domain
     ${mteConfigFile}=    Get MTE Config File
     ${domainList}=    Get Domain Names    ${mteConfigFile}
     : FOR    ${domain}    IN    @{preferenceOrder}
-    \    ${match}=    get matches workaround    ${domainList}    ${domain}
-    \    Return From Keyword If    ${match}    ${domain}
+    \    ${match}=    Get Matches    ${domainList}    ${domain}
+    \    Return From Keyword If    '${match}' == '${domain}'    ${domain}
     FAIL    No preferred domain ${preferenceOrder} found in domain list ${domainList}
     [Return]    ${domain}
 
