@@ -208,7 +208,6 @@ Get Matches
     : FOR    ${input}    IN    @{inputList}
     \    ${result}    Get Regexp Matches    ${input}    ${pattern}
     \    Return From Keyword If    ${result}    ${input}
-    [Return]    ${result}
 
 Get MTE Config File
     [Documentation]    Get the MTE config file (MTE.xml) from the remote machine and save it as a local file.
