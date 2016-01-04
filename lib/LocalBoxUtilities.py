@@ -2166,7 +2166,95 @@ class LocalBoxUtilities(_ToolUtil):
             raise AssertionError('*ERROR* Missing value for <PE> in %s'%(configFileLocalFullPath))  
                 
         return retContent
-      
+    
+    def _get_xml_node_by_xmlPath(self,root,xmlPath):
+        """get xml node by xmlPath
+        
+        root : object return from calling tree.getroot() while tree = ET.parse(file.xml)
+        xmlPath : xmlPath for the node
+        Returns : iterator for all elements that matched with xmlPath
+
+        Examples:
+
+        """        
+        
+        xmlPathLength = len(xmlPath)
+        if xmlPathLength < 1:
+            raise AssertionError('*ERROR*  Need to provide xmlPath to look up.')
+        elif xmlPathLength > 1:
+            xmlPathString = '/'.join(map(str, xmlPath))
+        else:
+            xmlPathString = str(xmlPath[0])
+            
+        return root.iterfind(".//" + xmlPathString)
+    
+    def set_xml_tag_value(self,configFileLocalFullPath,tagValue,xmlPath):
+        
+        if not os.path.exists(configFileLocalFullPath):
+            raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
+        
+        tree = ET.parse(configFileLocalFullPath)
+        root = tree.getroot()
+
+        nodes = self._get_xml_node_by_xmlPath(root, xmlPath)
+        for node in nodes:
+            node.text=str(tagValue)
+                
+        tree.write(configFileLocalFullPath)    
+    
+    def set_xml_tag_attributes_value(self,configFileLocalFullPath,attributes,xmlPath):
+        
+        if not os.path.exists(configFileLocalFullPath):
+            raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
+        
+        tree = ET.parse(configFileLocalFullPath)
+        root = tree.getroot()
+
+        nodes = self._get_xml_node_by_xmlPath(root, xmlPath)
+        for node in nodes:
+            for key in attributes.keys():
+                node.set(key,attributes[key])
+                
+        tree.write(configFileLocalFullPath)
+                 
+    def set_mangling_rule_default_value(self,rule,configFileLocalFullPath):
+        """set the mangling rule <Partition defaultRule=""> in manglingConfiguration.xml
+        
+        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
+        cfgfile : full path of mangling config file xml
+        Returns : Nil
+
+        Examples:
+        | set mangling rule default value | SOU | C:/tmp/manglingConfiguration.xml |
+        """
+        
+        #safe check for rule value
+        if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
+            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
+        
+        xmlPath = ['Partitions']
+        attribute = {'defaultRule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
+        self.set_xml_tag_attributes_value(configFileLocalFullPath,attribute,xmlPath)
+        
+    def set_mangling_rule_parition_value(self,rule,configFileLocalFullPath):
+        """set the mangling rule of <Partitions rule=""> in manglingConfiguration.xml
+        
+        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
+        cfgfile : full path of mangling config file xml
+        Returns : Nil
+
+        Examples:
+        | set mangling rule parition value | SOU | C:/tmp/manglingConfiguration.xml |
+        """
+        
+        #safe check for rule value
+        if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
+            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
+        
+        xmlPath = ['Partitions', 'Partition']
+        attribute = {'rule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
+        self.set_xml_tag_attributes_value(configFileLocalFullPath,attribute,xmlPath)
+                       
     def convert_dataView_response_to_dictionary(self,dataview_response):
         """ capture the FID Name and FID value from DateView output which return from run  run_dataview
 
