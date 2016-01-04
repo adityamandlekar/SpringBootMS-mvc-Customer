@@ -19,7 +19,7 @@ Verify SOU Phase - Internal PE
     ${expected_RicPrefix}    set variable    ![
     ${domain}    Get Preferred Domain
     ${sampleRic}    ${pubRic}    Get RIC from MTE Cache    ${domain}
-    Set Mangling Rule    ${MTE}    SOU
+    Set Mangling Rule    ${MTE}    UNMANGLED
     ${output}    Send TRWF2 Refresh Request    ${MTE}    ${expected_RicPrefix}${sampleRic}    ${domain}
     Run Keyword And Continue On Failure    verify mangling from dataview response    ${output}    ${expected_pe}    ${expected_RicPrefix}${sampleRic}
     Load Mangling Settings    ${MTE}
@@ -91,6 +91,9 @@ Verify IDN RRG Phase - RIC Mangling change without Restart
     Run Keyword And Continue On Failure    verify all response message num    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${sampleRic}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
+TEST01
+    set_xml_value    1234    ${LOCAL_TMP_DIR}/manglingConfiguration.xml
+
 *** Keywords ***
 Change Phase
     [Arguments]    ${PrePhase}    ${NewPhase}
@@ -102,16 +105,3 @@ Change Phase
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
     [Return]    ${localcapture}
-
-Get Mangling Config File
-    [Documentation]    Get the manglingConfiguration.xml from TD Box
-    ...    1. The file would be saved at Control PC and only removed at Suite Teardown
-    ...    2. Suite Variable ${LOCAL_MANGLING_CONFIG_FILE} has created to store the fullpath of the config file at Control PC
-    ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
-    Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
-    ${res}=    search remote files    ${VENUE_DIR}    manglingConfiguration.xml    recurse=${True}
-    Length Should Be    ${res}    1    manglingConfiguration.xml not found (or multiple files found).
-    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mangling_config_file.xml
-    get remote file    ${res[0]}    ${localFile}
-    Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${localFile}
-    [Return]    ${localFile}

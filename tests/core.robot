@@ -203,6 +203,19 @@ Get GMT Offset And Apply To Datetime
     ...    year month day hour min sec    ${newdate}
     [Return]    ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}
 
+Get Mangling Config File
+    [Documentation]    Get the manglingConfiguration.xml from TD Box
+    ...    1. The file would be saved at Control PC and only removed at Suite Teardown
+    ...    2. Suite Variable ${LOCAL_MANGLING_CONFIG_FILE} has created to store the fullpath of the config file at Control PC
+    ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
+    Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
+    ${res}=    search remote files    ${VENUE_DIR}    manglingConfiguration.xml    recurse=${True}
+    Length Should Be    ${res}    1    manglingConfiguration.xml not found (or multiple files found).
+    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mangling_config_file.xml
+    get remote file    ${res[0]}    ${localFile}
+    Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${localFile}
+    [Return]    ${localFile}
+
 Get MTE Config File
     [Documentation]    Get the MTE config file (MTE.xml) from the remote machine and save it as a local file.
     ...    If we already have the local file, just return the file name without copying the remote file again.
@@ -374,8 +387,10 @@ Set Mangling Rule
     ...    Current avaliable valid value for \ ${rule} : SOU, BETA, RRG \ or UNMANGLED
     ...    The KW would restore the config file to original value, but it would rely on user to calling KW : Load Mangling Settings to carry out the restore action at the end of their test case
     @{files}=    backup cfg file    ${VENUE_DIR}    ${configFile}
-    set mangling rule default value    ${rule}    @{files}[0]
-    set mangling rule partition value    ${rule}    @{files}[0]
+    ${configFileLocal}=    Get Mangling Config File
+    set mangling rule default value    ${rule}    ${configFileLocal}
+    set mangling rule parition value    ${rule}    ${configFileLocal}
+    put_remote_file    ${configFileLocal}    @{files}[0]
     Run Keyword And Continue On Failure    Load Mangling Settings    ${mte}
     restore cfg file    @{files}
 
