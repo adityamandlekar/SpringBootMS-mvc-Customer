@@ -2367,7 +2367,7 @@ class LocalBoxUtilities(_ToolUtil):
         if rc != 0:
             raise AssertionError('*ERROR* in running SCWLLi.exe %s' %stderr)  
         
-        return rc
+        return stdout
     
     def switch_MTE_LIVE_STANDBY_status(self,scwcli_dir,mteName,node,status,user,password,che_ip,port='27000'):
         """ To switch specific MTE instance to LIVE or STANDBY
@@ -2395,6 +2395,73 @@ class LocalBoxUtilities(_ToolUtil):
             raise AssertionError('*ERROR* Unknown status %s' %status)
             
         cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
+        self._run_local_SCWCLI(scwcli_dir,cmd)
+
+    def get_master_box_ip(self, scwcli_dir, user, password, che_ip_list, port='27000'):
+        """ To find the master box from pair boxes
+
+            Argument : scwcli_dir - full path of SCWCli.exe
+                       user - login name for the TD box
+                       password - login password for the TD box
+                       che_ip_list - IP list of the TD boxes
+                       port - port no. that used to communicate with the SCW at TD box
+            Return :   the ip of master box
+            
+            Examples :
+            | ${iplist} | create list | ${CHE_A_IP} | ${CHE_B_IP} |
+            | ${master_ip} | get master box ip | C:\\SCW\\bin  | ${USERNAME} | ${PASSWORD} | ${iplist} |
+        """
+        for che_ip in che_ip_list:
+            cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,port,user,password)
+            stdout = self._run_local_SCWCLI(scwcli_dir,cmd)
+            if (stdout.find('SCW state MASTER')):
+                return che_ip
+        raise AssertionError('*ERROR* cannot find a master box')
+
+    def lock_MTE_status(self,scwcli_dir,mteName,node,status,user,password,che_ip,port='27000'):
+        """ To ulock MTE status
+
+            Argument : scwcli_dir - full path of SCWCli.exe
+                       mteName - MTE instance name e.g. HKF02M
+                       node - A,B,C,D
+                       status - LIVE:Switch to Live, STANDBY:Switch to Standby
+                       user - login name for the TD box
+                       password - login password for the TD box
+                       che_ip - IP of master TD box
+                       port - port no. that used to communicate with the SCW at TD box
+                             
+            Return :
+            
+            Examples :
+            |lock MTE status | C:\\SCW\\bin  | HKF02M | A | LIVE | ${USERNAME} | ${PASSWORD} | ${CHE_A_IP} |
+        """
+        if (status == 'LIVE'):
+            cmd = "-lock_live "
+        elif(status == 'STANDBY'):
+            cmd = "-lock_stby "
+        else:
+            raise AssertionError('*ERROR* Unknown status %s' %status)
+            
+        cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
+        self._run_local_SCWCLI(scwcli_dir,cmd)
+
+    def unlock_MTE_status(self,scwcli_dir,mteName,node,user,password,che_ip,port='27000'):
+        """ To unlock MTE status
+
+            Argument : scwcli_dir - full path of SCWCli.exe
+                       mteName - MTE instance name e.g. HKF02M
+                       node - A,B,C,D
+                       user - login name for the TD box
+                       password - login password for the TD box
+                       che_ip - IP of master TD box
+                       port - port no. that used to communicate with the SCW at TD box
+                             
+            Return :
+            
+            Examples :
+            |unlock MTE status | C:\\SCW\\bin  | HKF02M | A | ${USERNAME} | ${PASSWORD} | ${CHE_A_IP} |
+        """
+        cmd = '-unlock %s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
         self._run_local_SCWCLI(scwcli_dir,cmd)
 
     def _verify_Fid_value_in_fidsAndValues(self, fidsAndValues=[], fidnum=[],fidvalue=[]):
