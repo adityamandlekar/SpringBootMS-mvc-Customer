@@ -275,7 +275,6 @@ Load Mangling Settings
     [Arguments]    ${mte}
     ${dt}=    get date and time
     Run Commander    linehandler    lhcommand ${mte} mangling:refresh_settings
-    wait SMF log message after time    mangling refresh complete    ${dt}    5    300
     wait SMF log does not contain    Drop message sent for    10    600
 
 Load Single EXL File
