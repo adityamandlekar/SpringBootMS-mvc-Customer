@@ -390,7 +390,8 @@ Set Mangling Rule
     ${configFileLocal}=    Get Mangling Config File
     set mangling rule default value    ${rule}    ${configFileLocal}
     set mangling rule parition value    ${rule}    ${configFileLocal}
-    put_remote_file    ${configFileLocal}    @{files}[0]
+    delete remote files    @{files}[0]
+    put remote file    ${configFileLocal}    @{files}[0]
     Run Keyword And Continue On Failure    Load Mangling Settings    ${mte}
     restore cfg file    @{files}
 

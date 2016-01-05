@@ -19,7 +19,7 @@ Verify SOU Phase - Internal PE
     ${expected_RicPrefix}    set variable    ![
     ${domain}    Get Preferred Domain
     ${sampleRic}    ${pubRic}    Get RIC from MTE Cache    ${domain}
-    Set Mangling Rule    ${MTE}    UNMANGLED
+    Set Mangling Rule    ${MTE}    SOU
     ${output}    Send TRWF2 Refresh Request    ${MTE}    ${expected_RicPrefix}${sampleRic}    ${domain}
     Run Keyword And Continue On Failure    verify mangling from dataview response    ${output}    ${expected_pe}    ${expected_RicPrefix}${sampleRic}
     Load Mangling Settings    ${MTE}
@@ -30,9 +30,7 @@ Verify BETA Phase - Disable PE Mangling without Restart
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1819
     ...
     ...    Test Case - Verify BETA Phase - Disable PE Mangling without Restart
-    ${dictSOU}    get_mangling_rule_content    ${LOCAL_TMP_DIR}    ${VENUE_DIR}    SOU
-    Dictionary Should Contain Key    ${dictSOU}    PE
-    Dictionary Should Contain Key    ${dictSOU['PE']}    text
+    @{expected_pe}    Create List    4128    4245    4247
     ${expected_RicPrefix}    set variable    ![
     ${domain}=    Get Preferred Domain
     ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}
@@ -47,7 +45,7 @@ Verify BETA Phase - Disable PE Mangling without Restart
     delete remote files    ${remotedumpfile}
     ${length}    Get Length    ${matchedLines}
     Should Be Equal    ${length}    ${0}    Phase isn't changed successfully    ${False}
-    Run Keyword And Continue On Failure    verify PE Change in message    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${expected_RicPrefix}${sampleRic}    ${dictSOU['PE']['text']}
+    Run Keyword And Continue On Failure    verify PE Change in message    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${expected_RicPrefix}${sampleRic}    ${expected_pe}
     ...    ${penew}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
@@ -90,9 +88,6 @@ Verify IDN RRG Phase - RIC Mangling change without Restart
     Run Keyword And Continue On Failure    verify DROP message in itemstatus messages    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${rrg_RicPrefix}${sampleRic}
     Run Keyword And Continue On Failure    verify all response message num    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${sampleRic}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
-
-TEST01
-    set_xml_value    1234    ${LOCAL_TMP_DIR}/manglingConfiguration.xml
 
 *** Keywords ***
 Change Phase
