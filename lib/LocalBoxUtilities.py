@@ -601,13 +601,13 @@ class LocalBoxUtilities(_ToolUtil):
         
         os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
     
-    def _verify_PE_change_in_message_c1(self,pcapfile,venuedir,dasdir,ricname,oldPE,newPE):
+    def _verify_PE_change_in_message_c1(self,pcapfile,venuedir,dasdir,ricname,oldPEs,newPE):
         """ internal function used to verify PE Change response (C1) for RIC in MTE output pcap message
             pcapFile : is the pcap fullpath at local control PC  
             venuedir : location from remote TD box for search FIDFilter.txt
             dasdir : location of DAS tool  
             ricname : target ric name
-            oldPE : original value of PE
+            oldPEs : a list of possible original PEs (We use a list of candidates due to the fact we use hardcode way for RIC Mangling test cases)  
             newPE : new value of PE
             return : Nil
             
@@ -633,8 +633,12 @@ class LocalBoxUtilities(_ToolUtil):
                 raise AssertionError('*ERROR* 1st C1 message : Missing FID 1 (PROD_PERM) in payload')
             
             headerPE = self._xml_parse_get_HeaderTag_Value_for_messageNode(messages[0],'PermissionInfo','PE')
-            if (headerPE != oldPE):
-                raise AssertionError('*ERROR* 1st C1 message : Old PE in header (%s) not equal to (%s)'%(headerPE,oldPE))
+            isPass = False
+            for oldPE in oldPEs:
+                if (headerPE == oldPE):
+                    isPass = True
+            if not (isPass):
+                raise AssertionError('*ERROR* 1st C1 message : Old PE in header (%s) no match with any given PEs (%s)'%(headerPE,oldPEs))            
             
             #2nd C1 message : C1 Response, new PE in header, all payload FIDs included
             dummyricDict = {}
@@ -702,12 +706,14 @@ class LocalBoxUtilities(_ToolUtil):
         
         os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
         
-    def verify_PE_change_in_message(self,pcapfile,venuedir,dasdir,ricname,oldPE,newPE):
+    def verify_PE_change_in_message(self,pcapfile,venuedir,dasdir,ricname,oldPEs,newPE):
         """ verify PE Change response for RIC in MTE output pcap message
             pcapFile : is the pcap fullpath at local control PC  
             venuedir : location from remote TD box for search FIDFilter.txt
             dasdir : location of DAS tool  
-            ricname : target ric name    
+            ricname : target ric name
+            oldPEs : a list of possible original PEs (We use a list of candidates due to the fact we use hardcode way for RIC Mangling test cases)  
+            newPE : new value of PE
             return : Nil
             
             Verify:
@@ -727,7 +733,7 @@ class LocalBoxUtilities(_ToolUtil):
         self._verify_PE_change_in_message_c0(pcapfile,dasdir,ricname,newPE)
         
         #C1
-        self._verify_PE_change_in_message_c1(pcapfile,venuedir,dasdir,ricname,oldPE,newPE)
+        self._verify_PE_change_in_message_c1(pcapfile,venuedir,dasdir,ricname,oldPEs,newPE)
         
         #C63
         self._verify_PE_change_in_message_c63(pcapfile,venuedir,dasdir,ricname,newPE)
@@ -2166,7 +2172,114 @@ class LocalBoxUtilities(_ToolUtil):
             raise AssertionError('*ERROR* Missing value for <PE> in %s'%(configFileLocalFullPath))  
                 
         return retContent
-      
+    
+    def _get_xml_node_by_xPath(self,root,xPath):
+        """get xml node by xPath
+        
+        root : object return from calling tree.getroot() while tree = ET.parse(file.xml)
+        xPath : a list specific xPath for the node
+        Returns : iterator for 'ALL' elements that matched with xPath
+
+        Examples:
+
+        """
+        xmlPathLength = len(xPath)
+        if xmlPathLength < 1:
+            raise AssertionError('*ERROR*  Need to provide xPath to look up.')
+        elif xmlPathLength > 1:
+            xmlPathString = '/'.join(map(str, xPath))
+        else:
+            xmlPathString = str(xPath[0])
+            
+        return root.iterfind(".//" + xmlPathString)
+    
+    def set_xml_tag_value(self,xmlFileLocalFullPath,tagValue,xPath):
+        """set tag value in xml file specficied by xPath
+        
+        xmlFileLocalFullPath : full path of xml file
+        tagValue : target tag value
+        xPath : a list specific xPath for the node
+        Returns : Nil
+
+        Examples:
+        | set xml tag value | C:\\tmp\\test.xml| 1234 | ['Rule','PE'] |
+        """
+                
+        if not os.path.exists(xmlFileLocalFullPath):
+            raise AssertionError('*ERROR*  %s is not available' %xmlFileLocalFullPath)
+        
+        tree = ET.parse(xmlFileLocalFullPath)
+        root = tree.getroot()
+
+        nodes = self._get_xml_node_by_xmlPath(root, xPath)
+        for node in nodes:
+            node.text=str(tagValue)
+                
+        tree.write(xmlFileLocalFullPath)    
+    
+    def set_xml_tag_attributes_value(self,xmlFileLocalFullPath,attributes,xPath):
+        """set attribute of a tag in xml file specficied by xPath
+        
+        xmlFileLocalFullPath : full path of xml file
+        attributes : a map specific the attributes(key) and correpsonding value
+        xPath : a list specific xPath for the node
+        Returns : Nil
+
+        Examples:
+        | set xml tag attributes value | C:\\tmp\\test.xml| {'defaultRule' : '0'} | ['Partitions'] |
+        """        
+        
+        if not os.path.exists(xmlFileLocalFullPath):
+            raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
+        
+        tree = ET.parse(xmlFileLocalFullPath)
+        root = tree.getroot()
+
+        nodes = self._get_xml_node_by_xPath(root, xPath)
+        for node in nodes:
+            for key in attributes.keys():
+                node.set(key,attributes[key])
+                
+        tree.write(xmlFileLocalFullPath)
+                 
+    def set_mangling_rule_default_value(self,rule,configFileLocalFullPath):
+        """set the mangling rule <Partition defaultRule=""> in manglingConfiguration.xml
+        
+        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
+        cfgfile : full path of mangling config file xml
+        Returns : Nil
+
+        Examples:
+        | set mangling rule default value | SOU | C:/tmp/manglingConfiguration.xml |
+        """
+        
+        #safe check for rule value
+        if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
+            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
+        
+        xmlPath = ['Partitions']
+        attribute = {'defaultRule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
+        self.set_xml_tag_attributes_value(configFileLocalFullPath,attribute,xmlPath)
+        
+    def set_mangling_rule_parition_value(self,rule,configFileLocalFullPath):
+        """set the mangling rule of <Partitions rule=""> in manglingConfiguration.xml
+        
+        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
+        cfgfile : full path of mangling config file xml
+        Returns : Nil
+
+        Examples:
+        | set mangling rule parition value | SOU | C:/tmp/manglingConfiguration.xml |
+        """
+        
+        #safe check for rule value
+        if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
+            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
+        
+        xmlPath = ['Partitions', 'Partition']
+        attribute = {'rule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
+        self.set_xml_tag_attributes_value(configFileLocalFullPath,attribute,xmlPath)
+                       
     def convert_dataView_response_to_dictionary(self,dataview_response):
         """ capture the FID Name and FID value from DateView output which return from run  run_dataview
 

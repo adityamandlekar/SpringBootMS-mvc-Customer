@@ -30,9 +30,7 @@ Verify BETA Phase - Disable PE Mangling without Restart
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1819
     ...
     ...    Test Case - Verify BETA Phase - Disable PE Mangling without Restart
-    ${dictSOU}    get_mangling_rule_content    ${LOCAL_TMP_DIR}    ${VENUE_DIR}    SOU
-    Dictionary Should Contain Key    ${dictSOU}    PE
-    Dictionary Should Contain Key    ${dictSOU['PE']}    text
+    @{expected_pe}    Create List    4128    4245    4247
     ${expected_RicPrefix}    set variable    ![
     ${domain}=    Get Preferred Domain
     ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}
@@ -47,7 +45,7 @@ Verify BETA Phase - Disable PE Mangling without Restart
     delete remote files    ${remotedumpfile}
     ${length}    Get Length    ${matchedLines}
     Should Be Equal    ${length}    ${0}    Phase isn't changed successfully    ${False}
-    Run Keyword And Continue On Failure    verify PE Change in message    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${expected_RicPrefix}${sampleRic}    ${dictSOU['PE']['text']}
+    Run Keyword And Continue On Failure    verify PE Change in message    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${expected_RicPrefix}${sampleRic}    ${expected_pe}
     ...    ${penew}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
@@ -102,16 +100,3 @@ Change Phase
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
     [Return]    ${localcapture}
-
-Get Mangling Config File
-    [Documentation]    Get the manglingConfiguration.xml from TD Box
-    ...    1. The file would be saved at Control PC and only removed at Suite Teardown
-    ...    2. Suite Variable ${LOCAL_MANGLING_CONFIG_FILE} has created to store the fullpath of the config file at Control PC
-    ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
-    Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
-    ${res}=    search remote files    ${VENUE_DIR}    manglingConfiguration.xml    recurse=${True}
-    Length Should Be    ${res}    1    manglingConfiguration.xml not found (or multiple files found).
-    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mangling_config_file.xml
-    get remote file    ${res[0]}    ${localFile}
-    Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${localFile}
-    [Return]    ${localFile}
