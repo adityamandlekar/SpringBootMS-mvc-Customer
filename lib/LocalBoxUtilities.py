@@ -2396,32 +2396,29 @@ class LocalBoxUtilities(_ToolUtil):
             
         cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
         self._run_local_SCWCLI(scwcli_dir,cmd)
-
-    def _verify_Fid_value_in_fidsAndValues(self, fidsAndValues=[], fidnum=[],fidvalue=[]):
-        index = 0
-        for elementfid in fidnum: 
-                if (fidsAndValues.has_key(elementfid)):
-                    if (fidsAndValues[elementfid] != fidvalue[index]):
-                        raise AssertionError('*ERROR* C1 message : the value of fid number (%s) not equal to (%s)'%(fidsAndValues[elementfid],fidvalue[index]))
-                    if index < len(fidvalue) :
-                        index = index + 1
-                else:
-                    raise AssertionError('*ERROR* 1st C1 message : Missing FID %s in payload'%elementfid)      
-                
-    def verify_Extract_and_Insert_in_message(self,pcapfile,venuedir,dasdir,ricname,fidnum=[],oldfidvalue=[],newfidvalue=[]):
-        """ internal function used to verify the fid value with fidvalue1 can change to fidvalue2 correctly and back to fidvalue1 correctly
-            pcapFile : is the pcap fullpath at local control PC  
-            venuedir : location from remote TD box for search FIDFilter.txt
-            dasdir : location of DAS tool  
-            fidnum : fid num 
-            oldfidvalue : original value of fid
-            newfidvalue : new value of fid
-            return : Nil
+                        
+    def verify_Insert_in_message(self,pcapfile,basedir,dasdir,ricname,fidList=[],valueList=[], checkAllFids=False, defaultPcap=''):
+        """ To verify the insert icf file can update the changed fid and value correct
+        
+        Argument :         
+                    pcapFile : is the pcap fullpath at local control PC  
+                    basedir : location from remote TD box for search TRWF2.dat
+                    dasdir : location of DAS tool  
+                    ricname:
+                    fidList : all changed fids   
+                    valueList : changed value list
+                    checkAllFids : if it is true, to compare the pcap FidValue pair with the defaultFicValue
+                    defaultPcap : the default Pcap
+                  : 
+                    return : Fid Value pair from pcap
             
-            Verify:
-            1. C1 first UPDATE, the fid value is the oldfidvalue
-            2. C1 second UPDATE, the fid value is the newfidvalue
-            3. C1 third UPDATE, the fid value is the oldfidvalue
+        Verify:
+                 Have 1 C1 message, the changed fids' value is correct
+                 If need to check all the Fids, all the Fid Value pair same with the defaultFidValue
+                 
+        Example:
+               |verify_Insert_in_message |   ${LOCAL_TMP_DIR}/capture_local.pcap |   ${BASE_DIR}  |  ${DAS_DIR} |   ${pubRic} |   ${FidList}  |  ${defaultvalue}  | True |  ${defaultPcap}|      
+               |verify_Insert_in_message |   ${LOCAL_TMP_DIR}/capture_local.pcap |   ${BASE_DIR}  |  ${DAS_DIR} |   ${pubRic} |   ${FidList}  |  ${defaultvalue}  |
         """ 
                 
         outputfileprefix = 'updateCheckC1'
@@ -2431,117 +2428,110 @@ class LocalBoxUtilities(_ToolUtil):
         
         parentName  = 'Message'
         messages = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
-        
-        if (len(messages) == 3):
-            #1st C1 message : fid value is the oldfidvalue
+        index = 0
+        linuxTool = LinuxToolUtilities()
+        linuxTool.setUtilPath(basedir)        
+        if (len(messages) == 1):            
             fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[0])
-            self._verify_Fid_value_in_fidsAndValues(fidsAndValues, fidnum, oldfidvalue)
-                       
-            #2nd C1 message : fid value update to the new fid value
-            fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[1])
-            self._verify_Fid_value_in_fidsAndValues(fidsAndValues, fidnum, newfidvalue)            
-            
-             #3rd C1 message : fid value back to the oldfidvalue
-            fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[2])
-            self._verify_Fid_value_in_fidsAndValues(fidsAndValues, fidnum, oldfidvalue)
-            
+            if checkAllFids :
+                defoutputfileprefix = 'rebuildC1'
+                deffilterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;1&quot;))'%(ricname)
+                defoutputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,defaultPcap,deffilterstring,defoutputfileprefix)
+                defmessages = self._xml_parse_get_all_elements_by_name(defoutputxmlfilelist[0],parentName)
+                if (len(defmessages) == 1):  
+                    defaultFidsValue = self._xml_parse_get_fidsAndValues_for_messageNode(defmessages[0])
+                    for (fid,value) in fidsAndValues.items():
+                        if(defaultFidsValue.has_key(fid)):
+                            if (defaultFidsValue[fid] != value):
+                                raise AssertionError('*ERROR* C1 message : the value of fid number (%s) not equal to the default value (%s)'%(fid,value))
+                        else:
+                            raise AssertionError('*ERROR* C1 message : the insert lost fid number (%s) '%(fid))
+                else:
+                    raise AssertionError('*ERROR* rebuild C1 message num is not 1: the number is (%s) '%(len(defmessages)))
+                
+                for delFile in defoutputxmlfilelist:
+                    os.remove(delFile)
+                os.remove(os.path.dirname(defoutputxmlfilelist[0]) + "/" + defoutputfileprefix + "xmlfromDAS.log")  
+                
+            else:
+                for elementfid in fidList:
+                    fidNum = linuxTool.get_FID_ID_by_FIDName(elementfid)
+                    if (fidsAndValues.has_key(fidNum)):
+                        if (fidsAndValues[fidNum] != valueList[index]):
+                            raise AssertionError('*ERROR* C1 message : the value of fid number (%s) not equal to (%s)'%(fidsAndValues[elementfid],valueList[index]))
+                        if index < len(valueList) :
+                            index = index + 1
+                    else:
+                        raise AssertionError('*ERROR* 1st C1 message : Missing FID %s in payload'%elementfid) 
         else:
-            raise AssertionError('*ERROR* No. of C1 message received not equal to 3 for RIC %s during PE change, received (%d) message(s)'%(ricname,len(messages)))
+            raise AssertionError('*ERROR* No. of C1 message received not equal to 1 for RIC %s during icf insert, received (%d) message(s)'%(ricname,len(messages)))
+        
         
         for delFile in outputxmlfilelist:
             os.remove(delFile)
+            
+        os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
         
-        os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")                
-           
-    def _search_field_in_icf_file(self, srcfile, field):
-        """check the field is in icf file or not
+    def get_REAL_Fids_in_icf_file(self, srcfile, count = 1):
+        """to Get some FIDs with outputFormat value TRWF_REAL_NOT_A_NUM 
+         
+        Argument:    
+                srcfile : the icf file.\n
+                count : the totol number of the Fids we want get
+                
+        Examples :
         
-        srcfile is the original icf file.\n
-        field is the Fid name need to check .\n
+            |${FidList} | get REAL Fids in icf file  | C:\\temp\\extractFile.icf |  3   |    
         """
         dom = xml.dom.minidom.parse(srcfile)  
         root = dom.documentElement  
-        iteratorlist = dom.getElementsByTagName('r')         
-        
+        iteratorlist = dom.getElementsByTagName('r')     
+        Fidlist= []    
+        index = 1
+        flag = False
+                
         for node in iteratorlist:
-            for subnode in node.childNodes:
-                if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:%s'%field :
-                    return True
+            for subnode in node.childNodes:    
+                REALFlag = False            
+                for ssubnode in subnode.childNodes:
+                    if REALFlag :
+                        if ssubnode.nodeType == node.ELEMENT_NODE and ssubnode.nodeName == 'it:value' and ssubnode.firstChild.data != '#BLANK#':
+                            flag = True
+                        if index > count :
+                            return Fidlist, flag
+                    if ssubnode.nodeType == node.ELEMENT_NODE and ssubnode.nodeName == 'it:outputFormat' and ssubnode.firstChild.data == 'TRWF_REAL_NOT_A_NUM':
+                        tempList = subnode.nodeName.split(':') 
+                        Fidlist.append(tempList[1])
+                        index = index + 1
+                        REALFlag = True
         
-        return False  
-    
-    def get_modify_field_in_icf(self, srcfile, ric, domain, fidcount):
-        """to get a Fid list which can be changed in icf
-        
-        srcfile is the original icf file.\n
-        ric, domain
-        fidcount: how many fids need to return
+        return False    
+
+    def modify_REAL_items_in_icf(self, srcfile, dstfile, ric, domain, fidlist=[], valuelist = []):   
+        """to modify some REAL type items with FIDs and Value list in icf
+                
+        Argument:         
+                    srcfile is the original icf file.\n
+                    ric, domain
+                    fidlist: the Fid list need to be changed
+                    valuelist: the list of the changed value 
          
-        return a fidlist
-        """   
-        simplefidlist = ['BID', 'ASK', 'OFF_CLOSE', 'HST_CLOSE2', 'GEN_VAL3', 'GEN_VAL1', 'ALT_CLOSE', 'ASSETS', 'OFFER', 'PCTCHNG', 'GEN_VAL2', 'TRDPRC_1', 'TRDPRC_2', 'TRDPRC_3', 'TRDPRC_4', 'TRDPRC_5', 'NETCHNG_1', 'HIGH_1', 'LOW_1', 'OPEN_PRC', 'HST_CLOSE', 'EARNINGS', 'YIELD', 'PCTCHNG', 'OPEN_BID', 'OPEN_ASK', 'CLOSE_BID', 'CLOSE_ASK', 'LOCHIGH', 'LOCLOW' ]                   
-        fidDict = {'BID':'22','ASK':'25', 'OFF_CLOSE':'3372', 'HST_CLOSE2':'963', 'GEN_VAL3':'998', 'GEN_VAL1':'996', 'ALT_CLOSE':'7672', 'ASSETS':'122', 'OFFER':'151', 'PCTCHNG':'56', 'GEN_VAL2':'997', 'TRDPRC_1':'6', 'TRDPRC_2':'7', 'TRDPRC_3':'8', 'TRDPRC_4':'9', 'TRDPRC_5':'10', 'NETCHNG_1':'11', 'HIGH_1':'12', 'LOW_1':'13', 'OPEN_PRC':'19', 'HST_CLOSE':'21', 'EARNINGS':'34', 'YIELD':'35', 'PCTCHNG':'56', 'LOCHIGH':'62', 'LOCLOW':'63'}
-        modifyFidlist= []
-        count = 0
-        
-        for elementfid in simplefidlist:
-            if count >= fidcount:
-                break
-            else :
-                searchR = self._search_field_in_icf_file(srcfile, elementfid)
-                if searchR == True:
-                    count = count + 1
-                    modifyFidlist.append(elementfid)
-                   
-        return modifyFidlist 
-    
-    def get_and_modify_2_item_in_icf(self, srcfile, dstfile, ric, domain, value):   
-        """to modify 2 FIDs with value in icf
-        
-        srcfile is the original icf file.\n
-        ric, domain
-        value: the changed value for the 2 FIDs
-         
-        return a FID name list and a FID num list
+        return nil
         """  
-        simplefidlist = ['BID', 'ASK', 'OFF_CLOSE', 'HST_CLOSE2', 'GEN_VAL3', 'GEN_VAL1', 'ALT_CLOSE', 'ASSETS', 'OFFER', 'PCTCHNG', 'GEN_VAL2', 'TRDPRC_1', 'TRDPRC_2', 'TRDPRC_3', 'TRDPRC_4', 'TRDPRC_5', 'NETCHNG_1', 'HIGH_1', 'LOW_1', 'OPEN_PRC', 'HST_CLOSE', 'EARNINGS', 'YIELD', 'PCTCHNG', 'OPEN_BID', 'OPEN_ASK', 'CLOSE_BID', 'CLOSE_ASK', 'LOCHIGH', 'LOCLOW' ]                   
-        fidDict = {'BID':'22','ASK':'25', 'OFF_CLOSE':'3372', 'HST_CLOSE2':'963', 'GEN_VAL3':'998', 'GEN_VAL1':'996', 'ALT_CLOSE':'7672', 'ASSETS':'122', 'OFFER':'151', 'PCTCHNG':'56', 'GEN_VAL2':'997', 'TRDPRC_1':'6', 'TRDPRC_2':'7', 'TRDPRC_3':'8', 'TRDPRC_4':'9', 'TRDPRC_5':'10', 'NETCHNG_1':'11', 'HIGH_1':'12', 'LOW_1':'13', 'OPEN_PRC':'19', 'HST_CLOSE':'21', 'EARNINGS':'34', 'YIELD':'35', 'PCTCHNG':'56', 'LOCHIGH':'62', 'LOCLOW':'63'}
-        modifyItem = []
-        modifyFidlist= []
-        fidnumlist = []
-        count = 0
         
-        for elementfid in simplefidlist:
-            if count >= 2:
-                break
-            else :
-                searchR = False
-                searchR = self._search_field_in_icf_file(srcfile, elementfid)
-                if searchR == True:
-                    modifyFidlist.append(elementfid)
-                    fidnumlist.append(fidDict[elementfid])
-                    modifyItem.append('<it:%s>\n <it:outputFormat>TRWF_REAL_NOT_A_NUM</it:outputFormat>\n <it:value>%s</it:value>\n</it:%s>'%(elementfid,value[count],elementfid))
-                    if count < len(value) :
-                        count = count + 1
-        _FMUtil().modify_icf(srcfile, dstfile, ric, domain, modifyItem[0],modifyItem[1])        
-        return modifyFidlist, fidnumlist
-     
-    def creat_REAL_modify_item_in_icf(self, fidlist, value ):
-        """creat some icf modify items with type REAL
+        modifyItem = []        
+        index = 0
         
-        fidlist is the FID name which need to change.\n
-        value is the changed value  .\n
-        return the modify item list
-        """  
-        modifyItem = []   
-        index = 0   
-        for elementfid in fidlist:          
-            modifyItem.append('<it:%s>\n <it:outputFormat>TRWF_REAL_NOT_A_NUM</it:outputFormat>\n <it:value>%s</it:value>\n</it:%s>'%(elementfid,value[index],elementfid))
-            if index < (len(value) - 1) :
-                index = index + 1
+        for fid in fidlist:
+            item = '<it:%s>\n <it:outputFormat>TRWF_REAL_NOT_A_NUM</it:outputFormat>\n <it:value>%s</it:value>\n</it:%s>'%(fid,valuelist[index],fid)
+            if index == 0:
+                _FMUtil().modify_icf(srcfile, dstfile, ric, domain, item)  
+            else:
+                _FMUtil().modify_icf(dstfile, dstfile, ric, domain, item)  
             
-        return modifyItem
-    
+            if index < len(valuelist) :
+                index = index + 1
+   
     def separate_string_to_list(self, srcstring, sepFlag):
         sepList = srcstring.split(sepFlag)
         return sepList, len(sepList)

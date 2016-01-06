@@ -219,31 +219,43 @@ Verify SIC rename handled correctly
     [Teardown]    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    25000    --AllowSICChange true
 
 Verify FMS Extract and Insert
-    [Documentation]    FMS Extract, Insert CHE owned RIC from/to CHE Database, CHE owned data can be extracted from CHE database via FMS, Insert CHE owned data to CHE database via FMS
+    [Documentation]    Extract existing RIC fields and values \ into an .icf file using FmsCmd. Modify some of the values and re-load the .icf file using FmsCmd.Verify that the modified values are published.
     ...    Test Case - Verify FMS Extract and Insert : http://www.iajira.amers.ime.reuters.com/browse/CATF-1892
     Start MTE    ${MTE}
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${fidvalue}    Create List    300    100
-    ${newfidvalue}    Create List    600    220
-    ${extractFile}    set variable    ${LOCAL_TMP_DIR}/extractFile.icf
-    ${extractFilemodified}    set variable    ${LOCAL_TMP_DIR}/extractFile_modified.icf
-    Extract icf    ${ric}    ${domain}    ${extractFile}    ${serviceName}
-    ${fieldlist}    ${fidnumlist}    get and modify 2 item in icf    ${extractFile}    ${extractFilemodified}    ${ric}    ${domain}
-    ...    ${fidvalue}
-    Start Capture MTE Output    ${MTE}
-    Insert icf    ${extractFilemodified}    ${serviceName}
-    Extract icf    ${ric}    ${domain}    ${extractFile}    ${serviceName}
-    ${modifyitem}    creat REAL modify item in icf    ${fieldlist}    ${newfidvalue}
-    modify icf    ${extractFile}    ${extractFilemodified}    ${ric}    ${domain}    ${modifyitem[0]}    ${modifyitem[1]}
-    Insert icf    ${extractFilemodified}    ${serviceName}
-    Insert icf    ${extractFile}    ${serviceName}
+    ${defaultvalue}    Create List    300    100
+    ${newvalue}    Create List    600    220
+    ${tempExtractFile}    set variable    ${LOCAL_TMP_DIR}/tempExtractFile.icf
+    ${defaultExtractFile}    set variable    ${LOCAL_TMP_DIR}/defaultExtractFile.icf
+    ${modifiedExtractFile}    set variable    ${LOCAL_TMP_DIR}/modifiedExtractFile.icf
+    ${setDefaultLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localSetDefault.pcap
+    ${changeLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localChange.pcap
+    Extract icf    ${ric}    ${domain}    ${tempExtractFile}    ${serviceName}
+    ${count}    Convert To Integer    2
+    Comment    //to get some REAL Fids list and check if these Fids has value or not, if it has value the ${defaultFlag} is True we don't need to create default value for them, if not the ${defaultFlag} is False we need to create defalut value for them;
+    ${FidList}    ${defaultFlag}    get REAL Fids in icf file    ${tempExtractFile}    ${count}
+    Run Keyword If    ${defaultFlag} == False    Change some REAL Fids for RIC    ${tempExtractFile}    ${defaultExtractFile}    ${pubRic}    ${domain}
+    ...    ${FidList}    ${defaultvalue}    ${serviceName}    ${setDefaultLocalPcap}
+    Comment    //to capture a refresh for current values, this pcap can be used to compare with the insert of the default icf
+    Start Capture MTE Output    ${MTE}    ${REMOTE_TMP_DIR}/defaultCapture.pcap
+    rebuild ric    ${serviceName}    ${ric}    ${domain}
     Stop Capture MTE Output    ${MTE}    1    15
-    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
-    Run Keyword And Continue On Failure    verify Extract and Insert in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}    ${fidnumlist}
-    ...    ${fidvalue}    ${newfidvalue}
-    [Teardown]    case teardown    ${extractFile}    ${extractFilemodified}    ${LOCAL_TMP_DIR}/capture_local.pcap
+    get remote file    ${REMOTE_TMP_DIR}/defaultCapture.pcap    ${LOCAL_TMP_DIR}/capture_localDefault.pcap
+    Comment    //to extract the default icf file, and modify the Fids in ${FidList} with the value in list ${newValue}
+    Extract icf    ${ric}    ${domain}    ${defaultExtractFile}    ${serviceName}
+    Change some REAL Fids for RIC    ${defaultExtractFile}    ${modifiedExtractFile}    ${pubRic}    ${domain}    ${FidList}    ${newvalue}
+    ...    ${serviceName}    ${changeLocalPcap}
+    Comment    //to insert the default icf file to fallback the changes to the default ones
+    Start Capture MTE Output    ${MTE}
+    Insert icf    ${defaultExtractFile}    ${serviceName}
+    Stop Capture MTE Output    ${MTE}    1    15
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_localDefault2.pcap
+    verify_Insert_in_message    ${LOCAL_TMP_DIR}/capture_localDefault2.pcap    ${BASE_DIR}    ${DAS_DIR}    ${pubRic}    ${FidList}    ${defaultvalue}
+    ...    True    ${LOCAL_TMP_DIR}/capture_localDefault.pcap
+    [Teardown]    case teardown    ${tempExtractFile}    ${defaultExtractFile}    ${modifiedExtractFile}    ${LOCAL_TMP_DIR}/capture_localDefault.pcap    ${changeLocalPcap}
+    ...    ${setDefaultLocalPcap}    ${LOCAL_TMP_DIR}/capture_localDefault2.pcap
 
 Verify Deletion Delay
     [Documentation]    Automatic delete Instrument in LH cache after 5 days, RIC is dropped and GEDA Item dropped due to expiration is sent to the SMF log, Instrument is successfully deleted \ in LH cache after 5 days
@@ -326,6 +338,18 @@ Extract icf
     ...    extract    --RIC ${ric}    --Domain ${domain}    --ExcludeNullFields false    --HandlerName ${MTE}    --OutputFile ${extractFile}
     ...    --Services ${serviceName}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+
+Change some REAL Fids for RIC
+    [Arguments]    ${tempExtractFile}    ${defaultExtractFile}    ${pubRic}    ${domain}    ${FidList}    ${ValueList}
+    ...    ${serviceName}    ${localPcap}
+    [Documentation]    Change some Fids in FidList with value in ValueList for a RIC
+    modify_REAL_items_in_icf    ${tempExtractFile}    ${defaultExtractFile}    ${pubRic}    ${domain}    ${FidList}    ${ValueList}
+    Start Capture MTE Output    ${MTE}
+    Insert icf    ${defaultExtractFile}    ${serviceName}
+    Stop Capture MTE Output    ${MTE}    1    15
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localPcap}
+    verify_Insert_in_message    ${localPcap}    ${BASE_DIR}    ${DAS_DIR}    ${pubRic}    ${FidList}    ${ValueList}
+    [Teardown]
 
 Insert icf
     [Arguments]    ${insertFile}    ${serviceName}
