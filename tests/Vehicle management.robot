@@ -151,10 +151,10 @@ Verify FMS Rebuild
 Drop a RIC by deleting EXL File and Full Reorg
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1850
     ...    To verify whether the RICs in a exl file can be dropped if the exl file is deleted.
-    ${domain}    Get Preferred Domain
-    ${serviceName}    Get FMS Service Name
+    [Setup]    Vehicle Management Case Setup
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${exlFullFileName}=    get EXL for RIC    ${LOCAL_FMS_DIR}    ${domain}    ${serviceName}    ${ric}
+    Append To List    ${processedEXLs}    ${exlFullFileName}
     ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
     copy File    ${exlFullFileName}    ${LOCAL_TMP_DIR}/${exlFileName}
     remove file    ${exlFullFileName}
@@ -163,8 +163,7 @@ Drop a RIC by deleting EXL File and Full Reorg
     copy File    ${LOCAL_TMP_DIR}/${exlFileName}    ${exlFullFileName}
     wait smf log message after time    Drop message sent    ${currentDateTime}
     Run Keyword And Continue On Failure    Verify RIC is Dropped In MTE Cache    ${MTE}    ${ric}
-    Load Single EXL File    ${exlFullFileName}    ${serviceName}    ${CHE_IP}    25000
-    [Teardown]    case teardown    ${LOCAL_TMP_DIR}/${exlFileName}
+    [Teardown]    Vehicle Management Case Teardown    ${LOCAL_TMP_DIR}/${exlFileName}
 
 Verify Reconcile of Cache
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1848
@@ -384,3 +383,20 @@ Get value from MTE config
     ${fieldvalue}=    get MTE config value    ${mteConfigFile}    ${fieldname}
     return from keyword if    '${fieldvalue}' != 'NOT FOUND'    ${fieldvalue}
     FAIL    No ${fieldname} found in venue config file: ${mteConfigFile}
+
+Vehicle Management Case Setup
+    [Documentation]    The setup will get FMS service name to ${serviceName} and get perferred domain to ${domain}.
+    ...    The list variable @{processedEXLs} will be created, all exl files which should be reloaded when teardown cab be added into this list.
+    @{processedEXLs}    create list
+    Set Suite Variable    @{processedEXLs}
+    ${serviceName}    Get FMS Service Name
+    Set Suite Variable    ${serviceName}
+    ${domain}    Get Preferred Domain
+    Set Suite Variable    ${domain}
+
+Vehicle Management Case Teardown
+    [Arguments]    @{tmpfiles}
+    [Documentation]    The teardown will reload all exl files in @{processedEXLs}, and remove temporary files
+    : FOR    ${exlfile}    IN    @{processedEXLs}
+    \    Load Single EXL File    ${exlfile}    ${serviceName}    ${CHE_IP}    25000
+    Case Teardown    @{tmpfiles}
