@@ -2118,61 +2118,7 @@ class LocalBoxUtilities(_ToolUtil):
         
         for delFile in outputxmlfilelist:
             os.remove(delFile)
-            
-    def get_mangling_rule_content(self,rule,configFileLocalFullPath):
-        """ Get the setting for specific mangling rule found in manglingConfiguration.xml
-            This include 
-            tag <RIC> : enabled , Prefix, Suffix
-            tag <PE> : enabled, PE value
-            tag <IMSOUT> : enabled, IMSOUT value
-            
-            Argument : rule -  'SOU', 'BETA', RRG', 'UNMANGLED'
-                       configFileLocalFullPath - full path included config filename at Control PC
-                       
-            Return : dictionary of setting e.g.
-                 {'RIC': {'Prefix': '![', 'enabled': 'true', 'Suffix': None}, 
-                  'PE': {'enabled': 'false', 'text': '0'}, 
-                  'IMSOUT': {'enabled': 'false', 'text': '0'}}
-            
-            Examples :
-            | &{manglingRuleContent}| get mangling rule content |SOU | C:\\temp\\manglingConfiguration.xml
-        """
-                
-        #safe check for rule value
-        if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
-            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)    
-        
-        retContent= {}
-        tree = ET.parse(configFileLocalFullPath)
-        root = tree.getroot()
-        retIter = root.iter('Rule')
-        for child in retIter:
-            if (child.attrib['id'] == LinuxToolUtilities().MANGLINGRULE[rule]):
-                for index in range(len(child)):
-                    retContent[child[index].tag] = child[index].attrib
-                    if (child[index].tag == 'RIC'):
-                        for sub_index in range(len(child[index])):
-                            retContent[child[index].tag][child[index][sub_index].tag] = child[index][sub_index].text 
-                    else:
-                        retContent[child[index].tag]['text'] = child[index].text
-
-        if (len(retContent) == 0):
-            raise AssertionError('*ERROR* Missing mangling configuration for rule %s in %s'%(rule,configFileLocalFullPath))
-        
-        if not (retContent.has_key('RIC')):
-            raise AssertionError('*ERROR* Missing <RIC> in %s'%(configFileLocalFullPath))
-        
-        if not (retContent['RIC'].has_key('Prefix')):
-            raise AssertionError('*ERROR* Missing <Prefix> under <RIC> in %s'%(configFileLocalFullPath))
-            
-        if not (retContent.has_key('PE')):
-            raise AssertionError('*ERROR* Missing <PE> in %s'%(configFileLocalFullPath))            
-        
-        if not (retContent['PE'].has_key('text')):
-            raise AssertionError('*ERROR* Missing value for <PE> in %s'%(configFileLocalFullPath))  
-                
-        return retContent
-    
+               
     def _load_xml_file(self,xmlFileLocalFullPath,isNonStandardXml):
         """load xml file into cache and get the iterator point to first element
         
