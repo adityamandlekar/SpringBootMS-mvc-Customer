@@ -568,6 +568,81 @@ class LocalBoxUtilities(_ToolUtil):
                 os.remove(exist_file)
         
             os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
+    
+    
+    def verify_unsolicited_response_sequence_number_are_increasing(self, pcapfile, das_dir, ric, domain):
+        """ verify if unsolicited response message sequence numbers for RIC are in increasing order in MTE output pcap message
+            Argument : pcapfile : MTE output capture pcap file fullpath
+                       das_dir : path for DAS tool
+                       ric : published RIC
+                       domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+            return : list of response message sequence number 
+        """           
+
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        outputfileprefix = 'test_seqnum_resp_'
+        filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_responseTypeNum= &quot;TRWF_TRDM_RPT_UNSOLICITED_RESP&quot;)))'%(filterDomain, ric)
+        outputxmlfile = self._get_extractorXml_from_pcap(das_dir, pcapfile, filterstring, outputfileprefix)                
+        
+        parentName  = 'Message'
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
+        seqNumList = []
+        for messageNode in messages:
+            seqNum = self._xml_parse_get_field_for_messageNode (messageNode, 'ItemSeqNum')
+            seqNumList.append(seqNum)
+                    
+        if len(seqNumList)== 0:
+            raise AssertionError('*ERROR* response message for %s, %s does not exist.'%(ric,domain)) 
+                    
+        for i in xrange(len(seqNumList) - 1):
+            if seqNumList[i] > seqNumList[i+1]:
+                raise AssertionError('*ERROR* updated message for %s, %s are not in correct sequence order %s.'%(ric, domain, seqNumList)) 
+                     
+        for exist_file in outputxmlfile:
+            os.remove(exist_file)
+        os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")         
+        return seqNumList
+        
+        
+    def verify_updated_message_sequence_number_are_increasing(self, pcapfile, dasdir, ric, domain):
+        """ verify if updated message sequence number for RIC are in increasing order in MTE output pcap message
+            Argument : pcapfile : MTE output capture pcap file fullpath
+                       das_dir : path for DAS tool
+                       ric : published RIC
+                       domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+            return : list of update message sequence number 
+        """       
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        outputfileprefix = 'test_seqnum_update_'
+        
+        filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, All_msgBase_msgKey_domainType = &quot;%s&quot;))'%(ric, filterDomain)
+        outputxmlfile = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
+        parentName  = 'Message'
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
+        
+        seqNumList = []
+        for messageNode in messages:
+            seqNum = self._xml_parse_get_field_for_messageNode (messageNode, 'ItemSeqNum')
+            seqNumList.append(seqNum)
+#         
+        if len(seqNumList) == 0:
+            raise AssertionError('*ERROR* updated message for %s, %s does not exist.'%(ric,domain)) 
+          
+        for i in xrange(len(seqNumList) - 1):
+            if not ((seqNumList[i] == seqNumList[i + 1]) or (int(seqNumList[i]) +1  == int(seqNumList[i + 1]))):
+                raise AssertionError('*ERROR* updated message for %s, %s are not in correct sequence order %s.'%(ric, domain, seqNumList)) 
+            
+        for exist_file in outputxmlfile:
+            os.remove(exist_file)
+        os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
+        return seqNumList
+    
                               
     def _verify_PE_change_in_message_c0(self,pcapfile,dasdir,ricname,newPE):
         """ internal function used to verify PE Change response (C0) for RIC in MTE output pcap message
@@ -2548,4 +2623,6 @@ class LocalBoxUtilities(_ToolUtil):
 
     def convert_num_to_opposite(self, srcNum):
         dstNum = 0 - srcNum 
-        return dstNum      
+        return dstNum    
+    
+    
