@@ -47,7 +47,7 @@ Verify PE Change Behavior
     Load Single EXL File    ${exlmodified}    ${serviceName}    ${CHE_IP}    25000
     Stop Capture MTE Output    ${MTE}    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
-    Run Keyword And Continue On Failure    verify PE Change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}    @{pe}[0]
+    Run Keyword And Continue On Failure    verify PE Change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}    ${pe}
     ...    ${penew}
     Load Single EXL File    ${exlfile}    ${serviceName}    ${CHE_IP}    25000
     Load Mangling Settings    ${MTE}

@@ -1096,34 +1096,7 @@ class LinuxToolUtilities():
         
         if rc !=0 or stderr !='':
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))                
-
-    def set_PE_mangling_value(self,enabled,cfgfile):
-        """enable or disalbe PE mangling by chaning the content of manglingConfiguration.xml
-        enabled : True=enable , False=disable
-        cfgfile : full path of mangling config file xml
-        Returns : Nil
-
-        Examples:
-        | set PE mangling value | True | /ThomsonReuters/Venues/MFDS/MTE/manglingConfiguration.xml |
-        """         
-        #Find configuration file
-        LinuxFSUtilities().remote_file_should_exist(cfgfile)
-
-        #Check if <PE> tag exist
-        searchKeyWord = "<PE enabled="
-        foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-        if (len(foundlines) == 0):
-            raise AssertionError('*ERROR* <PE> tag is missing in %s' %cfgfile)
-                
-        if (enabled):
-            cmd = "sed -i 's/PE enabled=\"false\"/PE enabled=\"true\"/' " + cfgfile
-        else:
-            cmd = "sed -i 's/PE enabled=\"true\"/PE enabled=\"false\"/' " + cfgfile
-        stdout, stderr, rc = _exec_command(cmd)
-        
-        if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))        
-    
+ 
     def set_value_in_MTE_cfg(self, mtecfgfile, tagName, value):
         """change tag value in ${MTE}.xml
         

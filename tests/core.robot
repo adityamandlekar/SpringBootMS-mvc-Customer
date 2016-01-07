@@ -394,6 +394,9 @@ Set Mangling Rule
     put remote file    ${configFileLocal}    @{files}[0]
     Run Keyword And Continue On Failure    Load Mangling Settings    ${mte}
     restore cfg file    @{files}
+    Comment    Revert changes in local mangling config file
+    Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${None}
+    ${configFileLocal}=    Get Mangling Config File
 
 Set RIC In EXL
     [Arguments]    ${srcFile}    ${dstFile}    ${ric}    ${domain}    ${newRIC}

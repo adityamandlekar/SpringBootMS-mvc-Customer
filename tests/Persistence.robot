@@ -123,8 +123,8 @@ Go Into EndOfDay time
     [Documentation]    Force MTE go through EndOfDay event
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
     ${mtecfgfile}=    Convert To Lowercase    ${MTE}.xml
-    ${mteConfigFile}=    Get MTE Config File
-    ${connectTimesIdentifier}=    Get ConnectTimesIdentifier    ${mteConfigFile}
+    ${configFileLocal}=    Get MTE Config File
+    ${connectTimesIdentifier}=    Get ConnectTimesIdentifier    ${configFileLocal}
     ${serviceName}=    Get FMS Service Name
     ${exlfile}=    get state EXL file    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
     @{dstRic}=    get ric fields from EXL    ${exlfile}    ${connectTimesIdentifier}    DST_REF
@@ -135,13 +135,18 @@ Go Into EndOfDay time
     ${endOfDay}    add time to date    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]    ${offsetInSecond} second
     ${endOfDay}    get time    hour min sec    ${endOfDay}
     ${orgFile}    ${backupFile}    backup cfg file    ${VENUE_DIR}    ${mtecfgfile}
-    set value in MTE cfg    ${orgFile}    EndOfDayTime    @{endOfDay}[0]:@{endOfDay}[1]
+    set MTE config tag value    ${configFileLocal}    @{endOfDay}[0]:@{endOfDay}[1]    EndOfDayTime
+    delete remote files    ${orgFile}
+    put remote file    ${configFileLocal}    ${orgFile}
     stop MTE    ${MTE}
     start MTE    ${MTE}
     sleep    ${offsetInSecond}
     restore cfg file    ${orgFile}    ${backupFile}
     stop MTE    ${MTE}
     start MTE    ${MTE}
+    Comment    Revert changes in local venue config file
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
+    ${configFileLocal}=    Get MTE Config File
     [Teardown]
 
 Go Into Feed Time And Set End Feed Time

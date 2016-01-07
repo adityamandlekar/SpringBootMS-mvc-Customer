@@ -2173,16 +2173,54 @@ class LocalBoxUtilities(_ToolUtil):
                 
         return retContent
     
+    def _load_xml_file(self,xmlFileLocalFullPath,isNonStandardXml):
+        """load xml file into cache and get the iterator point to first element
+        
+        xmlFileLocalFullPath : full path of xml file
+        isNonStandardXml : indicate if the xml file is non-standard one or not
+        Returns : iterator point to the first element of the xml file
+
+        """                
+        if not os.path.exists(xmlFileLocalFullPath):
+            raise AssertionError('*ERROR*  %s is not available' %xmlFileLocalFullPath)
+        
+        if (isNonStandardXml):
+            with open (xmlFileLocalFullPath, "r") as myfile:
+                linesRead = myfile.readlines()
+    
+            # Note that the following workaround is needed to make the venue config file a valid XML file.
+            linesRead = "<GATS>" + ''.join(linesRead) + "</GATS>"
+        
+            root = ET.fromstring(linesRead)
+        else:
+            tree = ET.parse(xmlFileLocalFullPath)
+            root = tree.getroot()                    
+        return root
+    
+    def _save_to_xml_file(self,root,xmlFileLocalFullPath,isNonStandardXml):
+        """Save xml content from cache to file
+        
+        xmlFileLocalFullPath : full path of xml file
+        isNonStandardXml : indicate if the xml file is non-standard one or not
+        Returns : Nil
+
+        """         
+        if (isNonStandardXml):
+            with open (xmlFileLocalFullPath, "w") as myfile:
+                for child in root:
+                    myfile.write(ET.tostring(child))                                            
+        else:
+            ET.ElementTree(root).write(xmlFileLocalFullPath)
+    
     def _get_xml_node_by_xPath(self,root,xPath):
         """get xml node by xPath
         
         root : object return from calling tree.getroot() while tree = ET.parse(file.xml)
-        xPath : a list specific xPath for the node
+        xPath : a list contain the xPath for the node
         Returns : iterator for 'ALL' elements that matched with xPath
 
-        Examples:
-
         """
+        print xPath
         xmlPathLength = len(xPath)
         if xmlPathLength < 1:
             raise AssertionError('*ERROR*  Need to provide xPath to look up.')
@@ -2190,58 +2228,57 @@ class LocalBoxUtilities(_ToolUtil):
             xmlPathString = '/'.join(map(str, xPath))
         else:
             xmlPathString = str(xPath[0])
-            
+        
         return root.iterfind(".//" + xmlPathString)
     
-    def set_xml_tag_value(self,xmlFileLocalFullPath,tagValue,xPath):
+    def _set_xml_tag_value(self,xmlFileLocalFullPath,tagValue,isNonStandardXml,xPath):
         """set tag value in xml file specficied by xPath
         
         xmlFileLocalFullPath : full path of xml file
         tagValue : target tag value
-        xPath : a list specific xPath for the node
+        xPath : a list contain the xPath for the node
         Returns : Nil
 
-        Examples:
-        | set xml tag value | C:\\tmp\\test.xml| 1234 | ['Rule','PE'] |
         """
-                
-        if not os.path.exists(xmlFileLocalFullPath):
-            raise AssertionError('*ERROR*  %s is not available' %xmlFileLocalFullPath)
-        
-        tree = ET.parse(xmlFileLocalFullPath)
-        root = tree.getroot()
-
-        nodes = self._get_xml_node_by_xmlPath(root, xPath)
+        root = self._load_xml_file(xmlFileLocalFullPath,isNonStandardXml)
+        nodes = self._get_xml_node_by_xPath(root, xPath)
         for node in nodes:
             node.text=str(tagValue)
-                
-        tree.write(xmlFileLocalFullPath)    
+        
+        self._save_to_xml_file(root,xmlFileLocalFullPath,isNonStandardXml)
     
-    def set_xml_tag_attributes_value(self,xmlFileLocalFullPath,attributes,xPath):
+    def _set_xml_tag_attributes_value(self,xmlFileLocalFullPath,attributes,isNonStandardXml,xPath):
         """set attribute of a tag in xml file specficied by xPath
         
         xmlFileLocalFullPath : full path of xml file
         attributes : a map specific the attributes(key) and correpsonding value
-        xPath : a list specific xPath for the node
+        xPath : a list contain the xPath for the node
         Returns : Nil
-
-        Examples:
-        | set xml tag attributes value | C:\\tmp\\test.xml| {'defaultRule' : '0'} | ['Partitions'] |
+        
         """        
-        
-        if not os.path.exists(xmlFileLocalFullPath):
-            raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
-        
-        tree = ET.parse(xmlFileLocalFullPath)
-        root = tree.getroot()
-
+        root = self._load_xml_file(xmlFileLocalFullPath,isNonStandardXml)        
         nodes = self._get_xml_node_by_xPath(root, xPath)
+        
         for node in nodes:
             for key in attributes.keys():
                 node.set(key,attributes[key])
                 
-        tree.write(xmlFileLocalFullPath)
-                 
+        self._save_to_xml_file(root,xmlFileLocalFullPath,isNonStandardXml)
+
+    def set_MTE_config_tag_value(self,xmlFileLocalFullPath,value,*xPath):
+        """set tag value in venue config xml file
+        
+        xmlFileLocalFullPath : full path of xml file
+        value : target tag value
+        xPath : xPath for the node
+        Returns : Nil
+
+        Examples:
+        | set MTE config tag value | C:/tmp/venue_config.xml | 13:00 | EndOfDayTime
+        """
+                        
+        self._set_xml_tag_value(xmlFileLocalFullPath,value,True,xPath)
+     
     def set_mangling_rule_default_value(self,rule,configFileLocalFullPath):
         """set the mangling rule <Partition defaultRule=""> in manglingConfiguration.xml
         
@@ -2257,9 +2294,9 @@ class LocalBoxUtilities(_ToolUtil):
         if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
             raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
         
-        xmlPath = ['Partitions']
+        xPath = ['Partitions']
         attribute = {'defaultRule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
-        self.set_xml_tag_attributes_value(configFileLocalFullPath,attribute,xmlPath)
+        self._set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
         
     def set_mangling_rule_parition_value(self,rule,configFileLocalFullPath):
         """set the mangling rule of <Partitions rule=""> in manglingConfiguration.xml
@@ -2276,9 +2313,9 @@ class LocalBoxUtilities(_ToolUtil):
         if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
             raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
         
-        xmlPath = ['Partitions', 'Partition']
+        xPath = ['Partitions','Partition']
         attribute = {'rule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
-        self.set_xml_tag_attributes_value(configFileLocalFullPath,attribute,xmlPath)
+        self._set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
                        
     def convert_dataView_response_to_dictionary(self,dataview_response):
         """ capture the FID Name and FID value from DateView output which return from run  run_dataview
