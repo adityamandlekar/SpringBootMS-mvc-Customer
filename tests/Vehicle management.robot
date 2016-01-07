@@ -225,37 +225,38 @@ Verify FMS Extract and Insert
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${defaultvalue}    Create List    300    100
-    ${newvalue}    Create List    600    220
     ${tempExtractFile}    set variable    ${LOCAL_TMP_DIR}/tempExtractFile.icf
     ${defaultExtractFile}    set variable    ${LOCAL_TMP_DIR}/defaultExtractFile.icf
-    ${modifiedExtractFile}    set variable    ${LOCAL_TMP_DIR}/modifiedExtractFile.icf
     ${setDefaultLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localSetDefault.pcap
     ${changeLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localChange.pcap
     Extract icf    ${ric}    ${domain}    ${tempExtractFile}    ${serviceName}
     ${count}    Convert To Integer    2
-    Comment    //to get some REAL Fids list and check if these Fids has value or not, if it has value the ${defaultFlag} is True we don't need to create default value for them, if not the ${defaultFlag} is False we need to create defalut value for them;
-    ${FidList}    ${defaultFlag}    get REAL Fids in icf file    ${tempExtractFile}    ${count}
-    Run Keyword If    ${defaultFlag} == False    Change some REAL Fids for RIC    ${tempExtractFile}    ${defaultExtractFile}    ${pubRic}    ${domain}
-    ...    ${FidList}    ${defaultvalue}    ${serviceName}    ${setDefaultLocalPcap}
+    Comment    //to get some REAL Fids name list and check if these Fids has value or not, if it has value the ${haveDefaultValue} is True we don't need to create default value for them, if not the ${haveDefaultValue} is False we need to create defalut value for them;
+    ${FidList}    ${haveDefaultValue}    get REAL Fids in icf file    ${tempExtractFile}    ${count}
+    ${newFidNameValue}    ${newFidNumValue}    Create Fid Value Pair    ${FidList}
+    ${defaultFidNameValue}    ${defaultFidNumValue}    Create Fid Value Pair    ${FidList}
+    Run Keyword If    ${haveDefaultValue} == False    Change some REAL Fids for RIC    ${tempExtractFile}    ${pubRic}    ${domain}    ${defaultFidNameValue}
+    ...    ${defaultFidNumValue}    ${serviceName}    ${setDefaultLocalPcap}
     Comment    //to capture a refresh for current values, this pcap can be used to compare with the insert of the default icf
     Start Capture MTE Output    ${MTE}    ${REMOTE_TMP_DIR}/defaultCapture.pcap
     rebuild ric    ${serviceName}    ${ric}    ${domain}
     Stop Capture MTE Output    ${MTE}    1    15
     get remote file    ${REMOTE_TMP_DIR}/defaultCapture.pcap    ${LOCAL_TMP_DIR}/capture_localDefault.pcap
+    ${defaultFidsValues}    get FidValue in message    ${LOCAL_TMP_DIR}/capture_localDefault.pcap    ${DAS_DIR}    ${pubRic}    True
     Comment    //to extract the default icf file, and modify the Fids in ${FidList} with the value in list ${newValue}
     Extract icf    ${ric}    ${domain}    ${defaultExtractFile}    ${serviceName}
-    Change some REAL Fids for RIC    ${defaultExtractFile}    ${modifiedExtractFile}    ${pubRic}    ${domain}    ${FidList}    ${newvalue}
-    ...    ${serviceName}    ${changeLocalPcap}
+    Change some REAL Fids for RIC    ${defaultExtractFile}    ${pubRic}    ${domain}    ${newFidNameValue}    ${newFidNumValue}    ${serviceName}
+    ...    ${changeLocalPcap}
     Comment    //to insert the default icf file to fallback the changes to the default ones
-    Start Capture MTE Output    ${MTE}
     Insert icf    ${defaultExtractFile}    ${serviceName}
+    Start Capture MTE Output    ${MTE}
+    rebuild ric    ${serviceName}    ${ric}    ${domain}
     Stop Capture MTE Output    ${MTE}    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_localDefault2.pcap
-    verify_Insert_in_message    ${LOCAL_TMP_DIR}/capture_localDefault2.pcap    ${BASE_DIR}    ${DAS_DIR}    ${pubRic}    ${FidList}    ${defaultvalue}
-    ...    True    ${LOCAL_TMP_DIR}/capture_localDefault.pcap
-    [Teardown]    case teardown    ${tempExtractFile}    ${defaultExtractFile}    ${modifiedExtractFile}    ${LOCAL_TMP_DIR}/capture_localDefault.pcap    ${changeLocalPcap}
-    ...    ${setDefaultLocalPcap}    ${LOCAL_TMP_DIR}/capture_localDefault2.pcap
+    ${fallbkFidsValues}    get FidValue in message    ${LOCAL_TMP_DIR}/capture_localDefault2.pcap    ${DAS_DIR}    ${pubRic}    True
+    Dictionaries Should Be Equal    ${defaultFidsValues}    ${fallbkFidsValues}
+    [Teardown]    case teardown    ${tempExtractFile}    ${defaultExtractFile}    ${LOCAL_TMP_DIR}/capture_localDefault.pcap    ${changeLocalPcap}    ${setDefaultLocalPcap}
+    ...    ${LOCAL_TMP_DIR}/capture_localDefault2.pcap
 
 Verify Deletion Delay
     [Documentation]    Automatic delete Instrument in LH cache after 5 days, RIC is dropped and GEDA Item dropped due to expiration is sent to the SMF log, Instrument is successfully deleted \ in LH cache after 5 days
@@ -340,16 +341,19 @@ Extract icf
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
 Change some REAL Fids for RIC
-    [Arguments]    ${tempExtractFile}    ${defaultExtractFile}    ${pubRic}    ${domain}    ${FidList}    ${ValueList}
-    ...    ${serviceName}    ${localPcap}
+    [Arguments]    ${srcExtractFile}    ${pubRic}    ${domain}    ${FidNameValue}    ${FidNumValue}    ${serviceName}
+    ...    ${localPcap}
     [Documentation]    Change some Fids in FidList with value in ValueList for a RIC
-    modify_REAL_items_in_icf    ${tempExtractFile}    ${defaultExtractFile}    ${pubRic}    ${domain}    ${FidList}    ${ValueList}
+    ${modifiedExtractFile}    set variable    ${LOCAL_TMP_DIR}/modifiedExtractFile.icf
+    modify REAL items in icf    ${srcExtractFile}    ${modifiedExtractFile}    ${pubRic}    ${domain}    ${FidNameValue}
     Start Capture MTE Output    ${MTE}
-    Insert icf    ${defaultExtractFile}    ${serviceName}
+    Insert icf    ${modifiedExtractFile}    ${serviceName}
     Stop Capture MTE Output    ${MTE}    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localPcap}
-    verify_Insert_in_message    ${localPcap}    ${BASE_DIR}    ${DAS_DIR}    ${pubRic}    ${FidList}    ${ValueList}
+    ${allFidsValues}    get FidValue in message    ${localPcap}    ${DAS_DIR}    ${pubRic}
+    Dictionary Should Contain Sub Dictionary    ${allFidsValues}    ${FidNumValue}
     [Teardown]
+    [Return]    ${allFidsValues}
 
 Insert icf
     [Arguments]    ${insertFile}    ${serviceName}
@@ -408,3 +412,15 @@ Get value from MTE config
     ${fieldvalue}=    get MTE config value    ${mteConfigFile}    ${fieldname}
     return from keyword if    '${fieldvalue}' != 'NOT FOUND'    ${fieldvalue}
     FAIL    No ${fieldname} found in venue config file: ${mteConfigFile}
+
+Create Fid Value Pair
+    [Arguments]    ${FidList}
+    [Documentation]    Use a Fid name list to create Fid Value dictionary, only for REAL type fid
+    ${fidnamevalue}    Create Dictionary
+    ${fidnumvalue}    Create Dictionary
+    : FOR    ${Fid}    IN    @{FidList}
+    \    ${fidNum}    get FID ID by FIDName    ${Fid}
+    \    ${value} =    Generate Random String    3    [NUMBERS]
+    \    Set To Dictionary    ${fidnamevalue}    ${Fid}    1${value}
+    \    Set To Dictionary    ${fidnumvalue}    ${fidNum}    1${value}
+    [Return]    ${fidnamevalue}    ${fidnumvalue}

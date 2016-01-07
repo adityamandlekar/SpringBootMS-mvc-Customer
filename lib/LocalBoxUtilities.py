@@ -2396,8 +2396,8 @@ class LocalBoxUtilities(_ToolUtil):
             
         cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
         self._run_local_SCWCLI(scwcli_dir,cmd)
-                        
-    def verify_Insert_in_message(self,pcapfile,basedir,dasdir,ricname,fidList=[],valueList=[], checkAllFids=False, defaultPcap=''):
+    
+    def get_FidValue_in_message(self,pcapfile,dasdir,ricname, responseFlag = False):
         """ To verify the insert icf file can update the changed fid and value correct
         
         Argument :         
@@ -2405,10 +2405,7 @@ class LocalBoxUtilities(_ToolUtil):
                     basedir : location from remote TD box for search TRWF2.dat
                     dasdir : location of DAS tool  
                     ricname:
-                    fidList : all changed fids   
-                    valueList : changed value list
-                    checkAllFids : if it is true, to compare the pcap FidValue pair with the defaultFicValue
-                    defaultPcap : the default Pcap
+                    responseFlag : to separate the message is update one or response one
                   : 
                     return : Fid Value pair from pcap
             
@@ -2417,52 +2414,23 @@ class LocalBoxUtilities(_ToolUtil):
                  If need to check all the Fids, all the Fid Value pair same with the defaultFidValue
                  
         Example:
-               |verify_Insert_in_message |   ${LOCAL_TMP_DIR}/capture_local.pcap |   ${BASE_DIR}  |  ${DAS_DIR} |   ${pubRic} |   ${FidList}  |  ${defaultvalue}  | True |  ${defaultPcap}|      
-               |verify_Insert_in_message |   ${LOCAL_TMP_DIR}/capture_local.pcap |   ${BASE_DIR}  |  ${DAS_DIR} |   ${pubRic} |   ${FidList}  |  ${defaultvalue}  |
+                | ${defaultFidsValues}  |  get_FidValue_in_message  |  ${LOCAL_TMP_DIR}/capture_localDefault.pcap  |  ${DAS_DIR}  |  ${pubRic} | True
+                
         """ 
                 
         outputfileprefix = 'updateCheckC1'
-        filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_constitNum = &quot;1&quot;))'%(ricname)
-
+        if responseFlag :
+            filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;1&quot;))'%(ricname)
+        else:
+            filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_constitNum = &quot;1&quot;))'%(ricname)
+                
         outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
         
         parentName  = 'Message'
-        messages = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
-        index = 0
-        linuxTool = LinuxToolUtilities()
-        linuxTool.setUtilPath(basedir)        
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)        
+        
         if (len(messages) == 1):            
-            fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[0])
-            if checkAllFids :
-                defoutputfileprefix = 'rebuildC1'
-                deffilterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;1&quot;))'%(ricname)
-                defoutputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,defaultPcap,deffilterstring,defoutputfileprefix)
-                defmessages = self._xml_parse_get_all_elements_by_name(defoutputxmlfilelist[0],parentName)
-                if (len(defmessages) == 1):  
-                    defaultFidsValue = self._xml_parse_get_fidsAndValues_for_messageNode(defmessages[0])
-                    for (fid,value) in fidsAndValues.items():
-                        if(defaultFidsValue.has_key(fid)):
-                            if (defaultFidsValue[fid] != value):
-                                raise AssertionError('*ERROR* C1 message : the value of fid number (%s) not equal to the default value (%s)'%(fid,value))
-                        else:
-                            raise AssertionError('*ERROR* C1 message : the insert lost fid number (%s) '%(fid))
-                else:
-                    raise AssertionError('*ERROR* rebuild C1 message num is not 1: the number is (%s) '%(len(defmessages)))
-                
-                for delFile in defoutputxmlfilelist:
-                    os.remove(delFile)
-                os.remove(os.path.dirname(defoutputxmlfilelist[0]) + "/" + defoutputfileprefix + "xmlfromDAS.log")  
-                
-            else:
-                for elementfid in fidList:
-                    fidNum = linuxTool.get_FID_ID_by_FIDName(elementfid)
-                    if (fidsAndValues.has_key(fidNum)):
-                        if (fidsAndValues[fidNum] != valueList[index]):
-                            raise AssertionError('*ERROR* C1 message : the value of fid number (%s) not equal to (%s)'%(fidsAndValues[elementfid],valueList[index]))
-                        if index < len(valueList) :
-                            index = index + 1
-                    else:
-                        raise AssertionError('*ERROR* 1st C1 message : Missing FID %s in payload'%elementfid) 
+            fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[0])                
         else:
             raise AssertionError('*ERROR* No. of C1 message received not equal to 1 for RIC %s during icf insert, received (%d) message(s)'%(ricname,len(messages)))
         
@@ -2472,22 +2440,28 @@ class LocalBoxUtilities(_ToolUtil):
             
         os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
         
+        return fidsAndValues
+                        
+     
     def get_REAL_Fids_in_icf_file(self, srcfile, count = 1):
         """to Get some FIDs with outputFormat value TRWF_REAL_NOT_A_NUM 
          
         Argument:    
                 srcfile : the icf file.\n
                 count : the totol number of the Fids we want get
-                
+        
+        return:
+                Fidlist : some REAL type Fids' name list 
+                flag :  The REAL type Fids have default value or not       
         Examples :
         
-            |${FidList} | get REAL Fids in icf file  | C:\\temp\\extractFile.icf |  3   |    
+            |${FidList} | ${haveDefaultValue} | get REAL Fids in icf file  | C:\\temp\\extractFile.icf |  3   |    
         """
         dom = xml.dom.minidom.parse(srcfile)  
         root = dom.documentElement  
         iteratorlist = dom.getElementsByTagName('r')     
         Fidlist= []    
-        index = 1
+        fidCount = 1
         flag = False
                 
         for node in iteratorlist:
@@ -2497,40 +2471,42 @@ class LocalBoxUtilities(_ToolUtil):
                     if REALFlag :
                         if ssubnode.nodeType == node.ELEMENT_NODE and ssubnode.nodeName == 'it:value' and ssubnode.firstChild.data != '#BLANK#':
                             flag = True
-                        if index > count :
+                        if fidCount > count :
                             return Fidlist, flag
                     if ssubnode.nodeType == node.ELEMENT_NODE and ssubnode.nodeName == 'it:outputFormat' and ssubnode.firstChild.data == 'TRWF_REAL_NOT_A_NUM':
                         tempList = subnode.nodeName.split(':') 
                         Fidlist.append(tempList[1])
-                        index = index + 1
+                        fidCount = fidCount + 1
                         REALFlag = True
         
-        return False    
+        if fidCount == 1 :
+            raise AssertionError('*ERROR* no REAL type Fids found in icf file %s'%(srcfile))   
+        else: # if we don't find enough REAL fid, just return all the Fids we found in icf file
+            return Fidlist, flag
+        
 
-    def modify_REAL_items_in_icf(self, srcfile, dstfile, ric, domain, fidlist=[], valuelist = []):   
+    def modify_REAL_items_in_icf(self, srcfile, dstfile, ric, domain, fidsAndValues={}):   
         """to modify some REAL type items with FIDs and Value list in icf
                 
         Argument:         
-                    srcfile is the original icf file.\n
+                    srcfile : the original icf file.\n
+                    dstfile : the modified icf file
                     ric, domain
-                    fidlist: the Fid list need to be changed
-                    valuelist: the list of the changed value 
+                    fidsAndValues: the Fid name and value dictionary need to be changed
          
         return nil
         """  
-        
-        modifyItem = []        
+             
         index = 0
         
-        for fid in fidlist:
-            item = '<it:%s>\n <it:outputFormat>TRWF_REAL_NOT_A_NUM</it:outputFormat>\n <it:value>%s</it:value>\n</it:%s>'%(fid,valuelist[index],fid)
+        for (fid,value) in fidsAndValues.items():
+            item = '<it:%s>\n <it:outputFormat>TRWF_REAL_NOT_A_NUM</it:outputFormat>\n <it:value>%s</it:value>\n</it:%s>'%(fid,value,fid)
             if index == 0:
                 _FMUtil().modify_icf(srcfile, dstfile, ric, domain, item)  
             else:
-                _FMUtil().modify_icf(dstfile, dstfile, ric, domain, item)  
-            
-            if index < len(valuelist) :
-                index = index + 1
+                _FMUtil().modify_icf(dstfile, dstfile, ric, domain, item)
+            index = index + 1
+               
    
     def separate_string_to_list(self, srcstring, sepFlag):
         sepList = srcstring.split(sepFlag)
