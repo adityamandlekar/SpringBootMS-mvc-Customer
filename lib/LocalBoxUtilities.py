@@ -2397,12 +2397,11 @@ class LocalBoxUtilities(_ToolUtil):
         cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
         self._run_local_SCWCLI(scwcli_dir,cmd)
     
-    def get_FidValue_in_message(self,pcapfile,dasdir,ricname, responseFlag = False):
+    def get_FidValue_in_message(self,pcapfile,dasdir,ricname, msgClass):
         """ To verify the insert icf file can update the changed fid and value correct
         
         Argument :         
-                    pcapFile : is the pcap fullpath at local control PC  
-                    basedir : location from remote TD box for search TRWF2.dat
+                    pcapFile : is the pcap fullpath at local control PC                      
                     dasdir : location of DAS tool  
                     ricname:
                     responseFlag : to separate the message is update one or response one
@@ -2414,16 +2413,19 @@ class LocalBoxUtilities(_ToolUtil):
                  If need to check all the Fids, all the Fid Value pair same with the defaultFidValue
                  
         Example:
-                | ${defaultFidsValues}  |  get_FidValue_in_message  |  ${LOCAL_TMP_DIR}/capture_localDefault.pcap  |  ${DAS_DIR}  |  ${pubRic} | True
+                | ${defaultFidsValues}  |  get_FidValue_in_message  |  ${LOCAL_TMP_DIR}/capture_localDefault.pcap  |  ${DAS_DIR}  |  ${pubRic} | UPDATE
+                 | ${defaultFidsValues}  |  get_FidValue_in_message  |  ${LOCAL_TMP_DIR}/capture_localDefault.pcap  |  ${DAS_DIR}  |  ${pubRic} | RESPONSE
                 
         """ 
                 
         outputfileprefix = 'updateCheckC1'
-        if responseFlag :
+        filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, Update_constitNum = &quot;1&quot;)'%(ricname)
+          
+        if msgClass == 'RESPONSE' :
             filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;1&quot;))'%(ricname)
-        else:
+        if msgClass == 'UPDATE' :
             filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_constitNum = &quot;1&quot;))'%(ricname)
-                
+                       
         outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
         
         parentName  = 'Message'
@@ -2460,7 +2462,7 @@ class LocalBoxUtilities(_ToolUtil):
         root = dom.documentElement  
         iteratorlist = dom.getElementsByTagName('r')     
         Fidlist= []    
-        fidCount = 1
+        fidCount = 0
                 
         for node in iteratorlist:
             for subnode in node.childNodes:
@@ -2469,13 +2471,12 @@ class LocalBoxUtilities(_ToolUtil):
                         tempList = subnode.nodeName.split(':') 
                         Fidlist.append(tempList[1])
                         fidCount = fidCount + 1
-                        if fidCount > count :
+                        if fidCount >= count :
                             return Fidlist
         
-        if fidCount == 1 :
-            raise AssertionError('*ERROR* no REAL type Fids found in icf file %s'%(srcfile))   
-        else: # if we don't find enough REAL fid, just return all the Fids we found in icf file
-            return Fidlist
+        
+        raise AssertionError('*ERROR* not enough REAL type Fids found in icf file %s'%(srcfile))   
+        
         
 
     def modify_REAL_items_in_icf(self, srcfile, dstfile, ric, domain, fidsAndValues={}):   

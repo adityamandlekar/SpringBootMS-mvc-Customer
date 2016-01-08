@@ -241,14 +241,14 @@ Verify FMS Extract and Insert
     Insert icf    ${beforeExtractFile}    ${serviceName}
     Stop Capture MTE Output    ${MTE}    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${beforeLocalPcap}
-    ${initialAllFidsValues}    get FidValue in message    ${beforeLocalPcap}    ${DAS_DIR}    ${pubRic}
+    ${initialAllFidsValues}    get FidValue in message    ${beforeLocalPcap}    ${DAS_DIR}    ${pubRic}    UPDATE
     Comment    //new value set to the ${FidList}
     modify REAL items in icf    ${beforeExtractFile}    ${afterExtractFile}    ${pubRic}    ${domain}    ${newFidNameValue}
     Start Capture MTE Output    ${MTE}
     Insert icf    ${afterExtractFile}    ${serviceName}
     Stop Capture MTE Output    ${MTE}    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${afterLocalPcap}
-    ${newAllFidsValues}    get FidValue in message    ${afterLocalPcap}    ${DAS_DIR}    ${pubRic}
+    ${newAllFidsValues}    get FidValue in message    ${afterLocalPcap}    ${DAS_DIR}    ${pubRic}    UPDATE
     Comment    //Verify selected FIDs in ‘before’ capture have ‘before’ values
     Dictionary Should Contain Sub Dictionary    ${initialAllFidsValues}    ${iniFidNumValue}
     Comment    //Verify selected FIDs in ‘after’ capture have ‘after’ values
