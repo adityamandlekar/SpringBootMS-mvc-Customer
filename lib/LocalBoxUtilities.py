@@ -2451,8 +2451,7 @@ class LocalBoxUtilities(_ToolUtil):
                 count : the totol number of the Fids we want get
         
         return:
-                Fidlist : some REAL type Fids' name list 
-                flag :  The REAL type Fids have default value or not       
+                Fidlist : some REAL type Fids' name list       
         Examples :
         
             |${FidList} | ${haveDefaultValue} | get REAL Fids in icf file  | C:\\temp\\extractFile.icf |  3   |    
@@ -2462,27 +2461,21 @@ class LocalBoxUtilities(_ToolUtil):
         iteratorlist = dom.getElementsByTagName('r')     
         Fidlist= []    
         fidCount = 1
-        flag = False
                 
         for node in iteratorlist:
-            for subnode in node.childNodes:    
-                REALFlag = False            
-                for ssubnode in subnode.childNodes:
-                    if REALFlag :
-                        if ssubnode.nodeType == node.ELEMENT_NODE and ssubnode.nodeName == 'it:value' and ssubnode.firstChild.data != '#BLANK#':
-                            flag = True
-                        if fidCount > count :
-                            return Fidlist, flag
+            for subnode in node.childNodes:
+                for ssubnode in subnode.childNodes:                    
                     if ssubnode.nodeType == node.ELEMENT_NODE and ssubnode.nodeName == 'it:outputFormat' and ssubnode.firstChild.data == 'TRWF_REAL_NOT_A_NUM':
                         tempList = subnode.nodeName.split(':') 
                         Fidlist.append(tempList[1])
                         fidCount = fidCount + 1
-                        REALFlag = True
+                        if fidCount > count :
+                            return Fidlist
         
         if fidCount == 1 :
             raise AssertionError('*ERROR* no REAL type Fids found in icf file %s'%(srcfile))   
         else: # if we don't find enough REAL fid, just return all the Fids we found in icf file
-            return Fidlist, flag
+            return Fidlist
         
 
     def modify_REAL_items_in_icf(self, srcfile, dstfile, ric, domain, fidsAndValues={}):   
@@ -2498,20 +2491,11 @@ class LocalBoxUtilities(_ToolUtil):
         """  
              
         index = 0
+        itemList = []
         
         for (fid,value) in fidsAndValues.items():
             item = '<it:%s>\n <it:outputFormat>TRWF_REAL_NOT_A_NUM</it:outputFormat>\n <it:value>%s</it:value>\n</it:%s>'%(fid,value,fid)
-            if index == 0:
-                _FMUtil().modify_icf(srcfile, dstfile, ric, domain, item)  
-            else:
-                _FMUtil().modify_icf(dstfile, dstfile, ric, domain, item)
-            index = index + 1
-               
-   
-    def separate_string_to_list(self, srcstring, sepFlag):
-        sepList = srcstring.split(sepFlag)
-        return sepList, len(sepList)
-
-    def convert_num_to_opposite(self, srcNum):
-        dstNum = 0 - srcNum 
-        return dstNum      
+            itemList.append(item)
+        
+        _FMUtil().modify_icf(srcfile, dstfile, ric, domain, *itemList)        
+  
