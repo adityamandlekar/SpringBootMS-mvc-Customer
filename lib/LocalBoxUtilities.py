@@ -2370,12 +2370,13 @@ class LocalBoxUtilities(_ToolUtil):
         return stdout
     
     def switch_MTE_LIVE_STANDBY_status(self,scwcli_dir,mteName,node,status,user,password,che_ip,port='27000'):
-        """ To switch specific MTE instance to LIVE or STANDBY
+        """ To switch specific MTE instance to LIVE, STANDBY, LOCK_LIVE or LOCK_STANDY. Or unlock the MTE instance.
 
             Argument : scwcli_dir - full path of SCWCli.exe
                        mteName - MTE instance name e.g. HKF02M
                        node - A,B,C,D
-                       status - LIVE:Switch to Live, STANDBY:Switch to Standby
+                       status - LIVE:Switch to Live, STANDBY:Switch to Standby, 
+                                LOCK_LIVE to lock live, LOCK_STANDY to lock standby, UNLOCK to unlock the MTE
                        user - login name for the TD box
                        password - login password for the TD box
                        che_ip - IP of the TD box
@@ -2389,8 +2390,14 @@ class LocalBoxUtilities(_ToolUtil):
        
         if (status == 'LIVE'):
             cmd = "-promote "
-        elif(status == 'STANDBY'):
+        elif (status == 'STANDBY'):
             cmd = "-demote "
+        elif (status == 'LOCK_LIVE'):
+            cmd = "-lock_live "
+        elif (status == 'LOCK_STANDBY'):
+            cmd = "-lock_stby "
+        elif (status == 'UNLOCK'):
+            cmd = "-unlock "
         else:
             raise AssertionError('*ERROR* Unknown status %s' %status)
             
@@ -2414,55 +2421,9 @@ class LocalBoxUtilities(_ToolUtil):
         for che_ip in che_ip_list:
             cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,port,user,password)
             stdout = self._run_local_SCWCLI(scwcli_dir,cmd)
-            if (stdout.find('SCW state MASTER')):
+            if (stdout.find('SCW state MASTER') != -1):
                 return che_ip
         raise AssertionError('*ERROR* cannot find a master box')
-
-    def lock_MTE_status(self,scwcli_dir,mteName,node,status,user,password,che_ip,port='27000'):
-        """ To ulock MTE status
-
-            Argument : scwcli_dir - full path of SCWCli.exe
-                       mteName - MTE instance name e.g. HKF02M
-                       node - A,B,C,D
-                       status - LIVE:Switch to Live, STANDBY:Switch to Standby
-                       user - login name for the TD box
-                       password - login password for the TD box
-                       che_ip - IP of master TD box
-                       port - port no. that used to communicate with the SCW at TD box
-                             
-            Return :
-            
-            Examples :
-            |lock MTE status | C:\\SCW\\bin  | HKF02M | A | LIVE | ${USERNAME} | ${PASSWORD} | ${CHE_A_IP} |
-        """
-        if (status == 'LIVE'):
-            cmd = "-lock_live "
-        elif(status == 'STANDBY'):
-            cmd = "-lock_stby "
-        else:
-            raise AssertionError('*ERROR* Unknown status %s' %status)
-            
-        cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
-        self._run_local_SCWCLI(scwcli_dir,cmd)
-
-    def unlock_MTE_status(self,scwcli_dir,mteName,node,user,password,che_ip,port='27000'):
-        """ To unlock MTE status
-
-            Argument : scwcli_dir - full path of SCWCli.exe
-                       mteName - MTE instance name e.g. HKF02M
-                       node - A,B,C,D
-                       user - login name for the TD box
-                       password - login password for the TD box
-                       che_ip - IP of master TD box
-                       port - port no. that used to communicate with the SCW at TD box
-                             
-            Return :
-            
-            Examples :
-            |unlock MTE status | C:\\SCW\\bin  | HKF02M | A | ${USERNAME} | ${PASSWORD} | ${CHE_A_IP} |
-        """
-        cmd = '-unlock %s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
-        self._run_local_SCWCLI(scwcli_dir,cmd)
 
     def _verify_Fid_value_in_fidsAndValues(self, fidsAndValues=[], fidnum=[],fidvalue=[]):
         index = 0
