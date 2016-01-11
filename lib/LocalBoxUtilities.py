@@ -2403,8 +2403,8 @@ class LocalBoxUtilities(_ToolUtil):
         Argument :         
                     pcapFile : is the pcap fullpath at local control PC                      
                     dasdir : location of DAS tool  
-                    ricname:
-                    responseFlag : to separate the message is update one or response one
+                    ricname:    
+                    msgClass: UPDATE or RESPONSE               
                   : 
                     return : Fid Value pair from pcap
             
@@ -2419,12 +2419,14 @@ class LocalBoxUtilities(_ToolUtil):
         """ 
                 
         outputfileprefix = 'updateCheckC1'
-        filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, Update_constitNum = &quot;1&quot;)'%(ricname)
           
         if msgClass == 'RESPONSE' :
             filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;1&quot;))'%(ricname)
-        if msgClass == 'UPDATE' :
+        elif msgClass == 'UPDATE' :
             filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_constitNum = &quot;1&quot;))'%(ricname)
+        else:
+            raise AssertionError('*ERROR* msgClass is not correct, please use UPDATE or RESPONSE' )
+        
                        
         outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
         
