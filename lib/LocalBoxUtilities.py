@@ -2166,7 +2166,6 @@ class LocalBoxUtilities(_ToolUtil):
         Returns : iterator for 'ALL' elements that matched with xPath
 
         """
-        print xPath
         xmlPathLength = len(xPath)
         if xmlPathLength < 1:
             raise AssertionError('*ERROR*  Need to provide xPath to look up.')
@@ -2192,6 +2191,38 @@ class LocalBoxUtilities(_ToolUtil):
             node.text=str(tagValue)
         
         self._save_to_xml_file(root,xmlFileLocalFullPath,isNonStandardXml)
+    
+    def _set_xml_tag_attributes_value_with_conditions(self,xmlFileLocalFullPath,conditions,attributes,isNonStandardXml,xPath):
+        """set attribute of a tag in xml file specficied by xPath
+        
+        xmlFileLocalFullPath : full path of xml file
+        conditions : a map specific the attributes(key) and correpsonding value that need to be matched before carried out "set" action
+        attributes : a map specific the attributes(key) and correpsonding value
+        xPath : a list contain the xPath for the node
+        Returns : Nil
+        
+        """        
+        root = self._load_xml_file(xmlFileLocalFullPath,isNonStandardXml)        
+        nodes = self._get_xml_node_by_xPath(root, xPath)
+        
+        foundMatch = False
+        for node in nodes:
+            isMatched = True
+            for key in conditions.keys():
+                attrib_val = node.get(key)
+                if (attrib_val == None or attrib_val != conditions[key]):
+                    isMatched = False
+                    break
+            
+            if (isMatched):
+                foundMatch = True
+                for key in attributes.keys():
+                    node.set(key,attributes[key])
+        
+        if not (foundMatch):
+            raise AssertionError('*ERROR*  No match found for given xPath (%s) and conditions (%s) in %s'%(xPath,conditions,xmlFileLocalFullPath))
+                
+        self._save_to_xml_file(root,xmlFileLocalFullPath,isNonStandardXml)    
     
     def _set_xml_tag_attributes_value(self,xmlFileLocalFullPath,attributes,isNonStandardXml,xPath):
         """set attribute of a tag in xml file specficied by xPath
@@ -2230,10 +2261,11 @@ class LocalBoxUtilities(_ToolUtil):
         
         rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
         cfgfile : full path of mangling config file xml
-        Returns : Nil
+        Returns : xml tag that used for default mangling rule will be update. (refer to example below)
 
         Examples:
         | set mangling rule default value | SOU | C:/tmp/manglingConfiguration.xml |
+        e.g <Partitions type="FID" value="CONTEXT_ID" defaultRule="3"> </Partitions>
         """
         
         #safe check for rule value
@@ -2245,14 +2277,19 @@ class LocalBoxUtilities(_ToolUtil):
         self._set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
         
     def set_mangling_rule_parition_value(self,rule,configFileLocalFullPath):
-        """set the mangling rule of <Partitions rule=""> in manglingConfiguration.xml
+        """set the mangling rule of "ALL" <Partitions rule=""> in manglingConfiguration.xml
         
         rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
         cfgfile : full path of mangling config file xml
-        Returns : Nil
+        Returns : xml tag that used for specific parition mangling rule will be update. (refer to example below)
 
         Examples:
-        | set mangling rule parition value | SOU | C:/tmp/manglingConfiguration.xml |
+        | set mangling rule parition value | RRG | C:/tmp/manglingConfiguration.xml |
+         <Partitions type="FID" value="CONTEXT_ID" defaultRule="3">
+          <!-- Items with CONTEXT_ID 1234 or 2345 use Elektron RRG rule. All other Items use SOU rule. -->
+            <Partition value="1234" rule="1" />
+            <Partition value="2345" rule="1" />
+         </Partitions>
         """
         
         #safe check for rule value
@@ -2262,6 +2299,31 @@ class LocalBoxUtilities(_ToolUtil):
         xPath = ['Partitions','Partition']
         attribute = {'rule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
         self._set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
+    
+    def set_mangling_rule_parition_value_with_conditions(self,rule,conditions,configFileLocalFullPath):
+        """set the mangling rule of <Partitions rule=""> in manglingConfiguration.xml
+                
+        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
+        conditions : a map specific the attributes(key) and correpsonding value that need to be matched before carried out "set" action
+        cfgfile : full path of mangling config file xml
+        Returns : xml tag that used for specific parition mangling rule will be update if conditions matched. (refer to example below)
+
+        Examples:
+        | set mangling rule parition value with conditons | RRG | {'value' : '1234'} |C:/tmp/manglingConfiguration.xml |
+         <Partitions type="FID" value="CONTEXT_ID" defaultRule="3">
+          <!-- Items with CONTEXT_ID 1234 use Elektron RRG rule. All other Items use SOU rule. -->
+            <Partition value="1234" rule="2" />
+            <Partition value="2345" rule="1" />
+         </Partitions>        
+        """
+        
+        #safe check for rule value
+        if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
+            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
+        
+        xPath = ['Partitions','Partition']
+        attribute = {'rule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
+        self._set_xml_tag_attributes_value_with_conditions(configFileLocalFullPath,conditions,attribute,False,xPath)    
                        
     def convert_dataView_response_to_dictionary(self,dataview_response):
         """ capture the FID Name and FID value from DateView output which return from run  run_dataview
