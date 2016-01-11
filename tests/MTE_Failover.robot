@@ -26,3 +26,24 @@ Verify Manual Live/Standby Switch via SCW CLI
     switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    B    STANDBY    ${USERNAME}    ${PASSWORD}
     ...    ${master_ip}
     verify MTE state    ${MTE}    STANDBY
+
+Verify Sync Pulse Missed QoS
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
+    ...
+    ...    Test Case - Verify Sync Pulse Missed QoS by blocking sync pulse publiscation port and check the missing statistic by SCWCli
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${LOCAL_SCWCLI_BIN}    ${USERNAME}    ${PASSWORD}    ${ip_list}
+    @{syncPulseCountBefore}    get SyncPulseMissed    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${USERNAME}    ${PASSWORD}    ${master_ip}
+    ${localVenueConfig}=    get MTE config file
+    @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
+    :FOR    ${labelID}    IN    @{labelIDs}
+    \    ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
+    \    remove xinclude from labelfile    ${LOCAL_TMP_DIR}/ddnPublishers.xml    ${modifyLabelFile}
+    \    @{multicastIPandPort}    get_multicast_address_from_lable_file    ${modifyLabelFile}    ${labelID}    ${MTE}
+    \    block dataflow by port protocol    INPUT    UDP    @{multicastIPandPort}[1]
+    \    sleep    10
+    \    @{syncPulseCountAfter}    get SyncPulseMissed    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${USERNAME}    ${PASSWORD}
+    \    ...    ${master_ip}
+    ${EMPTY}
+    \    unblock dataflow
+    [Teardown]    Case Teardown    ${modifyLabelFile}

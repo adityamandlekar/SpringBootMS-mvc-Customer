@@ -1386,4 +1386,26 @@ class LinuxToolUtilities():
             return elements[1]
         else:
             raise AssertionError('*ERROR* The FID can not be found')        
+
+    def block_dataflow_by_port_protocol(self,inOrOut,protocol,port):
+        cmd = "/sbin/iptables -A %s -p %s --destination-port %s -j DROP"%(inOrOut,protocol,port)
+        print cmd
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        
+        cmd = "/sbin/service iptables save"
+        print cmd
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))                     
+        
+    def unblock_dataflow(self):
+        cmd = "iptable -F"
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))          
              

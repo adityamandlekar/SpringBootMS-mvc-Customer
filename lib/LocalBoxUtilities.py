@@ -1731,10 +1731,12 @@ class LocalBoxUtilities(_ToolUtil):
         modified_label_file.close()
         
     
-    def get_multicast_address_from_lable_file(self, ddnLabels_file, labelID):
+    def get_multicast_address_from_lable_file(self, ddnLabels_file, labelID, mteName=""):
         ''' Extract multicast IP and port from label file based on the labelID
-            Argument : ddnLabels_file:  ddnLabels or ddnReqLabels file
+        
+            Argument : ddnLabels_file:  ddnLabels or ddnReqLabels file or ddnPublishers (if mteName is not empty)
                        labelID : labelID defined in venue config file
+                       mteName : MTE instance name 
             Return : list contains multicast ip and port
         '''     
         tree = ET.parse(ddnLabels_file)
@@ -1746,7 +1748,18 @@ class LocalBoxUtilities(_ToolUtil):
         
         for node in labelNode:
             if node.get('ID') == labelID:
-                multTagText = node.find('multTag').text
+                if (mteName != ""): #indicate checking ddnPublishers.xml
+                    providers = node.findall('provider')
+                    print providers
+                    found = False
+                    for provider in providers:
+                       if provider.get('NAME') == mteName:
+                        multTagText = provider.find('cvaMultTag').text
+                        found = True
+                    if not (found):
+                        raise AssertionError('*ERROR* could not find provider NAME = %s text for labelID %s' %(mteName, labelID))
+                else:
+                    multTagText = node.find('multTag').text
                 break
         
         if not multTagText:
@@ -2397,6 +2410,24 @@ class LocalBoxUtilities(_ToolUtil):
         cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
         self._run_local_SCWCLI(scwcli_dir,cmd)
 
+    def get_SyncPulseMissed(self, scwcli_dir, mteName, user, password, master_ip, port='27000'):
+        
+        syncPulseMissed = []
+        cmd = '-ip %s -port %s -user %s -pass %s -entity %s'%(master_ip,port,user,password,mteName)
+        ret = self._run_local_SCWCLI(scwcli_dir,cmd).splitlines()
+        for line in ret:
+            if (line.find('SyncPulseMissed') != -1):
+                contents = line.split('|')
+                if (len(contents) >= 5):
+                    print contents
+                    syncPulseMissed.append(int(contents[3].strip()))
+                    syncPulseMissed.append(int(contents[4].strip()))
+                    return syncPulseMissed
+                else:
+                    raise AssertionError('*ERROR* (%s) not match with expected format |SyncPulseMissed   |ID | A sync pulse | B sync pulse | | |'%(line))
+    
+        raise AssertionError('*ERROR* No SyncPulseMissed Information found')
+    
     def get_master_box_ip(self, scwcli_dir, user, password, che_ip_list, port='27000'):
         """ To find the master box from pair boxes
 
@@ -2414,7 +2445,7 @@ class LocalBoxUtilities(_ToolUtil):
         for che_ip in che_ip_list:
             cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,port,user,password)
             stdout = self._run_local_SCWCLI(scwcli_dir,cmd)
-            if (stdout.find('SCW state MASTER')):
+            if (stdout.find('SCW state MASTER') != -1):
                 return che_ip
         raise AssertionError('*ERROR* cannot find a master box')
 
