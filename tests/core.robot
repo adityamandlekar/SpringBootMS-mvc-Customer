@@ -389,7 +389,7 @@ Set Mangling Rule
     @{files}=    backup cfg file    ${VENUE_DIR}    ${configFile}
     ${configFileLocal}=    Get Mangling Config File
     set mangling rule default value    ${rule}    ${configFileLocal}
-    set mangling rule parition value    ${rule}    ${configFileLocal}
+    set mangling rule parition value    ${rule}    ${Empty}    ${configFileLocal}
     delete remote files    @{files}[0]
     put remote file    ${configFileLocal}    @{files}[0]
     Run Keyword And Continue On Failure    Load Mangling Settings    ${mte}
