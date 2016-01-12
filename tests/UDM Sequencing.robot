@@ -6,10 +6,15 @@ Variables         VenueVariables.py
 
 *** Test Cases ***
 Validate Item Sequence Number Logic
-    [Documentation]    Verify published item sequence numbers at MTE start up and rollover case.
+    [Documentation]    Validate Item Sequence Number Logic.
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1894
     ...
-    ...    After start up MTE, verify if unsolicited response message sequence numbers for a RIC are starting from 0, 4, 5, ... and continue for updated message in MTE output pcap message
+    ...    MTE starts up case: 'verify unsolicited response sequence numbers in capture' checks sequence numbers starting from 0, 4, 5, ... 'verify updated message sequence numbers in capture' checks sequence numbers starting from possible 4, 5, .... If response messages exist, first updated message's sequence number \ in MTE output pcap should be last response message number + 1 if last response messages sequence number >=4, otherwise first updated message's sequence number should be 4
+    ...
+    ...    MTE rollover case: 'verify unsolicited response sequence numbers in capture' and 'verify updated message sequence numbers in capture' check sequence numbers starting from possible 3, 4, 5, ....
+    ...
+    ...    MTE failover case: 'verify unsolicited response sequence numbers in capture' and \ 'verify updated message sequence numbers in capture' check sequence numbers starting from possible 1, 4, 5, ...
+    ...
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     ${domain}    Get Preferred Domain
@@ -27,14 +32,8 @@ Validate Item Sequence Number Logic
     ...    Insert    --Services ${service}    --InputFile "${icf_file}"
     Stop Capture MTE Output    ${MTE}
     get remote file    ${remoteCapture}    ${localCapture}
-    ${seq_from_responses}    verify unsolicited response sequence number are increasing    ${localCapture}    ${DAS_DIR}    ${ric}    ${domain}
-    ${seq_from_updates}    verify updated message sequence number are increasing    ${localCapture}    ${DAS_DIR}    ${ric}    ${domain}
-    Should Be Equal    ${seq_from_responses[0]}    0
-    List Should Not Contain Value    ${seq_from_responses}    1
-    List Should Not Contain Value    ${seq_from_responses}    2
-    List Should Not Contain Value    ${seq_from_responses}    3
-    Run Keyword If    ${seq_from_responses[-1]} >= 4    Log    More than two response messages exist
-    Run Keyword If    len(${seq_from_responses})==1    Return ${seq_from_updates[0]}==4
+    ${seq_from_responses}    verify unsolicited response sequence numbers in capture    ${localCapture}    ${DAS_DIR}    ${ric}    ${domain}
+    ${seq_from_updates}    verify updated message sequence numbers in capture    ${localCapture}    ${DAS_DIR}    ${ric}    ${domain}
     ${last_responses_item_with_addition} =    Evaluate    ${seq_from_responses[-1]} + ${1}
     ${first_updatemsg_seq} =    Convert To Integer    ${seq_from_updates[0]}
     Run Keyword If    ${seq_from_responses[-1]}==0    Should Be Equal    ${first_updatemsg_seq}    4
