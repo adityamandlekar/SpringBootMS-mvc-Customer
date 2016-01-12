@@ -34,15 +34,15 @@ Verify Manual Live/Standby Switch via SCW CLI
     Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_STANDBY
     switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    B    UNLOCK    ${USERNAME}    ${PASSWORD}
-    ...    ${CHE_A_IP}
+    ...    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    B    LOCK_LIVE    ${USERNAME}    ${PASSWORD}
-    ...    ${CHE_A_IP}
+    ...    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    A    UNLOCK    ${USERNAME}    ${PASSWORD}
-    ...    ${CHE_A_IP}
+    ...    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     [Teardown]    Manual Switch Live/Standby Case Teardown    ${master_ip}
