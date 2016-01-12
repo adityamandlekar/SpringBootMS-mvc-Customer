@@ -266,8 +266,9 @@ Verify Deletion Delay
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${StartOfDayTime}=    get value from MTE config    StartOfDayTime
-    ${EndOfDayTime}=    get value from MTE config    EndOfDayTime
+    ${mteConfigFile}=    Get MTE Config File
+    ${StartOfDayTime}=    get MTE config value    ${mteConfigFile}    StartOfDayTime
+    ${EndOfDayTime}=    get MTE config value    ${mteConfigFile}    EndOfDayTime
     ${RIDEMachineTime}    Get Current Date    result_format=datetime
     ${currDateTime}    get date and time
     ${bkcurrDateTime}    Convert Date    ${currDateTime[0]}.${currDateTime[1]}.${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    date_format=%Y.%m.%d \ %H:%M:%S    result_format=datetime
@@ -350,7 +351,8 @@ Drop ric
 Convert to GMT
     [Arguments]    ${localTime}
     [Documentation]    convert the local time to GMT
-    ${DSTRIC}=    get value from MTE config    CHE-TimeZoneForConfigTimes
+    ${mteConfigFile}=    Get MTE Config File
+    ${DSTRIC}=    get MTE config value    ${mteConfigFile}    CHE-TimeZoneForConfigTimes
     ${currentGmtOffset}    get stat block field    ${MTE}    ${DSTRIC}    currentGMTOffset
     ${numOffset}    Convert To Number    ${currentGmtOffset}
     ${GMTTime}    Subtract Time From Time    ${localTime}    ${numOffset}
@@ -367,27 +369,18 @@ Rollover MTE Machine Date
     ${endSec}=    Set Variable If    ${StartOfDayTime.hour} > ${EndOfDayTime.hour}    86399    -1
     ${startSec}=    Set Variable If    ${StartOfDayTime.hour} > ${EndOfDayTime.hour}    -1    86399
     : FOR    ${index}    IN RANGE    0    ${days}
-    \    log    index is -----------------------${index}
     \    ${end}    Convert Date    ${start.day}.${start.month}.${start.year} ${EndOfDayTime.hour}:${EndOfDayTime.minute}    date_format=%d.%m.%Y \ %H:%M
     \    ${end}    Add Time To Date    ${end}    ${endSec}    result_format=datetime
     \    ${res}    set date and time    ${end.year}    ${end.month}    ${end.day}    ${end.hour}
     \    ...    ${end.minute}    ${end.second}
-    \    get date and time
-    \    sleep    2s    ${currDateTime}
+    \    ${currDateTime}    get date and time
+    \    wait smf log message after time    EndOfDay time occurred    ${currDateTime}
     \    ${start} =    Convert Date    ${end.day}.${end.month}.${end.year} ${StartOfDayTime.hour}:${StartOfDayTime.minute}    date_format=%d.%m.%Y \ %H:%M
     \    ${start}     Add Time To Date    ${start}     ${startSec}    result_format=datetime
     \    ${res}    set date and time    ${start.year}    ${start.month}    ${start.day}    ${start.hour}
     \    ...    ${start.minute}    ${start.second}
     \    ${currDateTime}    get date and time
     \    wait smf log message after time    StartOfDay time occurred    ${currDateTime}
-
-Get value from MTE config
-    [Arguments]    ${fieldname}
-    [Documentation]    Use the field name to get the value from MTE config
-    ${mteConfigFile}=    Get MTE Config File
-    ${fieldvalue}=    get MTE config value    ${mteConfigFile}    ${fieldname}
-    return from keyword if    '${fieldvalue}' != 'NOT FOUND'    ${fieldvalue}
-    FAIL    No ${fieldname} found in venue config file: ${mteConfigFile}
 
 Create Fid Value Pair
     [Arguments]    ${FidList}

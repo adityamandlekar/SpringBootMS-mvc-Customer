@@ -24,7 +24,6 @@ from LinuxFSUtilities import LinuxFSUtilities
 from FMUtilities import _FMUtil
 from utils.local import _run_local_command
 from utils._ToolUtil import _ToolUtil
-from utils._FSUtil import _FSUtil
 
 FID_CONTEXTID = '5357'
 
