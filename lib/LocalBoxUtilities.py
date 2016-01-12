@@ -2242,7 +2242,7 @@ class LocalBoxUtilities(_ToolUtil):
         if (len(messages) == 0):
             raise AssertionError('*ERROR* no C%s message found'%constnum) 
         if (len(messages) > 1):
-            raise AssertionError('*ERROR* more than 2 C%s message found, the num is %s'%(constnum,len(messages))) 
+            raise AssertionError('*ERROR* more than 1 C%s message found, the num is %s'%(constnum,len(messages))) 
                 
         for delFile in outputxmlfilelist:
             os.remove(delFile)
