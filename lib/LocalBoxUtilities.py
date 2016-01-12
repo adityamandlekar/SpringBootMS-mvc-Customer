@@ -2411,7 +2411,21 @@ class LocalBoxUtilities(_ToolUtil):
         self._run_local_SCWCLI(scwcli_dir,cmd)
 
     def get_SyncPulseMissed(self, scwcli_dir, mteName, user, password, master_ip, port='27000'):
-        
+        """ get sync pulse missing count through SCWCli
+
+            Argument : scwcli_dir - full path of SCWCli.exe
+                       mteName - MTE instance name e.g. HKF02M
+                       user - login name for the TD box
+                       password - login password for the TD box
+                       master_ip - IP of the master SCW box
+                       port - port no. that used to communicate with the SCW at TD box
+                             
+            Return : a list with sync pulse missing count for both instance A instance B i.e. [A-instance-missing-count, B-instance-missing-count]
+            
+            Examples :
+            |get SyncPulseMissed | C:\\SCW\\bin  | HKF02M | ${USERNAME} | ${PASSWORD} | ${CHE_A_IP} | 
+        """
+                
         syncPulseMissed = []
         cmd = '-ip %s -port %s -user %s -pass %s -entity %s'%(master_ip,port,user,password,mteName)
         ret = self._run_local_SCWCLI(scwcli_dir,cmd).splitlines()
@@ -2427,6 +2441,26 @@ class LocalBoxUtilities(_ToolUtil):
                     raise AssertionError('*ERROR* (%s) not match with expected format |SyncPulseMissed   |ID | A sync pulse | B sync pulse | | |'%(line))
     
         raise AssertionError('*ERROR* No SyncPulseMissed Information found')
+    
+    def verify_sync_pulse_missed_Qos(self,syncPulseBefore,syncPulseAfter):
+        """ To verify if sync pulse missing count has increased after port has been blocked
+
+            Argument : SyncPulseMissed - list of sync pulse missing count before port blocked
+                       syncPulseAfter - list of sync pulse missing count after port blocked
+                             
+            Return :
+            
+            Examples :
+            |verify sync pulse missed Qos |[0,0]|[0,100]| 
+        """
+                
+        if (syncPulseAfter[0] > 0):
+            if ((syncPulseAfter[0] - syncPulseBefore[0]) <= 0):
+                raise AssertionError('*ERROR* Sync Pulse Missed Count has not increased after port blocked (before : %d, after : %d)' %(syncPulseBefore[0], syncPulseAfter[0]))
+        else:
+            if ((syncPulseAfter[1] - syncPulseBefore[1]) <= 0):
+                raise AssertionError('*ERROR* Sync Pulse Missed Count has not increased after port blocked (before : %d, after : %d)' %(syncPulseBefore[1], syncPulseAfter[1]))
+        
     
     def get_master_box_ip(self, scwcli_dir, user, password, che_ip_list, port='27000'):
         """ To find the master box from pair boxes
@@ -2646,4 +2680,5 @@ class LocalBoxUtilities(_ToolUtil):
 
     def convert_num_to_opposite(self, srcNum):
         dstNum = 0 - srcNum 
-        return dstNum      
+        return dstNum
+    

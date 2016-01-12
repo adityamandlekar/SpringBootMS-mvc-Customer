@@ -36,14 +36,16 @@ Verify Sync Pulse Missed QoS
     @{syncPulseCountBefore}    get SyncPulseMissed    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${USERNAME}    ${PASSWORD}    ${master_ip}
     ${localVenueConfig}=    get MTE config file
     @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
-    :FOR    ${labelID}    IN    @{labelIDs}
+    Switch to TD Box    ${CHE_A_IP}
+    ${state}=    check MTE state    ${MTE}
+    : FOR    ${labelID}    IN    @{labelIDs}
+    \    Run Keyword If    '${state}' != 'STANDBY'    Switch to TD Box    ${CHE_B_IP}
     \    ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
     \    remove xinclude from labelfile    ${LOCAL_TMP_DIR}/ddnPublishers.xml    ${modifyLabelFile}
     \    @{multicastIPandPort}    get_multicast_address_from_lable_file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    block dataflow by port protocol    INPUT    UDP    @{multicastIPandPort}[1]
-    \    sleep    10
-    \    @{syncPulseCountAfter}    get SyncPulseMissed    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${USERNAME}    ${PASSWORD}
-    \    ...    ${master_ip}
-    ${EMPTY}
-    \    unblock dataflow
+    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${USERNAME}
+    \    ...    ${PASSWORD}    ${master_ip}
+    \    unblock_dataflow
+    \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     [Teardown]    Case Teardown    ${modifyLabelFile}

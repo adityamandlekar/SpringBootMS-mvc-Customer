@@ -35,6 +35,7 @@ class LinuxToolUtilities():
     STATBLOCKFIELDREADER = ''
     SMFLOGDIR = ''
     MANGLINGRULE = {'SOU': '3', 'BETA': '2', 'RRG': '1', 'UNMANGLED' : '0'};
+    MTESTATE = {'0': 'UNDEFINED', '1': 'LIVE', '2': 'STANDBY', '3' : 'LOCKED_LIVE', '4' : 'LOCKED_STANDBY'};
     
     def setUtilPath(self, path):
         """Setting the Utilities paths by given base directory for searching
@@ -1288,6 +1289,36 @@ class LinuxToolUtilities():
         
         return stdout
     
+    def check_MTE_state(self,mteName):
+        """check MTE state (UNDEFINED,LIVE,STANDBY,LOCKED_LIVE,LOCKED_STANDBY) through HostManger
+        
+         Argument:
+            mteName  : name of MTE instance
+                    
+        Returns    :  either 'UNDEFINED' or 'LIVE' or 'STANDBY' or 'LOCKED_LIVE' or 'LOCKED_STANDBY'
+
+        Examples:
+        | check MTE state | HKF02M
+        """           
+        
+        cmd = '-readparams /%s/LiveStandby'%mteName
+        ret = self.run_HostManger(cmd).splitlines()
+        if (len(ret) == 0):
+            raise AssertionError('*ERROR* Running HostManger %s return empty response'%cmd)
+        
+        idx = '-1'
+        for line in ret:
+            if (line.find('LiveStandby') != -1):
+                contents = line.split(' ')
+                idx = contents[-1].strip()
+        
+        if (idx == '-1'):
+            raise AssertionError('*ERROR* Keyword LiveStandby was not found in response')
+        elif not (self.MTESTATE.has_key(idx)):
+            raise AssertionError('*ERROR* Unknown state %s found in response'%idx)
+        
+        return self.MTESTATE[idx]  
+    
     def verify_MTE_state(self,mteName,state):
         """verify MTE instance is in specific state
         
@@ -1301,29 +1332,13 @@ class LinuxToolUtilities():
         | verify MTE state | HKF02M | LIVE
         """             
      
-        stateDict = {'0': 'UNDEFINED', '1': 'LIVE', '2': 'STANDBY', '3' : 'LOCKED_LIVE', '4' : 'LOCKED_STANDBY'};
-        
         #verify if input 'state' is a valid one
-        if not (state in stateDict.values()):
+        if not (state in self.MTESTATE.values()):
             raise AssertionError('*ERROR* Invalid input (%s). Valid value for state is UNDEFINED , LIVE , STANDBY , LOCKED_LIVE , LOCKED_STANDBY '%state)
-        
-        cmd = '-readparams /%s/LiveStandby'%mteName
-        ret = self.run_HostManger(cmd).splitlines()
-        if (len(ret) == 0):
-            raise AssertionError('*ERROR* Running HostManger %s return empty response'%cmd)
-     
-        idx = '-1'
-        for line in ret:
-            if (line.find('LiveStandby') != -1):
-                contents = line.split(' ')
-                idx = contents[-1].strip()
                  
-        if (idx == '-1'):
-            raise AssertionError('*ERROR* Keyword LiveStandby was not found in response')
-        elif not (stateDict.has_key(idx)):
-            raise AssertionError('*ERROR* Unknown state %s found in response'%idx)
-        elif (stateDict[idx] != state):
-                raise AssertionError('*ERROR* %s is not at %s (current state : %s)'%(mteName,state,stateDict[idx]))            
+        current_state = self.check_MTE_state(mteName)
+        if (current_state != state):
+            raise AssertionError('*ERROR* %s is not at %s (current state : %s)'%(mteName,state,current_state))       
         
     def get_FID_Name_by_FIDId(self,FidId):
         """get FID Name from TRWF2.DAT based on fidID
@@ -1388,6 +1403,19 @@ class LinuxToolUtilities():
             raise AssertionError('*ERROR* The FID can not be found')        
 
     def block_dataflow_by_port_protocol(self,inOrOut,protocol,port):
+        """using iptables command to block specific port and protocol data
+        
+         Argument:
+            inOrOut  : either 'INPUT' or 'OUTPUT'
+            protocol : UDP, TCP
+            port     : port number
+        
+        Returns    : 
+
+        Examples:
+        | block dataflow by port protocol | INPUT | UDP | 9002
+        """  
+                
         cmd = "/sbin/iptables -A %s -p %s --destination-port %s -j DROP"%(inOrOut,protocol,port)
         print cmd
         
@@ -1403,7 +1431,16 @@ class LinuxToolUtilities():
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))                     
         
     def unblock_dataflow(self):
-        cmd = "iptable -F"
+        """using iptables command to unblock all ports
+        
+        Argument   :        
+        Returns    : 
+
+        Examples:
+        | unblock dataflow | 
+        """  
+                
+        cmd = "iptables -F"
         
         stdout, stderr, rc = _exec_command(cmd)
         if rc !=0 or stderr !='':
