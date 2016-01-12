@@ -5,16 +5,11 @@ Resource          core.robot
 Variables         VenueVariables.py
 
 *** Test Cases ***
-Validate Item Sequence Number Logic
-    [Documentation]    Validate Item Sequence Number Logic.
+Validate Item Sequence Numbering on Startup
+    [Documentation]    Validate Item Sequence Numbering on Startup
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1894
     ...
-    ...    MTE starts up case: 'verify unsolicited response sequence numbers in capture' checks sequence numbers starting from 0, 4, 5, ... 'verify updated message sequence numbers in capture' checks sequence numbers starting from possible 4, 5, .... If response messages exist, first updated message's sequence number \ in MTE output pcap should be last response message number + 1 if last response messages sequence number >=4, otherwise first updated message's sequence number should be 4
-    ...
-    ...    MTE rollover case: 'verify unsolicited response sequence numbers in capture' and 'verify updated message sequence numbers in capture' check sequence numbers starting from possible 3, 4, 5, ....
-    ...
-    ...    MTE failover case: 'verify unsolicited response sequence numbers in capture' and \ 'verify updated message sequence numbers in capture' check sequence numbers starting from possible 1, 4, 5, ...
-    ...
+    ...    Verify unsolicited response sequence numbers in capture start from 0, 4, 5, ... verify updated message sequence numbers start \ from possible 4, 5, .... If response messages exist, first updated message's sequence number should be last response message number + 1 if last response messages sequence number >=4, otherwise first updated message's sequence number should be 4
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     ${domain}    Get Preferred Domain
