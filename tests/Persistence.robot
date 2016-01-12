@@ -131,7 +131,7 @@ Go Into EndOfDay time
     @{tdBoxDateTime}=    get date and time
     @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]    @{tdBoxDateTime}[3]
     ...    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
-    ${offsetInSecond}=    set variable    120
+    ${offsetInSecond}=    set variable    300
     ${endOfDay}    add time to date    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]    ${offsetInSecond} second
     ${endOfDay}    get time    hour min sec    ${endOfDay}
     ${orgFile}    ${backupFile}    backup cfg file    ${VENUE_DIR}    ${mtecfgfile}
