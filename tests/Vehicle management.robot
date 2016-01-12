@@ -231,29 +231,26 @@ Verify FMS Extract and Insert
     ${afterLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localAfter.pcap
     Extract icf    ${ric}    ${domain}    ${beforeExtractFile}    ${serviceName}
     ${count}    Convert To Integer    2
-    Comment    //to get some REAL Fids name list from icf file
     ${FidList}    get REAL Fids in icf file    ${beforeExtractFile}    ${count}
     ${newFidNameValue}    ${newFidNumValue}    Create Fid Value Pair    ${FidList}
     ${iniFidNameValue}    ${iniFidNumValue}    Create Fid Value Pair    ${FidList}
-    Comment    //initial value set to the ${FidList}
+    Comment    //set FID 'before' values
     modify REAL items in icf    ${beforeExtractFile}    ${beforeExtractFile}    ${pubRic}    ${domain}    ${iniFidNameValue}
     Start Capture MTE Output    ${MTE}
     Insert icf    ${beforeExtractFile}    ${serviceName}
     Stop Capture MTE Output    ${MTE}    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${beforeLocalPcap}
     ${initialAllFidsValues}    get FidValue in message    ${beforeLocalPcap}    ${DAS_DIR}    ${pubRic}    UPDATE
-    Comment    //new value set to the ${FidList}
+    Comment    //set FID 'after' values
     modify REAL items in icf    ${beforeExtractFile}    ${afterExtractFile}    ${pubRic}    ${domain}    ${newFidNameValue}
     Start Capture MTE Output    ${MTE}
     Insert icf    ${afterExtractFile}    ${serviceName}
     Stop Capture MTE Output    ${MTE}    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${afterLocalPcap}
     ${newAllFidsValues}    get FidValue in message    ${afterLocalPcap}    ${DAS_DIR}    ${pubRic}    UPDATE
-    Comment    //Verify selected FIDs in ‘before’ capture have ‘before’ values
+    Comment    //Verify \
     Dictionary Should Contain Sub Dictionary    ${initialAllFidsValues}    ${iniFidNumValue}
-    Comment    //Verify selected FIDs in ‘after’ capture have ‘after’ values
     Dictionary Should Contain Sub Dictionary    ${newAllFidsValues}    ${newFidNumValue}
-    Comment    //Verify non-selected FID values are same in ‘before’ and ‘after’ capture
     ${modifiedFidNum}    Get Dictionary Keys    ${iniFidNumValue}
     Remove From Dictionary    ${initialAllFidsValues}    @{modifiedFidNum}
     Remove From Dictionary    ${newAllFidsValues}    @{modifiedFidNum}
@@ -261,32 +258,28 @@ Verify FMS Extract and Insert
     [Teardown]    case teardown    ${beforeExtractFile}    ${afterExtractFile}    ${beforeLocalPcap}    ${afterLocalPcap}
 
 Verify Deletion Delay
-    [Documentation]    Automatic delete Instrument in LH cache after 5 days, RIC is dropped and GEDA Item dropped due to expiration is sent to the SMF log, Instrument is successfully deleted \ in LH cache after 5 days
+    [Documentation]    Automatic delete Instrument in MTE cache after 5 days, RIC is dropped and GEDA Item dropped due to expiration is sent to the SMF log, Instrument is successfully deleted \ in LH cache after 5 days
     ...
     ...    Test Case - Verify Deletion Delay
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1891
+    start mte    ${MTE}
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${currDateTime}    get date and time
-    ${bkcurrDateTime}    Set Variable    ${currDateTime}
     ${StartOfDayTime}=    get value from MTE config    StartOfDayTime
     ${EndOfDayTime}=    get value from MTE config    EndOfDayTime
+    ${RIDEMachineTime}    Get Current Date    result_format=datetime
     ${currDateTime}    get date and time
+    ${bkcurrDateTime}    Convert Date    ${currDateTime[0]}.${currDateTime[1]}.${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    date_format=%Y.%m.%d \ %H:%M:%S    result_format=datetime
     ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
     ${EndOfDayGMT}    Convert to GMT    ${EndOfDayTime}
-    start mte    ${MTE}
     Drop ric    ${ric}    ${domain}    ${serviceName}
     wait smf log message after time    Drop message sent    ${currDateTime}
     Verify RIC Is Dropped In MTE Cache    ${MTE}    ${ric}
-    Rollover a day    ${StartOfDayGMT}    ${EndOfDayGMT}    5
+    Rollover MTE Machine Date    ${StartOfDayGMT}    ${EndOfDayGMT}    5
     wait smf log message after time    dropped due to expiration    ${currDateTime}
     Verify RIC Not In MTE Cache    ${MTE}    ${ric}
-    ${bkcurrDateTime[0]}    ${bkcurrDateTime[1]}    ${bkcurrDateTime[2]}    ${bkcurrDateTime[3]}    ${bkcurrDateTime[4]}    ${bkcurrDateTime[5]}    add seconds to date
-    ...    ${bkcurrDateTime[0]}    ${bkcurrDateTime[1]}    ${bkcurrDateTime[2]}    ${bkcurrDateTime[3]}    ${bkcurrDateTime[4]}    ${bkcurrDateTime[5]}
-    ...    60
-    ${res}    set date and time    ${bkcurrDateTime[0]}    ${bkcurrDateTime[1]}    ${bkcurrDateTime[2]}    ${bkcurrDateTime[3]}    ${bkcurrDateTime[4]}
-    ...    ${bkcurrDateTime[5]}
+    [Teardown]    Correct Linux Time    ${RIDEMachineTime}    ${bkcurrDateTime}
 
 *** Keywords ***
 Calculate UpdateSince for REORG
@@ -355,46 +348,42 @@ Drop ric
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
 Convert to GMT
-    [Arguments]    ${SourceTime}
+    [Arguments]    ${localTime}
+    [Documentation]    convert the local time to GMT
     ${DSTRIC}=    get value from MTE config    CHE-TimeZoneForConfigTimes
     ${currentGmtOffset}    get stat block field    ${MTE}    ${DSTRIC}    currentGMTOffset
     ${numOffset}    Convert To Number    ${currentGmtOffset}
-    ${currentGmtOffset}=    Evaluate    0 - ${numOffset}
-    ${StartTime}    ${lenTime}    Split String    ${SourceTime}    :
-    ${StartTimeSec}=    Set Variable If    ${lenTime} == 3    ${StartTime[2]}    0
+    ${GMTTime}    Subtract Time From Time    ${localTime}    ${numOffset}
     ${currDateTime}    get date and time
-    ${startDatetimeYear}    ${startDatetimeMonth}    ${startDatetimeDay}    ${startDatetimeHour}    ${startDatetimeMin}    ${startDatetimeSec}    add seconds to date
-    ...    ${currDateTime[0]}    ${currDateTime[1]}    ${currDateTime[2]}    ${StartTime[0]}    ${StartTime[1]}    ${StartTimeSec}
-    ...    ${currentGmtOffset}
-    ${GMTTime}    create list    ${startDatetimeHour}    ${startDatetimeMin}    ${startDatetimeSec}
+    ${date} =    Convert Date    ${currDateTime[0]}.${currDateTime[1]}.${currDateTime[2]} ${localTime}    date_format=%Y.%m.%d \ %H:%M
+    ${GMTTime}    Subtract Time From date    ${date}     ${numOffset}    result_format=datetime
     [Return]    ${GMTTime}
 
-Rollover a day
+Rollover MTE Machine Date
     [Arguments]    ${StartOfDayTime}    ${EndOfDayTime}    ${days}
+    [Documentation]    Rollover MTE machine for ${days}, make sure go through start of day and end of day
     ${currDateTime}    get date and time
-    ${startDatetimeYear}    ${startDatetimeMonth}    ${startDatetimeDay}    ${startDatetimeHour}    ${startDatetimeMin}    ${startDatetimeSec}    add seconds to date
-    ...    ${currDateTime[0]}    ${currDateTime[1]}    ${currDateTime[2]}    ${StartOfDayTime[0]}    ${StartOfDayTime[1]}    ${StartOfDayTime[2]}
-    ...    0
-    ${endSec}=    Set Variable If    ${StartOfDayTime[0]} > ${EndOfDayTime[0]}    86399    -1
-    ${startSec}=    Set Variable If    ${StartOfDayTime[0]} > ${EndOfDayTime[0]}    -1    86399
+    ${start} =    Convert Date    ${currDateTime[0]}.${currDateTime[1]}.${currDateTime[2]} ${StartOfDayTime.hour}:${StartOfDayTime.minute}    date_format=%Y.%m.%d \ %H:%M    result_format=datetime
+    ${endSec}=    Set Variable If    ${StartOfDayTime.hour} > ${EndOfDayTime.hour}    86399    -1
+    ${startSec}=    Set Variable If    ${StartOfDayTime.hour} > ${EndOfDayTime.hour}    -1    86399
     : FOR    ${index}    IN RANGE    0    ${days}
     \    log    index is -----------------------${index}
-    \    ${endDatetimeYear}    ${endDatetimeMonth}    ${endDatetimeDay}    ${endDatetimeHour}    ${endDatetimeMin}    ${endDatetimeSec}
-    \    ...    add seconds to date    ${startDatetimeYear}    ${startDatetimeMonth}    ${startDatetimeDay}    ${EndOfDayTime[0]}
-    \    ...    ${EndOfDayTime[1]}    ${EndOfDayTime[2]}    ${endSec}
-    \    ${res}    set date and time    ${endDatetimeYear}    ${endDatetimeMonth}    ${endDatetimeDay}    ${endDatetimeHour}
-    \    ...    ${endDatetimeMin}    ${endDatetimeSec}
+    \    ${end}    Convert Date    ${start.day}.${start.month}.${start.year} ${EndOfDayTime.hour}:${EndOfDayTime.minute}    date_format=%d.%m.%Y \ %H:%M
+    \    ${end}    Add Time To Date    ${end}    ${endSec}    result_format=datetime
+    \    ${res}    set date and time    ${end.year}    ${end.month}    ${end.day}    ${end.hour}
+    \    ...    ${end.minute}    ${end.second}
+    \    get date and time
     \    sleep    2s    ${currDateTime}
-    \    ${startDatetimeYear}    ${startDatetimeMonth}    ${startDatetimeDay}    ${startDatetimeHour}    ${startDatetimeMin}    ${startDatetimeSec}
-    \    ...    add seconds to date    ${endDatetimeYear}    ${endDatetimeMonth}    ${endDatetimeDay}    ${startDatetimeHour}
-    \    ...    ${startDatetimeMin}    ${startDatetimeSec}    ${startSec}
-    \    ${res}    set date and time    ${startDatetimeYear}    ${startDatetimeMonth}    ${startDatetimeDay}    ${startDatetimeHour}
-    \    ...    ${startDatetimeMin}    ${startDatetimeSec}
+    \    ${start} =    Convert Date    ${end.day}.${end.month}.${end.year} ${StartOfDayTime.hour}:${StartOfDayTime.minute}    date_format=%d.%m.%Y \ %H:%M
+    \    ${start}     Add Time To Date    ${start}     ${startSec}    result_format=datetime
+    \    ${res}    set date and time    ${start.year}    ${start.month}    ${start.day}    ${start.hour}
+    \    ...    ${start.minute}    ${start.second}
     \    ${currDateTime}    get date and time
     \    wait smf log message after time    StartOfDay time occurred    ${currDateTime}
 
 Get value from MTE config
     [Arguments]    ${fieldname}
+    [Documentation]    Use the field name to get the value from MTE config
     ${mteConfigFile}=    Get MTE Config File
     ${fieldvalue}=    get MTE config value    ${mteConfigFile}    ${fieldname}
     return from keyword if    '${fieldvalue}' != 'NOT FOUND'    ${fieldvalue}
@@ -411,3 +400,14 @@ Create Fid Value Pair
     \    Set To Dictionary    ${fidnamevalue}    ${Fid}    1${value}
     \    Set To Dictionary    ${fidnumvalue}    ${fidNum}    1${value}
     [Return]    ${fidnamevalue}    ${fidnumvalue}
+
+Correct Linux Time
+    [Arguments]    ${beginTime}    ${bkcurrDateTime}
+    [Documentation]    Use the RIDE machine begin time and get the current RIDE machine time to caculate how long the case run, add those seconds to the back update start time on MTE Linux machine
+    ${RIDEMachineTime}    Get Current Date    result_format=datetime
+    ${begin}=    Convert Date    ${beginTime}    result_format=datetime
+    ${linuxBegin}=    Convert Date    ${bkcurrDateTime}    result_format=datetime
+    ${secondsChanged}    Subtract Date From Date    ${RIDEMachineTime}    ${begin}
+    ${currDateTime}    add time to date    ${linuxBegin}    ${secondsChanged}    result_format=datetime
+    ${res}    set date and time    ${currDateTime.year}    ${currDateTime.month}    ${currDateTime.day}    ${currDateTime.hour}    ${currDateTime.minute}
+    ...    ${currDateTime.second}
