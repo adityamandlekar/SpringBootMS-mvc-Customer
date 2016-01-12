@@ -37,18 +37,20 @@ Verify PE Change Behavior
     ${domain}    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${exlfile}=    Get EXL For RIC    ${LOCAL_FMS_DIR}    ${domain}    ${serviceName}    ${ric}
-    @{pe}=    get ric fields from EXL    ${exlfile}    ${ric}    PROD_PERM
+    ${EXLfullpath}    Get EXL For RIC    ${LOCAL_FMS_DIR}    ${domain}    ${serviceName}    ${ric}
+    @{pe}=    get ric fields from EXL    ${EXLfullpath}    ${ric}    PROD_PERM
     ${penew}=    set variable    @{pe}[0]1
     ${exlmodified} =    set variable    ${exlfile}_modified.exl
-    Set PE in EXL    ${exlfile}    ${exlmodified}    ${penew}
+    ${exlfile}=    Fetch From Right    ${EXLfullpath}    \\
+    ${exlmodified} =    set variable    ${LOCAL_TMP_DIR}/${exlfile}_modified.exl
+    Set PE in EXL    ${EXLfullpath}    ${exlmodified}    ${penew}
     Start Capture MTE Output    ${MTE}
     Load Single EXL File    ${exlmodified}    ${serviceName}    ${CHE_IP}    25000
     Stop Capture MTE Output    ${MTE}    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     Run Keyword And Continue On Failure    verify PE Change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}    @{pe}[0]
     ...    ${penew}
-    Load Single EXL File    ${exlfile}    ${serviceName}    ${CHE_IP}    25000
+    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    25000
     Wait For Persist File Update    ${MTE}    ${VENUE_DIR}
     [Teardown]    case teardown    ${exlmodified}    ${LOCAL_TMP_DIR}/capture_local.pcap
 

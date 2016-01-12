@@ -124,7 +124,7 @@ Get ConnectTimesIdentifier
     ${len}    Get Length    ${fhName}
     ${connectTimesIdentifier}=    Run Keyword If    ${len} > 0    get MTE config value    ${mteConfigFile}    Inputs    ${fhName}
     ...    FHRealtimeLine    ConnectTimesIdentifier
-    return from keyword if    '${connectTimesIdentifier}' != 'None'    ${connectTimesIdentifier}
+    return from keyword if    '${connectTimesIdentifier}' != 'NOT FOUND'    ${connectTimesIdentifier}
     ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    FHRealtimeLine    ConnectTimesIdentifier
     @{retList}    Create List
     : FOR    ${ric}    IN    @{connectTimesIdentifier}
