@@ -203,6 +203,19 @@ Get GMT Offset And Apply To Datetime
     ...    year month day hour min sec    ${newdate}
     [Return]    ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}
 
+Get Mangling Config File
+    [Documentation]    Get the manglingConfiguration.xml from TD Box
+    ...    1. The file would be saved at Control PC and only removed at Suite Teardown
+    ...    2. Suite Variable ${LOCAL_MANGLING_CONFIG_FILE} has created to store the fullpath of the config file at Control PC
+    ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
+    Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
+    ${res}=    search remote files    ${VENUE_DIR}    manglingConfiguration.xml    recurse=${True}
+    Length Should Be    ${res}    2    manglingConfiguration.xml not found (or multiple files found).
+    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mangling_config_file.xml
+    get remote file    ${res[0]}    ${localFile}
+    Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${localFile}
+    [Return]    ${localFile}
+
 Get MTE Config File
     [Documentation]    Get the MTE config file (MTE.xml) from the remote machine and save it as a local file.
     ...    If we already have the local file, just return the file name without copying the remote file again.
