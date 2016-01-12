@@ -1398,22 +1398,7 @@ class LocalBoxUtilities(_ToolUtil):
         """
         lower = str1.lower()
         return lower
-        
-    def get_matches_workaround(self, listToSearch, pattern):
-        """This KW is temporary because 'Get Matches' KW is not available until Robot Framework 2.8.6.   
-        After upgrading to Robot 2.8.6, this KW should be deprecated and 'Get Matches' used
-        
-        Returns a list of matches to pattern in list
 
-        Example:
-        | get matches workaround | ${FMScategories} | Service_*
-        """
-        matches = []
-        for x in listToSearch:
-            if re.search(pattern, x):
-                matches.append(x)
-        return matches
-        
     def verify_cache_contains_only_configured_context_ids(self, cachedump_file_name_full_path, filter_string): 
         """Get set of context ID from cache dump file and venue xml_config file
         and verify the context id set from cache dump is subset of context id set defined in fms filter string

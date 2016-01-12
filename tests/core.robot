@@ -187,7 +187,7 @@ Get Domain Names
 Get FMS Service Name
     [Documentation]    get the Service name from statBlock
     ${categories}=    get stat blocks for category    ${MTE}    FMS
-    ${services}=    get matches workaround    ${categories}    Service_*
+    ${services}=    Get Matches    ${categories}    Service_*
     ${serviceName}    get stat block field    ${MTE}    ${services[0]}    serviceName
     [Return]    ${serviceName}
 
@@ -230,7 +230,7 @@ Get Preferred Domain
     ${mteConfigFile}=    Get MTE Config File
     ${domainList}=    Get Domain Names    ${mteConfigFile}
     : FOR    ${domain}    IN    @{preferenceOrder}
-    \    ${match}=    get matches workaround    ${domainList}    ${domain}
+    \    ${match}=    Get Matches    ${domainList}    ${domain}
     \    Return From Keyword If    ${match}    ${domain}
     FAIL    No preferred domain ${preferenceOrder} found in domain list ${domainList}
     [Return]    ${domain}
