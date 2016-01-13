@@ -16,21 +16,20 @@ Validate Item Sequence Numbering on Startup
     ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${service}    Get FMS Service Name
     ${icf_file}=    set variable    ${LOCAL_TMP_DIR}/extract_output.icf
-    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}
-    ...    Extract    --Services ${service}    --RIC ${ric}    --HandlerName ${MTE}    --Domain ${domain}    --OutputFile ${icf_file}
+    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}    Extract    --Services ${service}    --RIC ${ric}
+    ...    --HandlerName ${MTE}    --Domain ${domain}    --OutputFile ${icf_file}
     Stop MTE    ${MTE}
     Delete Persist Files    ${MTE}    ${VENUE_DIR}
     Start Capture MTE Output    ${MTE}    ${remoteCapture}
     Start MTE    ${MTE}
     Wait For FMS Reorg    ${MTE}
-    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}
-    ...    Insert    --Services ${service}    --InputFile "${icf_file}"
+    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}    Insert    --Services ${service}    --InputFile "${icf_file}"
     Stop Capture MTE Output    ${MTE}
     get remote file    ${remoteCapture}    ${localCapture}
-    ${seq_from_responses}    verify unsolicited response sequence numbers in capture    ${localCapture}    ${DAS_DIR}    ${ric}    ${domain}
-    ${seq_from_updates}    verify updated message sequence numbers in capture    ${localCapture}    ${DAS_DIR}    ${ric}    ${domain}
-    ${last_responses_item_with_addition} =    Evaluate    ${seq_from_responses[-1]} + ${1}
-    ${first_updatemsg_seq} =    Convert To Integer    ${seq_from_updates[0]}
-    Run Keyword If    ${seq_from_responses[-1]}==0    Should Be Equal    ${first_updatemsg_seq}    4
-    Run Keyword If    ${seq_from_responses[-1]}!=0    Should Be Equal    ${last_responses_item_with_addition}    ${first_updatemsg_seq}
+    ${last_response_seq}    verify unsolicited response sequence numbers in capture    ${localCapture}    ${DAS_DIR}    ${ric}    ${domain}    startup
+    ${first_update_seq}    verify updated message sequence numbers in capture    ${localCapture}    ${DAS_DIR}    ${ric}    ${domain}    startup
+    ${last_response_seq_plus_one} =    Evaluate    ${last_response_seq}+ 1
+    ${first_updatemsg_seq} =    Convert To Integer    ${first_update_seq}
+    Run Keyword If    ${last_response_seq}==0    Should Be Equal    ${first_updatemsg_seq}    4
+    ...    ELSE    Should Be Equal    ${last_response_seq_plus_one}    ${first_updatemsg_seq}
     [Teardown]    case teardown    ${localCapture}    ${icf_file}

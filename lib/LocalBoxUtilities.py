@@ -570,7 +570,7 @@ class LocalBoxUtilities(_ToolUtil):
             os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
     
     
-    def verify_unsolicited_response_sequence_numbers_in_capture(self, pcapfile, das_dir, ric, domain, mte_state = 'startup'):
+    def verify_unsolicited_response_sequence_numbers_in_capture(self, pcapfile, das_dir, ric, domain, mte_state):
         """ verify if unsolicited response message sequence numbers for RIC are in increasing order in MTE output pcap message
             if mte_state is startup, the sequence number should start from 0, then 4, 5, ... n, n+1...
             if mte_state is failover, the sequence number could start from 1, then 4, 5, ... n, n+1...
@@ -581,7 +581,7 @@ class LocalBoxUtilities(_ToolUtil):
                        ric : published RIC
                        domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
                        mte_state: possible value startup, rollover, failover.
-            return : list of response message sequence number 
+            return : last item from response message sequence number list
         """           
 
         if (os.path.exists(pcapfile) == False):
@@ -613,22 +613,23 @@ class LocalBoxUtilities(_ToolUtil):
         if mte_state == 'startup':
             if seqNumList[0] != '0':
                 raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 0' %seqNumList[0])  
-        
             if '1' in seqNumList or '2' in seqNumList or '3' in seqNumList:
                 raise AssertionError('*ERROR* sequence number 1, 2, 3 should not be in the message sequence number %s' %seqNumList)
          
         if mte_state == 'failover':  
+            if seqNumList[0] != '1':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
             if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
                 raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number %s' %seqNumList)
               
         if mte_state == 'rollover':
-            if '0' in seqNumList or '1' in seqNumList or '2' in seqNumList:
-                raise AssertionError('*ERROR* sequence number 0, 1, 2 should not be in the message sequence number %s' %seqNumList)
+            if seqNumList[0] != '3':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 3' %seqNumList[0])  
+            
+        return seqNumList[-1]
         
-        return seqNumList
         
-        
-    def verify_updated_message_sequence_numbers_in_capture(self, pcapfile, dasdir, ric, domain, mte_state = 'startup'):
+    def verify_updated_message_sequence_numbers_in_capture(self, pcapfile, dasdir, ric, domain, mte_state):
         """ verify if updated message sequence number for RIC are in increasing order in MTE output pcap message
             if mte_state is startup, the possible sequence number could start from 4 then 5, ... n, n+1...
             if mte_state is failover, the possible sequence number could start from 1, then 4, 5, ... n, n+1...
@@ -637,8 +638,8 @@ class LocalBoxUtilities(_ToolUtil):
                        das_dir : path for DAS tool
                        ric : published RIC
                        domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
-                       mte_state: possible value start, rollover, failover.
-            return : list of update message sequence number 
+                       mte_state: possible value startup, rollover, failover.
+            return : First item from update message sequence number list
         """       
         if (os.path.exists(pcapfile) == False):
             raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
@@ -672,14 +673,16 @@ class LocalBoxUtilities(_ToolUtil):
                 raise AssertionError('*ERROR* sequence number 0, 1, 2, 3 should not be in the message sequence number list %s' %seqNumList)
          
         if mte_state == 'failover':  
+            if seqNumList[0] != '1':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
             if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
                 raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list %s' %seqNumList)
               
         if mte_state == 'rollover':
-            if '0' in seqNumList or '1' in seqNumList or '2' in seqNumList:
-                raise AssertionError('*ERROR* sequence number 0, 1, 2 should not be in the message sequence number list %s' %seqNumList)
+            if seqNumList[0] != '3':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 3' %seqNumList[0])            
             
-        return seqNumList
+        return seqNumList[0]
     
                               
     def _verify_PE_change_in_message_c0(self,pcapfile,dasdir,ricname,newPE):
