@@ -40,7 +40,6 @@ Verify PE Change Behavior
     ${EXLfullpath}    Get EXL For RIC    ${LOCAL_FMS_DIR}    ${domain}    ${serviceName}    ${ric}
     @{pe}=    get ric fields from EXL    ${EXLfullpath}    ${ric}    PROD_PERM
     ${penew}=    set variable    @{pe}[0]1
-    ${exlmodified} =    set variable    ${exlfile}_modified.exl
     ${exlfile}=    Fetch From Right    ${EXLfullpath}    \\
     ${exlmodified} =    set variable    ${LOCAL_TMP_DIR}/${exlfile}_modified.exl
     Set PE in EXL    ${EXLfullpath}    ${exlmodified}    ${penew}

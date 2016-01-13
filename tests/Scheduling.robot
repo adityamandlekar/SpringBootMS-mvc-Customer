@@ -94,6 +94,7 @@ Verify Manual Closing Runs
     ${domain}    Get Preferred Domain
     Manual ClosingRun for a RIC    ${sampleRic}    ${publishKey}    ${domain}
     Manual ClosingRun for the EXL File including target Ric    ${sampleRic}    ${publishKey}    ${domain}
+    ${serviceName}    Get FMS Service Name
     Manual ClosingRun for ClosingRun Rics    ${serviceName}
 
 *** Keywords ***
@@ -284,7 +285,7 @@ Go into holiday and check stat
     ${startDatetime}    set variable    ${holidayStartDatetime[0]}-${holidayStartDatetime[1]}-${holidayStartDatetime[2]}T${holidayStartDatetime[3]}:${holidayStartDatetime[4]}:${holidayStartDatetime[5]}.0
     ${endDatetime}    set variable    ${holidayEndDatetime[0]}-${holidayEndDatetime[1]}-${holidayEndDatetime[2]}T${holidayEndDatetime[3]}:${holidayEndDatetime[4]}:${holidayEndDatetime[5]}.0
     Set Holiday Datetime In EXL    ${holidayExlFile}    ${holidayExlFileModified}    ${holidayRicName}    ${holidayDomainName}    ${startDatetime}    ${endDatetime}
-    Load EXL and check stat    ${holidayExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName[0]}    ${holidayStatField}    1
+    Load EXL and check stat    ${holidayExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName}    ${holidayStatField}    1
     remove files    ${holidayExlFileModified}
 
 Go outside holiday and check stat
@@ -334,6 +335,7 @@ Go outside trade time and check stat
     Set Trade Time In EXL    ${tradeTimeExlFile}    ${tradeTimeExlFileModified}    ${tradeTimeRicName}    ${tradeTimeDomainName}    ${tradeTimeStartTime}    ${tradeTimeEndTime}
     ...    ${weekDay}
     Load EXL and check stat    ${tradeTimeExlFileModified}    ${serviceName}    ${highactTimesIdentifier}    ${tradeTimeRicName}    ${tradeTimeStatField}    0
+    remove files    ${tradeTimeExlFileModified}
 
 Go into trade time for all trade time RICs
     [Documentation]    Sets the box so it goes into trade time for all @{tradeTimeRicList} and verifies ${tradeTimeStatField} is set to 1.
@@ -460,7 +462,7 @@ Holiday Setup
     Set Suite Variable    ${domain}
     ${feedTimeEXL}    get state EXL file    ${feedTimeRicName[0]}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
     ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
-    ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName[0]}
+    ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedHolidayRic}
     ${tradeDstRic}    ${tradeHolidayRic}    Get DST And Holiday RICs From EXL    ${tradeTimeEXL}    ${tradeTimeRicName}
     Set Suite Variable    ${tradeHolidayRic}
@@ -507,7 +509,7 @@ Trade Time Setup
     Set Suite Variable    ${domain}
     ${feedTimeEXL}    get state EXL file    ${feedTimeRicName[0]}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
     ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
-    ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName[0]}
+    ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedHolidayRic}
     ${tradeDstRic}    ${tradeHolidayRic}    Get DST And Holiday RICs From EXL    ${tradeTimeEXL}    ${tradeTimeRicName}
     Set Suite Variable    ${tradeHolidayRic}
