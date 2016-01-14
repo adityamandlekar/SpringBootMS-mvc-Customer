@@ -604,7 +604,9 @@ class LocalBoxUtilities(_ToolUtil):
                     
         for i in xrange(len(seqNumList) - 1):
             if int(seqNumList[i]) > int(seqNumList[i+1]):
-                raise AssertionError('*ERROR* response message for %s, %s are not in correct sequence order %s.'%(ric, domain, seqNumList)) 
+                print seqNumList
+                raise AssertionError('*ERROR* response message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be after SeqNo[%d] %s.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
+                
                      
         for exist_file in outputxmlfile:
             os.remove(exist_file)
@@ -614,13 +616,15 @@ class LocalBoxUtilities(_ToolUtil):
             if seqNumList[0] != '0':
                 raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 0' %seqNumList[0])  
             if '1' in seqNumList or '2' in seqNumList or '3' in seqNumList:
-                raise AssertionError('*ERROR* sequence number 1, 2, 3 should not be in the message sequence number %s' %seqNumList)
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 1, 2, 3 should not be in the message sequence number List')
          
         if mte_state == 'failover':  
             if seqNumList[0] != '1':
                 raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
             if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
-                raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number %s' %seqNumList)
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list')
               
         if mte_state == 'rollover':
             if seqNumList[0] != '3':
@@ -662,7 +666,8 @@ class LocalBoxUtilities(_ToolUtil):
           
         for i in xrange(len(seqNumList) - 1):
             if int(seqNumList[i]) > int(seqNumList[i + 1]):
-                raise AssertionError('*ERROR* update message for %s, %s are not in correct sequence order %s.'%(ric, domain, seqNumList)) 
+                print seqNumList
+                raise AssertionError('*ERROR* update message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be after SeqNo[%d] %s.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
             
         for exist_file in outputxmlfile:
             os.remove(exist_file)
@@ -670,13 +675,15 @@ class LocalBoxUtilities(_ToolUtil):
         
         if mte_state == 'startup':
             if seqNumList[0] <= '3':
-                raise AssertionError('*ERROR* sequence number 0, 1, 2, 3 should not be in the message sequence number list %s' %seqNumList)
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 0, 1, 2, 3 should not be in the message sequence number list')
          
         if mte_state == 'failover':  
             if seqNumList[0] != '1':
                 raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
             if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
-                raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list %s' %seqNumList)
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list')
               
         if mte_state == 'rollover':
             if seqNumList[0] != '3':
