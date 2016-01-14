@@ -230,8 +230,7 @@ Verify FMS Extract and Insert
     ${beforeLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localBefore.pcap
     ${afterLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localAfter.pcap
     Extract icf    ${ric}    ${domain}    ${beforeExtractFile}    ${serviceName}
-    ${count}    Convert To Integer    2
-    ${FidList}    get REAL Fids in icf file    ${beforeExtractFile}    ${count}
+    ${FidList}    get REAL Fids in icf file    ${beforeExtractFile}    3
     ${newFidNameValue}    ${newFidNumValue}    Create Fid Value Pair    ${FidList}
     ${iniFidNameValue}    ${iniFidNumValue}    Create Fid Value Pair    ${FidList}
     Comment    //set FID 'before' values
@@ -269,18 +268,19 @@ Verify Deletion Delay
     ${mteConfigFile}=    Get MTE Config File
     ${StartOfDayTime}=    get MTE config value    ${mteConfigFile}    StartOfDayTime
     ${EndOfDayTime}=    get MTE config value    ${mteConfigFile}    EndOfDayTime
-    ${RIDEMachineTime}    Get Current Date    result_format=datetime
-    ${currDateTime}    get date and time
-    ${bkcurrDateTime}    Convert Date    ${currDateTime[0]}.${currDateTime[1]}.${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    date_format=%Y.%m.%d \ %H:%M:%S    result_format=datetime
     ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
     ${EndOfDayGMT}    Convert to GMT    ${EndOfDayTime}
+    ${res}    set date and time    ${StartOfDayGMT.year}    ${StartOfDayGMT.month}    ${StartOfDayGMT.day}    ${StartOfDayGMT.hour}    ${StartOfDayGMT.minute}
+    ...    ${StartOfDayGMT.second}
+    ${currDateTime}    get date and time
     Drop ric    ${ric}    ${domain}    ${serviceName}
     wait smf log message after time    Drop message sent    ${currDateTime}
     Verify RIC Is Dropped In MTE Cache    ${MTE}    ${ric}
     Rollover MTE Machine Date    ${StartOfDayGMT}    ${EndOfDayGMT}    5
+    ${currDateTime}    get date and time
     wait smf log message after time    dropped due to expiration    ${currDateTime}
     Verify RIC Not In MTE Cache    ${MTE}    ${ric}
-    [Teardown]    Correct Linux Time    ${RIDEMachineTime}    ${bkcurrDateTime}
+    [Teardown]    Correct MTE Machinie Time
 
 *** Keywords ***
 Calculate UpdateSince for REORG
@@ -355,32 +355,10 @@ Convert to GMT
     ${DSTRIC}=    get MTE config value    ${mteConfigFile}    CHE-TimeZoneForConfigTimes
     ${currentGmtOffset}    get stat block field    ${MTE}    ${DSTRIC}    currentGMTOffset
     ${numOffset}    Convert To Number    ${currentGmtOffset}
-    ${GMTTime}    Subtract Time From Time    ${localTime}    ${numOffset}
     ${currDateTime}    get date and time
     ${date} =    Convert Date    ${currDateTime[0]}.${currDateTime[1]}.${currDateTime[2]} ${localTime}    date_format=%Y.%m.%d \ %H:%M
-    ${GMTTime}    Subtract Time From date    ${date}     ${numOffset}    result_format=datetime
+    ${GMTTime}    Subtract Time From date    ${date}    ${numOffset}    result_format=datetime
     [Return]    ${GMTTime}
-
-Rollover MTE Machine Date
-    [Arguments]    ${StartOfDayTime}    ${EndOfDayTime}    ${days}
-    [Documentation]    Rollover MTE machine for ${days}, make sure go through start of day and end of day
-    ${currDateTime}    get date and time
-    ${start} =    Convert Date    ${currDateTime[0]}.${currDateTime[1]}.${currDateTime[2]} ${StartOfDayTime.hour}:${StartOfDayTime.minute}    date_format=%Y.%m.%d \ %H:%M    result_format=datetime
-    ${endSec}=    Set Variable If    ${StartOfDayTime.hour} > ${EndOfDayTime.hour}    86399    -1
-    ${startSec}=    Set Variable If    ${StartOfDayTime.hour} > ${EndOfDayTime.hour}    -1    86399
-    : FOR    ${index}    IN RANGE    0    ${days}
-    \    ${end}    Convert Date    ${start.day}.${start.month}.${start.year} ${EndOfDayTime.hour}:${EndOfDayTime.minute}    date_format=%d.%m.%Y \ %H:%M
-    \    ${end}    Add Time To Date    ${end}    ${endSec}    result_format=datetime
-    \    ${res}    set date and time    ${end.year}    ${end.month}    ${end.day}    ${end.hour}
-    \    ...    ${end.minute}    ${end.second}
-    \    ${currDateTime}    get date and time
-    \    wait smf log message after time    EndOfDay time occurred    ${currDateTime}
-    \    ${start} =    Convert Date    ${end.day}.${end.month}.${end.year} ${StartOfDayTime.hour}:${StartOfDayTime.minute}    date_format=%d.%m.%Y \ %H:%M
-    \    ${start}     Add Time To Date    ${start}     ${startSec}    result_format=datetime
-    \    ${res}    set date and time    ${start.year}    ${start.month}    ${start.day}    ${start.hour}
-    \    ...    ${start.minute}    ${start.second}
-    \    ${currDateTime}    get date and time
-    \    wait smf log message after time    StartOfDay time occurred    ${currDateTime}
 
 Create Fid Value Pair
     [Arguments]    ${FidList}
@@ -394,13 +372,11 @@ Create Fid Value Pair
     \    Set To Dictionary    ${fidnumvalue}    ${fidNum}    1${value}
     [Return]    ${fidnamevalue}    ${fidnumvalue}
 
-Correct Linux Time
-    [Arguments]    ${beginTime}    ${bkcurrDateTime}
-    [Documentation]    Use the RIDE machine begin time and get the current RIDE machine time to caculate how long the case run, add those seconds to the back update start time on MTE Linux machine
-    ${RIDEMachineTime}    Get Current Date    result_format=datetime
-    ${begin}=    Convert Date    ${beginTime}    result_format=datetime
-    ${linuxBegin}=    Convert Date    ${bkcurrDateTime}    result_format=datetime
-    ${secondsChanged}    Subtract Date From Date    ${RIDEMachineTime}    ${begin}
-    ${currDateTime}    add time to date    ${linuxBegin}    ${secondsChanged}    result_format=datetime
-    ${res}    set date and time    ${currDateTime.year}    ${currDateTime.month}    ${currDateTime.day}    ${currDateTime.hour}    ${currDateTime.minute}
-    ...    ${currDateTime.second}
+Correct MTE Machinie Time
+    [Documentation]    To correct Linux time and restart SMF, restart SMF because currently FMS client have a bug now, if we change the MTE Machine time when SMF running, FMS client start to report exception like below, and in this case we can't use FMS client correclty:
+    ...    FMSClient:SocketException - ClientImpl::connect:connect (111); /ThomsonReuters/EventScheduler/EventScheduler; 18296; 18468; 0000235f; 07:00:00;
+    stop smf
+    ${RIDEMachineTime}    Get Current Date    UTC    result_format=datetime
+    ${res}    set date and time    ${RIDEMachineTime.year}    ${RIDEMachineTime.month}    ${RIDEMachineTime.day}    ${RIDEMachineTime.hour}    ${RIDEMachineTime.minute}
+    ...    ${RIDEMachineTime.second}
+    start smf

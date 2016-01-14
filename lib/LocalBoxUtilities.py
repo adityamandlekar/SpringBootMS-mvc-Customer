@@ -2472,7 +2472,7 @@ class LocalBoxUtilities(_ToolUtil):
                         tempList = subnode.nodeName.split(':') 
                         Fidlist.append(tempList[1])
                         fidCount = fidCount + 1
-                        if fidCount >= count :
+                        if fidCount >= int (count) :
                             return Fidlist
         
         
