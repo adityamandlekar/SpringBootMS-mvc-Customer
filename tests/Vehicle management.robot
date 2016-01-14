@@ -34,6 +34,7 @@ Verify Long RIC handled correctly
 
 Verify PE Change Behavior
     [Documentation]    Test Case - Verify PE Change Behavior : http://www.iajira.amers.ime.reuters.com/browse/CATF-1715
+    Set Mangling Rule    ${MTE}    UNMANGLED
     ${domain}    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
@@ -49,6 +50,7 @@ Verify PE Change Behavior
     Run Keyword And Continue On Failure    verify PE Change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}    @{pe}[0]
     ...    ${penew}
     Load Single EXL File    ${exlfile}    ${serviceName}    ${CHE_IP}    25000
+    Load Mangling Settings    ${MTE}
     Wait For Persist File Update    ${MTE}    ${VENUE_DIR}
     [Teardown]    case teardown    ${exlmodified}    ${LOCAL_TMP_DIR}/capture_local.pcap
 
@@ -219,31 +221,46 @@ Verify SIC rename handled correctly
     [Teardown]    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    25000    --AllowSICChange true
 
 Verify FMS Extract and Insert
-    [Documentation]    FMS Extract, Insert CHE owned RIC from/to CHE Database, CHE owned data can be extracted from CHE database via FMS, Insert CHE owned data to CHE database via FMS
+    [Documentation]    Extract existing RIC fields and values \ into an .icf file using FmsCmd. Modify some of the values and re-load the .icf file using FmsCmd.Verify that the modified values are published.
     ...    Test Case - Verify FMS Extract and Insert : http://www.iajira.amers.ime.reuters.com/browse/CATF-1892
     Start MTE    ${MTE}
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${fidvalue}    Create List    300    100
-    ${newfidvalue}    Create List    600    220
-    ${extractFile}    set variable    ${LOCAL_TMP_DIR}/extractFile.icf
-    ${extractFilemodified}    set variable    ${LOCAL_TMP_DIR}/extractFile_modified.icf
-    Extract icf    ${ric}    ${domain}    ${extractFile}    ${serviceName}
-    ${fieldlist}    ${fidnumlist}    get and modify 2 item in icf    ${extractFile}    ${extractFilemodified}    ${ric}    ${domain}
-    ...    ${fidvalue}
+    ${beforeExtractFile}    set variable    ${LOCAL_TMP_DIR}/beforeExtractFile.icf
+    ${afterExtractFile}    set variable    ${LOCAL_TMP_DIR}/afterExtractFile.icf
+    ${beforeLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localBefore.pcap
+    ${afterLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localAfter.pcap
+    Extract icf    ${ric}    ${domain}    ${beforeExtractFile}    ${serviceName}
+    ${count}    Convert To Integer    2
+    Comment    //to get some REAL Fids name list from icf file
+    ${FidList}    get REAL Fids in icf file    ${beforeExtractFile}    ${count}
+    ${newFidNameValue}    ${newFidNumValue}    Create Fid Value Pair    ${FidList}
+    ${iniFidNameValue}    ${iniFidNumValue}    Create Fid Value Pair    ${FidList}
+    Comment    //initial value set to the ${FidList}
+    modify REAL items in icf    ${beforeExtractFile}    ${beforeExtractFile}    ${pubRic}    ${domain}    ${iniFidNameValue}
     Start Capture MTE Output    ${MTE}
-    Insert icf    ${extractFilemodified}    ${serviceName}
-    Extract icf    ${ric}    ${domain}    ${extractFile}    ${serviceName}
-    ${modifyitem}    creat REAL modify item in icf    ${fieldlist}    ${newfidvalue}
-    modify icf    ${extractFile}    ${extractFilemodified}    ${ric}    ${domain}    ${modifyitem[0]}    ${modifyitem[1]}
-    Insert icf    ${extractFilemodified}    ${serviceName}
-    Insert icf    ${extractFile}    ${serviceName}
+    Insert icf    ${beforeExtractFile}    ${serviceName}
     Stop Capture MTE Output    ${MTE}    1    15
-    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
-    Run Keyword And Continue On Failure    verify Extract and Insert in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}    ${fidnumlist}
-    ...    ${fidvalue}    ${newfidvalue}
-    [Teardown]    case teardown    ${extractFile}    ${extractFilemodified}    ${LOCAL_TMP_DIR}/capture_local.pcap
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${beforeLocalPcap}
+    ${initialAllFidsValues}    get FidValue in message    ${beforeLocalPcap}    ${DAS_DIR}    ${pubRic}    UPDATE
+    Comment    //new value set to the ${FidList}
+    modify REAL items in icf    ${beforeExtractFile}    ${afterExtractFile}    ${pubRic}    ${domain}    ${newFidNameValue}
+    Start Capture MTE Output    ${MTE}
+    Insert icf    ${afterExtractFile}    ${serviceName}
+    Stop Capture MTE Output    ${MTE}    1    15
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${afterLocalPcap}
+    ${newAllFidsValues}    get FidValue in message    ${afterLocalPcap}    ${DAS_DIR}    ${pubRic}    UPDATE
+    Comment    //Verify selected FIDs in ‘before’ capture have ‘before’ values
+    Dictionary Should Contain Sub Dictionary    ${initialAllFidsValues}    ${iniFidNumValue}
+    Comment    //Verify selected FIDs in ‘after’ capture have ‘after’ values
+    Dictionary Should Contain Sub Dictionary    ${newAllFidsValues}    ${newFidNumValue}
+    Comment    //Verify non-selected FID values are same in ‘before’ and ‘after’ capture
+    ${modifiedFidNum}    Get Dictionary Keys    ${iniFidNumValue}
+    Remove From Dictionary    ${initialAllFidsValues}    @{modifiedFidNum}
+    Remove From Dictionary    ${newAllFidsValues}    @{modifiedFidNum}
+    Dictionaries Should Be Equal    ${initialAllFidsValues}    ${newAllFidsValues}
+    [Teardown]    case teardown    ${beforeExtractFile}    ${afterExtractFile}    ${beforeLocalPcap}    ${afterLocalPcap}
 
 Verify Deletion Delay
     [Documentation]    Automatic delete Instrument in LH cache after 5 days, RIC is dropped and GEDA Item dropped due to expiration is sent to the SMF log, Instrument is successfully deleted \ in LH cache after 5 days
@@ -344,8 +361,8 @@ Convert to GMT
     ${DSTRIC}=    get value from MTE config    CHE-TimeZoneForConfigTimes
     ${currentGmtOffset}    get stat block field    ${MTE}    ${DSTRIC}    currentGMTOffset
     ${numOffset}    Convert To Number    ${currentGmtOffset}
-    ${currentGmtOffset}    convert num to opposite    ${numOffset}
-    ${StartTime}    ${lenTime}    separate string to list    ${SourceTime}    :
+    ${currentGmtOffset}=    Evaluate    0 - ${numOffset}
+    ${StartTime}    ${lenTime}    Split String    ${SourceTime}    :
     ${StartTimeSec}=    Set Variable If    ${lenTime} == 3    ${StartTime[2]}    0
     ${currDateTime}    get date and time
     ${startDatetimeYear}    ${startDatetimeMonth}    ${startDatetimeDay}    ${startDatetimeHour}    ${startDatetimeMin}    ${startDatetimeSec}    add seconds to date
@@ -384,3 +401,15 @@ Get value from MTE config
     ${fieldvalue}=    get MTE config value    ${mteConfigFile}    ${fieldname}
     return from keyword if    '${fieldvalue}' != 'NOT FOUND'    ${fieldvalue}
     FAIL    No ${fieldname} found in venue config file: ${mteConfigFile}
+
+Create Fid Value Pair
+    [Arguments]    ${FidList}
+    [Documentation]    Use a Fid name list to create Fid Value dictionary, only for REAL type fid
+    ${fidnamevalue}    Create Dictionary
+    ${fidnumvalue}    Create Dictionary
+    : FOR    ${Fid}    IN    @{FidList}
+    \    ${fidNum}    get FID ID by FIDName    ${Fid}
+    \    ${value} =    Generate Random String    3    [NUMBERS]
+    \    Set To Dictionary    ${fidnamevalue}    ${Fid}    1${value}
+    \    Set To Dictionary    ${fidnumvalue}    ${fidNum}    1${value}
+    [Return]    ${fidnamevalue}    ${fidnumvalue}

@@ -66,7 +66,7 @@ Verify Downstream Recovery Functions
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
     ${constituents}=    get constituents from FidFilter    ${VENUE_DIR}    ${contextId}
-    Verify Solicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${pubRic}    ${domain}    ${constituents}
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${pubRic}    ${domain}    ${constituents}
     [Teardown]    case teardown    ${localCapture}
 
 Verify Common Required FID output
