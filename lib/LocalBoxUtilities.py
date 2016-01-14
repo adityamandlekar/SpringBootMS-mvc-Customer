@@ -2352,15 +2352,16 @@ class LocalBoxUtilities(_ToolUtil):
         if rc != 0:
             raise AssertionError('*ERROR* in running SCWLLi.exe %s' %stderr)  
         
-        return rc
+        return stdout
     
     def switch_MTE_LIVE_STANDBY_status(self,scwcli_dir,mteName,node,status,user,password,che_ip,port='27000'):
-        """ To switch specific MTE instance to LIVE or STANDBY
+        """ To switch specific MTE instance to LIVE, STANDBY, LOCK_LIVE or LOCK_STANDY. Or unlock the MTE instance.
 
             Argument : scwcli_dir - full path of SCWCli.exe
                        mteName - MTE instance name e.g. HKF02M
                        node - A,B,C,D
-                       status - LIVE:Switch to Live, STANDBY:Switch to Standby
+                       status - LIVE:Switch to Live, STANDBY:Switch to Standby, 
+                                LOCK_LIVE to lock live, LOCK_STANDY to lock standby, UNLOCK to unlock the MTE
                        user - login name for the TD box
                        password - login password for the TD box
                        che_ip - IP of the TD box
@@ -2374,13 +2375,40 @@ class LocalBoxUtilities(_ToolUtil):
        
         if (status == 'LIVE'):
             cmd = "-promote "
-        elif(status == 'STANDBY'):
+        elif (status == 'STANDBY'):
             cmd = "-demote "
+        elif (status == 'LOCK_LIVE'):
+            cmd = "-lock_live "
+        elif (status == 'LOCK_STANDBY'):
+            cmd = "-lock_stby "
+        elif (status == 'UNLOCK'):
+            cmd = "-unlock "
         else:
             raise AssertionError('*ERROR* Unknown status %s' %status)
             
         cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
         self._run_local_SCWCLI(scwcli_dir,cmd)
+
+    def get_master_box_ip(self, scwcli_dir, user, password, che_ip_list, port='27000'):
+        """ To find the master box from pair boxes
+
+            Argument : scwcli_dir - full path of SCWCli.exe
+                       user - login name for the TD box
+                       password - login password for the TD box
+                       che_ip_list - IP list of the TD boxes
+                       port - port no. that used to communicate with the SCW at TD box
+            Return :   the ip of master box
+            
+            Examples :
+            | ${iplist} | create list | ${CHE_A_IP} | ${CHE_B_IP} |
+            | ${master_ip} | get master box ip | C:\\SCW\\bin  | ${USERNAME} | ${PASSWORD} | ${iplist} |
+        """
+        for che_ip in che_ip_list:
+            cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,port,user,password)
+            stdout = self._run_local_SCWCLI(scwcli_dir,cmd)
+            if (stdout.find('SCW state MASTER') != -1):
+                return che_ip
+        raise AssertionError('*ERROR* cannot find a master box')
     
     def get_FidValue_in_message(self,pcapfile,dasdir,ricname, msgClass):
         """ To verify the insert icf file can update the changed fid and value correct
