@@ -153,20 +153,19 @@ Verify FMS Rebuild
 Drop a RIC by deleting EXL File and Full Reorg
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1850
     ...    To verify whether the RICs in a exl file can be dropped if the exl file is deleted.
-    ${domain}    Get Preferred Domain
-    ${serviceName}    Get FMS Service Name
+    [Setup]    Vehicle Management Case Setup
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${exlFullFileName}=    get EXL for RIC    ${LOCAL_FMS_DIR}    ${domain}    ${serviceName}    ${ric}
+    Append To List    ${processedEXLs}    ${exlFullFileName}
     ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
     copy File    ${exlFullFileName}    ${LOCAL_TMP_DIR}/${exlFileName}
     remove file    ${exlFullFileName}
+    Set To Dictionary    ${backupEXLs}    ${LOCAL_TMP_DIR}/${exlFileName}    ${exlFullFileName}
     ${currentDateTime}    get date and time
-    Run Keyword And Continue On Failure    Load All EXL Files    ${serviceName}    ${CHE_IP}
-    copy File    ${LOCAL_TMP_DIR}/${exlFileName}    ${exlFullFileName}
+    Load All EXL Files    ${serviceName}    ${CHE_IP}
     wait smf log message after time    Drop message sent    ${currentDateTime}
-    Run Keyword And Continue On Failure    Verify RIC is Dropped In MTE Cache    ${MTE}    ${ric}
-    Load Single EXL File    ${exlFullFileName}    ${serviceName}    ${CHE_IP}    25000
-    [Teardown]    case teardown    ${LOCAL_TMP_DIR}/${exlFileName}
+    Verify RIC is Dropped In MTE Cache    ${MTE}    ${ric}
+    [Teardown]    Vehicle Management Case Teardown    ${LOCAL_TMP_DIR}/${exlFileName}
 
 Verify Reconcile of Cache
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1848
@@ -401,6 +400,33 @@ Get value from MTE config
     ${fieldvalue}=    get MTE config value    ${mteConfigFile}    ${fieldname}
     return from keyword if    '${fieldvalue}' != 'NOT FOUND'    ${fieldvalue}
     FAIL    No ${fieldname} found in venue config file: ${mteConfigFile}
+
+Vehicle Management Case Setup
+    [Documentation]    The setup will get FMS service name to ${serviceName} and get perferred domain to ${domain}.
+    ...
+    ...    A list variable @{processedEXLs} will be created. all exl files which should be reloaded when teardown can be added into @{processedEXLs}.
+    ...
+    ...    A dictionary variable @{backupedEXLs} will be created as well. If you modify/delete EXLs, the orginal should be backup to a local path. Both orginal file path and backup file should be added into @{backupedEXLs}
+    ...    e.g. Set To Dictionary |${backupEXLs} |${backuppath} | ${orgpath}
+    ...    Teardown will copy ${backuppath} to ${orgpath}
+    @{processedEXLs}    create list
+    Set Suite Variable    @{processedEXLs}
+    ${backupEXLs}    Create Dictionary
+    Set Suite Variable    ${backupEXLs}
+    ${serviceName}    Get FMS Service Name
+    Set Suite Variable    ${serviceName}
+    ${domain}    Get Preferred Domain
+    Set Suite Variable    ${domain}
+
+Vehicle Management Case Teardown
+    [Arguments]    @{tmpfiles}
+    [Documentation]    The teardown will restore all backup EXL in @{backupEXLs}, and reload all exl files in @{processedEXLs}, and remove temporary files.
+    : FOR    ${backuppath}    IN    @{backupEXLs}
+    \    ${orgpath}    Get From Dictionary    ${backupEXLs}    ${backuppath}
+    \    Copy File    ${backuppath}    ${orgpath}
+    : FOR    ${exlfile}    IN    @{processedEXLs}
+    \    Load Single EXL File    ${exlfile}    ${serviceName}    ${CHE_IP}    25000
+    Case Teardown    @{tmpfiles}
 
 Create Fid Value Pair
     [Arguments]    ${FidList}
