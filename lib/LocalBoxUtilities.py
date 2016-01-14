@@ -603,8 +603,8 @@ class LocalBoxUtilities(_ToolUtil):
             raise AssertionError('*ERROR* response message for %s, %s does not exist.'%(ric,domain)) 
                     
         for i in xrange(len(seqNumList) - 1):
-            if seqNumList[i] > seqNumList[i+1]:
-                raise AssertionError('*ERROR* updated message for %s, %s are not in correct sequence order %s.'%(ric, domain, seqNumList)) 
+            if int(seqNumList[i]) > int(seqNumList[i+1]):
+                raise AssertionError('*ERROR* response message for %s, %s are not in correct sequence order %s.'%(ric, domain, seqNumList)) 
                      
         for exist_file in outputxmlfile:
             os.remove(exist_file)
@@ -661,8 +661,8 @@ class LocalBoxUtilities(_ToolUtil):
             raise AssertionError('*ERROR* updated message for %s, %s does not exist.'%(ric,domain)) 
           
         for i in xrange(len(seqNumList) - 1):
-            if not ((seqNumList[i] == seqNumList[i + 1]) or (int(seqNumList[i]) +1  == int(seqNumList[i + 1]))):
-                raise AssertionError('*ERROR* updated message for %s, %s are not in correct sequence order %s.'%(ric, domain, seqNumList)) 
+            if int(seqNumList[i]) > int(seqNumList[i + 1]):
+                raise AssertionError('*ERROR* update message for %s, %s are not in correct sequence order %s.'%(ric, domain, seqNumList)) 
             
         for exist_file in outputxmlfile:
             os.remove(exist_file)
