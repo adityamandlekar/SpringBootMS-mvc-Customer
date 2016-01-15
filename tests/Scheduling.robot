@@ -126,10 +126,8 @@ Set datetimes for IN state
     ...    For end datetime, adds 3 days from given: ${year}, ${month}, ${day}, ${hour}, ${min}, ${sec}
     ...
     ...    Note that the above is needed to cover max possible GMT offset cases.
-    ${startDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    -3 day
-    ${endDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day
-    ${startDateTime}    get time    year month day hour min sec    ${startDateTime}
-    ${endDateTime}    get time    year month day hour min sec    ${endDateTime}
+    ${startDateTime}    subtract time from date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day    exclude_millis=yes
+    ${endDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day    exclude_millis=yes
     [Return]    ${startDatetime}    ${endDatetime}
 
 Set datetimes for OUT state
@@ -140,10 +138,8 @@ Set datetimes for OUT state
     ...    For end datetime, adds 4 days from given: ${year}, ${month}, ${day}, ${hour}, ${min}, ${sec}
     ...
     ...    Note that the above is needed to cover max possible GMT offset cases.
-    ${startDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day
-    ${endDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    4 day
-    ${startDateTime}    get time    year month day hour min sec    ${startDateTime}
-    ${endDateTime}    get time    year month day hour min sec    ${endDateTime}
+    ${startDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day    exclude_millis=yes
+    ${endDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    4 day    exclude_millis=yes
     [Return]    ${startDatetime}    ${endDatetime}
 
 Set times for IN state
@@ -167,20 +163,14 @@ Set times for OUT state
 Calculate DST start date and check stat
     [Arguments]    ${dstRicName}    ${dstStartDatetime}
     ${normalGMTOffset}    get stat block field    ${mte}    ${dstRicName}    normalGMTOffset
-    ${applyDstGmtOffset}    Evaluate    0 - int(${normalGMTOffset})
-    ${datetime}    add time to date    ${dstStartDatetime[0]}-${dstStartDatetime[1]}-${dstStartDatetime[2]} ${dstStartDatetime[3]}:${dstStartDatetime[4]}:${dstStartDatetime[5]}    ${applyDstGmtOffset} second
-    ${datetime}    get time    year month day hour min sec    ${datetime}
-    ${startDatetime}    set variable    ${datetime[0]}-${datetime[1]}-${datetime[2]}T${datetime[3]}:${datetime[4]}:${datetime[5]}.0
+    ${startDatetime}    subtract time from date    ${dstStartDatetime}    ${normalGMTOffset} second    result_format=%Y-%m-%dT%H:%M:%S.0
     ${expectedStartDatetime}    convert EXL datetime to statblock format    ${startDatetime}
     wait for statBlock    ${mte}    ${dstRicName}    ${dstStartDateStatField}    ${expectedStartDatetime}    waittime=2    timeout=120
 
 Calculate DST end date and check stat
     [Arguments]    ${dstRicName}    ${dstEndDatetime}
     ${dstGMTOffset}    get stat block field    ${mte}    ${dstRicName}    dstGMTOffset
-    ${applyDstGmtOffset}    Evaluate    0 - int(${dstGMTOffset})
-    ${datetime}    add time to date    ${dstEndDatetime[0]}-${dstEndDatetime[1]}-${dstEndDatetime[2]} ${dstEndDatetime[3]}:${dstEndDatetime[4]}:${dstEndDatetime[5]}    ${applyDstGmtOffset} second
-    ${datetime}    get time    year month day hour min sec    ${datetime}
-    ${endDatetime}    set variable    ${datetime[0]}-${datetime[1]}-${datetime[2]}T${datetime[3]}:${datetime[4]}:${datetime[5]}.0
+    ${endDatetime}    subtract time from date    ${dstEndDatetime}    ${dstGMTOffset} second    result_format=%Y-%m-%dT%H:%M:%S.0
     ${expectedEndDatetime}    convert EXL datetime to statblock format    ${endDatetime}
     wait for statBlock    ${mte}    ${dstRicName}    ${dstEndDateStatField}    ${expectedEndDatetime}    waittime=2    timeout=120
 
@@ -190,8 +180,8 @@ Go into DST and check stats
     ${dstExlFileModified} =    set variable    ${dstExlFile}_modified.exl
     ${dstStartDatetime}    ${dstEndDatetime}    Set datetimes for IN state    ${gmtDateTime[0]}    ${gmtDateTime[1]}    ${gmtDateTime[2]}    ${gmtDateTime[3]}
     ...    ${gmtDateTime[4]}    ${gmtDateTime[5]}
-    ${startDatetime}    set variable    ${dstStartDatetime[0]}-${dstStartDatetime[1]}-${dstStartDatetime[2]}T${dstStartDatetime[3]}:${dstStartDatetime[4]}:${dstStartDatetime[5]}.0
-    ${endDatetime}    set variable    ${dstEndDatetime[0]}-${dstEndDatetime[1]}-${dstEndDatetime[2]}T${dstEndDatetime[3]}:${dstEndDatetime[4]}:${dstEndDatetime[5]}.0
+    ${startDatetime}    convert date    ${dstStartDatetime}    result_format=%Y-%m-%dT%H:%M:%S.0
+    ${endDatetime}    convert date    ${dstEndDatetime}    result_format=%Y-%m-%dT%H:%M:%S.0
     Set DST Datetime In EXL    ${dstExlFile}    ${dstExlFileModified}    ${dstRicName}    ${domainName}    ${startDatetime}    ${endDatetime}
     Load Single EXL File    ${dstExlFileModified}    ${serviceName}    ${CHE_IP}
     Calculate DST start date and check stat    ${dstRicName}    ${dstStartDatetime}
@@ -533,9 +523,7 @@ Go Into Closing Run Time For All Closing Run RICs
     \    Append to list    ${processedClosingrunRicName}    ${closingrunRicName}
     \    ${dt}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName[0]}
     \    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    \    ${startDatetime}    add time to date    ${localVenueDateTime[0]}-${localVenueDateTime[1]}-${localVenueDateTime[2]} ${localVenueDateTime[3]}:${localVenueDateTime[4]}:${localVenueDateTime[5]}    120 second
-    \    ${startDatetime}    get time    hour min sec    ${startDatetime}
-    \    ${closingRunTimeStartTime}    set variable    ${startDatetime[0]}:${startDatetime[1]}:${startDatetime[2]}
+    \    ${closingRunTimeStartTime}    add time to date    ${localVenueDateTime[0]}-${localVenueDateTime[1]}-${localVenueDateTime[2]} ${localVenueDateTime[3]}:${localVenueDateTime[4]}:${localVenueDateTime[5]}    120 second    result_format=%H:%M:%S
     \    ${closingRunExlfileModified}=    set variable    ${closingRunExlFile}_modified.exl
     \    modify EXL    ${closingRunExlFile}    ${closingRunExlfileModified}    ${closingrunRicName}    ${domain}    <it:SCHEDULE_${weekDay}>\n<it:TIME>${closingRunTimeStartTime}</it:TIME>\n</it:SCHEDULE_${weekDay}>
     \    Append to list    @{closingRunExlFiles}    ${closingRunExlFile}

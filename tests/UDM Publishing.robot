@@ -66,7 +66,7 @@ Verify Downstream Recovery Functions
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
     ${constituents}=    get constituents from FidFilter    ${VENUE_DIR}    ${contextId}
-    Verify Solicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${pubRic}    ${domain}    ${constituents}
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${pubRic}    ${domain}    ${constituents}
     [Teardown]    case teardown    ${localCapture}
 
 Verify Common Required FID output
@@ -135,6 +135,7 @@ Verify SPS RIC is published
     wait smf log message after time    Finished Sending Images    ${currentDateTime}
     Stop Capture MTE Output    ${MTE}    1    5
     get remote file    ${remoteCapture}    ${localCapture}
+    ${constituents}=    get constituents from FidFilter    ${VENUE_DIR}    ${contextId}
     Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_SPS_ric_sub_provider}    ${domain}    ${constituents}
     Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_SPS_ric_input_stats}    ${domain}    ${constituents}
     [Teardown]    case teardown    ${localCapture}
@@ -147,6 +148,7 @@ Verify DDS RIC is published
     ${domain}=    Get Preferred Domain
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     ${serviceName}=    Get FMS Service Name
+    ${constituents}=    get constituents from FidFilter    ${VENUE_DIR}    ${contextId}
     @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
     : FOR    ${labelID}    IN    @{labelIDs}
     \    ${currentDateTime}    get date and time

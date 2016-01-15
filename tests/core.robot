@@ -177,7 +177,7 @@ Get Domain Names
 Get FMS Service Name
     [Documentation]    get the Service name from statBlock
     ${categories}=    get stat blocks for category    ${MTE}    FMS
-    ${services}=    get matches workaround    ${categories}    Service_*
+    ${services}=    Get Matches    ${categories}    Service_*
     ${serviceName}    get stat block field    ${MTE}    ${services[0]}    serviceName
     [Return]    ${serviceName}
 
@@ -192,6 +192,19 @@ Get GMT Offset And Apply To Datetime
     ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}    get Time
     ...    year month day hour min sec    ${newdate}
     [Return]    ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}
+
+Get Mangling Config File
+    [Documentation]    Get the manglingConfiguration.xml from TD Box
+    ...    1. The file would be saved at Control PC and only removed at Suite Teardown
+    ...    2. Suite Variable ${LOCAL_MANGLING_CONFIG_FILE} has created to store the fullpath of the config file at Control PC
+    ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
+    Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
+    ${res}=    search remote files    ${VENUE_DIR}    manglingConfiguration.xml    recurse=${True}
+    Length Should Be    ${res}    2    manglingConfiguration.xml not found (or multiple files found).
+    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mangling_config_file.xml
+    get remote file    ${res[0]}    ${localFile}
+    Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${localFile}
+    [Return]    ${localFile}
 
 Get MTE Config File
     [Documentation]    Get the MTE config file (MTE.xml) from the remote machine and save it as a local file.
@@ -220,7 +233,7 @@ Get Preferred Domain
     ${mteConfigFile}=    Get MTE Config File
     ${domainList}=    Get Domain Names    ${mteConfigFile}
     : FOR    ${domain}    IN    @{preferenceOrder}
-    \    ${match}=    get matches workaround    ${domainList}    ${domain}
+    \    ${match}=    Get Matches    ${domainList}    ${domain}
     \    Return From Keyword If    ${match}    ${domain}
     FAIL    No preferred domain ${preferenceOrder} found in domain list ${domainList}
     [Return]    ${domain}
@@ -265,7 +278,7 @@ Load Mangling Settings
     [Arguments]    ${mte}
     ${dt}=    get date and time
     Run Commander    linehandler    lhcommand ${mte} mangling:refresh_settings
-    wait SMF log message after time    mangling refresh complete    ${dt}    5    300
+    wait SMF log does not contain    Drop message sent for    10    600
 
 Load Single EXL File
     [Arguments]    ${exlFile}    ${service}    ${headendIP}    ${headendPort}=25000    @{optargs}
