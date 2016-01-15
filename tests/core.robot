@@ -126,21 +126,11 @@ Get ConnectTimesIdentifier
     ...    FHRealtimeLine    ConnectTimesIdentifier
     return from keyword if    '${connectTimesIdentifier}' != 'None'    ${connectTimesIdentifier}
     ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    FHRealtimeLine    ConnectTimesIdentifier
-    @{retList}    Create List
-    : FOR    ${ric}    IN    @{connectTimesIdentifier}
-    \    ${count}=    Get Count    ${retList}    ${ric}
-    \    Comment    To ensure no duplicate connectTimesIdenifiers are put in the list
-    \    Run Keyword if    ${count} == 0    append to list    ${retList}    ${ric}
-    ${len}    Get Length    ${retList}
-    return from keyword if    ${len} > 0    ${retList}
-    @{retList}    Create List
+    @{retList}=    Remove Duplicates    ${connectTimesIdentifier}
+    return from keyword if    len(${retList}) > 0    ${retList}
     ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    ConnectTimesRIC
-    : FOR    ${ric}    IN    @{connectTimesIdentifier}
-    \    ${count}=    Get Count    ${retList}    ${ric}
-    \    Comment    To ensure no duplicate connectTimesIdenifiers are put in the list
-    \    Run Keyword if    ${count} == 0    append to list    ${retList}    ${ric}
-    ${len}    Get Length    ${retList}
-    return from keyword if    ${len} > 0    ${retList}
+    @{retList}=    Remove Duplicates    ${connectTimesIdentifier}
+    return from keyword if    len(${retList}) > 0    ${retList}
     FAIL    No ConnectTimesIdentifier found in venue config file: ${mteConfigFile}
 
 Get HighActivityTimesIdentifier
@@ -187,7 +177,7 @@ Get Domain Names
 Get FMS Service Name
     [Documentation]    get the Service name from statBlock
     ${categories}=    get stat blocks for category    ${MTE}    FMS
-    ${services}=    get matches workaround    ${categories}    Service_*
+    ${services}=    Get Matches    ${categories}    Service_*
     ${serviceName}    get stat block field    ${MTE}    ${services[0]}    serviceName
     [Return]    ${serviceName}
 
@@ -202,6 +192,19 @@ Get GMT Offset And Apply To Datetime
     ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}    get Time
     ...    year month day hour min sec    ${newdate}
     [Return]    ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}
+
+Get Mangling Config File
+    [Documentation]    Get the manglingConfiguration.xml from TD Box
+    ...    1. The file would be saved at Control PC and only removed at Suite Teardown
+    ...    2. Suite Variable ${LOCAL_MANGLING_CONFIG_FILE} has created to store the fullpath of the config file at Control PC
+    ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
+    Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
+    ${res}=    search remote files    ${VENUE_DIR}    manglingConfiguration.xml    recurse=${True}
+    Length Should Be    ${res}    2    manglingConfiguration.xml not found (or multiple files found).
+    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mangling_config_file.xml
+    get remote file    ${res[0]}    ${localFile}
+    Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${localFile}
+    [Return]    ${localFile}
 
 Get MTE Config File
     [Documentation]    Get the MTE config file (MTE.xml) from the remote machine and save it as a local file.
@@ -230,7 +233,7 @@ Get Preferred Domain
     ${mteConfigFile}=    Get MTE Config File
     ${domainList}=    Get Domain Names    ${mteConfigFile}
     : FOR    ${domain}    IN    @{preferenceOrder}
-    \    ${match}=    get matches workaround    ${domainList}    ${domain}
+    \    ${match}=    Get Matches    ${domainList}    ${domain}
     \    Return From Keyword If    ${match}    ${domain}
     FAIL    No preferred domain ${preferenceOrder} found in domain list ${domainList}
     [Return]    ${domain}
