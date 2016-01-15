@@ -280,7 +280,7 @@ Verify Deletion Delay
     ${currDateTime}    get date and time
     wait smf log message after time    dropped due to expiration    ${currDateTime}
     Verify RIC Not In MTE Cache    ${MTE}    ${ric}
-    [Teardown]    Correct MTE Machinie Time
+    [Teardown]    Correct MTE Machine Time
 
 *** Keywords ***
 Calculate UpdateSince for REORG
@@ -372,7 +372,7 @@ Create Fid Value Pair
     \    Set To Dictionary    ${fidnumvalue}    ${fidNum}    1${value}
     [Return]    ${fidnamevalue}    ${fidnumvalue}
 
-Correct MTE Machinie Time
+Correct MTE Machine Time
     [Documentation]    To correct Linux time and restart SMF, restart SMF because currently FMS client have a bug now, if we change the MTE Machine time when SMF running, FMS client start to report exception like below, and in this case we can't use FMS client correclty:
     ...    FMSClient:SocketException - ClientImpl::connect:connect (111); /ThomsonReuters/EventScheduler/EventScheduler; 18296; 18468; 0000235f; 07:00:00;
     stop smf
