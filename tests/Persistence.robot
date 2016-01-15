@@ -124,10 +124,7 @@ Go Into EndOfDay time
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
     ${mtecfgfile}=    Convert To Lowercase    ${MTE}.xml
     ${mteConfigFile}=    Get MTE Config File
-    ${connectTimesIdentifier}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${Empty}
-    ${serviceName}=    Get FMS Service Name
-    ${exlfile}=    get state EXL file    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
-    @{dstRic}=    get ric fields from EXL    ${exlfile}    ${connectTimesIdentifier}    DST_REF
+    @{dstRic}=    get MTE config list by path    ${mteConfigFile}    CHE-TimeZoneForConfigTimes
     @{tdBoxDateTime}=    get date and time
     @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]    @{tdBoxDateTime}[3]
     ...    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
