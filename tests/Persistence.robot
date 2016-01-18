@@ -126,7 +126,7 @@ Go Into EndOfDay time
     ${mteConfigFile}=    Get MTE Config File
     ${connectTimesIdentifier}=    Get ConnectTimesIdentifier    ${mteConfigFile}
     ${serviceName}=    Get FMS Service Name
-    ${exlfile}=    get state EXL file    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
+    ${exlfile}=    get state EXL file    ${connectTimesIdentifier[0]}    ${connectTimeRicDomain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
     @{dstRic}=    get ric fields from EXL    ${exlfile}    ${connectTimesIdentifier}    DST_REF
     @{tdBoxDateTime}=    get date and time
     @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]    @{tdBoxDateTime}[3]
