@@ -1746,6 +1746,10 @@ class LocalBoxUtilities(_ToolUtil):
         if not labelNode: 
             raise AssertionError('*ERROR* label element does not exist in %s' % ddnLabels_file)
         
+        multTagText = ""
+        multicast_port_tag = ""
+        multicast_ip = ""
+        multicast_port = ""
         for node in labelNode:
             if node.get('ID') == labelID:
                 if (mteName != ""): #indicate checking ddnPublishers.xml
@@ -1762,7 +1766,7 @@ class LocalBoxUtilities(_ToolUtil):
                     multTagText = node.find('multTag').text
                 break
         
-        if not multTagText:
+        if (multTagText == None):
             raise AssertionError('*ERROR* could not find multTag text for labelID %s' % labelID)
         
         multAddrNode = root.findall('.//multAddr')    
@@ -1772,14 +1776,14 @@ class LocalBoxUtilities(_ToolUtil):
                 multicast_port_tag = node.get('PORT')
                 break;
             
-        if not multicast_port_tag:
+        if (multicast_port_tag == None):
             raise AssertionError('*ERROR* could not find port for multAddr node %s' % multTagText)
         
         for node in root.findall('.//port'):
             if node.get('ID') == multicast_port_tag:
                 multicast_port = node.text
                 
-        if not multicast_ip and not multicast_port: 
+        if (multicast_ip == None) or (multicast_port == ""): 
             raise AssertionError('*ERROR* failed to get multicast address for LabelID %s' % labelID)
         
         multicast_address = []        
@@ -2433,7 +2437,6 @@ class LocalBoxUtilities(_ToolUtil):
             if (line.find('SyncPulseMissed') != -1):
                 contents = line.split('|')
                 if (len(contents) >= 5):
-                    print contents
                     syncPulseMissed.append(int(contents[3].strip()))
                     syncPulseMissed.append(int(contents[4].strip()))
                     return syncPulseMissed

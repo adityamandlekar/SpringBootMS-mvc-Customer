@@ -1417,14 +1417,12 @@ class LinuxToolUtilities():
         """  
                 
         cmd = "/sbin/iptables -A %s -p %s --destination-port %s -j DROP"%(inOrOut,protocol,port)
-        print cmd
         
         stdout, stderr, rc = _exec_command(cmd)
         if rc !=0 or stderr !='':
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
         
         cmd = "/sbin/service iptables save"
-        print cmd
         
         stdout, stderr, rc = _exec_command(cmd)
         if rc !=0 or stderr !='':
@@ -1441,6 +1439,12 @@ class LinuxToolUtilities():
         """  
                 
         cmd = "iptables -F"
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))       
+        
+        cmd = "/sbin/service iptables save"
         
         stdout, stderr, rc = _exec_command(cmd)
         if rc !=0 or stderr !='':
