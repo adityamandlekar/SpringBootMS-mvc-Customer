@@ -24,7 +24,6 @@ from LinuxFSUtilities import LinuxFSUtilities
 from FMUtilities import _FMUtil
 from utils.local import _run_local_command
 from utils._ToolUtil import _ToolUtil
-from utils._FSUtil import _FSUtil
 
 FID_CONTEXTID = '5357'
 
@@ -1515,13 +1514,6 @@ class LocalBoxUtilities(_ToolUtil):
             
         return False
 
-    def convert_to_lowercase_workaround(self, str1):
-        """This KW is temporary because 'Convert to lowercase' KW is not available until Robot Framework 2.8.6.   
-        After upgrading to Robot 2.8.6, this KW should be deprecated and 'Convert to Lowercase' used
-        """
-        lower = str1.lower()
-        return lower
-
     def verify_cache_contains_only_configured_context_ids(self, cachedump_file_name_full_path, filter_string): 
         """Get set of context ID from cache dump file and venue xml_config file
         and verify the context id set from cache dump is subset of context id set defined in fms filter string
@@ -2609,7 +2601,7 @@ class LocalBoxUtilities(_ToolUtil):
                         tempList = subnode.nodeName.split(':') 
                         Fidlist.append(tempList[1])
                         fidCount = fidCount + 1
-                        if fidCount >= count :
+                        if fidCount >= int (count) :
                             return Fidlist
         
         
