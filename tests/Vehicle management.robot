@@ -388,6 +388,33 @@ Vehicle Management Case Teardown
     \    Load Single EXL File    ${exlfile}    ${serviceName}    ${CHE_IP}    25000
     Case Teardown    @{tmpfiles}
 
+Vehicle Management Case Setup
+    [Documentation]    The setup will get FMS service name to ${serviceName} and get perferred domain to ${domain}.
+    ...
+    ...    A list variable @{processedEXLs} will be created. all exl files which should be reloaded when teardown can be added into @{processedEXLs}.
+    ...
+    ...    A dictionary variable @{backupedEXLs} will be created as well. If you modify/delete EXLs, the orginal should be backup to a local path. Both orginal file path and backup file should be added into @{backupedEXLs}
+    ...    e.g. Set To Dictionary |${backupEXLs} |${backuppath} | ${orgpath}
+    ...    Teardown will copy ${backuppath} to ${orgpath}
+    @{processedEXLs}    create list
+    Set Suite Variable    @{processedEXLs}
+    ${backupEXLs}    Create Dictionary
+    Set Suite Variable    ${backupEXLs}
+    ${serviceName}    Get FMS Service Name
+    Set Suite Variable    ${serviceName}
+    ${domain}    Get Preferred Domain
+    Set Suite Variable    ${domain}
+
+Vehicle Management Case Teardown
+    [Arguments]    @{tmpfiles}
+    [Documentation]    The teardown will restore all backup EXL in @{backupEXLs}, and reload all exl files in @{processedEXLs}, and remove temporary files.
+    : FOR    ${backuppath}    IN    @{backupEXLs}
+    \    ${orgpath}    Get From Dictionary    ${backupEXLs}    ${backuppath}
+    \    Copy File    ${backuppath}    ${orgpath}
+    : FOR    ${exlfile}    IN    @{processedEXLs}
+    \    Load Single EXL File    ${exlfile}    ${serviceName}    ${CHE_IP}    25000
+    Case Teardown    @{tmpfiles}
+
 Create Fid Value Pair
     [Arguments]    ${FidList}
     [Documentation]    Use a Fid name list to create Fid Value dictionary, only for REAL type fid
