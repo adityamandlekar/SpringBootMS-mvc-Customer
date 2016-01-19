@@ -344,6 +344,42 @@ class LinuxToolUtilities():
                         return
             time.sleep(waittime)
         raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smf log before timeout %ds' %(message, timeout)) 
+ 
+    def wait_smf_log_does_not_contain(self, message, waittime=2, timeout=60):
+        """Wait until the SMF log file does not contain the specified message within the last 'waittime' interval
+
+        Argument :
+            message : target message in grep format to find in smf log
+            waittime : specifies the time to wait between checks, in seconds.
+            timeout : specifies the maximum time to wait, in seconds.
+        
+        Return : Nil if success or raise error
+
+        Example:
+        | wait smf log does not contain | Drop message sent for |
+        """
+
+        dt = LinuxCoreUtilities().get_date_and_time()
+        
+        # convert  unicode to int (it is unicode if it came from the Robot test)
+        timeout = int(timeout)
+        waittime = int(waittime)
+        maxtime = time.time() + float(timeout)
+        while time.time() <= maxtime:
+            time.sleep(waittime)
+            refDate = '%s-%s-%s' %(dt[0], dt[1], dt[2])
+            refTime = '%s:%s:%s' %(dt[3], dt[4], dt[5])
+            currentFile = '%s/smf-log-files.%s%s%s.txt' %(self.SMFLOGDIR, dt[0], dt[1], dt[2])
+            cmd = "grep '%s' %s | tail --lines=1" %(message, currentFile)
+            stdout, stderr, rc = _exec_command(cmd)
+            retMessage = stdout.split(';')
+            if (len(retMessage) < 2):
+                return
+            else:
+                if retMessage[0].strip() <= refDate and retMessage[1].strip() <= refTime:
+                    return
+            dt = LinuxCoreUtilities().get_date_and_time()
+        raise AssertionError('*ERROR* SMF log still contains pattern \'%s\' after timeout %ds' %(message, timeout))    
     
     def dump_cache(self, MTEName, venuedir, waittime=2, timeout=60):
         """Dump the MTE cache to a file (on the MTE machine).
@@ -1387,13 +1423,13 @@ class LinuxToolUtilities():
         else:
             raise AssertionError('*ERROR* The FID can not be found')        
 
-    def rollover_MTE_Machine_Date(self, startOfDay, endOfDay, durationDays=1):   
-        """to rollover MTE machine date with the duration days
+    def rollover_MTE_Machine_Date(self, startOfDay, endOfDay, days=1):   
+        """to modify some REAL type items with FIDs and Value list in icf
                 
         Argument:         
                     startOfDay : the original icf file.\n
                     endOfDay : the modified icf file
-                    durationDays : the duration we want to rollover
+                    days
                     
          
         return nil
@@ -1404,31 +1440,25 @@ class LinuxToolUtilities():
                 
         aSec = timedelta(seconds = 1)
         aDay = timedelta(days = 1 )
-                   
+        
         if startOfDay > endOfDay :
             endOfDay = endOfDay + aDay 
-        
-        if (startOfDay > endOfDay) :
-            AssertionError('The startOfDay or endOfDay time is incorrect, please correct it')
             
         startOfDay = startOfDay + aDay - aSec
         endOfDay = endOfDay - aSec
         
-        if (startOfDay < endOfDay) :
-            AssertionError('The startOfDay or endOfDay time is incorrect, please correct it')
-         
-        leftDays = int (durationDays) 
-         
+        leftDays = int (days) 
+        
         while leftDays > 0 :
             LinuxCoreUtilities().set_date_and_time(endOfDay.year, endOfDay.month, endOfDay.day, endOfDay.hour, endOfDay.minute, endOfDay.second)
             currDateTime = LinuxCoreUtilities().get_date_and_time()
             self.wait_smf_log_message_after_time('EndOfDay time occurred',currDateTime )
-            endOfDay = endOfDay + aDay
+            endOfDay = endOfDay + timedelta(days =1)
             
             LinuxCoreUtilities().set_date_and_time(startOfDay.year, startOfDay.month, startOfDay.day, startOfDay.hour, startOfDay.minute, startOfDay.second)
             currDateTime = LinuxCoreUtilities().get_date_and_time()
             self.wait_smf_log_message_after_time('StartOfDay time occurred',currDateTime )
-            startOfDay = startOfDay + aDay
+            startOfDay = startOfDay + timedelta(days =1)
             
             leftDays = leftDays - 1
              

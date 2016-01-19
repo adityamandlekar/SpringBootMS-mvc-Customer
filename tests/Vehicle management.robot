@@ -34,6 +34,7 @@ Verify Long RIC handled correctly
 
 Verify PE Change Behavior
     [Documentation]    Test Case - Verify PE Change Behavior : http://www.iajira.amers.ime.reuters.com/browse/CATF-1715
+    Set Mangling Rule    ${MTE}    UNMANGLED
     ${domain}    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
@@ -49,6 +50,7 @@ Verify PE Change Behavior
     Run Keyword And Continue On Failure    verify PE Change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}    @{pe}[0]
     ...    ${penew}
     Load Single EXL File    ${exlfile}    ${serviceName}    ${CHE_IP}    25000
+    Load Mangling Settings    ${MTE}
     Wait For Persist File Update    ${MTE}    ${VENUE_DIR}
     [Teardown]    case teardown    ${exlmodified}    ${LOCAL_TMP_DIR}/capture_local.pcap
 
@@ -151,20 +153,19 @@ Verify FMS Rebuild
 Drop a RIC by deleting EXL File and Full Reorg
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1850
     ...    To verify whether the RICs in a exl file can be dropped if the exl file is deleted.
-    ${domain}    Get Preferred Domain
-    ${serviceName}    Get FMS Service Name
+    [Setup]    Vehicle Management Case Setup
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${exlFullFileName}=    get EXL for RIC    ${LOCAL_FMS_DIR}    ${domain}    ${serviceName}    ${ric}
+    Append To List    ${processedEXLs}    ${exlFullFileName}
     ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
     copy File    ${exlFullFileName}    ${LOCAL_TMP_DIR}/${exlFileName}
     remove file    ${exlFullFileName}
+    Set To Dictionary    ${backupEXLs}    ${LOCAL_TMP_DIR}/${exlFileName}    ${exlFullFileName}
     ${currentDateTime}    get date and time
-    Run Keyword And Continue On Failure    Load All EXL Files    ${serviceName}    ${CHE_IP}
-    copy File    ${LOCAL_TMP_DIR}/${exlFileName}    ${exlFullFileName}
+    Load All EXL Files    ${serviceName}    ${CHE_IP}
     wait smf log message after time    Drop message sent    ${currentDateTime}
-    Run Keyword And Continue On Failure    Verify RIC is Dropped In MTE Cache    ${MTE}    ${ric}
-    Load Single EXL File    ${exlFullFileName}    ${serviceName}    ${CHE_IP}    25000
-    [Teardown]    case teardown    ${LOCAL_TMP_DIR}/${exlFileName}
+    Verify RIC is Dropped In MTE Cache    ${MTE}    ${ric}
+    [Teardown]    Vehicle Management Case Teardown    ${LOCAL_TMP_DIR}/${exlFileName}
 
 Verify Reconcile of Cache
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1848
@@ -230,24 +231,26 @@ Verify FMS Extract and Insert
     ${beforeLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localBefore.pcap
     ${afterLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localAfter.pcap
     Extract icf    ${ric}    ${domain}    ${beforeExtractFile}    ${serviceName}
-    ${FidList}    get REAL Fids in icf file    ${beforeExtractFile}    3
+    ${count}    Convert To Integer    2
+    Comment    //to get some REAL Fids name list from icf file
+    ${FidList}    get REAL Fids in icf file    ${beforeExtractFile}    ${count}
     ${newFidNameValue}    ${newFidNumValue}    Create Fid Value Pair    ${FidList}
     ${iniFidNameValue}    ${iniFidNumValue}    Create Fid Value Pair    ${FidList}
     Comment    //set FID 'before' values
-    modify REAL items in icf    ${beforeExtractFile}    ${beforeExtractFile}    ${pubRic}    ${domain}    ${iniFidNameValue}
+    modify REAL items in icf    ${beforeExtractFile}    ${beforeExtractFile}    ${ric}    ${domain}    ${iniFidNameValue}
     Start Capture MTE Output    ${MTE}
     Insert icf    ${beforeExtractFile}    ${serviceName}
     Stop Capture MTE Output    ${MTE}    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${beforeLocalPcap}
     ${initialAllFidsValues}    get FidValue in message    ${beforeLocalPcap}    ${DAS_DIR}    ${pubRic}    UPDATE
     Comment    //set FID 'after' values
-    modify REAL items in icf    ${beforeExtractFile}    ${afterExtractFile}    ${pubRic}    ${domain}    ${newFidNameValue}
+    modify REAL items in icf    ${beforeExtractFile}    ${afterExtractFile}    ${ric}    ${domain}    ${newFidNameValue}
     Start Capture MTE Output    ${MTE}
     Insert icf    ${afterExtractFile}    ${serviceName}
     Stop Capture MTE Output    ${MTE}    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${afterLocalPcap}
     ${newAllFidsValues}    get FidValue in message    ${afterLocalPcap}    ${DAS_DIR}    ${pubRic}    UPDATE
-    Comment    //Verify \
+    Comment    //Verify
     Dictionary Should Contain Sub Dictionary    ${initialAllFidsValues}    ${iniFidNumValue}
     Dictionary Should Contain Sub Dictionary    ${newAllFidsValues}    ${newFidNumValue}
     ${modifiedFidNum}    Get Dictionary Keys    ${iniFidNumValue}
@@ -270,8 +273,6 @@ Verify Deletion Delay
     ${EndOfDayTime}=    get MTE config value    ${mteConfigFile}    EndOfDayTime
     ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
     ${EndOfDayGMT}    Convert to GMT    ${EndOfDayTime}
-    ${res}    set date and time    ${StartOfDayGMT.year}    ${StartOfDayGMT.month}    ${StartOfDayGMT.day}    ${StartOfDayGMT.hour}    ${StartOfDayGMT.minute}
-    ...    ${StartOfDayGMT.second}
     ${currDateTime}    get date and time
     Drop ric    ${ric}    ${domain}    ${serviceName}
     wait smf log message after time    Drop message sent    ${currDateTime}
@@ -280,7 +281,7 @@ Verify Deletion Delay
     ${currDateTime}    get date and time
     wait smf log message after time    dropped due to expiration    ${currDateTime}
     Verify RIC Not In MTE Cache    ${MTE}    ${ric}
-    [Teardown]    Correct MTE Machine Time
+    [Teardown]    Correct MTE Machinie Time
 
 *** Keywords ***
 Calculate UpdateSince for REORG
@@ -360,6 +361,33 @@ Convert to GMT
     ${GMTTime}    Subtract Time From date    ${date}    ${numOffset}    result_format=datetime
     [Return]    ${GMTTime}
 
+Vehicle Management Case Setup
+    [Documentation]    The setup will get FMS service name to ${serviceName} and get perferred domain to ${domain}.
+    ...
+    ...    A list variable @{processedEXLs} will be created. all exl files which should be reloaded when teardown can be added into @{processedEXLs}.
+    ...
+    ...    A dictionary variable @{backupedEXLs} will be created as well. If you modify/delete EXLs, the orginal should be backup to a local path. Both orginal file path and backup file should be added into @{backupedEXLs}
+    ...    e.g. Set To Dictionary |${backupEXLs} |${backuppath} | ${orgpath}
+    ...    Teardown will copy ${backuppath} to ${orgpath}
+    @{processedEXLs}    create list
+    Set Suite Variable    @{processedEXLs}
+    ${backupEXLs}    Create Dictionary
+    Set Suite Variable    ${backupEXLs}
+    ${serviceName}    Get FMS Service Name
+    Set Suite Variable    ${serviceName}
+    ${domain}    Get Preferred Domain
+    Set Suite Variable    ${domain}
+
+Vehicle Management Case Teardown
+    [Arguments]    @{tmpfiles}
+    [Documentation]    The teardown will restore all backup EXL in @{backupEXLs}, and reload all exl files in @{processedEXLs}, and remove temporary files.
+    : FOR    ${backuppath}    IN    @{backupEXLs}
+    \    ${orgpath}    Get From Dictionary    ${backupEXLs}    ${backuppath}
+    \    Copy File    ${backuppath}    ${orgpath}
+    : FOR    ${exlfile}    IN    @{processedEXLs}
+    \    Load Single EXL File    ${exlfile}    ${serviceName}    ${CHE_IP}    25000
+    Case Teardown    @{tmpfiles}
+
 Create Fid Value Pair
     [Arguments]    ${FidList}
     [Documentation]    Use a Fid name list to create Fid Value dictionary, only for REAL type fid
@@ -372,7 +400,7 @@ Create Fid Value Pair
     \    Set To Dictionary    ${fidnumvalue}    ${fidNum}    1${value}
     [Return]    ${fidnamevalue}    ${fidnumvalue}
 
-Correct MTE Machine Time
+Correct MTE Machinie Time
     [Documentation]    To correct Linux time and restart SMF, restart SMF because currently FMS client have a bug now, if we change the MTE Machine time when SMF running, FMS client start to report exception like below, and in this case we can't use FMS client correclty:
     ...    FMSClient:SocketException - ClientImpl::connect:connect (111); /ThomsonReuters/EventScheduler/EventScheduler; 18296; 18468; 0000235f; 07:00:00;
     stop smf
