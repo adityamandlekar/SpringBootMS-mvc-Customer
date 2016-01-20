@@ -1422,4 +1422,49 @@ class LinuxToolUtilities():
             return elements[1]
         else:
             raise AssertionError('*ERROR* The FID can not be found')        
+
+    def rollover_MTE_Machine_Date(self, startOfDay, endOfDay, durationDays=1):   
+        """to rollover MTE machine date with the duration days
+                
+        Argument:         
+                    startOfDay : the original icf file.\n
+                    endOfDay : the modified icf file
+                    durationDays : the duration we want to rollover
+                    
+         
+        return nil
+        
+        Examples:
+                    Rollover MTE Machine Date  |  ${StartOfDayGMT} |   ${EndOfDayGMT}  |  ${days}
+        """  
+                
+        aSec = timedelta(seconds = 1)
+        aDay = timedelta(days = 1 )
+                   
+        if startOfDay > endOfDay :
+            endOfDay = endOfDay + aDay 
+        
+        if (startOfDay > endOfDay) :
+            AssertionError('The startOfDay or endOfDay time is incorrect, please correct it')
+            
+        startOfDay = startOfDay + aDay - aSec
+        endOfDay = endOfDay - aSec
+        
+        if (startOfDay < endOfDay) :
+            AssertionError('The startOfDay or endOfDay time is incorrect, please correct it')
+         
+        leftDays = int (durationDays) 
+         
+        while leftDays > 0 :
+            LinuxCoreUtilities().set_date_and_time(endOfDay.year, endOfDay.month, endOfDay.day, endOfDay.hour, endOfDay.minute, endOfDay.second)
+            currDateTime = LinuxCoreUtilities().get_date_and_time()
+            self.wait_smf_log_message_after_time('EndOfDay time occurred',currDateTime )
+            endOfDay = endOfDay + aDay
+            
+            LinuxCoreUtilities().set_date_and_time(startOfDay.year, startOfDay.month, startOfDay.day, startOfDay.hour, startOfDay.minute, startOfDay.second)
+            currDateTime = LinuxCoreUtilities().get_date_and_time()
+            self.wait_smf_log_message_after_time('StartOfDay time occurred',currDateTime )
+            startOfDay = startOfDay + aDay
+            
+            leftDays = leftDays - 1
              

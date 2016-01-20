@@ -126,21 +126,11 @@ Get ConnectTimesIdentifier
     ...    FHRealtimeLine    ConnectTimesIdentifier
     return from keyword if    '${connectTimesIdentifier}' != 'NOT FOUND' and '${connectTimesIdentifier}' != 'None'    ${connectTimesIdentifier}
     ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    FHRealtimeLine    ConnectTimesIdentifier
-    @{retList}    Create List
-    : FOR    ${ric}    IN    @{connectTimesIdentifier}
-    \    ${count}=    Get Count    ${retList}    ${ric}
-    \    Comment    To ensure no duplicate connectTimesIdenifiers are put in the list
-    \    Run Keyword if    ${count} == 0    append to list    ${retList}    ${ric}
-    ${len}    Get Length    ${retList}
-    return from keyword if    ${len} > 0    ${retList}
-    @{retList}    Create List
+    @{retList}=    Remove Duplicates    ${connectTimesIdentifier}
+    return from keyword if    len(${retList}) > 0    ${retList}
     ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    ConnectTimesRIC
-    : FOR    ${ric}    IN    @{connectTimesIdentifier}
-    \    ${count}=    Get Count    ${retList}    ${ric}
-    \    Comment    To ensure no duplicate connectTimesIdenifiers are put in the list
-    \    Run Keyword if    ${count} == 0    append to list    ${retList}    ${ric}
-    ${len}    Get Length    ${retList}
-    return from keyword if    ${len} > 0    ${retList}
+    @{retList}=    Remove Duplicates    ${connectTimesIdentifier}
+    return from keyword if    len(${retList}) > 0    ${retList}
     FAIL    No ConnectTimesIdentifier found in venue config file: ${mteConfigFile}
 
 Get HighActivityTimesIdentifier
@@ -221,7 +211,7 @@ Get MTE Config File
     ...    If we already have the local file, just return the file name without copying the remote file again.
     ${localFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
     Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
-    ${lowercase_filename}    convert to lowercase workaround    ${MTE}.xml
+    ${lowercase_filename}    convert to lowercase     ${MTE}.xml
     ${res}=    search remote files    ${VENUE_DIR}    ${lowercase_filename}    recurse=${True}
     Length Should Be    ${res}    1    ${lowercase_filename} file not found (or multiple files found).
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mte_config_file.xml

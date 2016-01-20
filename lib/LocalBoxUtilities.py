@@ -24,7 +24,6 @@ from LinuxFSUtilities import LinuxFSUtilities
 from FMUtilities import _FMUtil
 from utils.local import _run_local_command
 from utils._ToolUtil import _ToolUtil
-from utils._FSUtil import _FSUtil
 
 FID_CONTEXTID = '5357'
 
@@ -568,6 +567,129 @@ class LocalBoxUtilities(_ToolUtil):
                 os.remove(exist_file)
         
             os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
+			
+			
+    def verify_unsolicited_response_sequence_numbers_in_capture(self, pcapfile, das_dir, ric, domain, mte_state):
+        """ verify if unsolicited response message sequence numbers for RIC are in increasing order in MTE output pcap message
+            if mte_state is startup, the sequence number should start from 0, then 4, 5, ... n, n+1...
+            if mte_state is failover, the sequence number could start from 1, then 4, 5, ... n, n+1...
+            if mte_state is rollover, the sequence number could start from 3, then 4, 5, ... n, n+1...
+            
+            Argument : pcapfile : MTE output capture pcap file fullpath
+                       das_dir : path for DAS tool
+                       ric : published RIC
+                       domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                       mte_state: possible value startup, rollover, failover.
+            return : last item from response message sequence number list
+        """           
+
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        outputfileprefix = 'test_seqnum_resp_'
+        filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_responseTypeNum= &quot;TRWF_TRDM_RPT_UNSOLICITED_RESP&quot;)))'%(filterDomain, ric)
+        outputxmlfile = self._get_extractorXml_from_pcap(das_dir, pcapfile, filterstring, outputfileprefix)                
+        
+        parentName  = 'Message'
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
+        seqNumList = []
+        for messageNode in messages:
+            seqNum = self._xml_parse_get_field_for_messageNode (messageNode, 'ItemSeqNum')
+            seqNumList.append(seqNum)
+                    
+        if len(seqNumList)== 0:
+            raise AssertionError('*ERROR* response message for %s, %s does not exist.'%(ric,domain)) 
+                    
+        for i in xrange(len(seqNumList) - 1):
+            if int(seqNumList[i]) > int(seqNumList[i+1]):
+                print seqNumList
+                raise AssertionError('*ERROR* response message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be after SeqNo[%d] %s.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
+                
+                     
+        for exist_file in outputxmlfile:
+            os.remove(exist_file)
+        os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")       
+        
+        if mte_state == 'startup':
+            if seqNumList[0] != '0':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 0' %seqNumList[0])  
+            if '1' in seqNumList or '2' in seqNumList or '3' in seqNumList:
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 1, 2, 3 should not be in the message sequence number List')
+         
+        if mte_state == 'failover':  
+            if seqNumList[0] != '1':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
+            if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list')
+              
+        if mte_state == 'rollover':
+            if seqNumList[0] != '3':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 3' %seqNumList[0])  
+            
+        return seqNumList[-1]
+        
+        
+    def verify_updated_message_sequence_numbers_in_capture(self, pcapfile, dasdir, ric, domain, mte_state):
+        """ verify if updated message sequence number for RIC are in increasing order in MTE output pcap message
+            if mte_state is startup, the possible sequence number could start from 4 then 5, ... n, n+1...
+            if mte_state is failover, the possible sequence number could start from 1, then 4, 5, ... n, n+1...
+            if mte_state is rollover, the sequence number could start from 3, then 4, 5, ... n, n+1...
+            Argument : pcapfile : MTE output capture pcap file fullpath
+                       das_dir : path for DAS tool
+                       ric : published RIC
+                       domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                       mte_state: possible value startup, rollover, failover.
+            return : First item from update message sequence number list
+        """       
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        outputfileprefix = 'test_seqnum_update_'
+        
+        filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, All_msgBase_msgKey_domainType = &quot;%s&quot;))'%(ric, filterDomain)
+        outputxmlfile = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
+        parentName  = 'Message'
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
+        
+        seqNumList = []
+        for messageNode in messages:
+            seqNum = self._xml_parse_get_field_for_messageNode (messageNode, 'ItemSeqNum')
+            seqNumList.append(seqNum)
+       
+        if len(seqNumList) == 0:
+            raise AssertionError('*ERROR* updated message for %s, %s does not exist.'%(ric,domain)) 
+          
+        for i in xrange(len(seqNumList) - 1):
+            if int(seqNumList[i]) > int(seqNumList[i + 1]):
+                print seqNumList
+                raise AssertionError('*ERROR* update message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be after SeqNo[%d] %s.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
+            
+        for exist_file in outputxmlfile:
+            os.remove(exist_file)
+        os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
+        
+        if mte_state == 'startup':
+            if seqNumList[0] <= '3':
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 0, 1, 2, 3 should not be in the message sequence number list')
+         
+        if mte_state == 'failover':  
+            if seqNumList[0] != '1':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
+            if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list')
+              
+        if mte_state == 'rollover':
+            if seqNumList[0] != '3':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 3' %seqNumList[0])            
+            
+        return seqNumList[0]
+		
                               
     def _verify_PE_change_in_message_c0(self,pcapfile,dasdir,ricname,newPE):
         """ internal function used to verify PE Change response (C0) for RIC in MTE output pcap message
@@ -1391,13 +1513,6 @@ class LocalBoxUtilities(_ToolUtil):
                 return True
             
         return False
-
-    def convert_to_lowercase_workaround(self, str1):
-        """This KW is temporary because 'Convert to lowercase' KW is not available until Robot Framework 2.8.6.   
-        After upgrading to Robot 2.8.6, this KW should be deprecated and 'Convert to Lowercase' used
-        """
-        lower = str1.lower()
-        return lower
 
     def verify_cache_contains_only_configured_context_ids(self, cachedump_file_name_full_path, filter_string): 
         """Get set of context ID from cache dump file and venue xml_config file
@@ -2352,15 +2467,16 @@ class LocalBoxUtilities(_ToolUtil):
         if rc != 0:
             raise AssertionError('*ERROR* in running SCWLLi.exe %s' %stderr)  
         
-        return rc
+        return stdout
     
     def switch_MTE_LIVE_STANDBY_status(self,scwcli_dir,mteName,node,status,user,password,che_ip,port='27000'):
-        """ To switch specific MTE instance to LIVE or STANDBY
+        """ To switch specific MTE instance to LIVE, STANDBY, LOCK_LIVE or LOCK_STANDY. Or unlock the MTE instance.
 
             Argument : scwcli_dir - full path of SCWCli.exe
                        mteName - MTE instance name e.g. HKF02M
                        node - A,B,C,D
-                       status - LIVE:Switch to Live, STANDBY:Switch to Standby
+                       status - LIVE:Switch to Live, STANDBY:Switch to Standby, 
+                                LOCK_LIVE to lock live, LOCK_STANDY to lock standby, UNLOCK to unlock the MTE
                        user - login name for the TD box
                        password - login password for the TD box
                        che_ip - IP of the TD box
@@ -2374,13 +2490,40 @@ class LocalBoxUtilities(_ToolUtil):
        
         if (status == 'LIVE'):
             cmd = "-promote "
-        elif(status == 'STANDBY'):
+        elif (status == 'STANDBY'):
             cmd = "-demote "
+        elif (status == 'LOCK_LIVE'):
+            cmd = "-lock_live "
+        elif (status == 'LOCK_STANDBY'):
+            cmd = "-lock_stby "
+        elif (status == 'UNLOCK'):
+            cmd = "-unlock "
         else:
             raise AssertionError('*ERROR* Unknown status %s' %status)
             
         cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
         self._run_local_SCWCLI(scwcli_dir,cmd)
+
+    def get_master_box_ip(self, scwcli_dir, user, password, che_ip_list, port='27000'):
+        """ To find the master box from pair boxes
+
+            Argument : scwcli_dir - full path of SCWCli.exe
+                       user - login name for the TD box
+                       password - login password for the TD box
+                       che_ip_list - IP list of the TD boxes
+                       port - port no. that used to communicate with the SCW at TD box
+            Return :   the ip of master box
+            
+            Examples :
+            | ${iplist} | create list | ${CHE_A_IP} | ${CHE_B_IP} |
+            | ${master_ip} | get master box ip | C:\\SCW\\bin  | ${USERNAME} | ${PASSWORD} | ${iplist} |
+        """
+        for che_ip in che_ip_list:
+            cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,port,user,password)
+            stdout = self._run_local_SCWCLI(scwcli_dir,cmd)
+            if (stdout.find('SCW state MASTER') != -1):
+                return che_ip
+        raise AssertionError('*ERROR* cannot find a master box')
     
     def get_FidValue_in_message(self,pcapfile,dasdir,ricname, msgClass):
         """ To verify the insert icf file can update the changed fid and value correct
@@ -2458,7 +2601,7 @@ class LocalBoxUtilities(_ToolUtil):
                         tempList = subnode.nodeName.split(':') 
                         Fidlist.append(tempList[1])
                         fidCount = fidCount + 1
-                        if fidCount >= count :
+                        if fidCount >= int (count) :
                             return Fidlist
         
         
