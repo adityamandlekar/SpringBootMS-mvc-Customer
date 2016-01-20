@@ -1062,8 +1062,8 @@ class LinuxToolUtilities():
         foundfiles = _search_file(searchdir,cfgfile,True)        
         if len(foundfiles) < 1:
             raise AssertionError('*ERROR* %s not found' %cfgfile)
-        elif len(foundfiles) > 1:
-            raise AssertionError('*ERROR* Found more than one file: %s' %cfgfile)     
+        """elif len(foundfiles) > 1:
+            raise AssertionError('*ERROR* Found more than one file: %s' %cfgfile)   """  
                 
         #backup config file
         backupfile = foundfiles[0] + suffix

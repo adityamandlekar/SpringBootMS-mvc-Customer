@@ -94,6 +94,7 @@ Verify Manual Closing Runs
     ${domain}    Get Preferred Domain
     Manual ClosingRun for a RIC    ${sampleRic}    ${publishKey}    ${domain}
     Manual ClosingRun for the EXL File including target Ric    ${sampleRic}    ${publishKey}    ${domain}
+    ${serviceName}    Get FMS Service Name
     Manual ClosingRun for ClosingRun Rics    ${serviceName}
 
 *** Keywords ***
@@ -177,13 +178,15 @@ Calculate DST end date and check stat
 Go into DST and check stats
     [Arguments]    ${dstExlFile}    ${dstRicName}    ${domainName}    ${gmtDateTime}
     [Documentation]    Sets the box so it goes into DST and verifies ${dstStartDateField} and ${dstEndDateField} are set appropriately.
-    ${dstExlFileModified} =    set variable    ${dstExlFile}_modified.exl
+    ${feedDstEXLFile}    Fetch From Right    ${dstExlFile}    \\
+    ${dstExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${feedDstEXLFile}_modified.exl
     ${dstStartDatetime}    ${dstEndDatetime}    Set datetimes for IN state    ${gmtDateTime[0]}    ${gmtDateTime[1]}    ${gmtDateTime[2]}    ${gmtDateTime[3]}
     ...    ${gmtDateTime[4]}    ${gmtDateTime[5]}
     ${startDatetime}    convert date    ${dstStartDatetime}    result_format=%Y-%m-%dT%H:%M:%S.0
     ${endDatetime}    convert date    ${dstEndDatetime}    result_format=%Y-%m-%dT%H:%M:%S.0
     Set DST Datetime In EXL    ${dstExlFile}    ${dstExlFileModified}    ${dstRicName}    ${domainName}    ${startDatetime}    ${endDatetime}
     Load Single EXL File    ${dstExlFileModified}    ${serviceName}    ${CHE_IP}
+    remove files    ${dstExlFileModified}
     Calculate DST start date and check stat    ${dstRicName}    ${dstStartDatetime}
     Calculate DST end date and check stat    ${dstRicName}    ${dstEndDatetime}
     ${expectedDstGMTOffset}    get stat block field    ${mte}    ${dstRicName}    dstGMTOffset
@@ -192,13 +195,15 @@ Go into DST and check stats
 Go outside DST and check stats
     [Arguments]    ${dstExlFile}    ${dstRicName}    ${domainName}    ${gmtDateTime}
     [Documentation]    Sets the box so it goes outside of DST and verifies ${dstStartDateField} and ${dstEndDateField} are set appropriately.
-    ${dstExlFileModified} =    set variable    ${dstExlFile}_modified.exl
+    ${feedDstEXLFile}    Fetch From Right    ${dstExlFile}    \\
+    ${dstExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${feedDstEXLFile}_modified.exl
     ${dstStartDatetime}    ${dstEndDatetime}    Set datetimes for OUT state    ${gmtDateTime[0]}    ${gmtDateTime[1]}    ${gmtDateTime[2]}    ${gmtDateTime[3]}
     ...    ${gmtDateTime[4]}    ${gmtDateTime[5]}
     ${startDatetime}    set variable    ${dstStartDatetime[0]}-${dstStartDatetime[1]}-${dstStartDatetime[2]}T${dstStartDatetime[3]}:${dstStartDatetime[4]}:${dstStartDatetime[5]}.0
     ${endDatetime}    set variable    ${dstEndDatetime[0]}-${dstEndDatetime[1]}-${dstEndDatetime[2]}T${dstEndDatetime[3]}:${dstEndDatetime[4]}:${dstEndDatetime[5]}.0
     Set DST Datetime In EXL    ${dstExlFile}    ${dstExlFileModified}    ${dstRicName}    ${domainName}    ${startDatetime}    ${endDatetime}
     Load Single EXL File    ${dstExlFileModified}    ${serviceName}    ${CHE_IP}
+    remove files    ${dstExlFileModified}
     Calculate DST start date and check stat    ${dstRicName}    ${dstStartDatetime}
     Calculate DST end date and check stat    ${dstRicName}    ${dstEndDatetime}
     ${expectedDstGMTOffset}    get stat block field    ${mte}    ${dstRicName}    normalGMTOffset
@@ -220,21 +225,25 @@ Go into feed time and check stat
     [Arguments]    ${feedTimeExlFile}    ${feedTimeRicName}    ${feedTimeDomainName}    ${localVenueDateTime}
     [Documentation]    Sets the box so it goes into feed time and verifies ${feedTimeStatField} is set to 1.
     ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    ${feedTimeExlFileModified} =    set variable    ${feedTimeExlFile}_modified.exl
+    ${feedTimeExlFileOnly}    Fetch From Right    ${feedTimeExlFile}    \\
+    ${feedTimeExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${feedTimeExlFileOnly}_modified.exl
     ${feedTimeStartTime}    ${feedTimeEndTime}    Set times for IN state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
     Set Feed Time In EXL    ${feedTimeExlFile}    ${feedTimeExlFileModified}    ${feedTimeRicName}    ${feedTimeDomainName}    ${feedTimeStartTime}    ${feedTimeEndTime}
     ...    ${weekDay}
     Load EXL and check stat    ${feedTimeExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName}    ${feedTimeStatField}    1
+    remove files    ${feedTimeExlFileModified}
 
 Go outside feed time and check stat
     [Arguments]    ${feedTimeExlFile}    ${feedTimeRicName}    ${feedTimeDomainName}    ${localVenueDateTime}
     [Documentation]    Sets the box so it goes outside of feed time and verifies ${feedTimeStatField} is set to 0.
     ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    ${feedTimeExlFileModified} =    set variable    ${feedTimeExlFile}_modified.exl
+    ${feedTimeExlFileOnly}    Fetch From Right    ${feedTimeExlFile}    \\
+    ${feedTimeExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${feedTimeExlFileOnly}_modified.exl
     ${feedTimeStartTime}    ${feedTimeEndTime}    Set times for OUT state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
     Set Feed Time In EXL    ${feedTimeExlFile}    ${feedTimeExlFileModified}    ${feedTimeRicName}    ${feedTimeDomainName}    ${feedTimeStartTime}    ${feedTimeEndTime}
     ...    ${weekDay}
     Load EXL and check stat    ${feedTimeExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName}    ${feedTimeStatField}    0
+    remove files    ${feedTimeExlFileModified}
 
 Go into feed time for all feed time RICs
     [Documentation]    Sets the box so it goes into feed time for all @{feedTimeRicList} and verifies ${feedTimeStatField} is set to 1.
@@ -259,24 +268,28 @@ Go outside feed time for all feed time RICs
 Go into holiday and check stat
     [Arguments]    ${holidayExlFile}    ${holidayRicName}    ${holidayDomainName}    ${gmtDateTime}
     [Documentation]    Sets the box so it goes into a holiday and verifies ${holidayStatField} is set to 1.
-    ${holidayExlFileModified} =    set variable    ${holidayExlFile}_modified.exl
+    ${holidayExlFileOnly}    Fetch From Right    ${holidayExlFile}    \\
+    ${holidayExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${holidayExlFileOnly}_modified.exl
     ${holidayStartDatetime}    ${holidayEndDatetime}    Set datetimes for IN state    ${gmtDateTime[0]}    ${gmtDateTime[1]}    ${gmtDateTime[2]}    ${gmtDateTime[3]}
     ...    ${gmtDateTime[4]}    ${gmtDateTime[5]}
     ${startDatetime}    set variable    ${holidayStartDatetime[0]}-${holidayStartDatetime[1]}-${holidayStartDatetime[2]}T${holidayStartDatetime[3]}:${holidayStartDatetime[4]}:${holidayStartDatetime[5]}.0
     ${endDatetime}    set variable    ${holidayEndDatetime[0]}-${holidayEndDatetime[1]}-${holidayEndDatetime[2]}T${holidayEndDatetime[3]}:${holidayEndDatetime[4]}:${holidayEndDatetime[5]}.0
     Set Holiday Datetime In EXL    ${holidayExlFile}    ${holidayExlFileModified}    ${holidayRicName}    ${holidayDomainName}    ${startDatetime}    ${endDatetime}
     Load EXL and check stat    ${holidayExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName}    ${holidayStatField}    1
+    remove files    ${holidayExlFileModified}
 
 Go outside holiday and check stat
     [Arguments]    ${holidayExlFile}    ${holidayRicName}    ${holidayDomainName}    ${gmtDateTime}
     [Documentation]    Sets the box so it goes outside of a holiday and verifies ${holidayStatField} is set to 0.
-    ${holidayExlFileModified} =    set variable    ${holidayExlFile}_modified.exl
+    ${holidayExlFileOnly}    Fetch From Right    ${holidayExlFile}    \\
+    ${holidayExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${holidayExlFileOnly}_modified.exl
     ${holidayStartDatetime}    ${holidayEndDatetime}    Set datetimes for OUT state    ${gmtDateTime[0]}    ${gmtDateTime[1]}    ${gmtDateTime[2]}    ${gmtDateTime[3]}
     ...    ${gmtDateTime[4]}    ${gmtDateTime[5]}
     ${startDatetime}    set variable    ${holidayStartDatetime[0]}-${holidayStartDatetime[1]}-${holidayStartDatetime[2]}T${holidayStartDatetime[3]}:${holidayStartDatetime[4]}:${holidayStartDatetime[5]}.0
     ${endDatetime}    set variable    ${holidayEndDatetime[0]}-${holidayEndDatetime[1]}-${holidayEndDatetime[2]}T${holidayEndDatetime[3]}:${holidayEndDatetime[4]}:${holidayEndDatetime[5]}.0
     Set Holiday Datetime In EXL    ${holidayExlFile}    ${holidayExlFileModified}    ${holidayRicName}    ${holidayDomainName}    ${startDatetime}    ${endDatetime}
-    Load EXL and check stat    ${holidayExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName}    ${holidayStatField}    0
+    Load EXL and check stat    ${holidayExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName[0]}    ${holidayStatField}    0
+    remove files    ${holidayExlFileModified}
 
 Run Trade Time test
     : FOR    ${tradeTimeRicName}    IN    @{tradeTimeRicList}
@@ -294,21 +307,25 @@ Go into trade time and check stat
     [Arguments]    ${tradeTimeExlFile}    ${tradeTimeRicName}    ${tradeTimeDomainName}    ${localVenueDateTime}
     [Documentation]    Sets the box so it goes into trade time and verifies ${tradeTimeStatField} is set to 1.
     ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    ${tradeTimeExlFileModified} =    set variable    ${tradeTimeExlFile}_modified.exl
+    ${tradeTimeExlFileOnly}    Fetch From Right    ${tradeTimeExlFile}    \\
+    ${tradeTimeExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${tradeTimeExlFileOnly}_modified.exl
     ${tradeTimeStartTime}    ${tradeTimeEndTime}    Set times for IN state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
     Set Trade Time In EXL    ${tradeTimeExlFile}    ${tradeTimeExlFileModified}    ${tradeTimeRicName}    ${tradeTimeDomainName}    ${tradeTimeStartTime}    ${tradeTimeEndTime}
     ...    ${weekDay}
     Load EXL and check stat    ${tradeTimeExlFileModified}    ${serviceName}    ${highactTimesIdentifier}    ${tradeTimeRicName}    ${tradeTimeStatField}    1
+    remove files    ${tradeTimeExlFileModified}
 
 Go outside trade time and check stat
     [Arguments]    ${tradeTimeExlFile}    ${tradeTimeRicName}    ${tradeTimeDomainName}    ${localVenueDateTime}
     [Documentation]    Sets the box so it goes outside of trade time and verifies ${tradeTimeStatField} is set to 0.
     ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    ${tradeTimeExlFileModified} =    set variable    ${tradeTimeExlFile}_modified.exl
+    ${tradeTimeExlFileOnly}    Fetch From Right    ${tradeTimeExlFile}    \\
+    ${tradeTimeExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${tradeTimeExlFileOnly}_modified.exl
     ${tradeTimeStartTime}    ${tradeTimeEndTime}    Set times for OUT state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
     Set Trade Time In EXL    ${tradeTimeExlFile}    ${tradeTimeExlFileModified}    ${tradeTimeRicName}    ${tradeTimeDomainName}    ${tradeTimeStartTime}    ${tradeTimeEndTime}
     ...    ${weekDay}
     Load EXL and check stat    ${tradeTimeExlFileModified}    ${serviceName}    ${highactTimesIdentifier}    ${tradeTimeRicName}    ${tradeTimeStatField}    0
+    remove files    ${tradeTimeExlFileModified}
 
 Go into trade time for all trade time RICs
     [Documentation]    Sets the box so it goes into trade time for all @{tradeTimeRicList} and verifies ${tradeTimeStatField} is set to 1.
@@ -350,7 +367,7 @@ DST Setup
     Set Suite Variable    ${tradeTimeRicName}
     ${domain}    Get Preferred Domain    MARKET_PRICE
     Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
+    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName[0]}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
     ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
     ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedDstRic}
@@ -392,7 +409,7 @@ Feed Time Setup
     Set Suite Variable    ${tradeTimeRicName}
     ${domain}    Get Preferred Domain    MARKET_PRICE
     Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
+    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName[0]}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
     ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
     ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedHolidayRic}
@@ -433,7 +450,7 @@ Holiday Setup
     Set Suite Variable    ${tradeTimeRicName}
     ${domain}    Get Preferred Domain    MARKET_PRICE
     Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
+    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName[0]}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
     ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
     ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedHolidayRic}
@@ -480,7 +497,7 @@ Trade Time Setup
     Set Suite Variable    ${tradeTimeRicName}
     ${domain}    Get Preferred Domain    MARKET_PRICE
     Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
+    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName[0]}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
     ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
     ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedHolidayRic}
@@ -524,7 +541,8 @@ Go Into Closing Run Time For All Closing Run RICs
     \    ${dt}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName[0]}
     \    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
     \    ${closingRunTimeStartTime}    add time to date    ${localVenueDateTime[0]}-${localVenueDateTime[1]}-${localVenueDateTime[2]} ${localVenueDateTime[3]}:${localVenueDateTime[4]}:${localVenueDateTime[5]}    120 second    result_format=%H:%M:%S
-    \    ${closingRunExlfileModified}=    set variable    ${closingRunExlFile}_modified.exl
+    \    ${closingRunExlFileOnly}    Fetch From Right    ${closingRunExlFile}    \\
+    \    ${closingRunExlfileModified}=    set variable    ${LOCAL_TMP_DIR}/${closingRunExlFileOnly}_modified.exl
     \    modify EXL    ${closingRunExlFile}    ${closingRunExlfileModified}    ${closingrunRicName}    ${domain}    <it:SCHEDULE_${weekDay}>\n<it:TIME>${closingRunTimeStartTime}</it:TIME>\n</it:SCHEDULE_${weekDay}>
     \    Append to list    @{closingRunExlFiles}    ${closingRunExlFile}
     \    Load Single EXL File    ${closingRunExlfileModified}    ${serviceName}    ${CHE_IP}    25000
