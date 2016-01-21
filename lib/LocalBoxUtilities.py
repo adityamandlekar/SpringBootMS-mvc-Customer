@@ -2630,3 +2630,45 @@ class LocalBoxUtilities(_ToolUtil):
         
         _FMUtil().modify_icf(srcfile, dstfile, ric, domain, *itemList)        
   
+
+
+    def get_exl_file_path_for_lxl_file(self, exl_path, exl_name, fms_dir): 
+        """Deriving exl path for lxl file from exl full file path
+                
+        Argument:    
+                    exl_path : the exl file path no name.\n     
+                    exl_file : the exl file name no path.\n
+                    fms_dir : fms directory defined in Venuevariables.py
+        return:
+                    exl file and path that required by lxl file
+                    assume fms_dir  is D:\\tools\\FMSCMD\\config\\DataFiles\\Groups
+                    if exl_path D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\EXL Files
+                    return path exl_name
+                    if exl_file D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\MUT\\EXL Files
+                    return path RAM/MFDS/MUT/exl_name
+        """  
+        fmsdirLen = len(fms_dir)
+        find = exl_path.find("EXL Files")
+        if find > 0:
+            exl_path = exl_path[fmsdirLen:-(len(exl_path)-find)]
+             
+        nodes = exl_path.split("\\")   
+        nodes = filter(None, nodes)
+        
+        ret_path = ''
+        if len(nodes)<2:
+            raise AssertionError('*ERROR* wrong exl file %s been found at location %s'%(exl_name, exl_path))
+        
+        if len(nodes)==2:
+            return exl_name
+        else:
+            for item in nodes:
+                if ret_path:
+                    ret_path = ret_path + '/' + item
+                else:
+                    ret_path = item
+                
+        return ret_path + '/' + exl_name
+        
+            
+            

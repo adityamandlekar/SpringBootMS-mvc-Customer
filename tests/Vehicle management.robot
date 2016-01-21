@@ -168,6 +168,28 @@ Drop a RIC by deleting EXL File and Full Reorg
     Verify RIC is Dropped In MTE Cache    ${MTE}    ${ric}
     [Teardown]    Vehicle Management Case Teardown    ${LOCAL_TMP_DIR}/${exlFileName}
 
+Drop a RIC by deleting EXL file from LXL file
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1924
+    ...
+    ...    verify RICs in exl file can be dropped by dropping exl file from LXL file
+    ${domain}    Get Preferred Domain
+    ${service}    Get FMS Service Name
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${exlFullFileName}=    get EXL for RIC    ${LOCAL_FMS_DIR}    ${domain}    ${service}    ${ric}
+    ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
+    ${lxlFilePath}=    Replace String    ${exlFilePath}    EXL Files    LXL Files
+    ${path_in_lxl_file}=    Get exl file path for lxl file    ${exlFilePath}    ${exlFileName}    ${LOCAL_FMS_DIR}
+    ${tmp_lxl}    set variable    ${lxlFilePath}\\tmp.lxl
+    Create File    ${tmp_lxl}    ${path_in_lxl_file}
+    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}    Drop    --Services ${service}    --InputFile "${tmp_lxl}"
+    ...    --HandlerName ${MTE}
+    Wait For Persist File Update    ${MTE}    ${VENUE_DIR}
+    Run Keyword And Continue On Failure    Verify RIC is Dropped In MTE Cache    ${MTE}    ${ric}
+    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}    UnDrop    --Services ${service}    --InputFile "${tmp_lxl}"
+    ...    --HandlerName ${MTE}
+    Wait For Persist File Update    ${MTE}    ${VENUE_DIR}
+    [Teardown]    case teardown    ${tmp_lxl}
+
 Verify Reconcile of Cache
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1848
     ...    To verify whether a new RIC can be added and a old RIC can be dropped via reconcile
