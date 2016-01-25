@@ -199,8 +199,8 @@ Go outside DST and check stats
     ${dstExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${feedDstEXLFile}_modified.exl
     ${dstStartDatetime}    ${dstEndDatetime}    Set datetimes for OUT state    ${gmtDateTime[0]}    ${gmtDateTime[1]}    ${gmtDateTime[2]}    ${gmtDateTime[3]}
     ...    ${gmtDateTime[4]}    ${gmtDateTime[5]}
-    ${startDatetime}    set variable    ${dstStartDatetime[0]}-${dstStartDatetime[1]}-${dstStartDatetime[2]}T${dstStartDatetime[3]}:${dstStartDatetime[4]}:${dstStartDatetime[5]}.0
-    ${endDatetime}    set variable    ${dstEndDatetime[0]}-${dstEndDatetime[1]}-${dstEndDatetime[2]}T${dstEndDatetime[3]}:${dstEndDatetime[4]}:${dstEndDatetime[5]}.0
+    ${startDatetime}    convert date    ${dstStartDatetime}    result_format=%Y-%m-%dT%H:%M:%S.0
+    ${endDatetime}    convert date    ${dstEndDatetime}    result_format=%Y-%m-%dT%H:%M:%S.0
     Set DST Datetime In EXL    ${dstExlFile}    ${dstExlFileModified}    ${dstRicName}    ${domainName}    ${startDatetime}    ${endDatetime}
     Load Single EXL File    ${dstExlFileModified}    ${serviceName}    ${CHE_IP}
     remove files    ${dstExlFileModified}
@@ -288,7 +288,7 @@ Go outside holiday and check stat
     ${startDatetime}    set variable    ${holidayStartDatetime[0]}-${holidayStartDatetime[1]}-${holidayStartDatetime[2]}T${holidayStartDatetime[3]}:${holidayStartDatetime[4]}:${holidayStartDatetime[5]}.0
     ${endDatetime}    set variable    ${holidayEndDatetime[0]}-${holidayEndDatetime[1]}-${holidayEndDatetime[2]}T${holidayEndDatetime[3]}:${holidayEndDatetime[4]}:${holidayEndDatetime[5]}.0
     Set Holiday Datetime In EXL    ${holidayExlFile}    ${holidayExlFileModified}    ${holidayRicName}    ${holidayDomainName}    ${startDatetime}    ${endDatetime}
-    Load EXL and check stat    ${holidayExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName[0]}    ${holidayStatField}    0
+    Load EXL and check stat    ${holidayExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName}    ${holidayStatField}    0
     remove files    ${holidayExlFileModified}
 
 Run Trade Time test
@@ -367,7 +367,7 @@ DST Setup
     Set Suite Variable    ${tradeTimeRicName}
     ${domain}    Get Preferred Domain    MARKET_PRICE
     Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName[0]}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
+    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
     ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
     ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedDstRic}
@@ -409,7 +409,7 @@ Feed Time Setup
     Set Suite Variable    ${tradeTimeRicName}
     ${domain}    Get Preferred Domain    MARKET_PRICE
     Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName[0]}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
+    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
     ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
     ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedHolidayRic}
@@ -450,7 +450,7 @@ Holiday Setup
     Set Suite Variable    ${tradeTimeRicName}
     ${domain}    Get Preferred Domain    MARKET_PRICE
     Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName[0]}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
+    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
     ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
     ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedHolidayRic}
@@ -497,7 +497,7 @@ Trade Time Setup
     Set Suite Variable    ${tradeTimeRicName}
     ${domain}    Get Preferred Domain    MARKET_PRICE
     Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName[0]}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
+    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
     ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
     ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedHolidayRic}
