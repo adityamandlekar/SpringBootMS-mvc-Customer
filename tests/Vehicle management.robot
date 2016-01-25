@@ -236,14 +236,14 @@ Verify FMS Extract and Insert
     ${newFidNameValue}    ${newFidNumValue}    Create Fid Value Pair    ${FidList}
     ${iniFidNameValue}    ${iniFidNumValue}    Create Fid Value Pair    ${FidList}
     Comment    //set FID 'before' values
-    modify REAL items in icf    ${beforeExtractFile}    ${beforeExtractFile}    ${pubRic}    ${domain}    ${iniFidNameValue}
+    modify REAL items in icf    ${beforeExtractFile}    ${beforeExtractFile}    ${ric}    ${domain}    ${iniFidNameValue}
     Start Capture MTE Output    ${MTE}
     Insert icf    ${beforeExtractFile}    ${serviceName}
     Stop Capture MTE Output    ${MTE}    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${beforeLocalPcap}
     ${initialAllFidsValues}    get FidValue in message    ${beforeLocalPcap}    ${DAS_DIR}    ${pubRic}    UPDATE
     Comment    //set FID 'after' values
-    modify REAL items in icf    ${beforeExtractFile}    ${afterExtractFile}    ${pubRic}    ${domain}    ${newFidNameValue}
+    modify REAL items in icf    ${beforeExtractFile}    ${afterExtractFile}    ${ric}    ${domain}    ${newFidNameValue}
     Start Capture MTE Output    ${MTE}
     Insert icf    ${afterExtractFile}    ${serviceName}
     Stop Capture MTE Output    ${MTE}    1    15
