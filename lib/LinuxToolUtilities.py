@@ -756,7 +756,7 @@ class LinuxToolUtilities():
                                    
         ipAndPort = self.get_stat_block_field(mte, statblockNames[-1], field + 'OutputAddress').strip().split(':')
         if (len(ipAndPort) != 2):            
-            raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port (return %s)'%(field))
+            raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port, got [%s]'%(field,':'.join(ipAndPort)))
         
         return ipAndPort
     
