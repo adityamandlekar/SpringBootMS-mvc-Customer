@@ -2640,35 +2640,28 @@ class LocalBoxUtilities(_ToolUtil):
                     exl_path : the exl file path no name.\n     
  
         return:
-                    exl file and path that required by lxl file
-                    assume fms_dir  is D:\\tools\\FMSCMD\\config\\DataFiles\\Groups
+                    exl directory required by lxl file without file name
+                    Example:
+                    fms_dir  is D:\\tools\\FMSCMD\\config\\DataFiles\\Groups
                     if exl_path D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\EXL Files
                     return empty path 
                     if exl_file D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\MUT\\EXL Files
                     return path RAM/MFDS/MUT/
         """  
-        fmsdirLen = len(fms_dir)
-        find = exl_path.find("EXL Files")
-        if find > 0:
-            exl_path = exl_path[fmsdirLen:-(len(exl_path)-find)]
-              
-        nodes = exl_path.split("\\")   
+            
+        new_path = exl_path.replace(fms_dir + "\\",'').replace('EXL Files','')
+        nodes = new_path.split("\\")   
         nodes = filter(None, nodes)
          
-        ret_path = ''
         if len(nodes)<2:
-            raise AssertionError('*ERROR* wrong exl file %s been found at location %s'%(exl_name, exl_path))
+            raise AssertionError('*ERROR* Cannot determine LXL path based on FMS dir [%s] and EXL path [%s]' %(fms_dir, exl_path))
          
         if len(nodes)==2:
             return ''
         else:
-            for item in nodes:
-                if ret_path:
-                    ret_path = ret_path + '/' + item
-                else:
-                    ret_path = item
-                 
-        return ret_path + '/'
+            new_path = new_path.replace('\\','/')
+            
+        return new_path
         
             
     def build_LXL_file (self, exl_path_in_lxl, file_list):  
@@ -2689,6 +2682,3 @@ class LocalBoxUtilities(_ToolUtil):
                 
         return file_content
         
-          
-                 
-            
