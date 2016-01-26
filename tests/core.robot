@@ -200,7 +200,7 @@ Get Mangling Config File
     ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
     Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
     ${res}=    search remote files    ${VENUE_DIR}    manglingConfiguration.xml    recurse=${True}
-    Length Should Be    ${res}    2    manglingConfiguration.xml not found (or multiple files found).
+    Length Should Be    ${res}    1    manglingConfiguration.xml not found (or multiple files found).
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mangling_config_file.xml
     get remote file    ${res[0]}    ${localFile}
     Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${localFile}
@@ -211,7 +211,7 @@ Get MTE Config File
     ...    If we already have the local file, just return the file name without copying the remote file again.
     ${localFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
     Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
-    ${lowercase_filename}    convert to lowercase     ${MTE}.xml
+    ${lowercase_filename}    convert to lowercase    ${MTE}.xml
     ${res}=    search remote files    ${VENUE_DIR}    ${lowercase_filename}    recurse=${True}
     Length Should Be    ${res}    1    ${lowercase_filename} file not found (or multiple files found).
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mte_config_file.xml

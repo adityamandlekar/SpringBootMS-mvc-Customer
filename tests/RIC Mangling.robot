@@ -67,8 +67,8 @@ Verify Electron RRG Phase - RIC Mangling change without Restart
     Load Mangling Settings    ${MTE}
     ${length}    Get Length    ${matchedLines}
     Should Be Equal    ${length}    ${0}    Phase wasn't changed successfully    ${False}
-    Run Keyword And Continue On Failure    verify DROP message in itemstatus messages    ${localcapture}=    ${VENUE_DIR}    ${DAS_DIR}    ${beta_RicPrefix}${sampleRic}
-    Run Keyword And Continue On Failure    verify all response message num    ${localcapture}=    ${VENUE_DIR}    ${DAS_DIR}    ${expected_RicPrefix}${sampleRic}
+    Run Keyword And Continue On Failure    verify DROP message in itemstatus messages    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${beta_RicPrefix}${sampleRic}
+    Run Keyword And Continue On Failure    verify all response message num    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${expected_RicPrefix}${sampleRic}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify IDN RRG Phase - RIC Mangling change without Restart

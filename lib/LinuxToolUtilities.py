@@ -756,7 +756,7 @@ class LinuxToolUtilities():
                                    
         ipAndPort = self.get_stat_block_field(mte, statblockNames[-1], field + 'OutputAddress').strip().split(':')
         if (len(ipAndPort) != 2):            
-            raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port (return %s)'%(field))
+            raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port, got [%s]'%(field,':'.join(ipAndPort)))
         
         return ipAndPort
     
@@ -1295,8 +1295,11 @@ class LinuxToolUtilities():
                 DataView -TRWF2 -IM 232.2.19.229 -IH 10.91.57.71  -PM 7777 -L 4096 -R .[SPSCB1L2_I -D SERVICE_PROVIDER_STATUS -EXITDELAY 5
         """
                             
-        cmd = '%s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (dataviewPath, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
+        # use pathfail to detect failure of a command within a pipeline
+        # remove non-printable chars; dataview COMP_NAME output contains binary characters that can cause utf-8 decode problems
+        cmd = 'set -o pathfail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (dataviewPath, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
         cmd = cmd + ' ' + ' '.join( map(str, optArgs))
+        cmd = cmd + ' | tr -dc \'[:print:],[:space:]\''
         print '*INFO* ' + cmd
         stdout, stderr, rc = _exec_command(cmd)
                 
