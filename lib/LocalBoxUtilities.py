@@ -2632,43 +2632,63 @@ class LocalBoxUtilities(_ToolUtil):
   
 
 
-    def get_exl_file_path_for_lxl_file(self, exl_path, exl_name, fms_dir): 
+    def get_exl_file_path_for_lxl_file(self, fms_dir, exl_path): 
         """Deriving exl path for lxl file from exl full file path
-                
+                 
         Argument:    
-                    exl_path : the exl file path no name.\n     
-                    exl_file : the exl file name no path.\n
                     fms_dir : fms directory defined in Venuevariables.py
+                    exl_path : the exl file path no name.\n     
+ 
         return:
                     exl file and path that required by lxl file
                     assume fms_dir  is D:\\tools\\FMSCMD\\config\\DataFiles\\Groups
                     if exl_path D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\EXL Files
-                    return path exl_name
+                    return empty path 
                     if exl_file D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\MUT\\EXL Files
-                    return path RAM/MFDS/MUT/exl_name
+                    return path RAM/MFDS/MUT/
         """  
         fmsdirLen = len(fms_dir)
         find = exl_path.find("EXL Files")
         if find > 0:
             exl_path = exl_path[fmsdirLen:-(len(exl_path)-find)]
-             
+              
         nodes = exl_path.split("\\")   
         nodes = filter(None, nodes)
-        
+         
         ret_path = ''
         if len(nodes)<2:
             raise AssertionError('*ERROR* wrong exl file %s been found at location %s'%(exl_name, exl_path))
-        
+         
         if len(nodes)==2:
-            return exl_name
+            return ''
         else:
             for item in nodes:
                 if ret_path:
                     ret_path = ret_path + '/' + item
                 else:
                     ret_path = item
-                
-        return ret_path + '/' + exl_name
+                 
+        return ret_path + '/'
         
             
+    def build_LXL_file (self, exl_path_in_lxl, file_list):  
+        '''
+        Argument:    
+                    exl_path_in_lxl : exl path get from by calling get_exl_file_path_for_lxl_file
+                    file_list : the exl file name list (without full path).\n
+        return: 
+                    string contain lxl file content with list of exl file path and name
+        
+        '''
+        file_content = ''
+        for item in file_list:
+            if exl_path_in_lxl:
+                file_content = file_content + exl_path_in_lxl + item + '\n'
+            else:
+                file_content = file_content + item + '\n'
+                
+        return file_content
+        
+          
+                 
             
