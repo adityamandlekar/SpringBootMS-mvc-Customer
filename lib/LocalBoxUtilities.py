@@ -568,6 +568,127 @@ class LocalBoxUtilities(_ToolUtil):
                 os.remove(exist_file)
         
             os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
+    def verify_unsolicited_response_sequence_numbers_in_capture(self, pcapfile, das_dir, ric, domain, mte_state):
+        """ verify if unsolicited response message sequence numbers for RIC are in increasing order in MTE output pcap message
+            if mte_state is startup, the sequence number should start from 0, then 4, 5, ... n, n+1...
+            if mte_state is failover, the sequence number could start from 1, then 4, 5, ... n, n+1...
+            if mte_state is rollover, the sequence number could start from 3, then 4, 5, ... n, n+1...
+            
+            Argument : pcapfile : MTE output capture pcap file fullpath
+                       das_dir : path for DAS tool
+                       ric : published RIC
+                       domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                       mte_state: possible value startup, rollover, failover.
+            return : last item from response message sequence number list
+        """           
+
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        outputfileprefix = 'test_seqnum_resp_'
+        filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_responseTypeNum= &quot;TRWF_TRDM_RPT_UNSOLICITED_RESP&quot;)))'%(filterDomain, ric)
+        outputxmlfile = self._get_extractorXml_from_pcap(das_dir, pcapfile, filterstring, outputfileprefix)                
+        
+        parentName  = 'Message'
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
+        seqNumList = []
+        for messageNode in messages:
+            seqNum = self._xml_parse_get_field_for_messageNode (messageNode, 'ItemSeqNum')
+            seqNumList.append(seqNum)
+                    
+        if len(seqNumList)== 0:
+            raise AssertionError('*ERROR* response message for %s, %s does not exist.'%(ric,domain)) 
+                    
+        for i in xrange(len(seqNumList) - 1):
+            if int(seqNumList[i]) > int(seqNumList[i+1]):
+                print seqNumList
+                raise AssertionError('*ERROR* response message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be after SeqNo[%d] %s.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
+                
+                     
+        for exist_file in outputxmlfile:
+            os.remove(exist_file)
+        os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")       
+        
+        if mte_state == 'startup':
+            if seqNumList[0] != '0':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 0' %seqNumList[0])  
+            if '1' in seqNumList or '2' in seqNumList or '3' in seqNumList:
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 1, 2, 3 should not be in the message sequence number List')
+         
+        if mte_state == 'failover':  
+            if seqNumList[0] != '1':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
+            if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list')
+              
+        if mte_state == 'rollover':
+            if seqNumList[0] != '3':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 3' %seqNumList[0])  
+            
+        return seqNumList[-1]
+        
+        
+    def verify_updated_message_sequence_numbers_in_capture(self, pcapfile, dasdir, ric, domain, mte_state):
+        """ verify if updated message sequence number for RIC are in increasing order in MTE output pcap message
+            if mte_state is startup, the possible sequence number could start from 4 then 5, ... n, n+1...
+            if mte_state is failover, the possible sequence number could start from 1, then 4, 5, ... n, n+1...
+            if mte_state is rollover, the sequence number could start from 3, then 4, 5, ... n, n+1...
+            Argument : pcapfile : MTE output capture pcap file fullpath
+                       das_dir : path for DAS tool
+                       ric : published RIC
+                       domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                       mte_state: possible value startup, rollover, failover.
+            return : First item from update message sequence number list
+        """       
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        outputfileprefix = 'test_seqnum_update_'
+        
+        filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, All_msgBase_msgKey_domainType = &quot;%s&quot;))'%(ric, filterDomain)
+        outputxmlfile = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
+        parentName  = 'Message'
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
+        
+        seqNumList = []
+        for messageNode in messages:
+            seqNum = self._xml_parse_get_field_for_messageNode (messageNode, 'ItemSeqNum')
+            seqNumList.append(seqNum)
+       
+        if len(seqNumList) == 0:
+            raise AssertionError('*ERROR* updated message for %s, %s does not exist.'%(ric,domain)) 
+          
+        for i in xrange(len(seqNumList) - 1):
+            if int(seqNumList[i]) > int(seqNumList[i + 1]):
+                print seqNumList
+                raise AssertionError('*ERROR* update message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be after SeqNo[%d] %s.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
+            
+        for exist_file in outputxmlfile:
+            os.remove(exist_file)
+        os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
+        
+        if mte_state == 'startup':
+            if seqNumList[0] <= '3':
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 0, 1, 2, 3 should not be in the message sequence number list')
+         
+        if mte_state == 'failover':  
+            if seqNumList[0] != '1':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
+            if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list')
+              
+        if mte_state == 'rollover':
+            if seqNumList[0] != '3':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 3' %seqNumList[0])            
+            
+        return seqNumList[0]
+		
                               
     def _verify_PE_change_in_message_c0(self,pcapfile,dasdir,ricname,newPE):
         """ internal function used to verify PE Change response (C0) for RIC in MTE output pcap message
@@ -1398,28 +1519,6 @@ class LocalBoxUtilities(_ToolUtil):
             
         return False
 
-    def convert_to_lowercase_workaround(self, str1):
-        """This KW is temporary because 'Convert to lowercase' KW is not available until Robot Framework 2.8.6.   
-        After upgrading to Robot 2.8.6, this KW should be deprecated and 'Convert to Lowercase' used
-        """
-        lower = str1.lower()
-        return lower
-        
-    def get_matches_workaround(self, listToSearch, pattern):
-        """This KW is temporary because 'Get Matches' KW is not available until Robot Framework 2.8.6.   
-        After upgrading to Robot 2.8.6, this KW should be deprecated and 'Get Matches' used
-        
-        Returns a list of matches to pattern in list
-
-        Example:
-        | get matches workaround | ${FMScategories} | Service_*
-        """
-        matches = []
-        for x in listToSearch:
-            if re.search(pattern, x):
-                matches.append(x)
-        return matches
-        
     def verify_cache_contains_only_configured_context_ids(self, cachedump_file_name_full_path, filter_string): 
         """Get set of context ID from cache dump file and venue xml_config file
         and verify the context id set from cache dump is subset of context id set defined in fms filter string
@@ -2405,7 +2504,7 @@ class LocalBoxUtilities(_ToolUtil):
         if (len(messages) == 0):
             raise AssertionError('*ERROR* no C%s message found'%constnum) 
         if (len(messages) > 1):
-            raise AssertionError('*ERROR* more than 2 C%s message found, the num is %s'%(constnum,len(messages))) 
+            raise AssertionError('*ERROR* more than 1 C%s message found, the num is %s'%(constnum,len(messages))) 
                 
         for delFile in outputxmlfilelist:
             os.remove(delFile)
@@ -2515,15 +2614,16 @@ class LocalBoxUtilities(_ToolUtil):
         if rc != 0:
             raise AssertionError('*ERROR* in running SCWLLi.exe %s' %stderr)  
         
-        return rc
+        return stdout
     
     def switch_MTE_LIVE_STANDBY_status(self,scwcli_dir,mteName,node,status,user,password,che_ip,port='27000'):
-        """ To switch specific MTE instance to LIVE or STANDBY
+        """ To switch specific MTE instance to LIVE, STANDBY, LOCK_LIVE or LOCK_STANDY. Or unlock the MTE instance.
 
             Argument : scwcli_dir - full path of SCWCli.exe
                        mteName - MTE instance name e.g. HKF02M
                        node - A,B,C,D
-                       status - LIVE:Switch to Live, STANDBY:Switch to Standby
+                       status - LIVE:Switch to Live, STANDBY:Switch to Standby, 
+                                LOCK_LIVE to lock live, LOCK_STANDY to lock standby, UNLOCK to unlock the MTE
                        user - login name for the TD box
                        password - login password for the TD box
                        che_ip - IP of the TD box
@@ -2537,163 +2637,143 @@ class LocalBoxUtilities(_ToolUtil):
        
         if (status == 'LIVE'):
             cmd = "-promote "
-        elif(status == 'STANDBY'):
+        elif (status == 'STANDBY'):
             cmd = "-demote "
+        elif (status == 'LOCK_LIVE'):
+            cmd = "-lock_live "
+        elif (status == 'LOCK_STANDBY'):
+            cmd = "-lock_stby "
+        elif (status == 'UNLOCK'):
+            cmd = "-unlock "
         else:
             raise AssertionError('*ERROR* Unknown status %s' %status)
             
         cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
         self._run_local_SCWCLI(scwcli_dir,cmd)
 
-    def _verify_Fid_value_in_fidsAndValues(self, fidsAndValues=[], fidnum=[],fidvalue=[]):
-        index = 0
-        for elementfid in fidnum: 
-                if (fidsAndValues.has_key(elementfid)):
-                    if (fidsAndValues[elementfid] != fidvalue[index]):
-                        raise AssertionError('*ERROR* C1 message : the value of fid number (%s) not equal to (%s)'%(fidsAndValues[elementfid],fidvalue[index]))
-                    if index < len(fidvalue) :
-                        index = index + 1
-                else:
-                    raise AssertionError('*ERROR* 1st C1 message : Missing FID %s in payload'%elementfid)      
-                
-    def verify_Extract_and_Insert_in_message(self,pcapfile,venuedir,dasdir,ricname,fidnum=[],oldfidvalue=[],newfidvalue=[]):
-        """ internal function used to verify the fid value with fidvalue1 can change to fidvalue2 correctly and back to fidvalue1 correctly
-            pcapFile : is the pcap fullpath at local control PC  
-            venuedir : location from remote TD box for search FIDFilter.txt
-            dasdir : location of DAS tool  
-            fidnum : fid num 
-            oldfidvalue : original value of fid
-            newfidvalue : new value of fid
-            return : Nil
+    def get_master_box_ip(self, scwcli_dir, user, password, che_ip_list, port='27000'):
+        """ To find the master box from pair boxes
+
+            Argument : scwcli_dir - full path of SCWCli.exe
+                       user - login name for the TD box
+                       password - login password for the TD box
+                       che_ip_list - IP list of the TD boxes
+                       port - port no. that used to communicate with the SCW at TD box
+            Return :   the ip of master box
             
-            Verify:
-            1. C1 first UPDATE, the fid value is the oldfidvalue
-            2. C1 second UPDATE, the fid value is the newfidvalue
-            3. C1 third UPDATE, the fid value is the oldfidvalue
+            Examples :
+            | ${iplist} | create list | ${CHE_A_IP} | ${CHE_B_IP} |
+            | ${master_ip} | get master box ip | C:\\SCW\\bin  | ${USERNAME} | ${PASSWORD} | ${iplist} |
+        """
+        for che_ip in che_ip_list:
+            cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,port,user,password)
+            stdout = self._run_local_SCWCLI(scwcli_dir,cmd)
+            if (stdout.find('SCW state MASTER') != -1):
+                return che_ip
+        raise AssertionError('*ERROR* cannot find a master box')
+    
+    def get_FidValue_in_message(self,pcapfile,dasdir,ricname, msgClass):
+        """ To verify the insert icf file can update the changed fid and value correct
+        
+        Argument :         
+                    pcapFile : is the pcap fullpath at local control PC                      
+                    dasdir : location of DAS tool  
+                    ricname:    
+                    msgClass: UPDATE or RESPONSE               
+                  : 
+                    return : Fid Value pair from pcap
+            
+        Verify:
+                 Have 1 C1 message, the changed fids' value is correct
+                 If need to check all the Fids, all the Fid Value pair same with the defaultFidValue
+                 
+        Example:
+                | ${defaultFidsValues}  |  get_FidValue_in_message  |  ${LOCAL_TMP_DIR}/capture_localDefault.pcap  |  ${DAS_DIR}  |  ${pubRic} | UPDATE
+                 | ${defaultFidsValues}  |  get_FidValue_in_message  |  ${LOCAL_TMP_DIR}/capture_localDefault.pcap  |  ${DAS_DIR}  |  ${pubRic} | RESPONSE
+                
         """ 
                 
         outputfileprefix = 'updateCheckC1'
-        filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_constitNum = &quot;1&quot;))'%(ricname)
-
+          
+        if msgClass == 'RESPONSE' :
+            filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;1&quot;))'%(ricname)
+        elif msgClass == 'UPDATE' :
+            filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_constitNum = &quot;1&quot;))'%(ricname)
+        else:
+            raise AssertionError('*ERROR* msgClass is not correct, please use UPDATE or RESPONSE' )
+        
+                       
         outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
         
         parentName  = 'Message'
-        messages = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)        
         
-        if (len(messages) == 3):
-            #1st C1 message : fid value is the oldfidvalue
-            fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[0])
-            self._verify_Fid_value_in_fidsAndValues(fidsAndValues, fidnum, oldfidvalue)
-                       
-            #2nd C1 message : fid value update to the new fid value
-            fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[1])
-            self._verify_Fid_value_in_fidsAndValues(fidsAndValues, fidnum, newfidvalue)            
-            
-             #3rd C1 message : fid value back to the oldfidvalue
-            fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[2])
-            self._verify_Fid_value_in_fidsAndValues(fidsAndValues, fidnum, oldfidvalue)
-            
+        if (len(messages) == 1):            
+            fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[0])                
         else:
-            raise AssertionError('*ERROR* No. of C1 message received not equal to 3 for RIC %s during PE change, received (%d) message(s)'%(ricname,len(messages)))
+            raise AssertionError('*ERROR* No. of C1 message received not equal to 1 for RIC %s during icf insert, received (%d) message(s)'%(ricname,len(messages)))
+        
         
         for delFile in outputxmlfilelist:
             os.remove(delFile)
+            
+        os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
         
-        os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")                
-           
-    def _search_field_in_icf_file(self, srcfile, field):
-        """check the field is in icf file or not
+        return fidsAndValues
+                        
+     
+    def get_REAL_Fids_in_icf_file(self, srcfile, count = 1):
+        """to Get some FIDs with outputFormat value TRWF_REAL_NOT_A_NUM 
+         
+        Argument:    
+                srcfile : the icf file.\n
+                count : the totol number of the Fids we want get
         
-        srcfile is the original icf file.\n
-        field is the Fid name need to check .\n
+        return:
+                Fidlist : some REAL type Fids' name list       
+        Examples :
+        
+            |${FidList} | ${haveDefaultValue} | get REAL Fids in icf file  | C:\\temp\\extractFile.icf |  3   |    
         """
         dom = xml.dom.minidom.parse(srcfile)  
         root = dom.documentElement  
-        iteratorlist = dom.getElementsByTagName('r')         
-        
+        iteratorlist = dom.getElementsByTagName('r')     
+        Fidlist= []    
+        fidCount = 0
+                
         for node in iteratorlist:
             for subnode in node.childNodes:
-                if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:%s'%field :
-                    return True
+                for ssubnode in subnode.childNodes:                    
+                    if ssubnode.nodeType == node.ELEMENT_NODE and ssubnode.nodeName == 'it:outputFormat' and ssubnode.firstChild.data == 'TRWF_REAL_NOT_A_NUM':
+                        tempList = subnode.nodeName.split(':') 
+                        Fidlist.append(tempList[1])
+                        fidCount = fidCount + 1
+                        if fidCount >= int (count) :
+                            return Fidlist
         
-        return False  
-    
-    def get_modify_field_in_icf(self, srcfile, ric, domain, fidcount):
-        """to get a Fid list which can be changed in icf
         
-        srcfile is the original icf file.\n
-        ric, domain
-        fidcount: how many fids need to return
-         
-        return a fidlist
-        """   
-        simplefidlist = ['BID', 'ASK', 'OFF_CLOSE', 'HST_CLOSE2', 'GEN_VAL3', 'GEN_VAL1', 'ALT_CLOSE', 'ASSETS', 'OFFER', 'PCTCHNG', 'GEN_VAL2', 'TRDPRC_1', 'TRDPRC_2', 'TRDPRC_3', 'TRDPRC_4', 'TRDPRC_5', 'NETCHNG_1', 'HIGH_1', 'LOW_1', 'OPEN_PRC', 'HST_CLOSE', 'EARNINGS', 'YIELD', 'PCTCHNG', 'OPEN_BID', 'OPEN_ASK', 'CLOSE_BID', 'CLOSE_ASK', 'LOCHIGH', 'LOCLOW' ]                   
-        fidDict = {'BID':'22','ASK':'25', 'OFF_CLOSE':'3372', 'HST_CLOSE2':'963', 'GEN_VAL3':'998', 'GEN_VAL1':'996', 'ALT_CLOSE':'7672', 'ASSETS':'122', 'OFFER':'151', 'PCTCHNG':'56', 'GEN_VAL2':'997', 'TRDPRC_1':'6', 'TRDPRC_2':'7', 'TRDPRC_3':'8', 'TRDPRC_4':'9', 'TRDPRC_5':'10', 'NETCHNG_1':'11', 'HIGH_1':'12', 'LOW_1':'13', 'OPEN_PRC':'19', 'HST_CLOSE':'21', 'EARNINGS':'34', 'YIELD':'35', 'PCTCHNG':'56', 'LOCHIGH':'62', 'LOCLOW':'63'}
-        modifyFidlist= []
-        count = 0
+        raise AssertionError('*ERROR* not enough REAL type Fids found in icf file %s'%(srcfile))   
         
-        for elementfid in simplefidlist:
-            if count >= fidcount:
-                break
-            else :
-                searchR = self._search_field_in_icf_file(srcfile, elementfid)
-                if searchR == True:
-                    count = count + 1
-                    modifyFidlist.append(elementfid)
-                   
-        return modifyFidlist 
-    
-    def get_and_modify_2_item_in_icf(self, srcfile, dstfile, ric, domain, value):   
-        """to modify 2 FIDs with value in icf
         
-        srcfile is the original icf file.\n
-        ric, domain
-        value: the changed value for the 2 FIDs
-         
-        return a FID name list and a FID num list
-        """  
-        simplefidlist = ['BID', 'ASK', 'OFF_CLOSE', 'HST_CLOSE2', 'GEN_VAL3', 'GEN_VAL1', 'ALT_CLOSE', 'ASSETS', 'OFFER', 'PCTCHNG', 'GEN_VAL2', 'TRDPRC_1', 'TRDPRC_2', 'TRDPRC_3', 'TRDPRC_4', 'TRDPRC_5', 'NETCHNG_1', 'HIGH_1', 'LOW_1', 'OPEN_PRC', 'HST_CLOSE', 'EARNINGS', 'YIELD', 'PCTCHNG', 'OPEN_BID', 'OPEN_ASK', 'CLOSE_BID', 'CLOSE_ASK', 'LOCHIGH', 'LOCLOW' ]                   
-        fidDict = {'BID':'22','ASK':'25', 'OFF_CLOSE':'3372', 'HST_CLOSE2':'963', 'GEN_VAL3':'998', 'GEN_VAL1':'996', 'ALT_CLOSE':'7672', 'ASSETS':'122', 'OFFER':'151', 'PCTCHNG':'56', 'GEN_VAL2':'997', 'TRDPRC_1':'6', 'TRDPRC_2':'7', 'TRDPRC_3':'8', 'TRDPRC_4':'9', 'TRDPRC_5':'10', 'NETCHNG_1':'11', 'HIGH_1':'12', 'LOW_1':'13', 'OPEN_PRC':'19', 'HST_CLOSE':'21', 'EARNINGS':'34', 'YIELD':'35', 'PCTCHNG':'56', 'LOCHIGH':'62', 'LOCLOW':'63'}
-        modifyItem = []
-        modifyFidlist= []
-        fidnumlist = []
-        count = 0
-        
-        for elementfid in simplefidlist:
-            if count >= 2:
-                break
-            else :
-                searchR = False
-                searchR = self._search_field_in_icf_file(srcfile, elementfid)
-                if searchR == True:
-                    modifyFidlist.append(elementfid)
-                    fidnumlist.append(fidDict[elementfid])
-                    modifyItem.append('<it:%s>\n <it:outputFormat>TRWF_REAL_NOT_A_NUM</it:outputFormat>\n <it:value>%s</it:value>\n</it:%s>'%(elementfid,value[count],elementfid))
-                    if count < len(value) :
-                        count = count + 1
-        _FMUtil().modify_icf(srcfile, dstfile, ric, domain, modifyItem[0],modifyItem[1])        
-        return modifyFidlist, fidnumlist
-     
-    def creat_REAL_modify_item_in_icf(self, fidlist, value ):
-        """creat some icf modify items with type REAL
-        
-        fidlist is the FID name which need to change.\n
-        value is the changed value  .\n
-        return the modify item list
-        """  
-        modifyItem = []   
-        index = 0   
-        for elementfid in fidlist:          
-            modifyItem.append('<it:%s>\n <it:outputFormat>TRWF_REAL_NOT_A_NUM</it:outputFormat>\n <it:value>%s</it:value>\n</it:%s>'%(elementfid,value[index],elementfid))
-            if index < (len(value) - 1) :
-                index = index + 1
-            
-        return modifyItem
-    
-    def separate_string_to_list(self, srcstring, sepFlag):
-        sepList = srcstring.split(sepFlag)
-        return sepList, len(sepList)
 
-    def convert_num_to_opposite(self, srcNum):
-        dstNum = 0 - srcNum 
-        return dstNum      
+    def modify_REAL_items_in_icf(self, srcfile, dstfile, ric, domain, fidsAndValues={}):   
+        """to modify some REAL type items with FIDs and Value list in icf
+                
+        Argument:         
+                    srcfile : the original icf file.\n
+                    dstfile : the modified icf file
+                    ric, domain
+                    fidsAndValues: the Fid name and value dictionary need to be changed
+         
+        return nil
+        """  
+             
+        index = 0
+        itemList = []
+        
+        for (fid,value) in fidsAndValues.items():
+            item = '<it:%s>\n <it:outputFormat>TRWF_REAL_NOT_A_NUM</it:outputFormat>\n <it:value>%s</it:value>\n</it:%s>'%(fid,value,fid)
+            itemList.append(item)
+        
+        _FMUtil().modify_icf(srcfile, dstfile, ric, domain, *itemList)        
+  

@@ -187,7 +187,7 @@ Get Domain Names
 Get FMS Service Name
     [Documentation]    get the Service name from statBlock
     ${categories}=    get stat blocks for category    ${MTE}    FMS
-    ${services}=    get matches workaround    ${categories}    Service_*
+    ${services}=    Get Matches    ${categories}    Service_*
     ${serviceName}    get stat block field    ${MTE}    ${services[0]}    serviceName
     [Return]    ${serviceName}
 
@@ -221,7 +221,7 @@ Get MTE Config File
     ...    If we already have the local file, just return the file name without copying the remote file again.
     ${localFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
     Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
-    ${lowercase_filename}    convert to lowercase workaround    ${MTE}.xml
+    ${lowercase_filename}    convert to lowercase    ${MTE}.xml
     ${res}=    search remote files    ${VENUE_DIR}    ${lowercase_filename}    recurse=${True}
     Length Should Be    ${res}    1    ${lowercase_filename} file not found (or multiple files found).
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mte_config_file.xml
@@ -243,7 +243,7 @@ Get Preferred Domain
     ${mteConfigFile}=    Get MTE Config File
     ${domainList}=    Get Domain Names    ${mteConfigFile}
     : FOR    ${domain}    IN    @{preferenceOrder}
-    \    ${match}=    get matches workaround    ${domainList}    ${domain}
+    \    ${match}=    Get Matches    ${domainList}    ${domain}
     \    Return From Keyword If    ${match}    ${domain}
     FAIL    No preferred domain ${preferenceOrder} found in domain list ${domainList}
     [Return]    ${domain}

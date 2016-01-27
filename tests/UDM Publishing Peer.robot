@@ -10,6 +10,7 @@ Verify Live Instance Publishing
     ...
     ...    1. Checking if LIVE Box has output
     ...    2. Checking if STANDBY Box has NO output
+    [Tags]    Peer
     [Setup]
     Force MTE to Status    ${CHE_A_IP}    A    LIVE
     ${domain}=    Get Preferred Domain

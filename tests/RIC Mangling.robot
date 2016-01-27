@@ -89,10 +89,6 @@ Verify IDN RRG Phase - RIC Mangling change without Restart
     Run Keyword And Continue On Failure    verify all response message num    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${sampleRic}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
-DUMMY
-    @{list}=    Create List    1234
-    set_mangling_rule_parition_value    BETA    ${list}    ${LOCAL_TMP_DIR}/manglingConfiguration.xml
-
 *** Keywords ***
 Change Phase
     [Arguments]    ${PrePhase}    ${NewPhase}

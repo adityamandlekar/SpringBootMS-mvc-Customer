@@ -66,7 +66,7 @@ Verify Downstream Recovery Functions
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
     ${constituents}=    get constituents from FidFilter    ${VENUE_DIR}    ${contextId}
-    Verify Solicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${pubRic}    ${domain}    ${constituents}
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${pubRic}    ${domain}    ${constituents}
     [Teardown]    case teardown    ${localCapture}
 
 Verify Common Required FID output
@@ -115,7 +115,8 @@ Verify Message Key Name is Compressed
     Wait For Persist File Update    ${MTE}    ${VENUE_DIR}    5    60
     Stop Capture MTE Output    ${MTE}    1    5
     get remote file    ${remoteCapture}    ${localCapture}
-    verify key compression in message    ${localCapture}    ${DAS_DIR}    ${long_ric}
+    ${mangle}    Fetch From Left     ${pubRic}    ${ric}
+    verify key compression in message    ${localCapture}    ${DAS_DIR}     ${mangle}${long_ric}
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    25000    --AllowRICChange true
     [Teardown]    case teardown    ${localCapture}
 
@@ -135,6 +136,7 @@ Verify SPS RIC is published
     wait smf log message after time    Finished Sending Images    ${currentDateTime}
     Stop Capture MTE Output    ${MTE}    1    5
     get remote file    ${remoteCapture}    ${localCapture}
+    ${constituents}=    get constituents from FidFilter    ${VENUE_DIR}    ${contextId}
     Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_SPS_ric_sub_provider}    ${domain}    ${constituents}
     Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_SPS_ric_input_stats}    ${domain}    ${constituents}
     [Teardown]    case teardown    ${localCapture}
@@ -147,6 +149,7 @@ Verify DDS RIC is published
     ${domain}=    Get Preferred Domain
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     ${serviceName}=    Get FMS Service Name
+    ${constituents}=    get constituents from FidFilter    ${VENUE_DIR}    ${contextId}
     @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
     : FOR    ${labelID}    IN    @{labelIDs}
     \    ${currentDateTime}    get date and time

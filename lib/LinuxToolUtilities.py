@@ -756,7 +756,7 @@ class LinuxToolUtilities():
                                    
         ipAndPort = self.get_stat_block_field(mte, statblockNames[-1], field + 'OutputAddress').strip().split(':')
         if (len(ipAndPort) != 2):            
-            raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port (return %s)'%(field))
+            raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port, got [%s]'%(field,':'.join(ipAndPort)))
         
         return ipAndPort
     
@@ -1062,8 +1062,8 @@ class LinuxToolUtilities():
         foundfiles = _search_file(searchdir,cfgfile,True)        
         if len(foundfiles) < 1:
             raise AssertionError('*ERROR* %s not found' %cfgfile)
-        elif len(foundfiles) > 1:
-            raise AssertionError('*ERROR* Found more than one file: %s' %cfgfile)     
+        """elif len(foundfiles) > 1:
+            raise AssertionError('*ERROR* Found more than one file: %s' %cfgfile)   """  
                 
         #backup config file
         backupfile = foundfiles[0] + suffix
@@ -1198,8 +1198,11 @@ class LinuxToolUtilities():
                 DataView -TRWF2 -IM 232.2.19.229 -IH 10.91.57.71  -PM 7777 -L 4096 -R .[SPSCB1L2_I -D SERVICE_PROVIDER_STATUS -EXITDELAY 5
         """
                             
-        cmd = '%s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (dataviewPath, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
+        # use pathfail to detect failure of a command within a pipeline
+        # remove non-printable chars; dataview COMP_NAME output contains binary characters that can cause utf-8 decode problems
+        cmd = 'set -o pathfail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (dataviewPath, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
         cmd = cmd + ' ' + ' '.join( map(str, optArgs))
+        cmd = cmd + ' | tr -dc \'[:print:],[:space:]\''
         print '*INFO* ' + cmd
         stdout, stderr, rc = _exec_command(cmd)
                 
@@ -1325,4 +1328,49 @@ class LinuxToolUtilities():
             return elements[1]
         else:
             raise AssertionError('*ERROR* The FID can not be found')        
+
+    def rollover_MTE_Machine_Date(self, startOfDay, endOfDay, durationDays=1):   
+        """to rollover MTE machine date with the duration days
+                
+        Argument:         
+                    startOfDay : the original icf file.\n
+                    endOfDay : the modified icf file
+                    durationDays : the duration we want to rollover
+                    
+         
+        return nil
+        
+        Examples:
+                    Rollover MTE Machine Date  |  ${StartOfDayGMT} |   ${EndOfDayGMT}  |  ${days}
+        """  
+                
+        aSec = timedelta(seconds = 1)
+        aDay = timedelta(days = 1 )
+                   
+        if startOfDay > endOfDay :
+            endOfDay = endOfDay + aDay 
+        
+        if (startOfDay > endOfDay) :
+            AssertionError('The startOfDay or endOfDay time is incorrect, please correct it')
+            
+        startOfDay = startOfDay + aDay - aSec
+        endOfDay = endOfDay - aSec
+        
+        if (startOfDay < endOfDay) :
+            AssertionError('The startOfDay or endOfDay time is incorrect, please correct it')
+         
+        leftDays = int (durationDays) 
+         
+        while leftDays > 0 :
+            LinuxCoreUtilities().set_date_and_time(endOfDay.year, endOfDay.month, endOfDay.day, endOfDay.hour, endOfDay.minute, endOfDay.second)
+            currDateTime = LinuxCoreUtilities().get_date_and_time()
+            self.wait_smf_log_message_after_time('EndOfDay time occurred',currDateTime )
+            endOfDay = endOfDay + aDay
+            
+            LinuxCoreUtilities().set_date_and_time(startOfDay.year, startOfDay.month, startOfDay.day, startOfDay.hour, startOfDay.minute, startOfDay.second)
+            currDateTime = LinuxCoreUtilities().get_date_and_time()
+            self.wait_smf_log_message_after_time('StartOfDay time occurred',currDateTime )
+            startOfDay = startOfDay + aDay
+            
+            leftDays = leftDays - 1
              
