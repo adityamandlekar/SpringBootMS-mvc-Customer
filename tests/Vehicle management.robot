@@ -168,6 +168,33 @@ Drop a RIC by deleting EXL File and Full Reorg
     Verify RIC is Dropped In MTE Cache    ${MTE}    ${ric}
     [Teardown]    Vehicle Management Case Teardown    ${LOCAL_TMP_DIR}/${exlFileName}
 
+Drop a RIC by deleting EXL file from LXL file
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1924
+    ...
+    ...    Find a RIC associated exl file. Create LXL file with all exl files for the service except the founded one and place the lxl file to FMAREA/Service/System Files/Reconcile Files folder. \ After reconcile, verify RICs is dropped.
+    ${domain}    Get Preferred Domain
+    ${service}    Get FMS Service Name
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${exlFullFileName}=    get EXL for RIC    ${LOCAL_FMS_DIR}    ${domain}    ${service}    ${ric}
+    ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
+    ${service_dir}    Fetch From Left    ${exlFilePath}    \\${service}\\
+    ${recon_files_dir}=    set variable    ${service_dir}\\${service}\\System Files\\Reconcile Files
+    ${exl_path_in_lxl}=    Get exl file path for lxl file    ${LOCAL_FMS_DIR}    ${exlFilePath}
+    ${tmp_lxl}    set variable    ${recon_files_dir}\\tmp.lxl
+    ${exl_file_list} =    List Files In Directory    ${exlFilePath}    *.exl
+    Remove Values From List    ${exl_file_list}    ${exlFileName}
+    ${lxl_content}=    Build LXL File    ${exl_path_in_lxl}    ${exl_file_list}
+    Create File    ${tmp_lxl}    ${lxl_content}
+    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}    Recon    --Services ${service}    --InputFile "${tmp_lxl}"
+    ...    --HandlerName ${MTE}    UseReconcileLXL true
+    Wait For Persist File Update    ${MTE}    ${VENUE_DIR}
+    Run Keyword And Continue On Failure    Verify RIC is Dropped In MTE Cache    ${MTE}    ${ric}
+    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}    UnDrop    --Services ${service}    --InputFile "${exlFullFileName}"
+    ...    --HandlerName ${MTE}
+    Wait For Persist File Update    ${MTE}    ${VENUE_DIR}
+    Verify RIC In MTE Cache    ${MTE}    ${ric}
+    [Teardown]    case teardown    ${tmp_lxl}
+
 Verify Reconcile of Cache
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1848
     ...    To verify whether a new RIC can be added and a old RIC can be dropped via reconcile
