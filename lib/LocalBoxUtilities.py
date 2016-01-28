@@ -24,7 +24,6 @@ from LinuxFSUtilities import LinuxFSUtilities
 from FMUtilities import _FMUtil
 from utils.local import _run_local_command
 from utils._ToolUtil import _ToolUtil
-from utils._FSUtil import _FSUtil
 
 FID_CONTEXTID = '5357'
 
@@ -1015,7 +1014,7 @@ class LocalBoxUtilities(_ToolUtil):
             return : Nil         
         """
         refValue = newFIDValue
-        if (newFIDValue.isnumeric() == False):
+        if (newFIDValue.isdigit() == False):
             refValue = ""
             for character in newFIDValue:
                 refValue = refValue + (character.encode("hex")).upper()
@@ -2777,3 +2776,55 @@ class LocalBoxUtilities(_ToolUtil):
         
         _FMUtil().modify_icf(srcfile, dstfile, ric, domain, *itemList)        
   
+
+
+    def get_exl_file_path_for_lxl_file(self, fms_dir, exl_path): 
+        """Deriving exl path for lxl file from exl full file path
+                 
+        Argument:    
+                    fms_dir : fms directory defined in Venuevariables.py
+                    exl_path : the exl file path no name.\n     
+ 
+        return:
+                    exl directory required by lxl file without file name
+                    Example:
+                    fms_dir  is D:\\tools\\FMSCMD\\config\\DataFiles\\Groups
+                    if exl_path D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\EXL Files
+                    return empty path 
+                    if exl_file D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\MUT\\EXL Files
+                    return path RAM/MFDS/MUT/
+        """  
+            
+        new_path = exl_path.replace(fms_dir + "\\",'').replace('EXL Files','')
+        nodes = new_path.split("\\")   
+        nodes = filter(None, nodes)
+         
+        if len(nodes)<2:
+            raise AssertionError('*ERROR* Cannot determine LXL path based on FMS dir [%s] and EXL path [%s]' %(fms_dir, exl_path))
+         
+        if len(nodes)==2:
+            return ''
+        else:
+            new_path = new_path.replace('\\','/')
+            
+        return new_path
+        
+            
+    def build_LXL_file (self, exl_path_in_lxl, file_list):  
+        '''
+        Argument:    
+                    exl_path_in_lxl : exl path get from by calling get_exl_file_path_for_lxl_file
+                    file_list : the exl file name list (without full path).\n
+        return: 
+                    string contain lxl file content with list of exl file path and name
+        
+        '''
+        file_content = ''
+        for item in file_list:
+            if exl_path_in_lxl:
+                file_content = file_content + exl_path_in_lxl + item + '\n'
+            else:
+                file_content = file_content + item + '\n'
+                
+        return file_content
+        

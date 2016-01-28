@@ -124,23 +124,13 @@ Get ConnectTimesIdentifier
     ${len}    Get Length    ${fhName}
     ${connectTimesIdentifier}=    Run Keyword If    ${len} > 0    get MTE config value    ${mteConfigFile}    Inputs    ${fhName}
     ...    FHRealtimeLine    ConnectTimesIdentifier
-    return from keyword if    '${connectTimesIdentifier}' != 'None'    ${connectTimesIdentifier}
+    return from keyword if    '${connectTimesIdentifier}' != 'NOT FOUND' and '${connectTimesIdentifier}' != 'None'    ${connectTimesIdentifier}
     ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    FHRealtimeLine    ConnectTimesIdentifier
-    @{retList}    Create List
-    : FOR    ${ric}    IN    @{connectTimesIdentifier}
-    \    ${count}=    Get Count    ${retList}    ${ric}
-    \    Comment    To ensure no duplicate connectTimesIdenifiers are put in the list
-    \    Run Keyword if    ${count} == 0    append to list    ${retList}    ${ric}
-    ${len}    Get Length    ${retList}
-    return from keyword if    ${len} > 0    ${retList}
-    @{retList}    Create List
+    @{retList}=    Remove Duplicates    ${connectTimesIdentifier}
+    return from keyword if    len(${retList}) > 0    ${retList}
     ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    ConnectTimesRIC
-    : FOR    ${ric}    IN    @{connectTimesIdentifier}
-    \    ${count}=    Get Count    ${retList}    ${ric}
-    \    Comment    To ensure no duplicate connectTimesIdenifiers are put in the list
-    \    Run Keyword if    ${count} == 0    append to list    ${retList}    ${ric}
-    ${len}    Get Length    ${retList}
-    return from keyword if    ${len} > 0    ${retList}
+    @{retList}=    Remove Duplicates    ${connectTimesIdentifier}
+    return from keyword if    len(${retList}) > 0    ${retList}
     FAIL    No ConnectTimesIdentifier found in venue config file: ${mteConfigFile}
 
 Get HighActivityTimesIdentifier
