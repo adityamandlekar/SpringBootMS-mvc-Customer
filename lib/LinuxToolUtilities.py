@@ -1096,34 +1096,7 @@ class LinuxToolUtilities():
         
         if rc !=0 or stderr !='':
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))                
-
-    def set_PE_mangling_value(self,enabled,cfgfile):
-        """enable or disalbe PE mangling by chaning the content of manglingConfiguration.xml
-        enabled : True=enable , False=disable
-        cfgfile : full path of mangling config file xml
-        Returns : Nil
-
-        Examples:
-        | set PE mangling value | True | /ThomsonReuters/Venues/MFDS/MTE/manglingConfiguration.xml |
-        """         
-        #Find configuration file
-        LinuxFSUtilities().remote_file_should_exist(cfgfile)
-
-        #Check if <PE> tag exist
-        searchKeyWord = "<PE enabled="
-        foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-        if (len(foundlines) == 0):
-            raise AssertionError('*ERROR* <PE> tag is missing in %s' %cfgfile)
-                
-        if (enabled):
-            cmd = "sed -i 's/PE enabled=\"false\"/PE enabled=\"true\"/' " + cfgfile
-        else:
-            cmd = "sed -i 's/PE enabled=\"true\"/PE enabled=\"false\"/' " + cfgfile
-        stdout, stderr, rc = _exec_command(cmd)
-        
-        if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))        
-    
+ 
     def set_value_in_MTE_cfg(self, mtecfgfile, tagName, value):
         """change tag value in ${MTE}.xml
         
@@ -1207,76 +1180,6 @@ class LinuxToolUtilities():
         originalNoOfBackupFile = 1 + int(keepDays) + 1
         if not ((originalNoOfBackupFile - len(listOfPersistBackupFiles)) == 1):
             raise AssertionError('*ERROR* Expected no. of backup file remain after cleanup (%d), but (%d) has found' %(originalNoOfBackupFile-1,len(listOfPersistBackupFiles)))
-    
-    def set_mangling_rule_default_value(self,rule,cfgfile):
-        """set the mangling rule (defaultRule) in manglingConfiguration.xml
-        
-        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
-        cfgfile : full path of mangling config file xml
-        Returns : Nil
-
-        Examples:
-        | set mangling rule default value | SOU | /ThomsonReuters/Venues/MFDS/MTE/manglingConfiguration.xml |
-        """
-        
-        #safe check for rule value
-        if (self.MANGLINGRULE.has_key(rule.upper()) == False):
-            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
-            
-        #Find configuration file
-        LinuxFSUtilities().remote_file_should_exist(cfgfile)
-
-        #Check if defaultRule attribute (found under <Partitions> tag) is exist
-        searchKeyWord = "defaultRule="
-        foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-        if (len(foundlines) == 0):
-            raise AssertionError('*ERROR* defaultRule attribute is missing in %s' %cfgfile)
-         
-        cmd = "sed -i 's/defaultRule=\"[^\"]*\"/defaultRule=\"%s\"/' "%self.MANGLINGRULE[rule.upper()] + cfgfile
-        stdout, stderr, rc = _exec_command(cmd)
-        if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))        
-        
-    def set_mangling_rule_partition_value(self,rule,cfgfile,listOfvalues=[]):
-        """set the mangling rule in manglingConfiguration.xml
-        
-        listOfvalues    : list of data of attribute for <Partition> 'value'
-        rule            : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
-        cfgfile         : full path of mangling config file xml
-        Returns         : Nil
-
-        Examples:
-        | set mangling rule partition value | SOU | /ThomsonReuters/Venues/MFDS/MTE/manglingConfiguration.xml |[]|
-        """         
-               
-        #safe check for rule value
-        if (self.MANGLINGRULE.has_key(rule.upper()) == False):
-            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
-            
-        #Find configuration file
-        LinuxFSUtilities().remote_file_should_exist(cfgfile)
-        
-        #Optional (If the config file has <Partition> under <Partitions> also replace all the rule value with required one
-        if (len(listOfvalues) == 0):
-            #Empty List = Replace all <Partition> (if exist) with same rule
-            searchKeyWord = "rule="
-            foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-            if (len(foundlines) > 0):
-                cmd = "sed -i 's/rule=\".*\"/rule=\"%s\"/' "%self.MANGLINGRULE[rule.upper()] + cfgfile
-                stdout, stderr, rc = _exec_command(cmd)
-                if rc !=0 or stderr !='':
-                    raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))             
-        else:
-            for value in listOfvalues:
-                searchKeyWord = "Partition value=\\\"%s\\\""%value
-                foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-                if (len(foundlines) > 0):
-                    cmd = "sed -i 's/Partition value=\"%s\" rule=\".*\"/Partition value=\"%s\" rule=\"%s\"/' "%(value,value,self.MANGLINGRULE[rule.upper()]) + cfgfile
-                    stdout, stderr, rc = _exec_command(cmd)
-                    if rc !=0 or stderr !='':
-                        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
-                else:
-                    print 'Partition value="%s" does not exist in %s' %(value,cfgfile)
         
     def run_dataview(self, dataviewPath, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain, *optArgs):
         """ Argument :

@@ -30,10 +30,7 @@ Verify BETA Phase - Disable PE Mangling without Restart
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1819
     ...
     ...    Test Case - Verify BETA Phase - Disable PE Mangling without Restart
-    ${localFile}    Get Mangling Config File
-    ${dictSOU}    get mangling rule content    SOU    ${localFile}
-    Dictionary Should Contain Key    ${dictSOU}    PE
-    Dictionary Should Contain Key    ${dictSOU['PE']}    text
+    @{expected_pe}    Create List    4128    4245    4247
     ${expected_RicPrefix}    set variable    ![
     ${domain}=    Get Preferred Domain
     ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}
@@ -48,7 +45,8 @@ Verify BETA Phase - Disable PE Mangling without Restart
     delete remote files    ${remotedumpfile}
     ${length}    Get Length    ${matchedLines}
     Should Be Equal    ${length}    ${0}    Phase isn't changed successfully    ${False}
-    verify PE Change in message    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${expected_RicPrefix}${sampleRic}    ${dictSOU['PE']['text']}    ${penew}
+    Run Keyword And Continue On Failure    verify PE Change in message    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${expected_RicPrefix}${sampleRic}    ${expected_pe}
+    ...    ${penew}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify Electron RRG Phase - RIC Mangling change without Restart

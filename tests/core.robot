@@ -377,10 +377,16 @@ Set Mangling Rule
     ...    Current avaliable valid value for \ ${rule} : SOU, BETA, RRG \ or UNMANGLED
     ...    The KW would restore the config file to original value, but it would rely on user to calling KW : Load Mangling Settings to carry out the restore action at the end of their test case
     @{files}=    backup cfg file    ${VENUE_DIR}    ${configFile}
-    set mangling rule default value    ${rule}    @{files}[0]
-    set mangling rule partition value    ${rule}    @{files}[0]
+    ${configFileLocal}=    Get Mangling Config File
+    set mangling rule default value    ${rule}    ${configFileLocal}
+    set mangling rule parition value    ${rule}    ${Empty}    ${configFileLocal}
+    delete remote files    @{files}[0]
+    put remote file    ${configFileLocal}    @{files}[0]
     Run Keyword And Continue On Failure    Load Mangling Settings    ${mte}
     restore cfg file    @{files}
+    Comment    Revert changes in local mangling config file
+    Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${None}
+    ${configFileLocal}=    Get Mangling Config File
 
 Set RIC In EXL
     [Arguments]    ${srcFile}    ${dstFile}    ${ric}    ${domain}    ${newRIC}

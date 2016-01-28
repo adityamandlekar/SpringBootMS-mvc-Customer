@@ -138,6 +138,9 @@ Go Into EndOfDay time
     restore cfg file    ${orgFile}    ${backupFile}
     stop MTE    ${MTE}
     start MTE    ${MTE}
+    Comment    Revert changes in local venue config file
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
+    ${configFileLocal}=    Get MTE Config File
     [Teardown]
 
 Go Into Feed Time And Set End Feed Time
