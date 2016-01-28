@@ -1010,7 +1010,7 @@ class LocalBoxUtilities(_ToolUtil):
             return : Nil         
         """
         refValue = newFIDValue
-        if (newFIDValue.isnumeric() == False):
+        if (newFIDValue.isdigit() == False):
             refValue = ""
             for character in newFIDValue:
                 refValue = refValue + (character.encode("hex")).upper()
