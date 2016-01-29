@@ -4,7 +4,7 @@ Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
 *** Test Cases ***
-Verify Manual Live/Standby Switch via SCW CLI
+Verify Manual Live-Standby Switch via SCW CLI
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1764
     ...    To verify switch Live/Standby and lock Live/Standby using SCW CLI
     ...    The test steps as follow:
@@ -46,7 +46,7 @@ Verify Manual Live/Standby Switch via SCW CLI
     ...    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    [Teardown]    Manual Switch Live/Standby Case Teardown    ${master_ip}
+    [Teardown]    Manual Switch Live-Standby Case Teardown    ${master_ip}
 
 *** Keywords ***
 Verify MTE State In Specific Box
@@ -54,7 +54,7 @@ Verify MTE State In Specific Box
     Switch To TD Box    ${che_ip}
     verify MTE state    ${MTE}    ${state}
 
-Manual Switch Live/Standby Case Teardown
+Manual Switch Live-Standby Case Teardown
     [Arguments]    ${master_ip}
     [Documentation]    If a KW fail, unlocking both A and B
     switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    A    UNLOCK    ${USERNAME}    ${PASSWORD}
