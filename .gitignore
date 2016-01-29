@@ -1,0 +1,5 @@
+.metadata
+/*.pydevproject
+/*.project
+*.pyc
+*$py.class
