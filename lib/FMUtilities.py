@@ -120,8 +120,162 @@ class _FMUtil:
         """
         return self._modify_fm_file(srcfile, dstfile, 'r', ric, domain, *ModifyItem)
     
-    def modify_exl(self, srcfile, dstfile, ric, domain, *ModifyItem):
-        """modify exl file for assigned ric and domain item.
+    def grep_exl_file(self, node, field):
+        '''modifyType: exlObject, exlHeader, r'''
+        
+        def grepfield(node, field):
+            index= 0
+            for subnode in node.childNodes:
+                index = index +1
+                if subnode.nodeType == node.ELEMENT_NODE:
+                    if subnode.nodeName == field:
+                            return True  
+       
+                    else:
+                        result = grepfield(subnode, field)
+                        if result == True:
+                            return True
+            return False     
+        
+        findflag = False
+        findflag = grepfield(node, field)
+        return findflag
+    
+    def modify_exl(self,srcfile, dstfile, ric, domain, *Item):
+        """
+        make the value in Item available in EXL file
+        
+        modify exl: modify the item in exl file or add the item into exl file for assigned RIC and domain
+        
+        srcfile is the original file.\n
+        dstfile is the modified output file.\n
+        Item can be one or more items, and it supports one or multiple layers.
+        For example: <it:DSPLY_NAME>xiaoqin</it:DSPLY_NAME>, <it:SCHEDULE_MON>\n<it:TIME>00:00:00</it:TIME>\n</it:SCHEDULE_MON>.
+        In above example, mean change DSPLY_NAME to xiaoqin, and change SCHEDULE_MON to 00:00:00.\n
+        
+        Return the modified output file path.
+        Examples:
+        | ${result} | modify exl |c:/temp/ACLJ.exl | c:/temp/output.exl | ACLJ.JO | MARKET_PRICE | <it:DSPLY_NAME>xiaoqin</it:DSPLY_NAME> | 
+        
+        """
+        
+        """internal function: get the corresponding node based on the ric and domain"""
+        def get_RIC_Domain_Node(exlfile,modifyType, ric,domain):
+            dom = xml.dom.minidom.parse(exlfile)  
+            root = dom.documentElement  
+            iteratorlist = dom.getElementsByTagName(modifyType) 
+            
+            if modifyType != 'exlHeader':
+                #find the ric and domain parent node
+                if domain.lower() == 'shellric' or domain.lower() == 'll2':
+                    domain = 'MARKET_PRICE'
+                findric = False
+                finddomain = False
+                for node in iteratorlist:
+                    for subnode in node.childNodes:
+                        if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:RIC':
+                            if subnode.firstChild.data == ric:
+                                findric = True
+                        if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:DOMAIN':
+                            if subnode.firstChild.data == domain:
+                                finddomain = True
+                    if findric and finddomain:
+                        iteratoroot = node
+                        break
+                if findric == False or finddomain == False:
+                    raise AssertionError("*ERROR* not found %s and %s in the exl" % (ric, domain))
+                
+            else:
+                iteratoroot = iteratorlist[0]
+            return iteratoroot  
+        
+    
+        """main function body"""  
+        node = get_RIC_Domain_Node(srcfile,'exlObject',ric,domain) 
+        
+        index = 0       
+        pat = re.compile('<(.*?)>(.*)</.*?>', re.DOTALL)
+        for mitem in Item:
+            match = pat.search(mitem)
+            if match:
+                field = match.group(1)
+                value = match.group(2)
+                find= self.grep_exl_file(node, field)
+                if find == True:
+                    #modify
+                    if index == 0:
+                        self.modify_exist_item_in_exl(srcfile, dstfile, ric, domain,mitem) 
+                    else:
+                        self.modify_exist_item_in_exl(dstfile, dstfile, ric, domain,mitem)    
+                else:
+                    #add
+                    if index == 0:
+                        self._add_value_into_exl(srcfile,dstfile, 'exlObject', ric, domain, mitem)
+                    else:
+                        self._add_value_into_exl(dstfile,dstfile, 'exlObject', ric, domain, mitem)
+                index=index+1       
+                       
+    def _add_value_into_exl(self, srcfile, dstfile, modifyType, ric, domain, Item):
+        """ internal function
+        add item into exl file for assigned ric and domain item.
+        
+        srcfile is the original file.\n
+        dstfile is the modified output file.\n
+        Item is only one item.
+        For example: <it:DSPLY_NAME>xiaoqin</it:DSPLY_NAME>, <it:SCHEDULE_MON>\n<it:TIME>00:00:00</it:TIME>\n</it:SCHEDULE_MON>.
+        In above example, mean change DSPLY_NAME to xiaoqin, and change SCHEDULE_MON to 00:00:00.\n
+        
+        Return the modified output file path.
+
+        Examples:
+        | ${result} | _add_value_into_exl |c:/temp/ACLJ.exl | c:/temp/output.exl | ACLJ.JO | MARKET_PRICE | <it:DSPLY_NAME>xiaoqin</it:DSPLY_NAME> | 
+        """
+        dom = xml.dom.minidom.parse(srcfile)  
+        root = dom.documentElement  
+        iteratorlist = dom.getElementsByTagName(modifyType) 
+        
+        if modifyType != 'exlHeader':
+            #find the ric and domain parent node
+            if domain.lower() == 'shellric' or domain.lower() == 'll2':
+                domain = 'MARKET_PRICE'
+            findric = False
+            finddomain = False
+            for node in iteratorlist:
+                for subnode in node.childNodes:
+                    if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:RIC':
+                        if subnode.firstChild.data == ric:
+                            findric = True
+                    if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:DOMAIN':
+                        if subnode.firstChild.data == domain:
+                            finddomain = True
+                if findric and finddomain:
+                    iteratoroot = node
+                    break
+            
+        else:
+            iteratoroot = iteratorlist[0]
+              
+        pat = re.compile('<(.*?)>(.*)</.*?>', re.DOTALL)
+        match = pat.search(Item)
+        if match:
+            field = match.group(1)
+            value = match.group(2)      
+        note = iteratoroot.getElementsByTagName('exlObjectFields')   
+        
+        tempdom = xml.dom.minidom.parseString('<%s xmlns:it="DbFieldsSchema">'%field +value + '</%s>'%field)  
+        tempnode = tempdom.documentElement
+        tempnode.removeAttribute('xmlns:it')
+        note[0].appendChild(tempnode)
+        
+        f = open(dstfile,'w')  
+        #print dom.documentElement.childNodes.item(9).childNodes.item(11).childNodes.item(1).childNodes
+        dom.writexml(f,addindent='',newl='',encoding = 'utf-8')  
+        f.close()  
+        return dstfile
+
+    def modify_exist_item_in_exl(self, srcfile, dstfile, ric, domain, *ModifyItem):
+        """ originally the function is named modify exl
+        modify exist item in exl file for assigned ric and domain item.
         
         srcfile is the original file.\n
         dstfile is the modified output file.\n
@@ -132,7 +286,7 @@ class _FMUtil:
         Return the modified output file path.
 
         Examples:
-        | ${result} | modify exl |c:/temp/ACLJ.exl | c:/temp/output.exl | ACLJ.JO | MARKET_PRICE | <it:DSPLY_NAME>xiaoqin</it:DSPLY_NAME> | 
+        | ${result} | modify exist item in exl |c:/temp/ACLJ.exl | c:/temp/output.exl | ACLJ.JO | MARKET_PRICE | <it:DSPLY_NAME>xiaoqin</it:DSPLY_NAME> | 
         """
         return self._modify_fm_file(srcfile, dstfile, 'exlObject', ric, domain, *ModifyItem)
     
