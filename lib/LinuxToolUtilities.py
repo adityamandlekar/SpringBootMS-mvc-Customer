@@ -328,8 +328,10 @@ class LinuxToolUtilities():
         """
         refDate = '%s-%s-%s' %(timeRef[0], timeRef[1], timeRef[2])
         refTime = '%s:%s:%s' %(timeRef[3], timeRef[4], timeRef[5])
+#         print 'DEBUG refDate %s, refTime %s' %(refDate,refTime)
         dt = LinuxCoreUtilities().get_date_and_time()
         currentFile = '%s/smf-log-files.%s%s%s.txt' %(self.SMFLOGDIR, dt[0], dt[1], dt[2])
+#         print 'DEBUG checking SMF log file %s' %currentFile
 
         # convert  unicode to int (it is unicode if it came from the Robot test)
         timeout = int(timeout)
@@ -337,6 +339,7 @@ class LinuxToolUtilities():
         maxtime = time.time() + float(timeout)
         while time.time() <= maxtime:            
             retMessages = LinuxFSUtilities().grep_remote_file(currentFile, message)
+#             print 'DEBUG retMessages: %s' %retMessages
             if (len(retMessages) > 0):
                 logContents = retMessages[-1].split(';')
                 if (len(logContents) >= 2):
@@ -1333,9 +1336,9 @@ class LinuxToolUtilities():
         """to rollover MTE machine date with the duration days
                 
         Argument:         
-                    startOfDay : the original icf file.\n
-                    endOfDay : the modified icf file
-                    durationDays : the duration we want to rollover
+                    startOfDay   : dateTime object with MTE start of day.
+                    endOfDay     : dateTime object with MTE end of day.
+                    durationDays : the number of days we want to rollover
                     
          
         return nil
@@ -1344,33 +1347,60 @@ class LinuxToolUtilities():
                     Rollover MTE Machine Date  |  ${StartOfDayGMT} |   ${EndOfDayGMT}  |  ${days}
         """  
                 
+        """
+        Here is the logic for adjusting start time, end time, and box time.
+        Desired state before entering loop is that it is within a session, i.e. startTime < currentTime < EndTime 
+        
+        currDateTime > startOfDay > endOfDay - set box time to start time
+        startOfDay > currDateTime > endOfDay - do nothing
+        startOfDay > endOfDay > currDateTime - add a day to start and end; set box to to start time
+        currDateTime > endOfDay > startOfDay - subtract a day from start
+        endOfDay > currDateTime > startOfDay - add a day to end; set box time to start time
+        endOfDay > startOfDay > currDateTime - add a day to end
+        """
+
         aSec = timedelta(seconds = 1)
         aDay = timedelta(days = 1 )
-                   
-        if startOfDay > endOfDay :
-            endOfDay = endOfDay + aDay 
-        
-        if (startOfDay > endOfDay) :
-            AssertionError('The startOfDay or endOfDay time is incorrect, please correct it')
+        currTimeArray = LinuxCoreUtilities().get_date_and_time() # current time as array
+        currDateTime = datetime(*map(int,currTimeArray)) # current time as dateTime object
             
-        startOfDay = startOfDay + aDay - aSec
+        if startOfDay < endOfDay:
+            if currDateTime > endOfDay:
+                # today's session already ended (startTime > endTime > currentTime)
+                startOfDay = startOfDay + aDay
+                endOfDay = endOfDay + aDay
+        else:
+            if currDateTime < endOfDay:
+                # session started yesterday, session not ended (currentTime > endTime > startTime)
+                startOfDay = startOfDay - aDay
+            else:
+                # next session will end tomorrow (endTime > currentTime > startTime  or endTime > startTime > currentTime)
+                endOfDay = endOfDay + aDay
+ 
+        if startOfDay > endOfDay:
+            AssertionError('Could not set startOfDay and endOfDay correctly.')
+
+        # set start and end so they are just before the actual start and end times
+        startOfDay = startOfDay - aSec
         endOfDay = endOfDay - aSec
-        
-        if (startOfDay < endOfDay) :
-            AssertionError('The startOfDay or endOfDay time is incorrect, please correct it')
-         
+
         leftDays = int (durationDays) 
          
         while leftDays > 0 :
-            LinuxCoreUtilities().set_date_and_time(endOfDay.year, endOfDay.month, endOfDay.day, endOfDay.hour, endOfDay.minute, endOfDay.second)
-            currDateTime = LinuxCoreUtilities().get_date_and_time()
-            self.wait_smf_log_message_after_time('EndOfDay time occurred',currDateTime )
-            endOfDay = endOfDay + aDay
-            
-            LinuxCoreUtilities().set_date_and_time(startOfDay.year, startOfDay.month, startOfDay.day, startOfDay.hour, startOfDay.minute, startOfDay.second)
-            currDateTime = LinuxCoreUtilities().get_date_and_time()
-            self.wait_smf_log_message_after_time('StartOfDay time occurred',currDateTime )
+            # first time thru loop, we may already be past startOfDay, if not, change box time to start the next session.
+            # currDateTime < startOfDay will always be true for succesive iterations thru the loop
+            if currDateTime < startOfDay:
+                LinuxCoreUtilities().set_date_and_time(startOfDay.year, startOfDay.month, startOfDay.day, startOfDay.hour, startOfDay.minute, startOfDay.second)
+                currTimeArray = startOfDay.strftime('%Y,%m,%d,%H,%M,%S').split(',')
+                currDateTime = datetime(*map(int,currTimeArray))
+                self.wait_smf_log_message_after_time('DailyEventScheduleTask Ends',currTimeArray,15,480)
             startOfDay = startOfDay + aDay
+            
+            LinuxCoreUtilities().set_date_and_time(endOfDay.year, endOfDay.month, endOfDay.day, endOfDay.hour, endOfDay.minute, endOfDay.second)
+            currTimeArray = endOfDay.strftime('%Y,%m,%d,%H,%M,%S').split(',')
+            currDateTime = datetime(*map(int,currTimeArray))
+            self.wait_smf_log_message_after_time('DailyEventScheduleTask Ends',currTimeArray,15,480)
+            endOfDay = endOfDay + aDay
             
             leftDays = leftDays - 1
              
