@@ -299,14 +299,11 @@ Verify Deletion Delay
     ${EndOfDayTime}=    get MTE config value    ${mteConfigFile}    EndOfDayTime
     ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
     ${EndOfDayGMT}    Convert to GMT    ${EndOfDayTime}
-    ${res}    set date and time    ${StartOfDayGMT.year}    ${StartOfDayGMT.month}    ${StartOfDayGMT.day}    ${StartOfDayGMT.hour}    ${StartOfDayGMT.minute}
-    ...    ${StartOfDayGMT.second}
     ${currDateTime}    get date and time
     Drop ric    ${ric}    ${domain}    ${serviceName}
     wait smf log message after time    Drop message sent    ${currDateTime}
     Verify RIC Is Dropped In MTE Cache    ${MTE}    ${ric}
     Rollover MTE Machine Date    ${StartOfDayGMT}    ${EndOfDayGMT}    5
-    ${currDateTime}    get date and time
     wait smf log message after time    dropped due to expiration    ${currDateTime}
     Verify RIC Not In MTE Cache    ${MTE}    ${ric}
     [Teardown]    Correct MTE Machine Time
