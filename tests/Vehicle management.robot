@@ -311,6 +311,41 @@ Verify Deletion Delay
     Verify RIC Not In MTE Cache    ${MTE}    ${ric}
     [Teardown]    Correct MTE Machine Time
 
+Verify Drop/Undrop from FMS MDE
+    [Documentation]    Verify Drop/Undrop form FMS MDS, 1) Verify MTE is running.
+    ...    2) Start output capture.
+    ...    3) Generate Drop from FMS MDE.
+    ...    4) Verify item cannot be requested from dataview.
+    ...    5) Generate Undrop from FMS MDE.
+    ...    6) Verify item can be requested from dataview.
+    ...    7) Stop output capture
+    ...    8) Verify an Item Drop was published (MsgClass: \ TRWF_MSG_MC_ITEM_STATUS, StreamState: TRWF_MSG_SST_CLOSED)
+    ...    9) verify a response was published.
+    ...
+    ...    Test Case - Verify Deletion Delay
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2009
+    start mte    ${MTE}
+    ${domain}    Get Preferred Domain
+    ${serviceName}    Get FMS Service Name
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${mteConfigFile}=    Get MTE Config File
+    ${currDateTime}    get date and time
+    Start Capture MTE Output    ${MTE}
+    Drop ric    ${ric}    ${domain}    ${serviceName}
+    wait smf log message after time    Drop message sent    ${currDateTime}
+    Verify RIC Is Dropped In MTE Cache    ${MTE}    ${ric}
+    Stop Capture MTE Output    ${MTE}
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    verify drop message status    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}
+    Start Capture MTE Output    ${MTE}
+    Undrop ric    ${ric}    ${domain}    ${serviceName}
+    Verify RIC In MTE Cache    ${MTE}    ${ric}
+    wait smf log message after time    was Undropped    ${currDateTime}
+    Stop Capture MTE Output    ${MTE}
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    verify_all_response_message_num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}
+    [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
+
 *** Keywords ***
 Calculate UpdateSince for REORG
     [Arguments]    ${exlFile}
@@ -436,3 +471,9 @@ Correct MTE Machine Time
     ${res}    set date and time    ${RIDEMachineTime.year}    ${RIDEMachineTime.month}    ${RIDEMachineTime.day}    ${RIDEMachineTime.hour}    ${RIDEMachineTime.minute}
     ...    ${RIDEMachineTime.second}
     start smf
+
+Undrop ric
+    [Arguments]    ${ric}    ${domain}    ${serviceName}
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}
+    ...    undrop    --RIC ${ric}    --Domain ${domain}    --HandlerName ${MTE}
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}

@@ -2827,4 +2827,31 @@ class LocalBoxUtilities(_ToolUtil):
                 file_content = file_content + item + '\n'
                 
         return file_content
+
+    def verify_drop_message_status(self,pcapfile,venuedir,dasdir,ricname):
+        """ Verify an Item Drop was published (MsgClass:  TRWF_MSG_MC_ITEM_STATUS, StreamState: TRWF_MSG_SST_CLOSED) for RIC in MTE output pcap message 
+
+            Argument : pcapFile : is the pcap fullpath at local control PC  
+            venuedir : location from remote TD box for search FIDFilter.txt
+            dasdir : location of DAS tool  
+            ricname : target ric name       
+            return : Nil
+                       
+            Return : N/A   
+        """  
+        constnum = 1
+        outputfileprefix = 'dropCheckM'
         
+        filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_ITEM_STATUS&quot;, ItemStatus_itemState_streamState = &quot;TRWF_MSG_SST_CLOSED&quot;))'%(ricname)
+        print 'filterstring: %s'%filterstring
+        parentName  = 'Message'        
+        outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+        if (len(messages) == 0):
+            raise AssertionError('*ERROR* no drop message found') 
+        
+        for delFile in outputxmlfilelist:
+            os.remove(delFile)
+        
+        os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log") 
+   
