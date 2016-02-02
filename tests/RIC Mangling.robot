@@ -89,6 +89,31 @@ Verify IDN RRG Phase - RIC Mangling change without Restart
     Run Keyword And Continue On Failure    verify all response message num    ${localcapture}    ${VENUE_DIR}    ${DAS_DIR}    ${sampleRic}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
+Verify Mangling by Context ID
+    [Documentation]    For http://www.iajira.amers.ime.reuters.com/browse/CATF-1925
+    ...
+    ...    If venue has only 1 context id, pass test without doing anything.
+    ...    If venue has at least 2 context ids:
+    ...    - Set mangling for contextID 1 so it differs from default mangling. Verify contextID 1 uses new mangling setting and contextID 2 uses default mangling setting.
+    ...    - Set mangling for contextID 1, mangling for contextID 2, and default mangling to three different values. Verify contextID 1 and 2 use the specified mangling.
+    [Setup]    Verify Mangling by Context ID Case Setup
+    ${dstdumpfile}=    set variable    ${LOCAL_TMP_DIR}/cachedump.csv
+    Dumpcache And Copyback Result    ${MTE}    ${dstdumpfile}
+    @{contextIDs}    get context ids from cachedump    ${dstdumpfile}
+    Should Be True    len(${context_ids})>0    No context id is found
+    Pass Execution If    len(${context_ids})==1    Only one context id, pass the test
+    fill mangling rule partition node    UNMANGLED    ${contextIDs}    ${LOCAL_MANGLING_CONFIG_FILE}
+    ${specialContextId}    Create Dictionary
+    ${contextID1}    set variable    ${contextIDs[0]}
+    ${contextID2}    set variable    ${contextIDs[1]}
+    Set Mangling Rule To Specific Context ID    ${contextID1}    SOU    @{files}[0]
+    Set To Dictionary    ${specialContextId}    ${contextID1}    ![
+    Verify Mangling Rule On All Context IDs    ${contextIDs}    ${specialContextId}
+    Set Mangling Rule To Specific Context ID    ${contextID2}    RRG    @{files}[0]
+    Set To Dictionary    ${specialContextId}    ${contextID2}    !!
+    Verify Mangling Rule On All Context IDs    ${contextIDs}    ${specialContextId}
+    [Teardown]    Verify Mangling by Context ID Case Teardown    ${dstdumpfile}
+
 *** Keywords ***
 Change Phase
     [Arguments]    ${PrePhase}    ${NewPhase}
@@ -100,3 +125,42 @@ Change Phase
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
     [Return]    ${localcapture}
+
+Set Mangling Rule To Specific Context ID
+    [Arguments]    ${contextid}    ${rule}    ${remoteConfigFile}
+    [Documentation]    Set the mangling rule to specific context id
+    ${contextIdList}    Create List    ${contextid}
+    set mangling rule parition value    ${rule}    ${contextIdList}    ${LOCAL_MANGLING_CONFIG_FILE}
+    delete remote files    ${remoteConfigFile}
+    put remote file    ${LOCAL_MANGLING_CONFIG_FILE}    ${remoteConfigFile}
+    copy file    ${LOCAL_MANGLING_CONFIG_FILE}    ${LOCAL_MANGLING_CONFIG_FILE}_context.xml
+    Load Mangling Settings    ${MTE}
+
+Verify Mangling Rule On All Context IDs
+    [Arguments]    ${allcontextids}    ${specialContextId}
+    [Documentation]    Verify mangling rule on all context ids.
+    ...    ${specialContextId} is a dictionary, if you want to verify context id 1234 has a prefix !!, call | Set To Dictionary | ${specialContextId} | "1234" | !! |
+    ${domain}    Get Preferred Domain
+    : FOR    ${contextid}    IN    @{specialContextId}
+    \    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}    ${contextid}
+    \    ${expectedPrefix}    Get From Dictionary    ${specialContextId}    ${contextid}
+    \    Should Be True    '${publishKey}' == '${expectedPrefix}${sampleRic}'    The mangling is not set for context id ${contextid}
+    \    Remove Values From List    ${allcontextids}    ${contextid}
+    : FOR    ${contextid}    IN    @{allcontextids}
+    \    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}    ${contextid}
+    \    Should Be True    '${publishKey}' == '${sampleRic}'    The mangling is not the default for context id ${contextid}
+
+Verify Mangling by Context ID Case Setup
+    [Arguments]    ${configFile}=manglingConfiguration.xml
+    [Documentation]    Backup remote mangling config file
+    @{files}=    backup cfg file    ${VENUE_DIR}    ${configFile}
+    Set Suite Variable    @{files}
+    ${configFileLocal}=    Get Mangling Config File
+    Set Suite Variable    ${configFileLocal}
+
+Verify Mangling by Context ID Case Teardown
+    [Arguments]    @{tmpfiles}
+    [Documentation]    restore remote mangling config file and restore mangling setting
+    restore cfg file    @{files}
+    Load Mangling Settings    ${MTE}
+    Case Teardown    @{tmpfiles}
