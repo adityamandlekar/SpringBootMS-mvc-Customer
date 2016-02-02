@@ -22,6 +22,8 @@ import xml.etree.ElementTree as ET
 from LinuxFSUtilities import LinuxFSUtilities
 from LinuxCoreUtilities import LinuxCoreUtilities
 
+from VenueVariables import *
+
 class LinuxToolUtilities():
     """A test library providing keywords for run all kinds of tool, for example wirehshark, das, dataview, FMSCMD etc.
 
@@ -1448,5 +1450,25 @@ class LinuxToolUtilities():
         
         stdout, stderr, rc = _exec_command(cmd)
         if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))          
-             
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        
+    def Get_CHE_Config_Filepath(self, filename):
+        """Get file path for specific filename from TD Box, we would ignore certain folder e.g.SCWatchdog during search
+        
+        Argument: 
+            filename : config filename
+                    
+        Returns: 
+
+        Examples:
+        | Get CHE Config Filepath | ddnPublishers.xml 
+        """  
+                
+        cmd = "find " + BASE_DIR + " -type f -name " + filename + " | grep -v SCWatchdog"
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        
+        return stdout.strip()       
+ 

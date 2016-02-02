@@ -33,21 +33,37 @@ Verify Sync Pulse Missed QoS
     ...    Test Case - Verify Sync Pulse Missed QoS by blocking sync pulse publiscation port and check the missing statistic by SCWCli
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${LOCAL_SCWCLI_BIN}    ${USERNAME}    ${PASSWORD}    ${ip_list}
-    @{syncPulseCountBefore}    get SyncPulseMissed    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${USERNAME}    ${PASSWORD}    ${master_ip}
     ${localVenueConfig}=    get MTE config file
     @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
-    ${ddnpublishersLabelfilepath}=    search remote files    ${BASE_DIR}/Config    ddnPublishers.xml    recurse=${True}
+    ${ddnpublishersLabelfilepath}=    Get_CHE_Config_Filepath    ddnPublishers.xml
     ${labelfile_local}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishers.xml
-    get remote file    ${ddnpublishersLabelfilepath[0]}    ${labelfile_local}
+    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
     remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
+    Comment    Blocking Standby Side INPUT
     Switch to TD Box    ${CHE_A_IP}
     ${state}=    check MTE state    ${MTE}
     Run Keyword If    '${state}' != 'STANDBY'    Switch to TD Box    ${CHE_B_IP}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from lable file    ${modifyLabelFile}    ${labelID}    ${MTE}
+    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${USERNAME}    ${PASSWORD}
+    \    ...    ${master_ip}
     \    block dataflow by port protocol    INPUT    UDP    @{multicastIPandPort}[1]
-    \    sleep    1
+    \    sleep    5
+    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${USERNAME}
+    \    ...    ${PASSWORD}    ${master_ip}
+    \    unblock_dataflow
+    \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
+    Comment    Blocking Live Side OUTPUT
+    Switch to TD Box    ${CHE_A_IP}
+    ${state}=    check MTE state    ${MTE}
+    Run Keyword If    '${state}' != 'LIVE'    Switch to TD Box    ${CHE_B_IP}
+    :FOR    ${labelID}    IN    @{labelIDs}
+    \    @{multicastIPandPort}    get multicast address from lable file    ${modifyLabelFile}    ${labelID}    ${MTE}
+    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${USERNAME}    ${PASSWORD}
+    \    ...    ${master_ip}
+    \    block dataflow by port protocol    OUTPUT    UDP    @{multicastIPandPort}[1]
+    \    sleep    5
     \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${USERNAME}
     \    ...    ${PASSWORD}    ${master_ip}
     \    unblock_dataflow
