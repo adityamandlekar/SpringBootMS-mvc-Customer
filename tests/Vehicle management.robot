@@ -301,7 +301,7 @@ Verify Deletion Delay
     ${StartOfDayGMT}    ${EndOfDayGMT}    Get Start and End GMT Time
     ${currDateTime}    get date and time
     Drop ric    ${ric}    ${domain}    ${serviceName}
-    wait smf log message after time    Drop message sent    ${currDateTime}
+    wait smf log message after time    Drop    ${currDateTime}
     : FOR    ${daysLeft}    IN RANGE    5    0    -1
     \    ${ricFields}=    Get All Fields For RIC From Cache    ${MTE}    ${VENUE_DIR}    ${ric}
     \    Should Be Equal    ${ricFields['PUBLISHABLE']}    FALSE
