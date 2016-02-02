@@ -1332,19 +1332,19 @@ class LinuxToolUtilities():
         else:
             raise AssertionError('*ERROR* The FID can not be found')        
 
-    def rollover_MTE_Machine_Date(self, startOfDay, endOfDay, durationDays=1):   
+    def rollover_MTE_Machine_Date(self, startGMT, endGMT, durationDays=1):   
         """to rollover MTE machine date with the duration days
                 
         Argument:         
-                    startOfDay   : dateTime object with MTE start of day.
-                    endOfDay     : dateTime object with MTE end of day.
+                    startGMT     : MTE start of day in GMT time with format HH:MM
+                    endGMT       : MTE end of day in GMT time with format HH:MM
                     durationDays : the number of days we want to rollover
                     
          
         return nil
         
         Examples:
-                    Rollover MTE Machine Date  |  ${StartOfDayGMT} |   ${EndOfDayGMT}  |  ${days}
+                    Rollover MTE Machine Date  |  09:00 |   07:00  |  1
         """  
                 
         """
@@ -1361,8 +1361,14 @@ class LinuxToolUtilities():
 
         aSec = timedelta(seconds = 1)
         aDay = timedelta(days = 1 )
-        currTimeArray = LinuxCoreUtilities().get_date_and_time() # current time as array
-        currDateTime = datetime(*map(int,currTimeArray)) # current time as dateTime object
+        currTimeArray = LinuxCoreUtilities().get_date_and_time() # current time as array of strings
+        C = map(int,currTimeArray) # current time as array of INTs
+        S = map(int,startGMT.split(':')) #start time as array of INTs
+        E = map(int,endGMT.split(':')) # end time as array of INTs
+        
+        currDateTime = datetime(*C) # current time as dateTime object
+        startOfDay = datetime(C[0],C[1],C[2],S[0],S[1])
+        endOfDay = datetime(C[0],C[1],C[2],E[0],E[1])
             
         if startOfDay < endOfDay:
             if currDateTime > endOfDay:
@@ -1383,24 +1389,25 @@ class LinuxToolUtilities():
         # set start and end so they are just before the actual start and end times
         startOfDay = startOfDay - aSec
         endOfDay = endOfDay - aSec
+        
+        # if session is not already in progress, change box time to start the next session.
+        if currDateTime < startOfDay:
+            LinuxCoreUtilities().set_date_and_time(startOfDay.year, startOfDay.month, startOfDay.day, startOfDay.hour, startOfDay.minute, startOfDay.second)
+            currTimeArray = startOfDay.strftime('%Y,%m,%d,%H,%M,%S').split(',')
+            self.wait_smf_log_message_after_time('DailyEventScheduleTask Ends',currTimeArray,15,480)
 
-        leftDays = int (durationDays) 
+        leftDays = int (durationDays)
          
         while leftDays > 0 :
-            # first time thru loop, we may already be past startOfDay, if not, change box time to start the next session.
-            # currDateTime < startOfDay will always be true for succesive iterations thru the loop
-            if currDateTime < startOfDay:
-                LinuxCoreUtilities().set_date_and_time(startOfDay.year, startOfDay.month, startOfDay.day, startOfDay.hour, startOfDay.minute, startOfDay.second)
-                currTimeArray = startOfDay.strftime('%Y,%m,%d,%H,%M,%S').split(',')
-                currDateTime = datetime(*map(int,currTimeArray))
-                self.wait_smf_log_message_after_time('DailyEventScheduleTask Ends',currTimeArray,15,480)
-            startOfDay = startOfDay + aDay
-            
             LinuxCoreUtilities().set_date_and_time(endOfDay.year, endOfDay.month, endOfDay.day, endOfDay.hour, endOfDay.minute, endOfDay.second)
             currTimeArray = endOfDay.strftime('%Y,%m,%d,%H,%M,%S').split(',')
-            currDateTime = datetime(*map(int,currTimeArray))
             self.wait_smf_log_message_after_time('DailyEventScheduleTask Ends',currTimeArray,15,480)
             endOfDay = endOfDay + aDay
+            
+            startOfDay = startOfDay + aDay
+            LinuxCoreUtilities().set_date_and_time(startOfDay.year, startOfDay.month, startOfDay.day, startOfDay.hour, startOfDay.minute, startOfDay.second)
+            currTimeArray = startOfDay.strftime('%Y,%m,%d,%H,%M,%S').split(',')
+            self.wait_smf_log_message_after_time('DailyEventScheduleTask Ends',currTimeArray,15,480)
             
             leftDays = leftDays - 1
              
