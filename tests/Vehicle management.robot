@@ -286,7 +286,11 @@ Verify FMS Extract and Insert
     [Teardown]    case teardown    ${beforeExtractFile}    ${afterExtractFile}    ${beforeLocalPcap}    ${afterLocalPcap}
 
 Verify Deletion Delay
-    [Documentation]    Automatic delete Instrument in MTE cache after 5 days, RIC is dropped and GEDA Item dropped due to expiration is sent to the SMF log, Instrument is successfully deleted \ in LH cache after 5 days
+    [Documentation]    Delete an instrument. \ Rollover system time through 5 endOfDay startOfDay cycles. \ Verify that the MTE cache correctly indicates that the instrument has been dropped and how many deletion delay days are left. \ After the 5th day, verify the instrument is deleted from the MTE cache. \ Reset the Thunderdome box time to correct time.
+    ...
+    ...    To run this test on a Vagrant VM, disable the VirtualBox Guest Additions. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
+    ...
+    ...    service vboxadd-service stop
     ...
     ...    Test Case - Verify Deletion Delay
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1891
@@ -294,17 +298,16 @@ Verify Deletion Delay
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${mteConfigFile}=    Get MTE Config File
-    ${StartOfDayTime}=    get MTE config value    ${mteConfigFile}    StartOfDayTime
-    ${EndOfDayTime}=    get MTE config value    ${mteConfigFile}    EndOfDayTime
-    ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
-    ${EndOfDayGMT}    Convert to GMT    ${EndOfDayTime}
+    ${StartOfDayGMT}    ${EndOfDayGMT}    Get Start and End GMT Time
     ${currDateTime}    get date and time
     Drop ric    ${ric}    ${domain}    ${serviceName}
     wait smf log message after time    Drop message sent    ${currDateTime}
-    Verify RIC Is Dropped In MTE Cache    ${MTE}    ${ric}
-    Rollover MTE Machine Date    ${StartOfDayGMT}    ${EndOfDayGMT}    5
-    wait smf log message after time    dropped due to expiration    ${currDateTime}
+    : FOR    ${daysLeft}    IN RANGE    5    0    -1
+    \    ${ricFields}=    Get All Fields For RIC From Cache    ${MTE}    ${VENUE_DIR}    ${ric}
+    \    Should Be Equal    ${ricFields['PUBLISHABLE']}    FALSE
+    \    Should Be Equal As Integers    ${ricFields['DELETION_DELAY_DAYS_REMAINING']}    ${daysLeft}
+    \    Should Be True    ${ricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
+    \    Rollover MTE Machine Date    ${StartOfDayGMT}    ${EndOfDayGMT}    1
     Verify RIC Not In MTE Cache    ${MTE}    ${ric}
     [Teardown]    Correct MTE Machine Time
 
@@ -374,16 +377,22 @@ Drop ric
     ...    drop    --RIC ${ric}    --Domain ${domain}    --HandlerName ${MTE}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
+Get Start and End GMT Time
+    ${mteConfigFile}=    Get MTE Config File
+    ${StartOfDayTime}=    get MTE config value    ${mteConfigFile}    StartOfDayTime
+    ${EndOfDayTime}=    get MTE config value    ${mteConfigFile}    EndOfDayTime
+    ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
+    ${EndOfDayGMT}    Convert to GMT    ${EndOfDayTime}
+    [Return]    ${StartOfDayGMT}    ${EndOfDayGMT}
+
 Convert to GMT
     [Arguments]    ${localTime}
     [Documentation]    convert the local time to GMT
     ${mteConfigFile}=    Get MTE Config File
     ${DSTRIC}=    get MTE config value    ${mteConfigFile}    CHE-TimeZoneForConfigTimes
     ${currentGmtOffset}    get stat block field    ${MTE}    ${DSTRIC}    currentGMTOffset
-    ${numOffset}    Convert To Number    ${currentGmtOffset}
     ${currDateTime}    get date and time
-    ${date} =    Convert Date    ${currDateTime[0]}.${currDateTime[1]}.${currDateTime[2]} ${localTime}    date_format=%Y.%m.%d \ %H:%M
-    ${GMTTime}    Subtract Time From date    ${date}    ${numOffset}    result_format=datetime
+    ${GMTTime}    Subtract Time From date    ${currDateTime[0]}.${currDateTime[1]}.${currDateTime[2]} ${localTime}    ${currentGmtOffset}    date_format=%Y.%m.%d \ %H:%M    result_format=%H:%M
     [Return]    ${GMTTime}
 
 Vehicle Management Case Setup
