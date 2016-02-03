@@ -2413,34 +2413,33 @@ class LocalBoxUtilities(_ToolUtil):
                 self._set_xml_tag_attributes_value_with_conditions(configFileLocalFullPath,conditions,attribute,False,xPath)
                 conditions.clear()
 
-    def fill_mangling_rule_partition_node(self, rule, contextIDs, configFileLocalFullPath):
-        """Fill mangling rule of specific context IDs in manglingConfiguration.xml
+    def add_mangling_rule_partition_node(self, rule, contextID, configFileLocalFullPath):
+        """Add mangling rule of specific context ID in manglingConfiguration.xml
            add <Partition rule ... /> into <Partitions> if it does not exist, ignore if it has already exisited.
         
         rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
-        contextIDs : the context ID list you want to add to <Partitions>
+        contextID : the context ID you want to add to <Partitions>
         configFileLocalFullPath : full path of mangling config file xml
         Returns : Nil
 
         Examples:
-        | fill_mangling_rule_partition_node | RRG | ["1234", "2345"]| C:/tmp/manglingConfiguration.xml |
+        | add_mangling_rule_partition_node | RRG | "1234" | C:/tmp/manglingConfiguration.xml |
         
         Call this KW, The partitions section of the manglingConfiguration file should look something like this:
          <Partitions type="FID" value="CONTEXT_ID" defaultRule="3">
           <!-- Items with CONTEXT_ID 1234 or 2345 use Elektron RRG rule. All other Items use SOU rule. -->
             <Partition value="1234" rule="1" />   <!-- KW will add this line if it does not exist -->
-            <Partition value="2345" rule="1" />   <!-- KW will add this line if it does not exist -->
+            <Partition value="2345" rule="1" />
          </Partitions>
         """
         root = self._load_xml_file(configFileLocalFullPath,False)
         partitions = root.find(".//Partitions")
-        for contextID in contextIDs:
-            foundMatch = False
-            for node in partitions:
-                if (node.get('value') == contextID):
-                    foundMatch = True
-            if (foundMatch == False):
-                partitions.append(ET.fromstring('<Partition rule="%s" value="%s" />\n' %(LinuxToolUtilities().MANGLINGRULE[rule.upper()], contextID)))
+        foundMatch = False
+        for node in partitions:
+            if (node.get('value') == contextID):
+                foundMatch = True
+        if (foundMatch == False):
+            partitions.append(ET.fromstring('<Partition rule="%s" value="%s" />\n' %(LinuxToolUtilities().MANGLINGRULE[rule.upper()], contextID)))
         self._save_to_xml_file(root,configFileLocalFullPath,False)
 
     def convert_dataView_response_to_dictionary(self,dataview_response):

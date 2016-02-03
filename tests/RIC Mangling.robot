@@ -102,14 +102,14 @@ Verify Mangling by Context ID
     @{contextIDs}    get context ids from cachedump    ${dstdumpfile}
     Should Be True    len(${context_ids})>0    No context id is found
     Pass Execution If    len(${context_ids})==1    Only one context id, pass the test
-    fill mangling rule partition node    UNMANGLED    ${contextIDs}    ${LOCAL_MANGLING_CONFIG_FILE}
     ${specialContextId}    Create Dictionary
     ${contextID1}    set variable    ${contextIDs[0]}
     ${contextID2}    set variable    ${contextIDs[1]}
-    Set Mangling Rule To Specific Context ID    ${contextID1}    SOU    @{files}[0]
+    set mangling rule default value     UNMANGLED    ${LOCAL_MANGLING_CONFIG_FILE}
+    Set Mangling Rule For Specific Context ID    ${contextID1}    SOU    @{files}[0]
     Set To Dictionary    ${specialContextId}    ${contextID1}    ![
     Verify Mangling Rule On All Context IDs    ${contextIDs}    ${specialContextId}
-    Set Mangling Rule To Specific Context ID    ${contextID2}    RRG    @{files}[0]
+    Set Mangling Rule For Specific Context ID    ${contextID2}    RRG    @{files}[0]
     Set To Dictionary    ${specialContextId}    ${contextID2}    !!
     Verify Mangling Rule On All Context IDs    ${contextIDs}    ${specialContextId}
     [Teardown]    Verify Mangling by Context ID Case Teardown    ${dstdumpfile}
@@ -126,14 +126,14 @@ Change Phase
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
     [Return]    ${localcapture}
 
-Set Mangling Rule To Specific Context ID
+Set Mangling Rule For Specific Context ID
     [Arguments]    ${contextid}    ${rule}    ${remoteConfigFile}
-    [Documentation]    Set the mangling rule to specific context id
+    [Documentation]    Set the mangling rule for specific context id, modify the local mangling config file and put to remote side, and then reload the mangling setting
+    add mangling rule partition node    ${rule}    ${contextid}    ${LOCAL_MANGLING_CONFIG_FILE}
     ${contextIdList}    Create List    ${contextid}
     set mangling rule parition value    ${rule}    ${contextIdList}    ${LOCAL_MANGLING_CONFIG_FILE}
     delete remote files    ${remoteConfigFile}
     put remote file    ${LOCAL_MANGLING_CONFIG_FILE}    ${remoteConfigFile}
-    copy file    ${LOCAL_MANGLING_CONFIG_FILE}    ${LOCAL_MANGLING_CONFIG_FILE}_context.xml
     Load Mangling Settings    ${MTE}
 
 Verify Mangling Rule On All Context IDs
@@ -144,11 +144,11 @@ Verify Mangling Rule On All Context IDs
     : FOR    ${contextid}    IN    @{specialContextId}
     \    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}    ${contextid}
     \    ${expectedPrefix}    Get From Dictionary    ${specialContextId}    ${contextid}
-    \    Should Be True    '${publishKey}' == '${expectedPrefix}${sampleRic}'    The mangling is not set for context id ${contextid}
+    \    Should Be Equal    ${publishKey}    ${expectedPrefix}${sampleRic}    The mangling is not set for context id ${contextid}
     \    Remove Values From List    ${allcontextids}    ${contextid}
     : FOR    ${contextid}    IN    @{allcontextids}
     \    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}    ${contextid}
-    \    Should Be True    '${publishKey}' == '${sampleRic}'    The mangling is not the default for context id ${contextid}
+    \    Should Be Equal     ${publishKey}    ${sampleRic}    The mangling is not the default for context id ${contextid}
 
 Verify Mangling by Context ID Case Setup
     [Arguments]    ${configFile}=manglingConfiguration.xml
