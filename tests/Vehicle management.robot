@@ -311,18 +311,20 @@ Verify Deletion Delay
     Verify RIC Not In MTE Cache    ${MTE}    ${ric}
     [Teardown]    Correct MTE Machine Time
 
-Verify Drop/Undrop from FMS MDE
-    [Documentation]    Verify Drop/Undrop form FMS MDS, 1) Verify MTE is running.
+Verify Drop/Undrop from FMSCmd
+    [Documentation]    Verify Drop/Undrop form FMSCmd, 1) Verify MTE is running.
     ...    2) Start output capture.
-    ...    3) Generate Drop from FMS MDE.
-    ...    4) Verify item cannot be requested from dataview.
-    ...    5) Generate Undrop from FMS MDE.
-    ...    6) Verify item can be requested from dataview.
-    ...    7) Stop output capture
-    ...    8) Verify an Item Drop was published (MsgClass: \ TRWF_MSG_MC_ITEM_STATUS, StreamState: TRWF_MSG_SST_CLOSED)
-    ...    9) verify a response was published.
+    ...    3) Generate Drop from FMSCmd,
+    ...    4) Verify item is dropped in MTE cache.
+    ...    5) Stop output capture
+    ...    6) Verify an Item Drop was published (MsgClass: \ TRWF_MSG_MC_ITEM_STATUS, StreamState: TRWF_MSG_SST_CLOSED)
+    ...    7) Start output capture.
+    ...    8) Generate Undrop from FMSCmd,
+    ...    9) Verify item is in MTE cache.
+    ...    10) Stop output capture
+    ...    11) verify a response was published.
     ...
-    ...    Test Case - Verify Deletion Delay
+    ...    Test Case - Verify Drop/Undrop form FMSCmd
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2009
     start mte    ${MTE}
     ${domain}    Get Preferred Domain
@@ -336,11 +338,11 @@ Verify Drop/Undrop from FMS MDE
     Verify RIC Is Dropped In MTE Cache    ${MTE}    ${ric}
     Stop Capture MTE Output    ${MTE}
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
-    verify drop message status    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}
+    verify DROP message in itemstatus messages    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}
     Start Capture MTE Output    ${MTE}
     Undrop ric    ${ric}    ${domain}    ${serviceName}
-    Verify RIC In MTE Cache    ${MTE}    ${ric}
     wait smf log message after time    was Undropped    ${currDateTime}
+    Verify RIC In MTE Cache    ${MTE}    ${ric}
     Stop Capture MTE Output    ${MTE}
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     verify_all_response_message_num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}
