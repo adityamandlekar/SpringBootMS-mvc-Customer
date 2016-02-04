@@ -35,14 +35,14 @@ Verify Sync Pulse Missed QoS
     ${master_ip}    get master box ip    ${LOCAL_SCWCLI_BIN}    ${USERNAME}    ${PASSWORD}    ${ip_list}
     ${localVenueConfig}=    get MTE config file
     @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
-    ${ddnpublishersLabelfilepath}=    Get_CHE_Config_Filepath    ddnPublishers.xml
+    ${ddnpublishersLabelfilepath}=    Get CHE Config Filepath    ddnPublishers.xml
     ${labelfile_local}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishers.xml
     get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
     remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
     Comment    Blocking Standby Side INPUT
     Switch to TD Box    ${CHE_A_IP}
-    ${state}=    check MTE state    ${MTE}
+    ${state}=    Get MTE state    ${MTE}
     Run Keyword If    '${state}' != 'STANDBY'    Switch to TD Box    ${CHE_B_IP}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from lable file    ${modifyLabelFile}    ${labelID}    ${MTE}
@@ -56,9 +56,9 @@ Verify Sync Pulse Missed QoS
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     Comment    Blocking Live Side OUTPUT
     Switch to TD Box    ${CHE_A_IP}
-    ${state}=    check MTE state    ${MTE}
+    ${state}=    Get MTE state    ${MTE}
     Run Keyword If    '${state}' != 'LIVE'    Switch to TD Box    ${CHE_B_IP}
-    :FOR    ${labelID}    IN    @{labelIDs}
+    : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from lable file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${USERNAME}    ${PASSWORD}
     \    ...    ${master_ip}

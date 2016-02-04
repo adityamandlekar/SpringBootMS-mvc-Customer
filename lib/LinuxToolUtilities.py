@@ -1291,7 +1291,7 @@ class LinuxToolUtilities():
         
         return stdout
     
-    def check_MTE_state(self,mteName):
+    def Get_MTE_state(self,mteName):
         """check MTE state (UNDEFINED,LIVE,STANDBY,LOCKED_LIVE,LOCKED_STANDBY) through HostManger
         
          Argument:
