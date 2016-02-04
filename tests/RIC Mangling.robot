@@ -105,7 +105,8 @@ Verify Mangling by Context ID
     ${specialContextId}    Create Dictionary
     ${contextID1}    set variable    ${contextIDs[0]}
     ${contextID2}    set variable    ${contextIDs[1]}
-    set mangling rule default value     UNMANGLED    ${LOCAL_MANGLING_CONFIG_FILE}
+    delete mangling rule partition node    ${contextIDs}    ${LOCAL_MANGLING_CONFIG_FILE}
+    set mangling rule default value    UNMANGLED    ${LOCAL_MANGLING_CONFIG_FILE}
     Set Mangling Rule For Specific Context ID    ${contextID1}    SOU    @{files}[0]
     Set To Dictionary    ${specialContextId}    ${contextID1}    ![
     Verify Mangling Rule On All Context IDs    ${contextIDs}    ${specialContextId}
@@ -129,7 +130,6 @@ Change Phase
 Set Mangling Rule For Specific Context ID
     [Arguments]    ${contextid}    ${rule}    ${remoteConfigFile}
     [Documentation]    Set the mangling rule for specific context id, modify the local mangling config file and put to remote side, and then reload the mangling setting
-    add mangling rule partition node    ${rule}    ${contextid}    ${LOCAL_MANGLING_CONFIG_FILE}
     ${contextIdList}    Create List    ${contextid}
     set mangling rule parition value    ${rule}    ${contextIdList}    ${LOCAL_MANGLING_CONFIG_FILE}
     delete remote files    ${remoteConfigFile}
@@ -148,7 +148,7 @@ Verify Mangling Rule On All Context IDs
     \    Remove Values From List    ${allcontextids}    ${contextid}
     : FOR    ${contextid}    IN    @{allcontextids}
     \    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}    ${contextid}
-    \    Should Be Equal     ${publishKey}    ${sampleRic}    The mangling is not the default for context id ${contextid}
+    \    Should Be Equal    ${publishKey}    ${sampleRic}    The mangling is not the default for context id ${contextid}
 
 Verify Mangling by Context ID Case Setup
     [Arguments]    ${configFile}=manglingConfiguration.xml

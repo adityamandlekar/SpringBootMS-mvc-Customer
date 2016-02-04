@@ -2409,9 +2409,35 @@ class LocalBoxUtilities(_ToolUtil):
             self._set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
         else:
             for contextID in contextIDs:
+                self.add_mangling_rule_partition_node(rule, contextID, configFileLocalFullPath)
                 conditions = {'value' : contextID}
                 self._set_xml_tag_attributes_value_with_conditions(configFileLocalFullPath,conditions,attribute,False,xPath)
                 conditions.clear()
+
+    def delete_mangling_rule_partition_node(self, contextIDs, configFileLocalFullPath):
+        """delete the mangling rule for specficied contextIDs in manglingConfiguration.xml
+
+           contextIDs: the context ids you want to deleted
+           configFileLocalFullPath: full path of mangling config file xml
+
+           Examples:
+           | delete_mangling_rule_partition_node | ["1234","2345"] | C:/tmp/manglingConfiguration.xml |
+           
+           <Partitions type="FID" value="CONTEXT_ID" defaultRule="3">
+                <Partition value="1234" rule="1" />   <!-- KW will delete this line -->
+                <Partition value="2345" rule="1" />   <!-- KW will delete this line -->
+         </Partitions>
+        """
+        root = self._load_xml_file(configFileLocalFullPath,False)
+        partitions = root.find(".//Partitions")
+        for contextID in contextIDs:
+            foundNode = None
+            for node in partitions:
+                if (node.get('value') == contextID):
+                    foundNode = node
+            if (foundNode != None):
+                partitions.remove(foundNode)
+        self._save_to_xml_file(root,configFileLocalFullPath,False)
 
     def add_mangling_rule_partition_node(self, rule, contextID, configFileLocalFullPath):
         """Add mangling rule of specific context ID in manglingConfiguration.xml
