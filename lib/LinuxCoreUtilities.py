@@ -14,7 +14,7 @@ from datetime import datetime, date
 from utils.version import get_version
 from utils.rc import _rc
 
-from utils.ssh import _check_process, _exec_command, _get_datetime, _set_datetime, _return_pslist, _kill_process
+from utils.ssh import _get_process_pid_pattern_dict, _check_process, _exec_command, _get_datetime, _set_datetime, _return_pslist, _kill_process
 from utils.ssh import G_SSHInstance
        
 class LinuxCoreUtilities():    
@@ -57,11 +57,22 @@ class LinuxCoreUtilities():
         return G_SSHInstance.read_command_output(return_stdout, return_stderr,
                             return_rc)
         
+    def get_process_pid_pattern(self, *process_pattern): 
+        """
+        From process patterns return dictionary contains process_pattern and its pid
+        Examples:
+        | MTE -c ${MTE} | GRS -cfg  | FHController -cfg |
+        
+        """
+        return _get_process_pid_pattern_dict(list(process_pattern))
+        
+        
     def check_processes(self, *process):
         """
         Check processes existence. Return Foundlist and NotFoundlist.
         
         Process is the process name, which can be provided one or more items.\n
+        
         
         Return [Foundlist, NotFoundlist].
 
