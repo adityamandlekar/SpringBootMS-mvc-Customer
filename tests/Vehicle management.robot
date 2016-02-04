@@ -154,7 +154,7 @@ Verify FMS Rebuild
 Drop a RIC by deleting EXL File and Full Reorg
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1850
     ...    To verify whether the RICs in a exl file can be dropped if the exl file is deleted.
-    [Setup]    Vehicle Management Case Setup
+    [Setup]    Drop a RIC Case Setup
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${exlFullFileName}=    get EXL for RIC    ${LOCAL_FMS_DIR}    ${domain}    ${serviceName}    ${ric}
     Append To List    ${processedEXLs}    ${exlFullFileName}
@@ -166,7 +166,7 @@ Drop a RIC by deleting EXL File and Full Reorg
     Load All EXL Files    ${serviceName}    ${CHE_IP}
     wait smf log message after time    Drop message sent    ${currentDateTime}
     Verify RIC is Dropped In MTE Cache    ${MTE}    ${ric}
-    [Teardown]    Vehicle Management Case Teardown    ${LOCAL_TMP_DIR}/${exlFileName}
+    [Teardown]    Drop a RIC Case Teardown    ${LOCAL_TMP_DIR}/${exlFileName}
 
 Drop a RIC by deleting EXL file from LXL file
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1924
@@ -286,28 +286,25 @@ Verify FMS Extract and Insert
     [Teardown]    case teardown    ${beforeExtractFile}    ${afterExtractFile}    ${beforeLocalPcap}    ${afterLocalPcap}
 
 Verify Deletion Delay
-    [Documentation]    Delete an instrument. \ Rollover system time through 5 endOfDay startOfDay cycles. \ Verify that the MTE cache correctly indicates that the instrument has been dropped and how many deletion delay days are left. \ After the 5th day, verify the instrument is deleted from the MTE cache. \ Reset the Thunderdome box time to correct time.
-    ...
-    ...    To run this test on a Vagrant VM, disable the VirtualBox Guest Additions. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
-    ...
-    ...    service vboxadd-service stop
+    [Documentation]    Delete an instrument. \ Rollover system time through 5 startOfDay cycles.\ Verify that the MTE cache correctly indicates that the instrument has been dropped and how many deletion delay days are left. \ After the 5th day, verify the instrument is deleted from the MTE cache. \ Reset the Thunderdome box time back to correct time.
     ...
     ...    Test Case - Verify Deletion Delay
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1891
+    [Setup]    Disable MTE Clock Sync
     start mte    ${MTE}
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${StartOfDayGMT}    ${EndOfDayGMT}    Get Start and End GMT Time
-    ${currDateTime}    get date and time
+    ${StartOfDayGMT}    Get Start GMT Time
     Drop ric    ${ric}    ${domain}    ${serviceName}
-    wait smf log message after time    Drop    ${currDateTime}
+    Comment    Stopping EventScheduler elimintates extra processing that is done at each start of day and many FMSClient:SocketException messages. We are only interested in the deletion delay change.    This will be restarted during case teardown.
+    ${result}=    Run Commander    process    stop EventScheduler
     : FOR    ${daysLeft}    IN RANGE    5    0    -1
     \    ${ricFields}=    Get All Fields For RIC From Cache    ${MTE}    ${VENUE_DIR}    ${ric}
     \    Should Be Equal    ${ricFields['PUBLISHABLE']}    FALSE
     \    Should Be Equal As Integers    ${ricFields['DELETION_DELAY_DAYS_REMAINING']}    ${daysLeft}
     \    Should Be True    ${ricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
-    \    Rollover MTE Machine Date    ${StartOfDayGMT}    ${EndOfDayGMT}    1
+    \    Rollover MTE Start Date    ${StartOfDayGMT}
     Verify RIC Not In MTE Cache    ${MTE}    ${ric}
     [Teardown]    Correct MTE Machine Time
 
@@ -373,17 +370,17 @@ Insert icf
 
 Drop ric
     [Arguments]    ${ric}    ${domain}    ${serviceName}
+    ${currDateTime}    get date and time
     ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}
     ...    drop    --RIC ${ric}    --Domain ${domain}    --HandlerName ${MTE}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+    wait smf log message after time    Drop    ${currDateTime}
 
-Get Start and End GMT Time
+Get Start GMT Time
     ${mteConfigFile}=    Get MTE Config File
     ${StartOfDayTime}=    get MTE config value    ${mteConfigFile}    StartOfDayTime
-    ${EndOfDayTime}=    get MTE config value    ${mteConfigFile}    EndOfDayTime
     ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
-    ${EndOfDayGMT}    Convert to GMT    ${EndOfDayTime}
-    [Return]    ${StartOfDayGMT}    ${EndOfDayGMT}
+    [Return]    ${StartOfDayGMT}
 
 Convert to GMT
     [Arguments]    ${localTime}
@@ -395,7 +392,7 @@ Convert to GMT
     ${GMTTime}    Subtract Time From date    ${currDateTime[0]}.${currDateTime[1]}.${currDateTime[2]} ${localTime}    ${currentGmtOffset}    date_format=%Y.%m.%d \ %H:%M    result_format=%H:%M
     [Return]    ${GMTTime}
 
-Vehicle Management Case Setup
+Drop a RIC Case Setup
     [Documentation]    The setup will get FMS service name to ${serviceName} and get perferred domain to ${domain}.
     ...
     ...    A list variable @{processedEXLs} will be created. all exl files which should be reloaded when teardown can be added into @{processedEXLs}.
@@ -412,7 +409,7 @@ Vehicle Management Case Setup
     ${domain}    Get Preferred Domain
     Set Suite Variable    ${domain}
 
-Vehicle Management Case Teardown
+Drop a RIC Case Teardown
     [Arguments]    @{tmpfiles}
     [Documentation]    The teardown will restore all backup EXL in @{backupEXLs}, and reload all exl files in @{processedEXLs}, and remove temporary files.
     : FOR    ${backuppath}    IN    @{backupEXLs}
@@ -437,8 +434,19 @@ Create Fid Value Pair
 Correct MTE Machine Time
     [Documentation]    To correct Linux time and restart SMF, restart SMF because currently FMS client have a bug now, if we change the MTE Machine time when SMF running, FMS client start to report exception like below, and in this case we can't use FMS client correclty:
     ...    FMSClient:SocketException - ClientImpl::connect:connect (111); /ThomsonReuters/EventScheduler/EventScheduler; 18296; 18468; 0000235f; 07:00:00;
+    ...
+    ...    In addition, on a vagrant VirtualBox, restore the VirtualBox Guest Additions service, which includes clock sync with the host.
     stop smf
     ${RIDEMachineTime}    Get Current Date    UTC    result_format=datetime
     ${res}    set date and time    ${RIDEMachineTime.year}    ${RIDEMachineTime.month}    ${RIDEMachineTime.day}    ${RIDEMachineTime.hour}    ${RIDEMachineTime.minute}
     ...    ${RIDEMachineTime.second}
+    Restore MTE Clock Sync
     start smf
+
+Disable MTE Clock Sync
+    [Documentation]    If running on a vagrant VirtualBox, disable the VirtualBox Guest Additions service. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
+    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service stop; fi
+
+Restore MTE Clock Sync
+    [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
+    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
