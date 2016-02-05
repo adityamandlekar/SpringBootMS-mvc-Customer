@@ -328,8 +328,10 @@ class LinuxToolUtilities():
         """
         refDate = '%s-%s-%s' %(timeRef[0], timeRef[1], timeRef[2])
         refTime = '%s:%s:%s' %(timeRef[3], timeRef[4], timeRef[5])
+#         print 'DEBUG refDate %s, refTime %s' %(refDate,refTime)
         dt = LinuxCoreUtilities().get_date_and_time()
         currentFile = '%s/smf-log-files.%s%s%s.txt' %(self.SMFLOGDIR, dt[0], dt[1], dt[2])
+#         print 'DEBUG checking SMF log file %s' %currentFile
 
         # convert  unicode to int (it is unicode if it came from the Robot test)
         timeout = int(timeout)
@@ -337,6 +339,7 @@ class LinuxToolUtilities():
         maxtime = time.time() + float(timeout)
         while time.time() <= maxtime:            
             retMessages = LinuxFSUtilities().grep_remote_file(currentFile, message)
+#             print 'DEBUG retMessages: %s' %retMessages
             if (len(retMessages) > 0):
                 logContents = retMessages[-1].split(';')
                 if (len(logContents) >= 2):
@@ -1329,48 +1332,35 @@ class LinuxToolUtilities():
         else:
             raise AssertionError('*ERROR* The FID can not be found')        
 
-    def rollover_MTE_Machine_Date(self, startOfDay, endOfDay, durationDays=1):   
-        """to rollover MTE machine date with the duration days
+    def rollover_MTE_start_date(self, GMTStartTime):   
+        """Change the MTE machine date to a few seconds before the next StartOfDay time.
+        If current time <  specified time, change to specified time today.
+        If current time >= specified time, change to specified time tomorrow.
+        Waits for start of day instrument update to complete.
                 
         Argument:         
-                    startOfDay : the original icf file.\n
-                    endOfDay : the modified icf file
-                    durationDays : the duration we want to rollover
-                    
-         
+                    GMTStartTime     : StartOfDay GMT time with format HH:MM.
+      
         return nil
         
         Examples:
-                    Rollover MTE Machine Date  |  ${StartOfDayGMT} |   ${EndOfDayGMT}  |  ${days}
+                    Rollover MTE Start Date  |  09:00 |
         """  
-                
-        aSec = timedelta(seconds = 1)
+
+        secondsBeforeStartTime = timedelta(seconds = 5)
         aDay = timedelta(days = 1 )
-                   
-        if startOfDay > endOfDay :
-            endOfDay = endOfDay + aDay 
+        currTimeArray = LinuxCoreUtilities().get_date_and_time() # current time as array of strings
+        C = map(int,currTimeArray) # current time as array of INTs
+        T = map(int,GMTStartTime.split(':')) #start time as array of INTs
         
-        if (startOfDay > endOfDay) :
-            AssertionError('The startOfDay or endOfDay time is incorrect, please correct it')
+        currDateTime = datetime(*C) # current time as dateTime object
+        newDateTime = datetime(C[0],C[1],C[2],T[0],T[1]) - secondsBeforeStartTime
             
-        startOfDay = startOfDay + aDay - aSec
-        endOfDay = endOfDay - aSec
-        
-        if (startOfDay < endOfDay) :
-            AssertionError('The startOfDay or endOfDay time is incorrect, please correct it')
-         
-        leftDays = int (durationDays) 
-         
-        while leftDays > 0 :
-            LinuxCoreUtilities().set_date_and_time(endOfDay.year, endOfDay.month, endOfDay.day, endOfDay.hour, endOfDay.minute, endOfDay.second)
-            currDateTime = LinuxCoreUtilities().get_date_and_time()
-            self.wait_smf_log_message_after_time('EndOfDay time occurred',currDateTime )
-            endOfDay = endOfDay + aDay
-            
-            LinuxCoreUtilities().set_date_and_time(startOfDay.year, startOfDay.month, startOfDay.day, startOfDay.hour, startOfDay.minute, startOfDay.second)
-            currDateTime = LinuxCoreUtilities().get_date_and_time()
-            self.wait_smf_log_message_after_time('StartOfDay time occurred',currDateTime )
-            startOfDay = startOfDay + aDay
-            
-            leftDays = leftDays - 1
-             
+        if currDateTime >= newDateTime:
+            newDateTime += aDay
+
+        LinuxCoreUtilities().set_date_and_time(newDateTime.year, newDateTime.month, newDateTime.day, newDateTime.hour, newDateTime.minute, newDateTime.second)
+        currTimeArray = newDateTime.strftime('%Y,%m,%d,%H,%M,%S').split(',')
+        self.wait_smf_log_message_after_time('handleStartOfDayInstrumentUpdate.*Ending',currTimeArray)
+    
+    
