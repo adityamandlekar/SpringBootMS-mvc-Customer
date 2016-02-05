@@ -2409,10 +2409,65 @@ class LocalBoxUtilities(_ToolUtil):
             self._set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
         else:
             for contextID in contextIDs:
+                self.add_mangling_rule_partition_node(rule, contextID, configFileLocalFullPath)
                 conditions = {'value' : contextID}
                 self._set_xml_tag_attributes_value_with_conditions(configFileLocalFullPath,conditions,attribute,False,xPath)
                 conditions.clear()
-                           
+
+    def delete_mangling_rule_partition_node(self, contextIDs, configFileLocalFullPath):
+        """delete the mangling rule for specficied contextIDs in manglingConfiguration.xml
+
+           contextIDs: the context ids you want to deleted
+           configFileLocalFullPath: full path of mangling config file xml
+
+           Examples:
+           | delete_mangling_rule_partition_node | ["1234","2345"] | C:/tmp/manglingConfiguration.xml |
+           
+           <Partitions type="FID" value="CONTEXT_ID" defaultRule="3">
+                <Partition value="1234" rule="1" />   <!-- KW will delete this line -->
+                <Partition value="2345" rule="1" />   <!-- KW will delete this line -->
+         </Partitions>
+        """
+        root = self._load_xml_file(configFileLocalFullPath,False)
+        partitions = root.find(".//Partitions")
+        for contextID in contextIDs:
+            foundNode = None
+            for node in partitions:
+                if (node.get('value') == contextID):
+                    foundNode = node
+            if (foundNode != None):
+                partitions.remove(foundNode)
+        self._save_to_xml_file(root,configFileLocalFullPath,False)
+
+    def add_mangling_rule_partition_node(self, rule, contextID, configFileLocalFullPath):
+        """Add mangling rule of specific context ID in manglingConfiguration.xml
+           add <Partition rule ... /> into <Partitions> if it does not exist, ignore if it has already exisited.
+        
+        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
+        contextID : the context ID you want to add to <Partitions>
+        configFileLocalFullPath : full path of mangling config file xml
+        Returns : Nil
+
+        Examples:
+        | add_mangling_rule_partition_node | RRG | "1234" | C:/tmp/manglingConfiguration.xml |
+        
+        Call this KW, The partitions section of the manglingConfiguration file should look something like this:
+         <Partitions type="FID" value="CONTEXT_ID" defaultRule="3">
+          <!-- Items with CONTEXT_ID 1234 or 2345 use Elektron RRG rule. All other Items use SOU rule. -->
+            <Partition value="1234" rule="1" />   <!-- KW will add this line if it does not exist -->
+            <Partition value="2345" rule="1" />
+         </Partitions>
+        """
+        root = self._load_xml_file(configFileLocalFullPath,False)
+        partitions = root.find(".//Partitions")
+        foundMatch = False
+        for node in partitions:
+            if (node.get('value') == contextID):
+                foundMatch = True
+        if (foundMatch == False):
+            partitions.append(ET.fromstring('<Partition rule="%s" value="%s" />\n' %(LinuxToolUtilities().MANGLINGRULE[rule.upper()], contextID)))
+        self._save_to_xml_file(root,configFileLocalFullPath,False)
+
     def convert_dataView_response_to_dictionary(self,dataview_response):
         """ capture the FID Name and FID value from DateView output which return from run  run_dataview
 
