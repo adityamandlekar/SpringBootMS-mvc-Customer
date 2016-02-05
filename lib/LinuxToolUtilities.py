@@ -1464,7 +1464,8 @@ class LinuxToolUtilities():
         | Get CHE Config Filepath | ddnPublishers.xml 
         """  
                 
-        cmd = "find " + BASE_DIR + " -type f -name " + filename + " | grep -v SCWatchdog"
+        cmd = "find " + BASE_DIR + " -type f -name \"" + filename + "\" | grep -v SCWatchdog"
+        print cmd
         
         stdout, stderr, rc = _exec_command(cmd)
         if rc !=0 or stderr !='':
