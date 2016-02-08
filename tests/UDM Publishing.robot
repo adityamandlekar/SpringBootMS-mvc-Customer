@@ -121,46 +121,45 @@ Verify Message Key Name is Compressed
     [Teardown]    case teardown    ${localCapture}
 
 Verify SPS RIC is published
-    [Documentation]    Verify SPS RIC is published
+    [Documentation]    Verify SPS RIC and SPS Input Stats RIC are published.
+    ...    Since Recon creates the ddnLabels.xml file, we cannot verify that the SPS RIC name is defined using the correct rules in the production label files.
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1757
-    ${domain}=    Get Preferred Domain
-    ${currentDateTime}    get date and time
-    ${serviceName}=    Get FMS Service Name
-    ${published_SPS_ric_sub_provider}=    set variable    .[SPS${MTE}L1_D
-    ${published_SPS_ric_input_stats}=    set variable    .[SPS${MTE}L1_D_INS
+    ${mteConfigFile}=    Get MTE Config File
+    @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
+    ${SPSric}=    Get SPS RIC From Label File    @{labelIDs}[0]
+    ${SPSric_input_stats}=    set variable    ${SPSric}_INS
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     Start Capture MTE Output    ${MTE}    ${remoteCapture}
-    Rebuild FMS service    ${serviceName}
-    wait smf log message after time    Finished Sending Images    ${currentDateTime}
-    Stop Capture MTE Output    ${MTE}    1    5
+    Stop Capture MTE Output    ${MTE}    5    10
     get remote file    ${remoteCapture}    ${localCapture}
-    ${constituents}=    get constituents from FidFilter    ${VENUE_DIR}    ${contextId}
-    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_SPS_ric_sub_provider}    ${domain}    ${constituents}
-    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_SPS_ric_input_stats}    ${domain}    ${constituents}
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${SPSric}    SERVICE_PROVIDER_STATUS    0
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${SPSric_input_stats}    SERVICE_PROVIDER_STATUS    0
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${SPSric}    SERVICE_PROVIDER_STATUS    1
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${SPSric_input_stats}    SERVICE_PROVIDER_STATUS    1
     [Teardown]    case teardown    ${localCapture}
 
 Verify DDS RIC is published
     [Documentation]    Verify DDS RIC is published
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1758
+    ${FiveZeros}=    set variable    00000
     ${mteConfigFile}=    Get MTE Config File
-    ${domain}=    Get Preferred Domain
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
-    ${serviceName}=    Get FMS Service Name
-    ${constituents}=    get constituents from FidFilter    ${VENUE_DIR}    ${contextId}
     @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
     : FOR    ${labelID}    IN    @{labelIDs}
-    \    ${currentDateTime}    get date and time
-    \    ${published_DDS_ric}=    set variable    .[----${MTE}${label_ID}
+    \    ${Length}=    Get Length    ${label_ID}
+    \    ${OffSet}=    Evaluate    5 - ${Length}
+    \    ${ZeroPaddedLableID}=    Get Substring    ${FiveZeros}    0    ${OffSet}
+    \    ${ZeroPaddedLableID}=    Catenate    SEPARATOR=    ${ZeroPaddedLableID}    ${label_ID}
+    \    ${published_DDS_ric}=    set variable    .[----${MTE}${ZeroPaddedLableID}
     \    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     \    Start Capture MTE Output    ${MTE}    ${remoteCapture}
-    \    Rebuild FMS service    ${serviceName}
-    \    Wait Smf Log Message After Time    Finished Sending Images    ${currentDateTime}
     \    Stop Capture MTE Output    ${MTE}    1    5
     \    get remote file    ${remoteCapture}    ${localCapture}
-    \    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_DDS_ric}    ${domain}    ${constituents}
+    \    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_DDS_ric}    TIMING_LOG    0
+    \    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_DDS_ric}    TIMING_LOG    1
     [Teardown]    case teardown    ${localCapture}
 
 Perform DVT Validation - Process all EXL files
