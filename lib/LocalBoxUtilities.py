@@ -24,7 +24,6 @@ from LinuxFSUtilities import LinuxFSUtilities
 from FMUtilities import _FMUtil
 from utils.local import _run_local_command
 from utils._ToolUtil import _ToolUtil
-from utils._FSUtil import _FSUtil
 
 FID_CONTEXTID = '5357'
 
@@ -568,6 +567,127 @@ class LocalBoxUtilities(_ToolUtil):
                 os.remove(exist_file)
         
             os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
+    def verify_unsolicited_response_sequence_numbers_in_capture(self, pcapfile, das_dir, ric, domain, mte_state):
+        """ verify if unsolicited response message sequence numbers for RIC are in increasing order in MTE output pcap message
+            if mte_state is startup, the sequence number should start from 0, then 4, 5, ... n, n+1...
+            if mte_state is failover, the sequence number could start from 1, then 4, 5, ... n, n+1...
+            if mte_state is rollover, the sequence number could start from 3, then 4, 5, ... n, n+1...
+            
+            Argument : pcapfile : MTE output capture pcap file fullpath
+                       das_dir : path for DAS tool
+                       ric : published RIC
+                       domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                       mte_state: possible value startup, rollover, failover.
+            return : last item from response message sequence number list
+        """           
+
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        outputfileprefix = 'test_seqnum_resp_'
+        filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_responseTypeNum= &quot;TRWF_TRDM_RPT_UNSOLICITED_RESP&quot;)))'%(filterDomain, ric)
+        outputxmlfile = self._get_extractorXml_from_pcap(das_dir, pcapfile, filterstring, outputfileprefix)                
+        
+        parentName  = 'Message'
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
+        seqNumList = []
+        for messageNode in messages:
+            seqNum = self._xml_parse_get_field_for_messageNode (messageNode, 'ItemSeqNum')
+            seqNumList.append(seqNum)
+                    
+        if len(seqNumList)== 0:
+            raise AssertionError('*ERROR* response message for %s, %s does not exist.'%(ric,domain)) 
+                    
+        for i in xrange(len(seqNumList) - 1):
+            if int(seqNumList[i]) > int(seqNumList[i+1]):
+                print seqNumList
+                raise AssertionError('*ERROR* response message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be after SeqNo[%d] %s.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
+                
+                     
+        for exist_file in outputxmlfile:
+            os.remove(exist_file)
+        os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")       
+        
+        if mte_state == 'startup':
+            if seqNumList[0] != '0':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 0' %seqNumList[0])  
+            if '1' in seqNumList or '2' in seqNumList or '3' in seqNumList:
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 1, 2, 3 should not be in the message sequence number List')
+         
+        if mte_state == 'failover':  
+            if seqNumList[0] != '1':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
+            if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list')
+              
+        if mte_state == 'rollover':
+            if seqNumList[0] != '3':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 3' %seqNumList[0])  
+            
+        return seqNumList[-1]
+        
+        
+    def verify_updated_message_sequence_numbers_in_capture(self, pcapfile, dasdir, ric, domain, mte_state):
+        """ verify if updated message sequence number for RIC are in increasing order in MTE output pcap message
+            if mte_state is startup, the possible sequence number could start from 4 then 5, ... n, n+1...
+            if mte_state is failover, the possible sequence number could start from 1, then 4, 5, ... n, n+1...
+            if mte_state is rollover, the sequence number could start from 3, then 4, 5, ... n, n+1...
+            Argument : pcapfile : MTE output capture pcap file fullpath
+                       das_dir : path for DAS tool
+                       ric : published RIC
+                       domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                       mte_state: possible value startup, rollover, failover.
+            return : First item from update message sequence number list
+        """       
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        outputfileprefix = 'test_seqnum_update_'
+        
+        filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, All_msgBase_msgKey_domainType = &quot;%s&quot;))'%(ric, filterDomain)
+        outputxmlfile = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
+        parentName  = 'Message'
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
+        
+        seqNumList = []
+        for messageNode in messages:
+            seqNum = self._xml_parse_get_field_for_messageNode (messageNode, 'ItemSeqNum')
+            seqNumList.append(seqNum)
+       
+        if len(seqNumList) == 0:
+            raise AssertionError('*ERROR* updated message for %s, %s does not exist.'%(ric,domain)) 
+          
+        for i in xrange(len(seqNumList) - 1):
+            if int(seqNumList[i]) > int(seqNumList[i + 1]):
+                print seqNumList
+                raise AssertionError('*ERROR* update message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be after SeqNo[%d] %s.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
+            
+        for exist_file in outputxmlfile:
+            os.remove(exist_file)
+        os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
+        
+        if mte_state == 'startup':
+            if seqNumList[0] <= '3':
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 0, 1, 2, 3 should not be in the message sequence number list')
+         
+        if mte_state == 'failover':  
+            if seqNumList[0] != '1':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
+            if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
+                print seqNumList
+                raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list')
+              
+        if mte_state == 'rollover':
+            if seqNumList[0] != '3':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 3' %seqNumList[0])            
+            
+        return seqNumList[0]
+		
                               
     def _verify_PE_change_in_message_c0(self,pcapfile,dasdir,ricname,newPE):
         """ internal function used to verify PE Change response (C0) for RIC in MTE output pcap message
@@ -601,13 +721,13 @@ class LocalBoxUtilities(_ToolUtil):
         
         os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
     
-    def _verify_PE_change_in_message_c1(self,pcapfile,venuedir,dasdir,ricname,oldPE,newPE):
+    def _verify_PE_change_in_message_c1(self,pcapfile,venuedir,dasdir,ricname,oldPEs,newPE):
         """ internal function used to verify PE Change response (C1) for RIC in MTE output pcap message
             pcapFile : is the pcap fullpath at local control PC  
             venuedir : location from remote TD box for search FIDFilter.txt
             dasdir : location of DAS tool  
             ricname : target ric name
-            oldPE : original value of PE
+            oldPEs : a list of possible original PEs (We use a list of candidates due to the fact we use hardcode way for RIC Mangling test cases)  
             newPE : new value of PE
             return : Nil
             
@@ -633,8 +753,12 @@ class LocalBoxUtilities(_ToolUtil):
                 raise AssertionError('*ERROR* 1st C1 message : Missing FID 1 (PROD_PERM) in payload')
             
             headerPE = self._xml_parse_get_HeaderTag_Value_for_messageNode(messages[0],'PermissionInfo','PE')
-            if (headerPE != oldPE):
-                raise AssertionError('*ERROR* 1st C1 message : Old PE in header (%s) not equal to (%s)'%(headerPE,oldPE))
+            isPass = False
+            for oldPE in oldPEs:
+                if (headerPE == oldPE):
+                    isPass = True
+            if not (isPass):
+                raise AssertionError('*ERROR* 1st C1 message : Old PE in header (%s) no match with any given PEs (%s)'%(headerPE,oldPEs))            
             
             #2nd C1 message : C1 Response, new PE in header, all payload FIDs included
             dummyricDict = {}
@@ -702,12 +826,14 @@ class LocalBoxUtilities(_ToolUtil):
         
         os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
         
-    def verify_PE_change_in_message(self,pcapfile,venuedir,dasdir,ricname,oldPE,newPE):
+    def verify_PE_change_in_message(self,pcapfile,venuedir,dasdir,ricname,oldPEs,newPE):
         """ verify PE Change response for RIC in MTE output pcap message
             pcapFile : is the pcap fullpath at local control PC  
             venuedir : location from remote TD box for search FIDFilter.txt
             dasdir : location of DAS tool  
-            ricname : target ric name    
+            ricname : target ric name
+            oldPEs : a list of possible original PEs (We use a list of candidates due to the fact we use hardcode way for RIC Mangling test cases)  
+            newPE : new value of PE
             return : Nil
             
             Verify:
@@ -727,7 +853,7 @@ class LocalBoxUtilities(_ToolUtil):
         self._verify_PE_change_in_message_c0(pcapfile,dasdir,ricname,newPE)
         
         #C1
-        self._verify_PE_change_in_message_c1(pcapfile,venuedir,dasdir,ricname,oldPE,newPE)
+        self._verify_PE_change_in_message_c1(pcapfile,venuedir,dasdir,ricname,oldPEs,newPE)
         
         #C63
         self._verify_PE_change_in_message_c63(pcapfile,venuedir,dasdir,ricname,newPE)
@@ -888,7 +1014,7 @@ class LocalBoxUtilities(_ToolUtil):
             return : Nil         
         """
         refValue = newFIDValue
-        if (newFIDValue.isnumeric() == False):
+        if (newFIDValue.isdigit() == False):
             refValue = ""
             for character in newFIDValue:
                 refValue = refValue + (character.encode("hex")).upper()
@@ -1392,28 +1518,6 @@ class LocalBoxUtilities(_ToolUtil):
             
         return False
 
-    def convert_to_lowercase_workaround(self, str1):
-        """This KW is temporary because 'Convert to lowercase' KW is not available until Robot Framework 2.8.6.   
-        After upgrading to Robot 2.8.6, this KW should be deprecated and 'Convert to Lowercase' used
-        """
-        lower = str1.lower()
-        return lower
-        
-    def get_matches_workaround(self, listToSearch, pattern):
-        """This KW is temporary because 'Get Matches' KW is not available until Robot Framework 2.8.6.   
-        After upgrading to Robot 2.8.6, this KW should be deprecated and 'Get Matches' used
-        
-        Returns a list of matches to pattern in list
-
-        Example:
-        | get matches workaround | ${FMScategories} | Service_*
-        """
-        matches = []
-        for x in listToSearch:
-            if re.search(pattern, x):
-                matches.append(x)
-        return matches
-        
     def verify_cache_contains_only_configured_context_ids(self, cachedump_file_name_full_path, filter_string): 
         """Get set of context ID from cache dump file and venue xml_config file
         and verify the context id set from cache dump is subset of context id set defined in fms filter string
@@ -2112,61 +2216,258 @@ class LocalBoxUtilities(_ToolUtil):
         
         for delFile in outputxmlfilelist:
             os.remove(delFile)
-            
-    def get_mangling_rule_content(self,rule,configFileLocalFullPath):
-        """ Get the setting for specific mangling rule found in manglingConfiguration.xml
-            This include 
-            tag <RIC> : enabled , Prefix, Suffix
-            tag <PE> : enabled, PE value
-            tag <IMSOUT> : enabled, IMSOUT value
-            
-            Argument : rule -  'SOU', 'BETA', RRG', 'UNMANGLED'
-                       configFileLocalFullPath - full path included config filename at Control PC
-                       
-            Return : dictionary of setting e.g.
-                 {'RIC': {'Prefix': '![', 'enabled': 'true', 'Suffix': None}, 
-                  'PE': {'enabled': 'false', 'text': '0'}, 
-                  'IMSOUT': {'enabled': 'false', 'text': '0'}}
-            
-            Examples :
-            | &{manglingRuleContent}| get mangling rule content |SOU | C:\\temp\\manglingConfiguration.xml
+               
+    def _load_xml_file(self,xmlFileLocalFullPath,isNonStandardXml):
+        """load xml file into cache and get the iterator point to first element
+        
+        xmlFileLocalFullPath : full path of xml file
+        isNonStandardXml : indicate if the xml file is non-standard one or not
+        Returns : iterator point to the first element of the xml file
+
+        """                
+        if not os.path.exists(xmlFileLocalFullPath):
+            raise AssertionError('*ERROR*  %s is not available' %xmlFileLocalFullPath)
+        
+        if (isNonStandardXml):
+            with open (xmlFileLocalFullPath, "r") as myfile:
+                linesRead = myfile.readlines()
+    
+            # Note that the following workaround is needed to make the venue config file a valid XML file.
+            linesRead = "<GATS>" + ''.join(linesRead) + "</GATS>"
+        
+            root = ET.fromstring(linesRead)
+        else:
+            tree = ET.parse(xmlFileLocalFullPath)
+            root = tree.getroot()                    
+        return root
+    
+    def _save_to_xml_file(self,root,xmlFileLocalFullPath,isNonStandardXml):
+        """Save xml content from cache to file
+        
+        xmlFileLocalFullPath : full path of xml file
+        isNonStandardXml : indicate if the xml file is non-standard one or not
+        Returns : Nil
+
+        """         
+        if (isNonStandardXml):
+            with open (xmlFileLocalFullPath, "w") as myfile:
+                for child in root:
+                    myfile.write(ET.tostring(child))                                            
+        else:
+            ET.ElementTree(root).write(xmlFileLocalFullPath)
+    
+    def _get_xml_node_by_xPath(self,root,xPath):
+        """get xml node by xPath
+        
+        root : object return from calling tree.getroot() while tree = ET.parse(file.xml)
+        xPath : a list contain the xPath for the node
+        Returns : iterator for 'ALL' elements that matched with xPath
+
         """
+        xmlPathLength = len(xPath)
+        if xmlPathLength < 1:
+            raise AssertionError('*ERROR*  Need to provide xPath to look up.')
+        elif xmlPathLength > 1:
+            xmlPathString = '/'.join(map(str, xPath))
+        else:
+            xmlPathString = str(xPath[0])
+        
+        return root.iterfind(".//" + xmlPathString)
+    
+    def _set_xml_tag_value(self,xmlFileLocalFullPath,tagValue,isNonStandardXml,xPath):
+        """set tag value in xml file specficied by xPath
+        
+        xmlFileLocalFullPath : full path of xml file
+        tagValue : target tag value
+        isNonStandardXml : indicate if xml file is non-starndard (e.g. MTE venue config xml file)
+        xPath : a list contain the xPath for the node
+        Returns : Nil
+
+        """
+        root = self._load_xml_file(xmlFileLocalFullPath,isNonStandardXml)
+        nodes = self._get_xml_node_by_xPath(root, xPath)
+        for node in nodes:
+            node.text=str(tagValue)
+        
+        self._save_to_xml_file(root,xmlFileLocalFullPath,isNonStandardXml)
+    
+    def _set_xml_tag_attributes_value_with_conditions(self,xmlFileLocalFullPath,conditions,attributes,isNonStandardXml,xPath):
+        """set attribute of a tag in xml file specficied by xPath and tag matching conditions
+        
+        xmlFileLocalFullPath : full path of xml file
+        conditions : a map specific the attributes(key) and correpsonding value that need to be matched before carried out "set" action
+        attributes : a map specific the attributes(key) and correpsonding value
+        isNonStandardXml : indicate if xml file is non-starndard (e.g. MTE venue config xml file)
+        xPath : a list contain the xPath for the node
+        Returns : Nil
+        
+        """        
+        root = self._load_xml_file(xmlFileLocalFullPath,isNonStandardXml)        
+        nodes = self._get_xml_node_by_xPath(root, xPath)
+        
+        foundMatch = False
+        for node in nodes:
+            isMatched = True
+            for key in conditions.keys():
+                attrib_val = node.get(key)
+                if (attrib_val == None or attrib_val != conditions[key]):
+                    isMatched = False
+                    break
+            
+            if (isMatched):
+                foundMatch = True
+                for key in attributes.keys():
+                    node.set(key,attributes[key])
+        
+        if not (foundMatch):
+            raise AssertionError('*ERROR*  No match found for given xPath (%s) and conditions (%s) in %s'%(xPath,conditions,xmlFileLocalFullPath))
                 
+        self._save_to_xml_file(root,xmlFileLocalFullPath,isNonStandardXml)    
+    
+    def _set_xml_tag_attributes_value(self,xmlFileLocalFullPath,attributes,isNonStandardXml,xPath):
+        """set attribute of a tag in xml file specficied by xPath
+        
+        xmlFileLocalFullPath : full path of xml file
+        attributes : a map specific the attributes(key) and correpsonding value
+        isNonStandardXml : indicate if xml file is non-starndard (e.g. MTE venue config xml file)
+        xPath : a list contain the xPath for the node
+        Returns : Nil
+        
+        """        
+        root = self._load_xml_file(xmlFileLocalFullPath,isNonStandardXml)        
+        nodes = self._get_xml_node_by_xPath(root, xPath)
+        
+        for node in nodes:
+            for key in attributes.keys():
+                node.set(key,attributes[key])
+                
+        self._save_to_xml_file(root,xmlFileLocalFullPath,isNonStandardXml)
+
+    def set_MTE_config_tag_value(self,xmlFileLocalFullPath,value,*xPath):
+        """set tag value in venue config xml file
+        
+        xmlFileLocalFullPath : full path of xml file
+        value : target tag value
+        xPath : xPath for the node
+        Returns : Nil
+
+        Examples:
+        | set MTE config tag value | C:/tmp/venue_config.xml | 13:00 | EndOfDayTime
+        """
+                        
+        self._set_xml_tag_value(xmlFileLocalFullPath,value,True,xPath)
+     
+    def set_mangling_rule_default_value(self,rule,configFileLocalFullPath):
+        """set the mangling rule <Partition defaultRule=""> in manglingConfiguration.xml
+        
+        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
+        cfgfile : full path of mangling config file xml
+        Returns : Nil
+
+        Examples:
+        | set mangling rule default value | SOU | C:/tmp/manglingConfiguration.xml |
+        
+        The partitions section of the manglingConfiguration file should look something like this:
+        e.g <Partitions type="FID" value="CONTEXT_ID" defaultRule="3"> 
+            </Partitions>
+        """
+        
         #safe check for rule value
         if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
-            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)    
+            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
         
-        retContent= {}
-        tree = ET.parse(configFileLocalFullPath)
-        root = tree.getroot()
-        retIter = root.iter('Rule')
-        for child in retIter:
-            if (child.attrib['id'] == LinuxToolUtilities().MANGLINGRULE[rule]):
-                for index in range(len(child)):
-                    retContent[child[index].tag] = child[index].attrib
-                    if (child[index].tag == 'RIC'):
-                        for sub_index in range(len(child[index])):
-                            retContent[child[index].tag][child[index][sub_index].tag] = child[index][sub_index].text 
-                    else:
-                        retContent[child[index].tag]['text'] = child[index].text
+        xPath = ['Partitions']
+        attribute = {'defaultRule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
+        self._set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
+        
+    def set_mangling_rule_parition_value(self,rule,contextIDs,configFileLocalFullPath):
+        """set the mangling rule of "ALL" <Partitions rule=""> in manglingConfiguration.xml
+        
+        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
+        contextIDs : empty list = replace all  <Partition> with given rule or only attribute 'value' of <Partition> that found in list will change to given rule
+        configFileLocalFullPath : full path of mangling config file xml
+        Returns : Nil
 
-        if (len(retContent) == 0):
-            raise AssertionError('*ERROR* Missing mangling configuration for rule %s in %s'%(rule,configFileLocalFullPath))
+        Examples:
+        | set mangling rule parition value | RRG | C:/tmp/manglingConfiguration.xml |
         
-        if not (retContent.has_key('RIC')):
-            raise AssertionError('*ERROR* Missing <RIC> in %s'%(configFileLocalFullPath))
+        The partitions section of the manglingConfiguration file should look something like this:
+         <Partitions type="FID" value="CONTEXT_ID" defaultRule="3">
+          <!-- Items with CONTEXT_ID 1234 or 2345 use Elektron RRG rule. All other Items use SOU rule. -->
+            <Partition value="1234" rule="1" />
+            <Partition value="2345" rule="1" />
+         </Partitions>
+        """
         
-        if not (retContent['RIC'].has_key('Prefix')):
-            raise AssertionError('*ERROR* Missing <Prefix> under <RIC> in %s'%(configFileLocalFullPath))
-            
-        if not (retContent.has_key('PE')):
-            raise AssertionError('*ERROR* Missing <PE> in %s'%(configFileLocalFullPath))            
+        #safe check for rule value
+        if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
+            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
         
-        if not (retContent['PE'].has_key('text')):
-            raise AssertionError('*ERROR* Missing value for <PE> in %s'%(configFileLocalFullPath))  
-                
-        return retContent
-      
+        xPath = ['Partitions','Partition']
+        attribute = {'rule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
+        if (len(contextIDs) == 0):
+            self._set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
+        else:
+            for contextID in contextIDs:
+                self.add_mangling_rule_partition_node(rule, contextID, configFileLocalFullPath)
+                conditions = {'value' : contextID}
+                self._set_xml_tag_attributes_value_with_conditions(configFileLocalFullPath,conditions,attribute,False,xPath)
+                conditions.clear()
+
+    def delete_mangling_rule_partition_node(self, contextIDs, configFileLocalFullPath):
+        """delete the mangling rule for specficied contextIDs in manglingConfiguration.xml
+
+           contextIDs: the context ids you want to deleted
+           configFileLocalFullPath: full path of mangling config file xml
+
+           Examples:
+           | delete_mangling_rule_partition_node | ["1234","2345"] | C:/tmp/manglingConfiguration.xml |
+           
+           <Partitions type="FID" value="CONTEXT_ID" defaultRule="3">
+                <Partition value="1234" rule="1" />   <!-- KW will delete this line -->
+                <Partition value="2345" rule="1" />   <!-- KW will delete this line -->
+         </Partitions>
+        """
+        root = self._load_xml_file(configFileLocalFullPath,False)
+        partitions = root.find(".//Partitions")
+        for contextID in contextIDs:
+            foundNode = None
+            for node in partitions:
+                if (node.get('value') == contextID):
+                    foundNode = node
+            if (foundNode != None):
+                partitions.remove(foundNode)
+        self._save_to_xml_file(root,configFileLocalFullPath,False)
+
+    def add_mangling_rule_partition_node(self, rule, contextID, configFileLocalFullPath):
+        """Add mangling rule of specific context ID in manglingConfiguration.xml
+           add <Partition rule ... /> into <Partitions> if it does not exist, ignore if it has already exisited.
+        
+        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
+        contextID : the context ID you want to add to <Partitions>
+        configFileLocalFullPath : full path of mangling config file xml
+        Returns : Nil
+
+        Examples:
+        | add_mangling_rule_partition_node | RRG | "1234" | C:/tmp/manglingConfiguration.xml |
+        
+        Call this KW, The partitions section of the manglingConfiguration file should look something like this:
+         <Partitions type="FID" value="CONTEXT_ID" defaultRule="3">
+          <!-- Items with CONTEXT_ID 1234 or 2345 use Elektron RRG rule. All other Items use SOU rule. -->
+            <Partition value="1234" rule="1" />   <!-- KW will add this line if it does not exist -->
+            <Partition value="2345" rule="1" />
+         </Partitions>
+        """
+        root = self._load_xml_file(configFileLocalFullPath,False)
+        partitions = root.find(".//Partitions")
+        foundMatch = False
+        for node in partitions:
+            if (node.get('value') == contextID):
+                foundMatch = True
+        if (foundMatch == False):
+            partitions.append(ET.fromstring('<Partition rule="%s" value="%s" />\n' %(LinuxToolUtilities().MANGLINGRULE[rule.upper()], contextID)))
+        self._save_to_xml_file(root,configFileLocalFullPath,False)
+
     def convert_dataView_response_to_dictionary(self,dataview_response):
         """ capture the FID Name and FID value from DateView output which return from run  run_dataview
 
@@ -2257,7 +2558,7 @@ class LocalBoxUtilities(_ToolUtil):
         if (len(messages) == 0):
             raise AssertionError('*ERROR* no C%s message found'%constnum) 
         if (len(messages) > 1):
-            raise AssertionError('*ERROR* more than 2 C%s message found, the num is %s'%(constnum,len(messages))) 
+            raise AssertionError('*ERROR* more than 1 C%s message found, the num is %s'%(constnum,len(messages))) 
                 
         for delFile in outputxmlfilelist:
             os.remove(delFile)
@@ -2367,15 +2668,16 @@ class LocalBoxUtilities(_ToolUtil):
         if rc != 0:
             raise AssertionError('*ERROR* in running SCWLLi.exe %s' %stderr)  
         
-        return rc
+        return stdout
     
     def switch_MTE_LIVE_STANDBY_status(self,scwcli_dir,mteName,node,status,user,password,che_ip,port='27000'):
-        """ To switch specific MTE instance to LIVE or STANDBY
+        """ To switch specific MTE instance to LIVE, STANDBY, LOCK_LIVE or LOCK_STANDY. Or unlock the MTE instance.
 
             Argument : scwcli_dir - full path of SCWCli.exe
                        mteName - MTE instance name e.g. HKF02M
                        node - A,B,C,D
-                       status - LIVE:Switch to Live, STANDBY:Switch to Standby
+                       status - LIVE:Switch to Live, STANDBY:Switch to Standby, 
+                                LOCK_LIVE to lock live, LOCK_STANDY to lock standby, UNLOCK to unlock the MTE
                        user - login name for the TD box
                        password - login password for the TD box
                        che_ip - IP of the TD box
@@ -2389,163 +2691,195 @@ class LocalBoxUtilities(_ToolUtil):
        
         if (status == 'LIVE'):
             cmd = "-promote "
-        elif(status == 'STANDBY'):
+        elif (status == 'STANDBY'):
             cmd = "-demote "
+        elif (status == 'LOCK_LIVE'):
+            cmd = "-lock_live "
+        elif (status == 'LOCK_STANDBY'):
+            cmd = "-lock_stby "
+        elif (status == 'UNLOCK'):
+            cmd = "-unlock "
         else:
             raise AssertionError('*ERROR* Unknown status %s' %status)
             
         cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(mteName,node,che_ip,port,user,password)
         self._run_local_SCWCLI(scwcli_dir,cmd)
 
-    def _verify_Fid_value_in_fidsAndValues(self, fidsAndValues=[], fidnum=[],fidvalue=[]):
-        index = 0
-        for elementfid in fidnum: 
-                if (fidsAndValues.has_key(elementfid)):
-                    if (fidsAndValues[elementfid] != fidvalue[index]):
-                        raise AssertionError('*ERROR* C1 message : the value of fid number (%s) not equal to (%s)'%(fidsAndValues[elementfid],fidvalue[index]))
-                    if index < len(fidvalue) :
-                        index = index + 1
-                else:
-                    raise AssertionError('*ERROR* 1st C1 message : Missing FID %s in payload'%elementfid)      
-                
-    def verify_Extract_and_Insert_in_message(self,pcapfile,venuedir,dasdir,ricname,fidnum=[],oldfidvalue=[],newfidvalue=[]):
-        """ internal function used to verify the fid value with fidvalue1 can change to fidvalue2 correctly and back to fidvalue1 correctly
-            pcapFile : is the pcap fullpath at local control PC  
-            venuedir : location from remote TD box for search FIDFilter.txt
-            dasdir : location of DAS tool  
-            fidnum : fid num 
-            oldfidvalue : original value of fid
-            newfidvalue : new value of fid
-            return : Nil
+    def get_master_box_ip(self, scwcli_dir, user, password, che_ip_list, port='27000'):
+        """ To find the master box from pair boxes
+
+            Argument : scwcli_dir - full path of SCWCli.exe
+                       user - login name for the TD box
+                       password - login password for the TD box
+                       che_ip_list - IP list of the TD boxes
+                       port - port no. that used to communicate with the SCW at TD box
+            Return :   the ip of master box
             
-            Verify:
-            1. C1 first UPDATE, the fid value is the oldfidvalue
-            2. C1 second UPDATE, the fid value is the newfidvalue
-            3. C1 third UPDATE, the fid value is the oldfidvalue
+            Examples :
+            | ${iplist} | create list | ${CHE_A_IP} | ${CHE_B_IP} |
+            | ${master_ip} | get master box ip | C:\\SCW\\bin  | ${USERNAME} | ${PASSWORD} | ${iplist} |
+        """
+        for che_ip in che_ip_list:
+            cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,port,user,password)
+            stdout = self._run_local_SCWCLI(scwcli_dir,cmd)
+            if (stdout.find('SCW state MASTER') != -1):
+                return che_ip
+        raise AssertionError('*ERROR* cannot find a master box')
+    
+    def get_FidValue_in_message(self,pcapfile,dasdir,ricname, msgClass):
+        """ To verify the insert icf file can update the changed fid and value correct
+        
+        Argument :         
+                    pcapFile : is the pcap fullpath at local control PC                      
+                    dasdir : location of DAS tool  
+                    ricname:    
+                    msgClass: UPDATE or RESPONSE               
+                  : 
+                    return : Fid Value pair from pcap
+            
+        Verify:
+                 Have 1 C1 message, the changed fids' value is correct
+                 If need to check all the Fids, all the Fid Value pair same with the defaultFidValue
+                 
+        Example:
+                | ${defaultFidsValues}  |  get_FidValue_in_message  |  ${LOCAL_TMP_DIR}/capture_localDefault.pcap  |  ${DAS_DIR}  |  ${pubRic} | UPDATE
+                 | ${defaultFidsValues}  |  get_FidValue_in_message  |  ${LOCAL_TMP_DIR}/capture_localDefault.pcap  |  ${DAS_DIR}  |  ${pubRic} | RESPONSE
+                
         """ 
                 
         outputfileprefix = 'updateCheckC1'
-        filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_constitNum = &quot;1&quot;))'%(ricname)
-
+          
+        if msgClass == 'RESPONSE' :
+            filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;1&quot;))'%(ricname)
+        elif msgClass == 'UPDATE' :
+            filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_constitNum = &quot;1&quot;))'%(ricname)
+        else:
+            raise AssertionError('*ERROR* msgClass is not correct, please use UPDATE or RESPONSE' )
+        
+                       
         outputxmlfilelist = self._get_extractorXml_from_pcap(dasdir,pcapfile,filterstring,outputfileprefix)
         
         parentName  = 'Message'
-        messages = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+        messages = self._xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)        
         
-        if (len(messages) == 3):
-            #1st C1 message : fid value is the oldfidvalue
-            fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[0])
-            self._verify_Fid_value_in_fidsAndValues(fidsAndValues, fidnum, oldfidvalue)
-                       
-            #2nd C1 message : fid value update to the new fid value
-            fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[1])
-            self._verify_Fid_value_in_fidsAndValues(fidsAndValues, fidnum, newfidvalue)            
-            
-             #3rd C1 message : fid value back to the oldfidvalue
-            fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[2])
-            self._verify_Fid_value_in_fidsAndValues(fidsAndValues, fidnum, oldfidvalue)
-            
+        if (len(messages) == 1):            
+            fidsAndValues = self._xml_parse_get_fidsAndValues_for_messageNode(messages[0])                
         else:
-            raise AssertionError('*ERROR* No. of C1 message received not equal to 3 for RIC %s during PE change, received (%d) message(s)'%(ricname,len(messages)))
+            raise AssertionError('*ERROR* No. of C1 message received not equal to 1 for RIC %s during icf insert, received (%d) message(s)'%(ricname,len(messages)))
+        
         
         for delFile in outputxmlfilelist:
             os.remove(delFile)
+            
+        os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
         
-        os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")                
-           
-    def _search_field_in_icf_file(self, srcfile, field):
-        """check the field is in icf file or not
+        return fidsAndValues
+                        
+     
+    def get_REAL_Fids_in_icf_file(self, srcfile, count = 1):
+        """to Get some FIDs with outputFormat value TRWF_REAL_NOT_A_NUM 
+         
+        Argument:    
+                srcfile : the icf file.\n
+                count : the totol number of the Fids we want get
         
-        srcfile is the original icf file.\n
-        field is the Fid name need to check .\n
+        return:
+                Fidlist : some REAL type Fids' name list       
+        Examples :
+        
+            |${FidList} | ${haveDefaultValue} | get REAL Fids in icf file  | C:\\temp\\extractFile.icf |  3   |    
         """
         dom = xml.dom.minidom.parse(srcfile)  
         root = dom.documentElement  
-        iteratorlist = dom.getElementsByTagName('r')         
-        
+        iteratorlist = dom.getElementsByTagName('r')     
+        Fidlist= []    
+        fidCount = 0
+                
         for node in iteratorlist:
             for subnode in node.childNodes:
-                if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:%s'%field :
-                    return True
+                for ssubnode in subnode.childNodes:                    
+                    if ssubnode.nodeType == node.ELEMENT_NODE and ssubnode.nodeName == 'it:outputFormat' and ssubnode.firstChild.data == 'TRWF_REAL_NOT_A_NUM':
+                        tempList = subnode.nodeName.split(':') 
+                        Fidlist.append(tempList[1])
+                        fidCount = fidCount + 1
+                        if fidCount >= int (count) :
+                            return Fidlist
         
-        return False  
-    
-    def get_modify_field_in_icf(self, srcfile, ric, domain, fidcount):
-        """to get a Fid list which can be changed in icf
         
-        srcfile is the original icf file.\n
-        ric, domain
-        fidcount: how many fids need to return
-         
-        return a fidlist
-        """   
-        simplefidlist = ['BID', 'ASK', 'OFF_CLOSE', 'HST_CLOSE2', 'GEN_VAL3', 'GEN_VAL1', 'ALT_CLOSE', 'ASSETS', 'OFFER', 'PCTCHNG', 'GEN_VAL2', 'TRDPRC_1', 'TRDPRC_2', 'TRDPRC_3', 'TRDPRC_4', 'TRDPRC_5', 'NETCHNG_1', 'HIGH_1', 'LOW_1', 'OPEN_PRC', 'HST_CLOSE', 'EARNINGS', 'YIELD', 'PCTCHNG', 'OPEN_BID', 'OPEN_ASK', 'CLOSE_BID', 'CLOSE_ASK', 'LOCHIGH', 'LOCLOW' ]                   
-        fidDict = {'BID':'22','ASK':'25', 'OFF_CLOSE':'3372', 'HST_CLOSE2':'963', 'GEN_VAL3':'998', 'GEN_VAL1':'996', 'ALT_CLOSE':'7672', 'ASSETS':'122', 'OFFER':'151', 'PCTCHNG':'56', 'GEN_VAL2':'997', 'TRDPRC_1':'6', 'TRDPRC_2':'7', 'TRDPRC_3':'8', 'TRDPRC_4':'9', 'TRDPRC_5':'10', 'NETCHNG_1':'11', 'HIGH_1':'12', 'LOW_1':'13', 'OPEN_PRC':'19', 'HST_CLOSE':'21', 'EARNINGS':'34', 'YIELD':'35', 'PCTCHNG':'56', 'LOCHIGH':'62', 'LOCLOW':'63'}
-        modifyFidlist= []
-        count = 0
+        raise AssertionError('*ERROR* not enough REAL type Fids found in icf file %s'%(srcfile))   
         
-        for elementfid in simplefidlist:
-            if count >= fidcount:
-                break
-            else :
-                searchR = self._search_field_in_icf_file(srcfile, elementfid)
-                if searchR == True:
-                    count = count + 1
-                    modifyFidlist.append(elementfid)
-                   
-        return modifyFidlist 
-    
-    def get_and_modify_2_item_in_icf(self, srcfile, dstfile, ric, domain, value):   
-        """to modify 2 FIDs with value in icf
         
-        srcfile is the original icf file.\n
-        ric, domain
-        value: the changed value for the 2 FIDs
-         
-        return a FID name list and a FID num list
-        """  
-        simplefidlist = ['BID', 'ASK', 'OFF_CLOSE', 'HST_CLOSE2', 'GEN_VAL3', 'GEN_VAL1', 'ALT_CLOSE', 'ASSETS', 'OFFER', 'PCTCHNG', 'GEN_VAL2', 'TRDPRC_1', 'TRDPRC_2', 'TRDPRC_3', 'TRDPRC_4', 'TRDPRC_5', 'NETCHNG_1', 'HIGH_1', 'LOW_1', 'OPEN_PRC', 'HST_CLOSE', 'EARNINGS', 'YIELD', 'PCTCHNG', 'OPEN_BID', 'OPEN_ASK', 'CLOSE_BID', 'CLOSE_ASK', 'LOCHIGH', 'LOCLOW' ]                   
-        fidDict = {'BID':'22','ASK':'25', 'OFF_CLOSE':'3372', 'HST_CLOSE2':'963', 'GEN_VAL3':'998', 'GEN_VAL1':'996', 'ALT_CLOSE':'7672', 'ASSETS':'122', 'OFFER':'151', 'PCTCHNG':'56', 'GEN_VAL2':'997', 'TRDPRC_1':'6', 'TRDPRC_2':'7', 'TRDPRC_3':'8', 'TRDPRC_4':'9', 'TRDPRC_5':'10', 'NETCHNG_1':'11', 'HIGH_1':'12', 'LOW_1':'13', 'OPEN_PRC':'19', 'HST_CLOSE':'21', 'EARNINGS':'34', 'YIELD':'35', 'PCTCHNG':'56', 'LOCHIGH':'62', 'LOCLOW':'63'}
-        modifyItem = []
-        modifyFidlist= []
-        fidnumlist = []
-        count = 0
-        
-        for elementfid in simplefidlist:
-            if count >= 2:
-                break
-            else :
-                searchR = False
-                searchR = self._search_field_in_icf_file(srcfile, elementfid)
-                if searchR == True:
-                    modifyFidlist.append(elementfid)
-                    fidnumlist.append(fidDict[elementfid])
-                    modifyItem.append('<it:%s>\n <it:outputFormat>TRWF_REAL_NOT_A_NUM</it:outputFormat>\n <it:value>%s</it:value>\n</it:%s>'%(elementfid,value[count],elementfid))
-                    if count < len(value) :
-                        count = count + 1
-        _FMUtil().modify_icf(srcfile, dstfile, ric, domain, modifyItem[0],modifyItem[1])        
-        return modifyFidlist, fidnumlist
-     
-    def creat_REAL_modify_item_in_icf(self, fidlist, value ):
-        """creat some icf modify items with type REAL
-        
-        fidlist is the FID name which need to change.\n
-        value is the changed value  .\n
-        return the modify item list
-        """  
-        modifyItem = []   
-        index = 0   
-        for elementfid in fidlist:          
-            modifyItem.append('<it:%s>\n <it:outputFormat>TRWF_REAL_NOT_A_NUM</it:outputFormat>\n <it:value>%s</it:value>\n</it:%s>'%(elementfid,value[index],elementfid))
-            if index < (len(value) - 1) :
-                index = index + 1
-            
-        return modifyItem
-    
-    def separate_string_to_list(self, srcstring, sepFlag):
-        sepList = srcstring.split(sepFlag)
-        return sepList, len(sepList)
 
-    def convert_num_to_opposite(self, srcNum):
-        dstNum = 0 - srcNum 
-        return dstNum      
+    def modify_REAL_items_in_icf(self, srcfile, dstfile, ric, domain, fidsAndValues={}):   
+        """to modify some REAL type items with FIDs and Value list in icf
+                
+        Argument:         
+                    srcfile : the original icf file.\n
+                    dstfile : the modified icf file
+                    ric, domain
+                    fidsAndValues: the Fid name and value dictionary need to be changed
+         
+        return nil
+        """  
+             
+        index = 0
+        itemList = []
+        
+        for (fid,value) in fidsAndValues.items():
+            item = '<it:%s>\n <it:outputFormat>TRWF_REAL_NOT_A_NUM</it:outputFormat>\n <it:value>%s</it:value>\n</it:%s>'%(fid,value,fid)
+            itemList.append(item)
+        
+        _FMUtil().modify_icf(srcfile, dstfile, ric, domain, *itemList)        
+  
+
+
+    def get_exl_file_path_for_lxl_file(self, fms_dir, exl_path): 
+        """Deriving exl path for lxl file from exl full file path
+                 
+        Argument:    
+                    fms_dir : fms directory defined in Venuevariables.py
+                    exl_path : the exl file path no name.\n     
+ 
+        return:
+                    exl directory required by lxl file without file name
+                    Example:
+                    fms_dir  is D:\\tools\\FMSCMD\\config\\DataFiles\\Groups
+                    if exl_path D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\EXL Files
+                    return empty path 
+                    if exl_file D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\MUT\\EXL Files
+                    return path RAM/MFDS/MUT/
+        """  
+            
+        new_path = exl_path.replace(fms_dir + "\\",'').replace('EXL Files','')
+        nodes = new_path.split("\\")   
+        nodes = filter(None, nodes)
+         
+        if len(nodes)<2:
+            raise AssertionError('*ERROR* Cannot determine LXL path based on FMS dir [%s] and EXL path [%s]' %(fms_dir, exl_path))
+         
+        if len(nodes)==2:
+            return ''
+        else:
+            new_path = new_path.replace('\\','/')
+            
+        return new_path
+        
+            
+    def build_LXL_file (self, exl_path_in_lxl, file_list):  
+        '''
+        Argument:    
+                    exl_path_in_lxl : exl path get from by calling get_exl_file_path_for_lxl_file
+                    file_list : the exl file name list (without full path).\n
+        return: 
+                    string contain lxl file content with list of exl file path and name
+        
+        '''
+        file_content = ''
+        for item in file_list:
+            if exl_path_in_lxl:
+                file_content = file_content + exl_path_in_lxl + item + '\n'
+            else:
+                file_content = file_content + item + '\n'
+                
+        return file_content
+        

@@ -66,7 +66,7 @@ Verify Downstream Recovery Functions
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
     ${constituents}=    get constituents from FidFilter    ${VENUE_DIR}    ${contextId}
-    Verify Solicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${pubRic}    ${domain}    ${constituents}
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${pubRic}    ${domain}    ${constituents}
     [Teardown]    case teardown    ${localCapture}
 
 Verify Common Required FID output
@@ -115,7 +115,8 @@ Verify Message Key Name is Compressed
     Wait For Persist File Update    ${MTE}    ${VENUE_DIR}    5    60
     Stop Capture MTE Output    ${MTE}    1    5
     get remote file    ${remoteCapture}    ${localCapture}
-    verify key compression in message    ${localCapture}    ${DAS_DIR}    ${long_ric}
+    ${mangle}    Fetch From Left     ${pubRic}    ${ric}
+    verify key compression in message    ${localCapture}    ${DAS_DIR}     ${mangle}${long_ric}
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    25000    --AllowRICChange true
     [Teardown]    case teardown    ${localCapture}
 

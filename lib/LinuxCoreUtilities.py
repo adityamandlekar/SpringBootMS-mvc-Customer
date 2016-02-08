@@ -136,6 +136,7 @@ class LinuxCoreUtilities():
         | ${res} | set date and time | ${2014} | ${5} | ${6} | ${12} | ${23} | ${59} |
         | ${res} | set date and time | ${EMPTY} | ${EMPTY} | ${EMPTY} | 12 | 23 | 59 |
         """
+        print '*INFO* Setting date/time to: %04d-%02d-%02d %02d:%02d:%02d' %(int(year),int(month),int(day),int(hour),int(min),int(sec))
         return _set_datetime(year, month,day,hour,min,sec, 'linux')
     
     
@@ -152,6 +153,7 @@ class LinuxCoreUtilities():
         | ${res} | set date and time unix | ${2014} | ${5} | ${6} | ${12} | ${23} | ${59} |
         | ${res} | set date and time unix | ${EMPTY} | ${EMPTY} | ${EMPTY} | 12 | 23 | 59 |
         """
+        print '*INFO* Setting date/time to: %04d-%02d-%02d %02d:%02d:%02d' %(int(year),int(month),int(day),int(hour),int(min),int(sec))
         return _set_datetime(year, month,day,hour,min,sec, 'unix')
     
     def convert_EXL_datetime_to_statblock_format(self,exlDatetime):

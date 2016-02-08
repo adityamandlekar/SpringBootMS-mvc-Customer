@@ -328,8 +328,10 @@ class LinuxToolUtilities():
         """
         refDate = '%s-%s-%s' %(timeRef[0], timeRef[1], timeRef[2])
         refTime = '%s:%s:%s' %(timeRef[3], timeRef[4], timeRef[5])
+#         print 'DEBUG refDate %s, refTime %s' %(refDate,refTime)
         dt = LinuxCoreUtilities().get_date_and_time()
         currentFile = '%s/smf-log-files.%s%s%s.txt' %(self.SMFLOGDIR, dt[0], dt[1], dt[2])
+#         print 'DEBUG checking SMF log file %s' %currentFile
 
         # convert  unicode to int (it is unicode if it came from the Robot test)
         timeout = int(timeout)
@@ -337,6 +339,7 @@ class LinuxToolUtilities():
         maxtime = time.time() + float(timeout)
         while time.time() <= maxtime:            
             retMessages = LinuxFSUtilities().grep_remote_file(currentFile, message)
+#             print 'DEBUG retMessages: %s' %retMessages
             if (len(retMessages) > 0):
                 logContents = retMessages[-1].split(';')
                 if (len(logContents) >= 2):
@@ -756,7 +759,7 @@ class LinuxToolUtilities():
                                    
         ipAndPort = self.get_stat_block_field(mte, statblockNames[-1], field + 'OutputAddress').strip().split(':')
         if (len(ipAndPort) != 2):            
-            raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port (return %s)'%(field))
+            raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port, got [%s]'%(field,':'.join(ipAndPort)))
         
         return ipAndPort
     
@@ -1062,8 +1065,8 @@ class LinuxToolUtilities():
         foundfiles = _search_file(searchdir,cfgfile,True)        
         if len(foundfiles) < 1:
             raise AssertionError('*ERROR* %s not found' %cfgfile)
-        elif len(foundfiles) > 1:
-            raise AssertionError('*ERROR* Found more than one file: %s' %cfgfile)     
+        """elif len(foundfiles) > 1:
+            raise AssertionError('*ERROR* Found more than one file: %s' %cfgfile)   """  
                 
         #backup config file
         backupfile = foundfiles[0] + suffix
@@ -1096,34 +1099,7 @@ class LinuxToolUtilities():
         
         if rc !=0 or stderr !='':
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))                
-
-    def set_PE_mangling_value(self,enabled,cfgfile):
-        """enable or disalbe PE mangling by chaning the content of manglingConfiguration.xml
-        enabled : True=enable , False=disable
-        cfgfile : full path of mangling config file xml
-        Returns : Nil
-
-        Examples:
-        | set PE mangling value | True | /ThomsonReuters/Venues/MFDS/MTE/manglingConfiguration.xml |
-        """         
-        #Find configuration file
-        LinuxFSUtilities().remote_file_should_exist(cfgfile)
-
-        #Check if <PE> tag exist
-        searchKeyWord = "<PE enabled="
-        foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-        if (len(foundlines) == 0):
-            raise AssertionError('*ERROR* <PE> tag is missing in %s' %cfgfile)
-                
-        if (enabled):
-            cmd = "sed -i 's/PE enabled=\"false\"/PE enabled=\"true\"/' " + cfgfile
-        else:
-            cmd = "sed -i 's/PE enabled=\"true\"/PE enabled=\"false\"/' " + cfgfile
-        stdout, stderr, rc = _exec_command(cmd)
-        
-        if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))        
-    
+ 
     def set_value_in_MTE_cfg(self, mtecfgfile, tagName, value):
         """change tag value in ${MTE}.xml
         
@@ -1207,76 +1183,6 @@ class LinuxToolUtilities():
         originalNoOfBackupFile = 1 + int(keepDays) + 1
         if not ((originalNoOfBackupFile - len(listOfPersistBackupFiles)) == 1):
             raise AssertionError('*ERROR* Expected no. of backup file remain after cleanup (%d), but (%d) has found' %(originalNoOfBackupFile-1,len(listOfPersistBackupFiles)))
-    
-    def set_mangling_rule_default_value(self,rule,cfgfile):
-        """set the mangling rule (defaultRule) in manglingConfiguration.xml
-        
-        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
-        cfgfile : full path of mangling config file xml
-        Returns : Nil
-
-        Examples:
-        | set mangling rule default value | SOU | /ThomsonReuters/Venues/MFDS/MTE/manglingConfiguration.xml |
-        """
-        
-        #safe check for rule value
-        if (self.MANGLINGRULE.has_key(rule.upper()) == False):
-            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
-            
-        #Find configuration file
-        LinuxFSUtilities().remote_file_should_exist(cfgfile)
-
-        #Check if defaultRule attribute (found under <Partitions> tag) is exist
-        searchKeyWord = "defaultRule="
-        foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-        if (len(foundlines) == 0):
-            raise AssertionError('*ERROR* defaultRule attribute is missing in %s' %cfgfile)
-         
-        cmd = "sed -i 's/defaultRule=\"[^\"]*\"/defaultRule=\"%s\"/' "%self.MANGLINGRULE[rule.upper()] + cfgfile
-        stdout, stderr, rc = _exec_command(cmd)
-        if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))        
-        
-    def set_mangling_rule_partition_value(self,rule,cfgfile,listOfvalues=[]):
-        """set the mangling rule in manglingConfiguration.xml
-        
-        listOfvalues    : list of data of attribute for <Partition> 'value'
-        rule            : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
-        cfgfile         : full path of mangling config file xml
-        Returns         : Nil
-
-        Examples:
-        | set mangling rule partition value | SOU | /ThomsonReuters/Venues/MFDS/MTE/manglingConfiguration.xml |[]|
-        """         
-               
-        #safe check for rule value
-        if (self.MANGLINGRULE.has_key(rule.upper()) == False):
-            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
-            
-        #Find configuration file
-        LinuxFSUtilities().remote_file_should_exist(cfgfile)
-        
-        #Optional (If the config file has <Partition> under <Partitions> also replace all the rule value with required one
-        if (len(listOfvalues) == 0):
-            #Empty List = Replace all <Partition> (if exist) with same rule
-            searchKeyWord = "rule="
-            foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-            if (len(foundlines) > 0):
-                cmd = "sed -i 's/rule=\".*\"/rule=\"%s\"/' "%self.MANGLINGRULE[rule.upper()] + cfgfile
-                stdout, stderr, rc = _exec_command(cmd)
-                if rc !=0 or stderr !='':
-                    raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))             
-        else:
-            for value in listOfvalues:
-                searchKeyWord = "Partition value=\\\"%s\\\""%value
-                foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-                if (len(foundlines) > 0):
-                    cmd = "sed -i 's/Partition value=\"%s\" rule=\".*\"/Partition value=\"%s\" rule=\"%s\"/' "%(value,value,self.MANGLINGRULE[rule.upper()]) + cfgfile
-                    stdout, stderr, rc = _exec_command(cmd)
-                    if rc !=0 or stderr !='':
-                        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
-                else:
-                    print 'Partition value="%s" does not exist in %s' %(value,cfgfile)
         
     def run_dataview(self, dataviewPath, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain, *optArgs):
         """ Argument :
@@ -1295,8 +1201,11 @@ class LinuxToolUtilities():
                 DataView -TRWF2 -IM 232.2.19.229 -IH 10.91.57.71  -PM 7777 -L 4096 -R .[SPSCB1L2_I -D SERVICE_PROVIDER_STATUS -EXITDELAY 5
         """
                             
-        cmd = '%s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (dataviewPath, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
+        # use pathfail to detect failure of a command within a pipeline
+        # remove non-printable chars; dataview COMP_NAME output contains binary characters that can cause utf-8 decode problems
+        cmd = 'set -o pathfail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (dataviewPath, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
         cmd = cmd + ' ' + ' '.join( map(str, optArgs))
+        cmd = cmd + ' | tr -dc \'[:print:],[:space:]\''
         print '*INFO* ' + cmd
         stdout, stderr, rc = _exec_command(cmd)
                 
@@ -1422,4 +1331,36 @@ class LinuxToolUtilities():
             return elements[1]
         else:
             raise AssertionError('*ERROR* The FID can not be found')        
-             
+
+    def rollover_MTE_start_date(self, GMTStartTime):   
+        """Change the MTE machine date to a few seconds before the next StartOfDay time.
+        If current time <  specified time, change to specified time today.
+        If current time >= specified time, change to specified time tomorrow.
+        Waits for start of day instrument update to complete.
+                
+        Argument:         
+                    GMTStartTime     : StartOfDay GMT time with format HH:MM.
+      
+        return nil
+        
+        Examples:
+                    Rollover MTE Start Date  |  09:00 |
+        """  
+
+        secondsBeforeStartTime = timedelta(seconds = 5)
+        aDay = timedelta(days = 1 )
+        currTimeArray = LinuxCoreUtilities().get_date_and_time() # current time as array of strings
+        C = map(int,currTimeArray) # current time as array of INTs
+        T = map(int,GMTStartTime.split(':')) #start time as array of INTs
+        
+        currDateTime = datetime(*C) # current time as dateTime object
+        newDateTime = datetime(C[0],C[1],C[2],T[0],T[1]) - secondsBeforeStartTime
+            
+        if currDateTime >= newDateTime:
+            newDateTime += aDay
+
+        LinuxCoreUtilities().set_date_and_time(newDateTime.year, newDateTime.month, newDateTime.day, newDateTime.hour, newDateTime.minute, newDateTime.second)
+        currTimeArray = newDateTime.strftime('%Y,%m,%d,%H,%M,%S').split(',')
+        self.wait_smf_log_message_after_time('handleStartOfDayInstrumentUpdate.*Ending',currTimeArray)
+    
+    
