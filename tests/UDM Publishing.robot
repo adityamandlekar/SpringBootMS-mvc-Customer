@@ -120,36 +120,37 @@ Verify Message Key Name is Compressed
     [Teardown]    case teardown    ${localCapture}
 
 Verify SPS RIC is published
-    [Documentation]    Verify SPS RIC is published
+    [Documentation]    Verify SPS RIC and SPS Input Stats RIC are published.
+    ...    Since Recon creates the ddnLabels.xml file, we cannot verify that the SPS RIC name is defined using the correct rules in the production label files.
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1757
-    ${MTE_Name}=    Split String    ${MTE}    0
-    ${published_SPS_ric_sub_provider}=    set variable    .[SPS${MTE_Name[0]}1ML1_D
-    ${published_SPS_ric_input_stats}=    set variable    .[SPS${MTE_Name[0]}1ML1_D_INS
+    ${mteConfigFile}=    Get MTE Config File
+    @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
+    ${SPSric}=    Get SPS RIC From Label File    @{labelIDs}[0]
+    ${SPSric_input_stats}=    set variable    ${SPSric}_INS
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     Start Capture MTE Output    ${MTE}    ${remoteCapture}
-    Stop Capture MTE Output    ${MTE}    1    5
+    Stop Capture MTE Output    ${MTE}    5    10
     get remote file    ${remoteCapture}    ${localCapture}
-    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_SPS_ric_sub_provider}    SERVICE_PROVIDER_STATUS    0
-    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_SPS_ric_input_stats}    SERVICE_PROVIDER_STATUS    0
-    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_SPS_ric_sub_provider}    SERVICE_PROVIDER_STATUS    1
-    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${published_SPS_ric_input_stats}    SERVICE_PROVIDER_STATUS    1
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${SPSric}    SERVICE_PROVIDER_STATUS    0
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${SPSric_input_stats}    SERVICE_PROVIDER_STATUS    0
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${SPSric}    SERVICE_PROVIDER_STATUS    1
+    Verify Unsolicited Response in Capture    ${localCapture}    ${DAS_DIR}    ${SPSric_input_stats}    SERVICE_PROVIDER_STATUS    1
     [Teardown]    case teardown    ${localCapture}
 
 Verify DDS RIC is published
     [Documentation]    Verify DDS RIC is published
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1758
-    ${OffSet}=    set variable    ${0}
-    ${str}=    set variable    00000
+    ${FiveZeros}=    set variable    00000
     ${mteConfigFile}=    Get MTE Config File
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
     : FOR    ${labelID}    IN    @{labelIDs}
     \    ${Length}=    Get Length    ${label_ID}
     \    ${OffSet}=    Evaluate    5 - ${Length}
-    \    ${ZeroPaddedLableID}=    Get Substring    ${str}    0    ${OffSet}
+    \    ${ZeroPaddedLableID}=    Get Substring    ${FiveZeros}    0    ${OffSet}
     \    ${ZeroPaddedLableID}=    Catenate    SEPARATOR=    ${ZeroPaddedLableID}    ${label_ID}
     \    ${published_DDS_ric}=    set variable    .[----${MTE}${ZeroPaddedLableID}
     \    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
