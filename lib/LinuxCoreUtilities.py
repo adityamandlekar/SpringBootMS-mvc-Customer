@@ -57,9 +57,9 @@ class LinuxCoreUtilities():
         return G_SSHInstance.read_command_output(return_stdout, return_stderr,
                             return_rc)
         
-    def get_process_pid_pattern(self, *process_pattern): 
+    def Get_process_and_pid_matching_pattern(self, *process_pattern): 
         """
-        From process patterns return dictionary contains process_pattern and its pid
+        From process patterns return dictionary contains pid and process_pattern
         Examples:
         | MTE -c ${MTE} | GRS -cfg  | FHController -cfg |
         
