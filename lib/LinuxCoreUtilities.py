@@ -32,6 +32,9 @@ class LinuxCoreUtilities():
                         newline, prompt, term_type, width,
                         height, path_separator, encoding)
         
+    def get_current_connection_index(self):   
+        return G_SSHInstance.get_connection(index = True)
+        
     def close_connection(self):
         G_SSHInstance.close_connection()
         
