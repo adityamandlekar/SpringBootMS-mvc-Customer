@@ -17,7 +17,7 @@ REMOTE_TMP_DIR = '/tmp'
 TOOLS_DIR      = '/usr'
 
 # Local Machine Settings
-DAS_DIR          = 'C:\\Program Files\\Reuters Test Tools\\DAS'
+LOCAL_DAS_DIR    = 'C:\\Program Files\\Reuters Test Tools\\DAS'
 LOCAL_PMAT_DIR   = 'C:\\PMAT\\x64'
 LOCAL_FMS_DIR    = 'D:\\tools\\FMSCMD\\config\\DataFiles\\Groups'
 LOCAL_FMS_BIN    = 'D:\\tools\\FMSCMD\\bin'
