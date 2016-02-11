@@ -102,8 +102,8 @@ Check input port stats
     [Arguments]    ${identifierName}    ${statIdentifier}    ${statField}    ${statValue}
     [Documentation]    Note that all input port stats blocks (that have ${identifierName} set to ${statIdentifier}) will be checked here.
     : FOR    ${index}    IN RANGE    0    255
-    \    ${identifier}    get stat block field    ${mte}    InputPortStatsBlock_${index}    ${identifierName}
-    \    run keyword if    '${identifier}' == '${statIdentifier}'    wait for statBlock    ${mte}    InputPortStatsBlock_${index}    ${statField}
+    \    ${identifier}    get stat block field    ${MTE}    InputPortStatsBlock_${index}    ${identifierName}
+    \    run keyword if    '${identifier}' == '${statIdentifier}'    wait for statBlock    ${MTE}    InputPortStatsBlock_${index}    ${statField}
     \    ...    ${statValue}    waittime=2    timeout=300
 
 Get venue local datetime from MTE
@@ -163,17 +163,17 @@ Set times for OUT state
 
 Calculate DST start date and check stat
     [Arguments]    ${dstRicName}    ${dstStartDatetime}
-    ${normalGMTOffset}    get stat block field    ${mte}    ${dstRicName}    normalGMTOffset
+    ${normalGMTOffset}    get stat block field    ${MTE}    ${dstRicName}    normalGMTOffset
     ${startDatetime}    subtract time from date    ${dstStartDatetime}    ${normalGMTOffset} second    result_format=%Y-%m-%dT%H:%M:%S.0
     ${expectedStartDatetime}    convert EXL datetime to statblock format    ${startDatetime}
-    wait for statBlock    ${mte}    ${dstRicName}    ${dstStartDateStatField}    ${expectedStartDatetime}    waittime=2    timeout=120
+    wait for statBlock    ${MTE}    ${dstRicName}    ${dstStartDateStatField}    ${expectedStartDatetime}    waittime=2    timeout=120
 
 Calculate DST end date and check stat
     [Arguments]    ${dstRicName}    ${dstEndDatetime}
-    ${dstGMTOffset}    get stat block field    ${mte}    ${dstRicName}    dstGMTOffset
+    ${dstGMTOffset}    get stat block field    ${MTE}    ${dstRicName}    dstGMTOffset
     ${endDatetime}    subtract time from date    ${dstEndDatetime}    ${dstGMTOffset} second    result_format=%Y-%m-%dT%H:%M:%S.0
     ${expectedEndDatetime}    convert EXL datetime to statblock format    ${endDatetime}
-    wait for statBlock    ${mte}    ${dstRicName}    ${dstEndDateStatField}    ${expectedEndDatetime}    waittime=2    timeout=120
+    wait for statBlock    ${MTE}    ${dstRicName}    ${dstEndDateStatField}    ${expectedEndDatetime}    waittime=2    timeout=120
 
 Go into DST and check stats
     [Arguments]    ${dstExlFile}    ${dstRicName}    ${domainName}    ${gmtDateTime}
@@ -189,8 +189,8 @@ Go into DST and check stats
     remove files    ${dstExlFileModified}
     Calculate DST start date and check stat    ${dstRicName}    ${dstStartDatetime}
     Calculate DST end date and check stat    ${dstRicName}    ${dstEndDatetime}
-    ${expectedDstGMTOffset}    get stat block field    ${mte}    ${dstRicName}    dstGMTOffset
-    wait for statBlock    ${mte}    ${dstRicName}    currentGMTOffset    ${expectedDstGMTOffset}    waittime=2    timeout=120
+    ${expectedDstGMTOffset}    get stat block field    ${MTE}    ${dstRicName}    dstGMTOffset
+    wait for statBlock    ${MTE}    ${dstRicName}    currentGMTOffset    ${expectedDstGMTOffset}    waittime=2    timeout=120
 
 Go outside DST and check stats
     [Arguments]    ${dstExlFile}    ${dstRicName}    ${domainName}    ${gmtDateTime}
@@ -206,14 +206,13 @@ Go outside DST and check stats
     remove files    ${dstExlFileModified}
     Calculate DST start date and check stat    ${dstRicName}    ${dstStartDatetime}
     Calculate DST end date and check stat    ${dstRicName}    ${dstEndDatetime}
-    ${expectedDstGMTOffset}    get stat block field    ${mte}    ${dstRicName}    normalGMTOffset
-    wait for statBlock    ${mte}    ${dstRicName}    currentGMTOffset    ${expectedDstGMTOffset}    waittime=2    timeout=120
+    ${expectedDstGMTOffset}    get stat block field    ${MTE}    ${dstRicName}    normalGMTOffset
+    wait for statBlock    ${MTE}    ${dstRicName}    currentGMTOffset    ${expectedDstGMTOffset}    waittime=2    timeout=120
 
 Run Feed Time test
     : FOR    ${feedTimeRicName}    IN    @{feedTimeRicList}
     \    Append to list    ${processedFeedTimeRics}    ${feedTimeRicName}
-    \    ${feedTimeExlFile}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}
-    \    ...    Feed Time
+    \    ${feedTimeExlFile}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
     \    Append to list    ${processedFeedTimeExlFiles}    ${feedTimeExlFile}
     \    ${dstRicName}    ${holidayRicName}    get DST and holiday RICs from EXL    ${feedTimeExlFile}    ${feedTimeRicName}
     \    ${currentDateTime}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName}
@@ -248,8 +247,7 @@ Go outside feed time and check stat
 Go into feed time for all feed time RICs
     [Documentation]    Sets the box so it goes into feed time for all @{feedTimeRicList} and verifies ${feedTimeStatField} is set to 1.
     : FOR    ${feedTimeRicName}    IN    @{feedTimeRicList}
-    \    ${feedTimeExlFile}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}
-    \    ...    Feed Time
+    \    ${feedTimeExlFile}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
     \    Append to list    ${processedFeedTimeExlFiles}    ${feedTimeExlFile}
     \    ${dstRicName}    ${holidayRicName}    get DST and holiday RICs from EXL    ${feedTimeExlFile}    ${feedTimeRicName}
     \    ${currentDateTime}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName}
@@ -258,8 +256,7 @@ Go into feed time for all feed time RICs
 Go outside feed time for all feed time RICs
     [Documentation]    Sets the box so it goes outside of feed time for all @{feedTimeRicList} and verifies ${feedTimeStatField} is set to 0.
     : FOR    ${feedTimeRicName}    IN    @{feedTimeRicList}
-    \    ${feedTimeExlFile}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}
-    \    ...    Feed Time
+    \    ${feedTimeExlFile}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
     \    Append to list    ${processedFeedTimeExlFiles}    ${feedTimeExlFile}
     \    ${dstRicName}    ${holidayRicName}    get DST and holiday RICs from EXL    ${feedTimeExlFile}    ${feedTimeRicName}
     \    ${currentDateTime}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName}
@@ -294,8 +291,7 @@ Go outside holiday and check stat
 Run Trade Time test
     : FOR    ${tradeTimeRicName}    IN    @{tradeTimeRicList}
     \    Append to list    ${processedTradeTimeRics}    ${tradeTimeRicName}
-    \    ${tradeTimeExlFile}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}
-    \    ...    Trade Time
+    \    ${tradeTimeExlFile}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    Trade Time
     \    Append to list    ${processedTradeTimeExlFiles}    ${tradeTimeExlFile}
     \    ${dstRicName}    ${holidayRicName}    get DST and holiday RICs from EXL    ${tradeTimeExlFile}    ${tradeTimeRicName}
     \    ${currentDateTime}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName}
@@ -331,8 +327,7 @@ Go into trade time for all trade time RICs
     [Documentation]    Sets the box so it goes into trade time for all @{tradeTimeRicList} and verifies ${tradeTimeStatField} is set to 1.
     : FOR    ${tradeTimeRicName}    IN    @{tradeTimeRicList}
     \    Append to list    ${processedTradeTimeRics}    ${tradeTimeRicName}
-    \    ${tradeTimeExlFile}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}
-    \    ...    Trade Time
+    \    ${tradeTimeExlFile}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    Trade Time
     \    Append to list    ${processedTradeTimeExlFiles}    ${tradeTimeExlFile}
     \    ${dstRicName}    ${holidayRicName}    get DST and holiday RICs from EXL    ${tradeTimeExlFile}    ${tradeTimeRicName}
     \    ${currentDateTime}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName}
@@ -367,15 +362,15 @@ DST Setup
     Set Suite Variable    ${tradeTimeRicName}
     ${domain}    Get Preferred Domain    MARKET_PRICE
     Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
-    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
+    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
+    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    Trade Time
     ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedDstRic}
     ${tradeDstRic}    ${tradeHolidayRic}    Get DST And Holiday RICs From EXL    ${tradeTimeEXL}    ${tradeTimeRicName}
     Set Suite Variable    ${tradeDstRic}
-    ${feedDstEXL}    get state EXL file    ${feedDstRic}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    DST
+    ${feedDstEXL}    get state EXL file    ${feedDstRic}    ${domain}    ${serviceName}    DST
     Set Suite Variable    ${feedDstEXL}
-    ${tradeDstEXL}    get state EXL file    ${tradeDstRic}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    DST
+    ${tradeDstEXL}    get state EXL file    ${tradeDstRic}    ${domain}    ${serviceName}    DST
     Set Suite Variable    ${tradeDstEXL}
 
 DST Teardown
@@ -392,7 +387,7 @@ Feed Time Initialize Variables
     Set Suite Variable    @{processedFeedTimeExlFiles}
     @{processedFeedTimeRics} =    create list
     Set Suite Variable    @{processedFeedTimeRics}
-    @{feedTimeRicList}    Get RIC List From StatBlock    ${mte}    Feed Time
+    @{feedTimeRicList}    Get RIC List From StatBlock    Feed Time
     Sort List    ${feedTimeRicList}
     Set Suite Variable    @{feedTimeRicList}
 
@@ -409,15 +404,15 @@ Feed Time Setup
     Set Suite Variable    ${tradeTimeRicName}
     ${domain}    Get Preferred Domain    MARKET_PRICE
     Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
-    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
+    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
+    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    Trade Time
     ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedHolidayRic}
     ${tradeDstRic}    ${tradeHolidayRic}    Get DST And Holiday RICs From EXL    ${tradeTimeEXL}    ${tradeTimeRicName}
     Set Suite Variable    ${tradeHolidayRic}
-    ${feedHolidayEXL}    get state EXL file    ${feedHolidayRic}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Holiday
+    ${feedHolidayEXL}    get state EXL file    ${feedHolidayRic}    ${domain}    ${serviceName}    Holiday
     Set Suite Variable    ${feedHolidayEXL}
-    ${tradeHolidayEXL}    get state EXL file    ${tradeHolidayRic}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Holiday
+    ${tradeHolidayEXL}    get state EXL file    ${tradeHolidayRic}    ${domain}    ${serviceName}    Holiday
     Set Suite Variable    ${tradeHolidayEXL}
     Go outside holiday and check stat    ${feedHolidayEXL}    ${feedHolidayRic}    ${domain}    ${currentDateTime}
     Go outside holiday and check stat    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${domain}    ${currentDateTime}
@@ -450,15 +445,15 @@ Holiday Setup
     Set Suite Variable    ${tradeTimeRicName}
     ${domain}    Get Preferred Domain    MARKET_PRICE
     Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
-    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
+    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
+    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    Trade Time
     ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedHolidayRic}
     ${tradeDstRic}    ${tradeHolidayRic}    Get DST And Holiday RICs From EXL    ${tradeTimeEXL}    ${tradeTimeRicName}
     Set Suite Variable    ${tradeHolidayRic}
-    ${feedHolidayEXL}    get state EXL file    ${feedHolidayRic}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Holiday
+    ${feedHolidayEXL}    get state EXL file    ${feedHolidayRic}    ${domain}    ${serviceName}    Holiday
     Set Suite Variable    ${feedHolidayEXL}
-    ${tradeHolidayEXL}    get state EXL file    ${tradeHolidayRic}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Holiday
+    ${tradeHolidayEXL}    get state EXL file    ${tradeHolidayRic}    ${domain}    ${serviceName}    Holiday
     Set Suite Variable    ${tradeHolidayEXL}
 
 Holiday Cleanup
@@ -479,7 +474,7 @@ Trade Time Initialize Variables
     Set Suite Variable    @{processedTradeTimeExlFiles}
     @{processedTradeTimeRics} =    create list
     Set Suite Variable    @{processedTradeTimeRics}
-    @{tradeTimeRicList}    Get RIC List From StatBlock    ${mte}    Trade Time
+    @{tradeTimeRicList}    Get RIC List From StatBlock    Trade Time
     Sort List    ${tradeTimeRicList}
     Set Suite Variable    @{tradeTimeRicList}
 
@@ -497,21 +492,20 @@ Trade Time Setup
     Set Suite Variable    ${tradeTimeRicName}
     ${domain}    Get Preferred Domain    MARKET_PRICE
     Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Feed Time
-    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Trade Time
+    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
+    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    Trade Time
     ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
     Set Suite Variable    ${feedHolidayRic}
     ${tradeDstRic}    ${tradeHolidayRic}    Get DST And Holiday RICs From EXL    ${tradeTimeEXL}    ${tradeTimeRicName}
     Set Suite Variable    ${tradeHolidayRic}
-    ${feedHolidayEXL}    get state EXL file    ${feedHolidayRic}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Holiday
+    ${feedHolidayEXL}    get state EXL file    ${feedHolidayRic}    ${domain}    ${serviceName}    Holiday
     Set Suite Variable    ${feedHolidayEXL}
-    ${tradeHolidayEXL}    get state EXL file    ${tradeHolidayRic}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Holiday
+    ${tradeHolidayEXL}    get state EXL file    ${tradeHolidayRic}    ${domain}    ${serviceName}    Holiday
     Set Suite Variable    ${tradeHolidayEXL}
     Go outside holiday and check stat    ${feedHolidayEXL}    ${feedHolidayRic}    ${domain}    ${currentDateTime}
     Go outside holiday and check stat    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${domain}    ${currentDateTime}
     : FOR    ${feedTimeRicName}    IN    @{feedTimeRicList}
-    \    ${feedTimeExlFile}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}
-    \    ...    Feed Time
+    \    ${feedTimeExlFile}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
     \    Append to list    ${processedFeedTimeExlFiles}    ${feedTimeExlFile}
     \    ${dstRicName}    ${holidayRicName}    get DST and holiday RICs from EXL    ${feedTimeExlFile}    ${feedTimeRicName}
     \    ${currentDateTime}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName}
@@ -534,8 +528,7 @@ Go Into Closing Run Time For All Closing Run RICs
     @{closingRunExlFiles}    create list
     set suite variable    @{closingRunExlFiles}
     : FOR    ${closingrunRicName}    IN    @{closingrunRicList}
-    \    ${closingRunExlFile}    get state EXL file    ${closingrunRicName}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}
-    \    ...    Closing Run
+    \    ${closingRunExlFile}    get state EXL file    ${closingrunRicName}    ${domain}    ${serviceName}    Closing Run
     \    ${dstRicName}    get ric fields from EXL    ${closingRunExlFile}    ${closingrunRicName}    DST_REF
     \    Append to list    ${processedClosingrunRicName}    ${closingrunRicName}
     \    ${dt}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName[0]}
@@ -545,14 +538,14 @@ Go Into Closing Run Time For All Closing Run RICs
     \    ${closingRunExlfileModified}=    set variable    ${LOCAL_TMP_DIR}/${closingRunExlFileOnly}_modified.exl
     \    modify EXL    ${closingRunExlFile}    ${closingRunExlfileModified}    ${closingrunRicName}    ${domain}    <it:SCHEDULE_${weekDay}>\n<it:TIME>${closingRunTimeStartTime}</it:TIME>\n</it:SCHEDULE_${weekDay}>
     \    Append to list    @{closingRunExlFiles}    ${closingRunExlFile}
-    \    Load Single EXL File    ${closingRunExlfileModified}    ${serviceName}    ${CHE_IP}    25000
+    \    Load Single EXL File    ${closingRunExlfileModified}    ${serviceName}    ${CHE_IP}
     \    remove files    ${closingRunExlfileModified}
     \    sleep    1 minutes 20 seconds
     \    wait smf log message after time    ClosingRunEventHandler for [0-9]*.*?TRIGGERING    ${dt}    5    120
     [Return]    @{processedClosingrunRicName}
 
 Initialize for Closing Run
-    @{closingrunRicList}    Get RIC List From StatBlock    ${MTE}    Closing Run
+    @{closingrunRicList}    Get RIC List From StatBlock    Closing Run
     Sort List    ${closingrunRicList}
     set suite variable    @{closingrunRicList}
     ${mteconfigfile}    Get MTE Config File
@@ -560,10 +553,10 @@ Initialize for Closing Run
     set suite variable    ${domain}
     ${serviceName}    Get FMS Service Name
     set suite variable    ${serviceName}
-    ${closingRunExlFile}    get state EXL file    ${closingrunRicList[0]}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Closing Run
+    ${closingRunExlFile}    get state EXL file    ${closingrunRicList[0]}    ${domain}    ${serviceName}    Closing Run
     ${closingRunDstRic}    ${closingRunHolidayRic}    Get DST And Holiday RICs From EXL    ${closingRunExlFile}    ${closingrunRicList[0]}
     ${currentDateTime}    get date and time
-    ${closingRunHolidayEXL}    get state EXL file    ${closingRunHolidayRic}    ${domain}    ${serviceName}    ${LOCAL_FMS_DIR}    Holiday
+    ${closingRunHolidayEXL}    get state EXL file    ${closingRunHolidayRic}    ${domain}    ${serviceName}    Holiday
     set suite variable    ${closingRunHolidayEXL}
     Holiday Initialize Variables
     ${feedTimeRicName}    Get ConnectTimesIdentifier    ${mteconfigfile}
@@ -573,33 +566,33 @@ Initialize for Closing Run
 Re-schedule Closing Run teardown
     Load Single EXL File    ${closingRunHolidayEXL}    ${serviceName}    ${CHE_IP}
     : FOR    ${closingRunExlFile}    IN    @{closingRunExlFiles}
-    \    Load Single EXL File    ${closingRunExlFile}    ${serviceName}    ${CHE_IP}    25000
+    \    Load Single EXL File    ${closingRunExlFile}    ${serviceName}    ${CHE_IP}
 
 Manual ClosingRun for a RIC
     [Arguments]    ${sampleRic}    ${publishKey}    ${domain}
-    Start Capture MTE Output    ${MTE}
+    Start Capture MTE Output
     ${currentDateTime}    get date and time
-    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}
-    ...    Close    --RIC ${sampleRic}    --Domain ${domain}
+    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    Close    --RIC ${sampleRic}
+    ...    --Domain ${domain}
     wait SMF log message after time    Closing RIC: ${sampleRic}    ${currentDateTime}    2    60
-    Stop Capture MTE Output    ${MTE}
+    Stop Capture MTE Output
     ${localcapture}    set variable    ${LOCAL_TMP_DIR}/capture_local.pcap
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
-    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${DAS_DIR}    ${publishKey}
+    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${publishKey}
     remove files    ${localcapture}
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
 
 Manual ClosingRun for the EXL File including target Ric
     [Arguments]    ${sampleRic}    ${publishKey}    ${domain}
-    ${sampleExlFile}    get_EXL_for_RIC    ${LOCAL_FMS_DIR}    ${domain}    ${serviceName}    ${sampleRic}
-    Start Capture MTE Output    ${MTE}
+    ${sampleExlFile}    get_EXL_for_RIC    ${domain}    ${serviceName}    ${sampleRic}
+    Start Capture MTE Output
     ${currentDateTime}    get date and time
-    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}
-    ...    Close    --Services ${serviceName}    --BypassFiltering ${True}    --SendOrphanedToAllHeadends ${True}    --ClosingRunRule 1000    --InputFile "${sampleExlFile}"
+    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    Close    --Services ${serviceName}
+    ...    --BypassFiltering ${True}    --SendOrphanedToAllHeadends ${True}    --ClosingRunRule 1000    --InputFile "${sampleExlFile}"
     wait SMF log message after time    Closing RIC:    ${currentDateTime}    2    60
-    Stop Capture MTE Output    ${MTE}
+    Stop Capture MTE Output
     ${localcapture}    set variable    ${LOCAL_TMP_DIR}/capture_local.pcap
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
-    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${DAS_DIR}    ${publishKey}
+    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${publishKey}
     remove files    ${localcapture}
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
