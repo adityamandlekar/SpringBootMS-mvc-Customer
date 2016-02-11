@@ -11,15 +11,17 @@ USERNAME       = 'root'
 PASSWORD       = 'Pegestech01'
 MTE            = 'VENUEnnM'
 FH             = 'VENUEnnF'
+VENUE_DIR      = '/ThomsonReuters/Venues/'
+BASE_DIR       = '/ThomsonReuters/'
+REMOTE_TMP_DIR = '/tmp'
+TOOLS_DIR      = '/usr'
+
+# Playback Machine Settings
 PLAYBACK_IP       = '167.76.115.28'
 PLAYBACK_PORT     = '22'
 PLAYBACK_USERNAME = 'root'
 PLAYBACK_PASSWORD = 'Pegestech1'
 PLAYBACK_PCAP_DIR ='/data/'
-VENUE_DIR      = '/ThomsonReuters/Venues/'
-BASE_DIR       = '/ThomsonReuters/'
-REMOTE_TMP_DIR = '/tmp'
-TOOLS_DIR      = '/usr'
 
 # Local Machine Settings
 DAS_DIR          = 'C:\\Program Files\\Reuters Test Tools\\DAS'

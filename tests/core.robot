@@ -93,23 +93,16 @@ Dump Persist File To XML
     Remove Files    ${localPersistFile}
     [Return]    ${pmatXmlDumpfile}
 
-Generate Functional Test Playback PCAP Filenames
-    [Arguments]    ${test_case}    ${key}    ${value}
+Generate PCAP File Name
+    [Arguments]    ${service}    ${testCase}    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
     ...
-    ...    Generate the file name based on VenueVariables and input key/value pairs.
-    ...    If the file name in the playback box does not match the naming conventions enforced by the Keyword, the test will fail with 'file does not exist' error message
+    ...    Generate the file name based on service name, test case and input key/value pairs.
     ...
     ...    Example: TDDS_BDDS-MyTestName-FH=TDDS01F.pcap TDDS_BDDS-TransientGap-FH=TDDS01F.pcap
-    ${service}    Get FMS Service Name
-    ${file_name}=    set variable    ${service}-${test_case}-${key}=${value}
-    ${host}=    get current connection index
-    ${plyblk_host}    open connection    host=${PLAYBACK_IP}    port=${PLAYBACK_PORT}    timeout=5
-    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
-    remote file should exist    ${PLAYBACK_PCAP_DIR}${file_name}
-    close connection
-    Switch Connection    ${host}
-    [Return]    ${file_name}
+    ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}
+    ${pcapFileName} =    Catenate    SEPARATOR=    ${pcapFileName}    .pcap
+    [Return]    ${pcapFileName}
 
 Get ConnectTimesIdentifier
     [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
