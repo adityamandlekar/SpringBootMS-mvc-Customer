@@ -93,6 +93,17 @@ Dump Persist File To XML
     Remove Files    ${localPersistFile}
     [Return]    ${pmatXmlDumpfile}
 
+Generate PCAP File Name
+    [Arguments]    ${service}    ${testCase}    @{keyValuePairs}
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
+    ...
+    ...    Generate the file name based on service name, test case and input key/value pairs.
+    ...
+    ...    Example: TDDS_BDDS-MyTestName-FH=TDDS01F.pcap TDDS_BDDS-TransientGap-FH=TDDS01F.pcap
+    ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}
+    ${pcapFileName} =    Catenate    SEPARATOR=    ${pcapFileName}    .pcap
+    [Return]    ${pcapFileName}
+
 Get ConnectTimesIdentifier
     [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
     [Documentation]    get the ConnectTimesIdentifier (feed times RIC) from venue config file.
