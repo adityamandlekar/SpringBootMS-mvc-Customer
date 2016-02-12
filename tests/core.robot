@@ -412,8 +412,8 @@ Start Capture MTE Output
 Start MTE
     [Documentation]    Start the MTE and wait for initialization to complete.
     ${result}=    find processes by pattern    MTE -c ${MTE}
-    Run keyword if    '${result}'!=''    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
-    Return from keyword if    '${result}'!=''
+    Run keyword if    len($result) != 0    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
+    Return from keyword if    len($result) != 0
     run commander    process    start ${MTE}
     wait for process to exist    MTE -c ${MTE}
     wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
