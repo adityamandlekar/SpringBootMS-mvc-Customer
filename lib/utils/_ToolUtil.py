@@ -3,13 +3,13 @@ import os
 import glob
 
 from utils.rc import _rc
-from utils.localconfig import LocalTemp
 from utils.local import _run_local_command
+from VenueVariables import *
 
 class _ToolUtil():
-    def _run_local_das(self, InstallPath, PcapFile, parameterfile, outputfile, ProtocolType, source, rule):
+    def _run_local_das(self, PcapFile, parameterfile, outputfile, ProtocolType, source, rule):
         cmd = 'DASCLI.exe -f "%s" -c "%s" -p %s' % (PcapFile, parameterfile, ProtocolType)
-        rc,stdout,stderr = _run_local_command(cmd, True, InstallPath)
+        rc,stdout,stderr = _run_local_command(cmd, True, LOCAL_DAS_DIR)
         if rc != 0:
             raise AssertionError('*ERROR* %s' %stderr)
         if stdout.lower().find('error') != -1 or stderr.lower().find('error') != -1:
@@ -34,7 +34,7 @@ class _ToolUtil():
         else:
             outputformat = outputformat.upper()
            
-        objFile1 = open('%s/parameter_file.xml' %LocalTemp, 'w')        
+        objFile1 = open('%s/parameter_file.xml' %LOCAL_TMP_DIR, 'w')        
         objFile1.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         objFile1.write('<module name="EXTRACTOR">\n')
         objFile1.write('    <time start="01/02/1000 06:26:34.3631880" end="01/02/9999 06:26:34.3631880" />\n')
@@ -48,10 +48,10 @@ class _ToolUtil():
         objFile1.write('    <output file="%s" format="%s" rebuild="%s" showFID="True" showHex="True" volume="%d" />\n' % (outputfile, outputformat, rebuild, maxFileSize))
         objFile1.write('</module>')          
         objFile1.close()
-        return '%s/parameter_file.xml' %LocalTemp
+        return '%s/parameter_file.xml' %LOCAL_TMP_DIR
         
     def _gen_dvt_parameter(self, outputfile, source, filter, rule):
-        objFile1 = open('%s/parameter_file.xml' %LocalTemp, 'w') 
+        objFile1 = open('%s/parameter_file.xml' %LOCAL_TMP_DIR, 'w') 
         objFile1.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         objFile1.write('<module name="TRWFDVT">\n')
         objFile1.write('    <time start="" end="" />\n')
@@ -62,12 +62,11 @@ class _ToolUtil():
         objFile1.write('    <output file="%s"/>\n' % outputfile)
         objFile1.write('</module>')
         objFile1.close()
-        return '%s/parameter_file.xml' %LocalTemp
+        return '%s/parameter_file.xml' %LOCAL_TMP_DIR
     
     
-    def run_das_extractor_locally(self, InstallPath, PcapFile, outputfile, filter, ProtocolType='MTP', maxFileSize=0):
+    def run_das_extractor_locally(self, PcapFile, outputfile, filter, ProtocolType='MTP', maxFileSize=0):
         """ run DAS locally.\n
-        InstallPath is DAS install path.\n
         PcapFile is the pcap file fullpath.\n
         outputfile is the output file fullpath. Make sure the suffix is correct, because the suffix will determine the outputFormat.
         
@@ -79,13 +78,12 @@ class _ToolUtil():
         | ${res} | run das extractor locally | C:/Program Files/Reuters Test Tools/DAS | c:/temp/rat2.pcap | c:/temp/1.xml | AND(All_msgBase_msgKey_name = &quot;${ric}&quot;, All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;) | MTP |
         """
         self._gen_extractor_parameter(outputfile, filter, ProtocolType, maxFileSize)
-        parameterfile = '%s/parameter_file.xml' %LocalTemp
-        return self._run_local_das(InstallPath, PcapFile,parameterfile,outputfile, ProtocolType,'','')
+        parameterfile = '%s/parameter_file.xml' %LOCAL_TMP_DIR
+        return self._run_local_das(PcapFile,parameterfile,outputfile, ProtocolType,'','')
     
         
-    def run_das_dvt_locally(self, InstallPath, PcapFile, outputfile, source, filter, rule, ProtocolType='MTP'):
+    def run_das_dvt_locally(self, PcapFile, outputfile, source, filter, rule, ProtocolType='MTP'):
         """ run DAS locally.\n
-        InstallPath is DAS install path.\n
         PcapFile is the pcap file fullpath.\n
         outputfile is the output file fullpath.\n
         
@@ -96,8 +94,8 @@ class _ToolUtil():
         | ${res} | run das dvt locally | C:/Program Files/Reuters Test Tools/DAS | c:/temp/rat2.pcap | c:/temp/1.csv | CVA | All_msgBase_msgKey_name = &quot;!!DAST.PA&quot; | c:/TRWFRules.xml | MTP |
         """
         self._gen_dvt_parameter(outputfile, source, filter, rule)
-        parameterfile = '%s/parameter_file.xml' %LocalTemp
-        return self._run_local_das(InstallPath, PcapFile,parameterfile,outputfile, ProtocolType, source, rule)
+        parameterfile = '%s/parameter_file.xml' %LOCAL_TMP_DIR
+        return self._run_local_das(PcapFile,parameterfile,outputfile, ProtocolType, source, rule)
         
     def _gen_FmsCmd_str(self, headend,port, TaskType, RIC, Domain, HandlerName, Services, InputFile , OutputFile, ClosingRunRule, RebuildConstituent, SIC, ExecutionEndPoint, handlerDropType, RebuildFrom, RebuildSpeed, ResetSequenceNumber, Throttle, SRCFile, InputFile2):
         cmd_based = 'FmsCmd.exe --TaskType %s ' % TaskType
@@ -215,100 +213,43 @@ class _ToolUtil():
                 return 5
         return 0
     
-    def run_FmsCmd_with_headend(self, headend, port, InstallPath, TaskType, RIC, Domain, HandlerName='', Services='', InputFile='' , OutputFile='', ClosingRunRule='', RebuildConstituent='', SIC='', ExecutionEndPoint='', handlerDropType='', RebuildFrom='', RebuildSpeed='', ResetSequenceNumber='', Throttle='', SRCFile='', InputFile2=''):
-        """      
-        FmsCmd usage:\n
-        --TaskType            FmsCmd TaskTypes: Process, Extract, Insert, Recon, Close, Rebuild, Drop, UnDrop or DBRebuild, search, compare\n
-        --InputFile           Input file for tasks: exl, lxl, icf...\n
-        --HandlerName         Specify a handlername or do the task again all handlers on the headend IP and port\n
-        --RIC                 RIC used in task\n
-        --SIC                 SIC used in task\n
-        --Domain              Domain used in task, like MARKET_PRICE\n
-        --OutputFile          Output file for tasks: icf...\n
-        --Services            Services for Recon task\n
-        --ClosingRunRule      Closing Run Rule for Close task\n
-        --RebuildConstituents Rebuild Constituents for Rebuild and DBRebuild task\n
-        --ExecutionEndPoint   Execution End Point for Drop task: "HandlerAndDownstream", "HandlerOnly" or "DownstreamOnly"\n
-        --HandlerDropType     Handler Drop Type for Drop task: "Default", "Purge" or "CloseRecover"\n
-        --RebuildFrom         Rebuild from time for DBRebuild task in the format of: "yyyy-MM-dd HH:mm:ss"\n
-        --RebuildSpeed        Rebuild speed for DBRebuild task: "SLOW" or "FAST"\n
-        --ResetSequenceNumber ResetSequenceNumber for DBRebuild task\n
-        --Throttle            Throttle for DBRebuild task as messages per seconds, or 0 for no throttle\n
-        --SRCFile             SRC file for dual key changing Process task\n
-        --InputFile2          used for icf compare task.\n
-        
-        Return: [RC, fmscmd log, fmscmd cmd]. RC can be 0 or 5 or 13.
-        
-        Examples:
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Rebuild | CB.N | MARKET_PRICE |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Rebuild | CB.N | MARKET_PRICE | VAE_1 | NYSE | ${EMPTY} | ${EMPTY} | ${EMPTY} | 62 |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Rebuild | ${EMPTY} | ${EMPTY} | VAE_1 | NYSE | c:/StatsRIC.exl  |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Process | ${EMPTY} | ${EMPTY} | VAE_1 | NYSE | c:/StatsRIC.exl |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Close | CB.N | MARKET_PRICE |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Close | ${EMPTY} | ${EMPTY} | VAE_1 | NYSE | c:/StatsRIC.exl |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Close | ${EMPTY} | ${EMPTY} | VAE_1 | NYSE | c:/StatsRIC.exl | ${EMPTY} | 1000 | 
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Close | CB.N | MARKET_PRICE | VAE_1 | NYSE | ${EMPTY} | ${EMPTY} | 1000 |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Extract | CB.N | MARKET_PRICE | ${EMPTY} | ${EMPTY} | ${EMPTY} |  C:/test.icf |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Extract | ${EMPTY} | ${EMPTY} | ${EMPTY} | ${EMPTY} | C:/test.lric | C:/test.icf |  
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Insert | ${EMPTY} | ${EMPTY} | VAE_1 | NYSE | C:/test.icf |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Insert | ${EMPTY} | ${EMPTY} | ${EMPTY} | ${EMPTY} | C:/test.icf |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Drop |  CB.N  |  MARKET_PRICE |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Drop | CB.N | MARKET_PRICE | VAE_1 | NYSE | ${EMPTY} | ${EMPTY} | ${EMPTY} | ${EMPTY} | ${EMPTY} | HandlerAndDownstream | Default |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Drop | ${EMPTY} | ${EMPTY} | VAE_1 | NYSE | c:/StatsRIC.exl | ${EMPTY} | ${EMPTY} | ${EMPTY} | ${EMPTY} | HandlerAndDownstream | Default |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | UnDrop |  CB.N  |  MARKET_PRICE |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | UnDrop | CB.N | MARKET_PRICE | VAE_1 | NYSE | ${EMPTY} | ${EMPTY} | ${EMPTY} | ${EMPTY} | ${EMPTY} | HandlerAndDownstream | Default |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | UnDrop | ${EMPTY} | ${EMPTY} | VAE_1 | NYSE | c:/StatsRIC.exl | ${EMPTY} | ${EMPTY} | ${EMPTY} | ${EMPTY} | HandlerAndDownstream | Default |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | Recon | ${EMPTY} | ${EMPTY} | VAE_1 | NYSE |
-        | ${res} | run fmscmd with headend | 10.35.18.249 | 25000 | C:/FmsCmd/bin | dbrebuild | ${EMPTY} | ${EMPTY} | VAE_1 | NYSE |
-        """  
-        cmd = self._gen_FmsCmd_str(headend, port, TaskType, RIC, Domain, HandlerName, Services, InputFile, OutputFile, ClosingRunRule, RebuildConstituent, SIC, ExecutionEndPoint, handlerDropType, RebuildFrom, RebuildSpeed, ResetSequenceNumber, Throttle, SRCFile, InputFile2)      
-        rc,stdout,stderr = _run_local_command(cmd, True, InstallPath)
-        if rc != 0:
-            raise AssertionError('*ERROR* %s' %stderr)    
-        res = self._check_fmscmd_log(stdout)
-        return [res, stdout, cmd]
-    
-    
-    
-    def run_FmsCmd (self, headendIP, headendPort, InstallPath, TaskType, *optargs):
+    def run_FmsCmd (self, headendIP, TaskType, *optargs):
         """ 
         Argument :
             headendIP : headend IP
-            headendPort : headend FMS client port 25000
-            InstallPath : FMSCMD bin path.
             TaskType : possible value [Process, Extract, Search, Insert, Recon, Close, Rebuild, Drop, UnDrop, DBRebuild, Compare, ClsRun]
             optargs : a variable list of optional arguments based on TaskType.
             See detailed FmsCmd parameter list at https://thehub.thomsonreuters.com/docs/DOC-172815
         Return: [RC, fmscmd log, fmscmd cmd]. RC can be 0 or 5 or 13.
         examples:
 
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Process | --Services MFDS | --InputFile c:/tmp/nasmf_a.exl | --AllowRICChange true|
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Process | --HandlerName VAE_1 | --Services NYSE | --InputFile c:/StatsRIC.exl |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Rebuild | --RIC CB.N | --Domain MARKET_PRICE |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Rebuild | --RIC CB.N | --Domain MARKET_PRICE | --HandlerName VAE_1 | --Services NYSE | --RebuildConstituents 62 |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Rebuild | --HandlerName VAE_1 | --Services NYSE | --InputFile c:/StatsRIC.exl  |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Close   | --RIC CB.N | --Domain MARKET_PRICE |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Close   | --HandlerName VAE_1 | --Services NYSE | --InputFile c:/StatsRIC.exl |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Close   | --HandlerName VAE_1 | --Services NYSE | --InputFile c:/StatsRIC.exl | --ClosingRunRule 1000 | 
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Close   | --RIC CB.N | --Domain MARKET_PRICE | --HandlerName VAE_1 | --Services NYSE | --ClosingRunRule 1000 |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Extract | --RIC CB.N | --Domain MARKET_PRICE | --InputFile C:/test.icf |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Extract | --InputFile C:/test.lric | --OutputFile C:/test.icf |  
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Insert  | --HandlerName VAE_1 | --Services NYSE | --InputFile C:/test.icf |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Insert  | --InputFile C:/test.icf |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Drop    |  --RIC CB.N | --Domain MARKET_PRICE |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Drop    | --RIC CB.N | --Domain MARKET_PRICE | --HandlerName VAE_1 | --Services NYSE | --ExecutionEndPoint HandlerAndDownstream | --handlerDropType Default |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Drop    | --HandlerName VAE_1 | --Services NYSE | --InputFile c:/StatsRIC.exl | --ExecutionEndPoint HandlerAndDownstream | --handlerDropType Default |
-        | ${res=} | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | UnDrop  | --RIC CB.N | --Domain MARKET_PRICE |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | UnDrop  | --RIC CB.N | --Domain MARKET_PRICE | --HandlerName VAE_1 | --Services NYSE | --ExecutionEndPoint HandlerAndDownstream | --handlerDropType Default |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | UnDrop  | --HandlerName VAE_1 | --Services NYSE | --InputFile c:/StatsRIC.exl | --ExecutionEndPoint HandlerAndDownstream | --handlerDropType Default |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | Recon   | --HandlerName VAE_1 | --Services NYSE |
-        | ${res}= | run fmscmd | ${IP} | ${Port} | ${LOCAL_FMS_BIN} | dbrebuild | --HandlerName VAE_1 | --Services NYSE |
+        | ${res}= | run fmscmd | ${IP} | Process | --Services MFDS | --InputFile c:/tmp/nasmf_a.exl | --AllowRICChange true|
+        | ${res}= | run fmscmd | ${IP} | Process | --HandlerName VAE_1 | --Services NYSE | --InputFile c:/StatsRIC.exl |
+        | ${res}= | run fmscmd | ${IP} | Rebuild | --RIC CB.N | --Domain MARKET_PRICE |
+        | ${res}= | run fmscmd | ${IP} | Rebuild | --RIC CB.N | --Domain MARKET_PRICE | --HandlerName VAE_1 | --Services NYSE | --RebuildConstituents 62 |
+        | ${res}= | run fmscmd | ${IP} | Rebuild | --HandlerName VAE_1 | --Services NYSE | --InputFile c:/StatsRIC.exl  |
+        | ${res}= | run fmscmd | ${IP} | Close   | --RIC CB.N | --Domain MARKET_PRICE |
+        | ${res}= | run fmscmd | ${IP} | Close   | --HandlerName VAE_1 | --Services NYSE | --InputFile c:/StatsRIC.exl |
+        | ${res}= | run fmscmd | ${IP} | Close   | --HandlerName VAE_1 | --Services NYSE | --InputFile c:/StatsRIC.exl | --ClosingRunRule 1000 | 
+        | ${res}= | run fmscmd | ${IP} | Close   | --RIC CB.N | --Domain MARKET_PRICE | --HandlerName VAE_1 | --Services NYSE | --ClosingRunRule 1000 |
+        | ${res}= | run fmscmd | ${IP} | Extract | --RIC CB.N | --Domain MARKET_PRICE | --InputFile C:/test.icf |
+        | ${res}= | run fmscmd | ${IP} | Extract | --InputFile C:/test.lric | --OutputFile C:/test.icf |  
+        | ${res}= | run fmscmd | ${IP} | Insert  | --HandlerName VAE_1 | --Services NYSE | --InputFile C:/test.icf |
+        | ${res}= | run fmscmd | ${IP} | Insert  | --InputFile C:/test.icf |
+        | ${res}= | run fmscmd | ${IP} | Drop    |  --RIC CB.N | --Domain MARKET_PRICE |
+        | ${res}= | run fmscmd | ${IP} | Drop    | --RIC CB.N | --Domain MARKET_PRICE | --HandlerName VAE_1 | --Services NYSE | --ExecutionEndPoint HandlerAndDownstream | --handlerDropType Default |
+        | ${res}= | run fmscmd | ${IP} | Drop    | --HandlerName VAE_1 | --Services NYSE | --InputFile c:/StatsRIC.exl | --ExecutionEndPoint HandlerAndDownstream | --handlerDropType Default |
+        | ${res=} | run fmscmd | ${IP} | UnDrop  | --RIC CB.N | --Domain MARKET_PRICE |
+        | ${res}= | run fmscmd | ${IP} | UnDrop  | --RIC CB.N | --Domain MARKET_PRICE | --HandlerName VAE_1 | --Services NYSE | --ExecutionEndPoint HandlerAndDownstream | --handlerDropType Default |
+        | ${res}= | run fmscmd | ${IP} | UnDrop  | --HandlerName VAE_1 | --Services NYSE | --InputFile c:/StatsRIC.exl | --ExecutionEndPoint HandlerAndDownstream | --handlerDropType Default |
+        | ${res}= | run fmscmd | ${IP} | Recon   | --HandlerName VAE_1 | --Services NYSE |
+        | ${res}= | run fmscmd | ${IP} | dbrebuild | --HandlerName VAE_1 | --Services NYSE |
         """ 
             
-            
+        headendPort = 25000
         cmd = 'FmsCmd.exe --HeadendIP %s --HeadendPort %s --TaskType %s ' % (headendIP, headendPort, TaskType)
         cmd = cmd + ' ' + ' '.join(map(str, optargs))
-        rc,stdout,stderr = _run_local_command(cmd, True, InstallPath)
+        rc,stdout,stderr = _run_local_command(cmd, True, LOCAL_FMS_BIN)
         
         if rc != 0:
             raise AssertionError('*ERROR* %s' %stderr)    

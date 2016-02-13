@@ -35,8 +35,8 @@ Suite Setup
     ${ret}    open connection    host=${ip}    port=${CHE_PORT}    timeout=6
     login    ${USERNAME}    ${PASSWORD}
     start smf
-    setUtilPath    ${BASE_DIR}
-    Start MTE    ${MTE}
+    setUtilPath
+    Start MTE
     [Return]    ${ret}
 
 Suite Teardown
@@ -62,21 +62,20 @@ Create Unique RIC Name
     [Return]    ${ric}
 
 Delete Persist Files
-    [Arguments]    ${mte}    ${venue}
-    delete remote files matching pattern    ${venue}    PERSIST_${mte}.DAT*    recurse=${True}
-    ${res}=    search remote files    ${venue}    PERSIST_${mte}.DAT    recurse=${True}
+    delete remote files matching pattern    ${VENUE_DIR}    PERSIST_${MTE}.DAT*    recurse=${True}
+    ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
     Should Be Empty    ${res}
     Comment    Currently, GATS does not provide the Venue name, so the pattern matching Keywords must be used. If GATS provides the Venue name, then "delete remote file" and "remote file should not exist" Keywords could be used here.
 
 Dumpcache And Copyback Result
-    [Arguments]    ${mte}    ${destfile}    # where will the csv be copied back
+    [Arguments]    ${destfile}    # where will the csv be copied back
     [Documentation]    Dump the MTE cache to a file and copy the file to the local temp directory.
-    ${remotedumpfile}=    dump cache    ${mte}    ${VENUE_DIR}
+    ${remotedumpfile}=    dump cache
     get remote file    ${remotedumpfile}    ${destfile}
     delete remote files    ${remotedumpfile}
 
 Dump Persist File To XML
-    [Arguments]    ${mte}    @{optargs}
+    [Arguments]    @{optargs}
     [Documentation]    Run PMAT on control PC and return the \ persist xml dump file.
     ...    optarg could be ---ric <ric> | --sic <sic> | --domain <domain> |--fids <comma-delimited-fid-list> | --meta <meta> | --encode <0|1. \ Default to 0 > | --ffile <path to XQuery-syntax-FilterFile>
     ...
@@ -85,11 +84,11 @@ Dump Persist File To XML
     ...
     ...    PMAT Guide: https://thehub.thomsonreuters.com/docs/DOC-110727
     ${localPersistFile}=    set variable    ${LOCAL_TMP_DIR}/local_persist.dat
-    ${remotePersist}=    search remote files    ${VENUE_DIR}    PERSIST_${mte}.DAT    ${True}
+    ${remotePersist}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    ${True}
     Should Be True    len(${remotePersist}) ==1
     get remote file    ${remotePersist[0]}    ${localPersistFile}
     ${pmatXmlDumpfile}=    set variable    ${LOCAL_TMP_DIR}/pmatDumpfile.xml
-    Run PMAT    ${LOCAL_PMAT_DIR}    dump    --dll Schema_v6.dll    --db ${localPersistFile}    --outf ${pmatXmlDumpfile}    @{optargs}
+    Run PMAT    dump    --dll Schema_v6.dll    --db ${localPersistFile}    --outf ${pmatXmlDumpfile}    @{optargs}
     Remove Files    ${localPersistFile}
     [Return]    ${pmatXmlDumpfile}
 
@@ -256,66 +255,62 @@ Get RIC From MTE Cache
     ...    If no contextID is specified, it will use any contextID
     ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}'    Get Preferred Domain
     ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
-    ${result}=    get RIC fields from cache    ${MTE}    ${VENUE_DIR}    1    ${domain}    ${contextID}
+    ${result}=    get RIC fields from cache    1    ${domain}    ${contextID}
     ${ric}=    set variable    ${result[0]['RIC']}
     ${publish_key}=    set variable    ${result[0]['PUBLISH_KEY']}
     [Teardown]
     [Return]    ${ric}    ${publish_key}
 
 Get RIC List From StatBlock
-    [Arguments]    ${mte}    ${ricType}
+    [Arguments]    ${ricType}
     [Documentation]    Get RIC name from statBlock.
     ...    Valid choices are: 'Closing Run', 'DST', 'Feed Time', 'Holiday', 'Trade Time'
-    ${ricList}=    Run Keyword if    '${ricType}'=='Closing Run'    get stat blocks for category    ${mte}    ClosingRun
+    ${ricList}=    Run Keyword if    '${ricType}'=='Closing Run'    get stat blocks for category    ${MTE}    ClosingRun
     Return from keyword if    '${ricType}'=='Closing Run'    ${ricList}
-    ${ricList}=    Run Keyword if    '${ricType}'=='DST'    get stat blocks for category    ${mte}    DST
+    ${ricList}=    Run Keyword if    '${ricType}'=='DST'    get stat blocks for category    ${MTE}    DST
     Return from keyword if    '${ricType}'=='DST'    ${ricList}
-    ${ricList}=    Run Keyword if    '${ricType}'=='Feed Time'    get stat blocks for category    ${mte}    FeedTimes
+    ${ricList}=    Run Keyword if    '${ricType}'=='Feed Time'    get stat blocks for category    ${MTE}    FeedTimes
     Return from keyword if    '${ricType}'=='Feed Time'    ${ricList}
-    ${ricList}=    Run Keyword if    '${ricType}'=='Holiday'    get stat blocks for category    ${mte}    Holidays
+    ${ricList}=    Run Keyword if    '${ricType}'=='Holiday'    get stat blocks for category    ${MTE}    Holidays
     Return from keyword if    '${ricType}'=='Holiday'    ${ricList}
-    ${ricList}=    Run Keyword if    '${ricType}'=='Trade Time'    get stat blocks for category    ${mte}    TradeTimes
+    ${ricList}=    Run Keyword if    '${ricType}'=='Trade Time'    get stat blocks for category    ${MTE}    TradeTimes
     Return from keyword if    '${ricType}'=='Trade Time'    ${ricList}
     FAIL    RIC not found. Valid choices are: 'Closing Run', 'DST', 'Feed Time', 'Holiday', 'Trade Time'
 
 Load All EXL Files
-    [Arguments]    ${service}    ${headendIP}    ${headendPort}=25000    @{optargs}
-    [Documentation]    Loads all EXL files for a given service using FMSCMD. The FMS files for the given service must be on the local machine. The input parameters to this keyword are the FMS service name and headend's IP and Port. \ The default parameter for the port value is 25000.
-    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${headendIP}    ${headendPort}    ${LOCAL_FMS_BIN}
-    ...    Recon    --Services ${service}    @{optargs}
+    [Arguments]    ${service}    ${headendIP}    @{optargs}
+    [Documentation]    Loads all EXL files for a given service using FMSCMD. The FMS files for the given service must be on the local machine. The input parameters to this keyword are the FMS service name and headend's IP.
+    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${headendIP}    Recon    --Services ${service}
+    ...    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS files \ ${returnedStdOut}
 
 Load Mangling Settings
-    [Arguments]    ${mte}
-    ${dt}=    get date and time
-    Run Commander    linehandler    lhcommand ${mte} mangling:refresh_settings
+    Run Commander    linehandler    lhcommand ${MTE} mangling:refresh_settings
     wait SMF log does not contain    Drop message sent for    10    600
 
 Load Single EXL File
-    [Arguments]    ${exlFile}    ${service}    ${headendIP}    ${headendPort}=25000    @{optargs}
-    [Documentation]    Loads a single EXL file using FMSCMD. The EXL file must be on the local machine. Inputs for this keyword are the EXL Filename including the path, the FMS service and the headend's IP and Port. \ The default parameter for the port value is 25000.
-    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${headendIP}    ${headendPort}    ${LOCAL_FMS_BIN}
-    ...    Process    --Services ${service}    --InputFile "${exlFile}"    @{optargs}
+    [Arguments]    ${exlFile}    ${service}    ${headendIP}    @{optargs}
+    [Documentation]    Loads a single EXL file using FMSCMD. The EXL file must be on the local machine. Inputs for this keyword are the EXL Filename including the path, the FMS service and the headend's IP.
+    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${headendIP}    Process    --Services ${service}
+    ...    --InputFile "${exlFile}"    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
 Manual ClosingRun for ClosingRun Rics
     [Arguments]    ${servicename}
-    @{closingrunRicList}    Get RIC List From StatBlock    ${MTE}    Closing Run
+    @{closingrunRicList}    Get RIC List From StatBlock    Closing Run
     : FOR    ${closingrunRicName}    IN    @{closingrunRicList}
     \    ${currentDateTime}    get date and time
-    \    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    25000
-    \    ...    ${LOCAL_FMS_BIN}    ClsRun    --RIC ${closingrunRicName}    --Services ${serviceName}    --Domain MARKET_PRICE
-    \    ...    --ClosingRunOperation Invoke    --HandlerName ${MTE}
+    \    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    ClsRun
+    \    ...    --RIC ${closingrunRicName}    --Services ${serviceName}    --Domain MARKET_PRICE    --ClosingRunOperation Invoke    --HandlerName ${MTE}
     \    wait SMF log message after time    ClosingRun.*?CloseItemGroup.*?Found [0-9]* closeable items out of [0-9]* items    ${currentDateTime}    2    60
 
 Persist File Should Exist
-    [Arguments]    ${mte}    ${venuedir}
-    ${res}=    search remote files    ${venuedir}    PERSIST_${mte}.DAT    recurse=${True}
-    Length Should Be    ${res}    1    PERSIST_${mte}.DAT file not found (or multiple files found).
+    ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
+    Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
     Comment    Currently, GATS does not provide the Venue name, so the pattern matching Keywords must be used. If GATS provides the Venue name, then "remote file should not exist" Keywords could be used here.
 
 Send TRWF2 Refresh Request
-    [Arguments]    ${mte}    ${ric}    ${domain}
+    [Arguments]    ${ric}    ${domain}
     [Documentation]    Call DataView to send TRWF2 Refresh Request to MTE.
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
@@ -326,23 +321,21 @@ Send TRWF2 Refresh Request
     get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
     ${updatedlabelfile}=    set variable    ${LOCAL_TMP_DIR}/updated_reqLabel.xml
     remove_xinclude_from_labelfile    ${labelfile}    ${updatedlabelfile}
-    ${dataviewpath}=    search remote files    ${TOOLS_DIR}    DataView    recurse=${True}
-    Should Be True    len(${dataviewpath}) >=1
     @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
     : FOR    ${labelID}    IN    @{labelIDs}
-    \    ${reqMsgMultcastAddres}=    get multicast address from lable file    ${updatedlabelfile}    ${labelID}
-    \    ${lineID}=    get_stat_block_field    ${mte}    multicast-${labelID}    publishedLineId
-    \    ${multcastAddres}=    get_stat_block_field    ${mte}    multicast-${LabelID}    multicastOutputAddress
-    \    ${interfaceAddres}=    get_stat_block_field    ${mte}    multicast-${LabelID}    primaryOutputAddress
+    \    ${reqMsgMultcastAddres}=    get multicast address from label file    ${updatedlabelfile}    ${labelID}
+    \    ${lineID}=    get_stat_block_field    ${MTE}    multicast-${labelID}    publishedLineId
+    \    ${multcastAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    multicastOutputAddress
+    \    ${interfaceAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    primaryOutputAddress
     \    @{multicastIPandPort}=    Split String    ${multcastAddres}    :    1
     \    @{interfaceIPandPort}=    Split String    ${interfaceAddres}    :    1
     \    ${length} =    Get Length    ${multicastIPandPort}
     \    Should Be Equal As Integers    ${length}    2
     \    ${length} =    Get Length    ${interfaceIPandPort}
     \    Should Be Equal As Integers    ${length}    2
-    \    ${res}=    run dataview    ${dataviewpath[0]}    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]
-    \    ...    @{multicastIPandPort}[1]    ${lineID}    ${ric}    ${domain}    -REF
-    \    ...    -IMSG ${reqMsgMultcastAddres[0]}    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10
+    \    ${res}=    run dataview    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]
+    \    ...    ${lineID}    ${ric}    ${domain}    -REF    -IMSG ${reqMsgMultcastAddres[0]}
+    \    ...    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10
     Remove Files    ${labelfile}    ${updatedlabelfile}
     [Return]    ${res}
 
@@ -356,7 +349,7 @@ Set DST Datetime In EXL
 
 Set Feed Time In EXL
     [Arguments]    ${srcFile}    ${dstFile}    ${ric}    ${domain}    ${startTime}    ${endTime}
-    ...    ${feedDay}=THU
+    ...    ${feedDay}
     [Documentation]    Set feed time in EXL:
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1646
@@ -381,7 +374,7 @@ Set Holiday Datetime In EXL
     modify EXL    ${dstFile}    ${dstFile}    ${ric}    ${domain}    <it:HLY${holidayIndex}_END_TIME>${endDateTime}</it:HLY${holidayIndex}_END_TIME>
 
 Set Mangling Rule
-    [Arguments]    ${mte}    ${rule}    ${configFile}=manglingConfiguration.xml
+    [Arguments]    ${rule}    ${configFile}=manglingConfiguration.xml
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1843
     ...
     ...    Remark :
@@ -393,7 +386,7 @@ Set Mangling Rule
     set mangling rule parition value    ${rule}    ${Empty}    ${configFileLocal}
     delete remote files    @{files}[0]
     put remote file    ${configFileLocal}    @{files}[0]
-    Run Keyword And Continue On Failure    Load Mangling Settings    ${mte}
+    Run Keyword And Continue On Failure    Load Mangling Settings
     restore cfg file    @{files}
     Comment    Revert changes in local mangling config file
     Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${None}
@@ -413,7 +406,7 @@ Set Symbol In EXL
 
 Set Trade Time In EXL
     [Arguments]    ${srcFile}    ${dstFile}    ${ric}    ${domain}    ${startTime}    ${endTime}
-    ...    ${tradeDay}=THU
+    ...    ${tradeDay}
     [Documentation]    Set trade time in EXL:
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1645
@@ -421,39 +414,38 @@ Set Trade Time In EXL
     modify EXL    ${dstFile}    ${dstFile}    ${ric}    ${domain}    <it:${tradeDay}_TR_CLOSE>${endTime}</it:${tradeDay}_TR_CLOSE>
 
 Start Capture MTE Output
-    [Arguments]    ${mte}    ${filename}=/tmp/capture.pcap    ${ddn}=DDNA
+    [Arguments]    ${filename}=/tmp/capture.pcap    ${ddn}=DDNA
     [Documentation]    Start capture MTE output
     ${interfaceName}=    get interface name by alias    ${ddn}
-    @{IpAndPort}=    get outputAddress and port for mte    ${mte}
+    @{IpAndPort}=    get outputAddress and port for mte
     start capture packets    ${filename}    ${interfaceName}    @{IpAndPort}
 
 Start MTE
-    [Arguments]    ${mte}
     [Documentation]    Start the MTE and wait for initialization to complete.
-    ${result}=    find processes by pattern    MTE -c ${mte}
-    Run keyword if    '${result}'!=''    wait for HealthCheck    ${mte}    IsLinehandlerStartupComplete    waittime=5    timeout=600
-    Return from keyword if    '${result}'!=''
-    run commander    process    start ${mte}
-    wait for process to exist    MTE -c ${mte}
-    wait for HealthCheck    ${mte}    IsLinehandlerStartupComplete    waittime=5    timeout=600
-    Wait For FMS Reorg    ${mte}
+    ${result}=    find processes by pattern    MTE -c ${MTE}
+    ${len}=    Get Length    ${result}
+    Run keyword if    ${len} != 0    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
+    Return from keyword if    ${len} != 0
+    run commander    process    start ${MTE}
+    wait for process to exist    MTE -c ${MTE}
+    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
+    Wait For FMS Reorg
 
 Stop Capture MTE Output
-    [Arguments]    ${instanceName}    ${waittime}=5    ${timeout}=300
+    [Arguments]    ${waittime}=5    ${timeout}=300
     [Documentation]    Stop catpure MTE output
-    wait for capture to complete    ${instanceName}    ${waittime}    ${timeout}
+    wait for capture to complete    ${MTE}    ${waittime}    ${timeout}
     stop capture packets
 
 Stop MTE
-    [Arguments]    ${mte}
-    run commander    process    stop ${mte}
-    wait for process to not exist    MTE -c ${mte}
+    run commander    process    stop ${MTE}
+    wait for process to not exist    MTE -c ${MTE}
 
 Validate MTE Capture Against FIDFilter
     [Arguments]    ${pcapfile}    ${contextId}    ${constit}
     [Documentation]    validate MTE pcap capture against content in FIDFilter.txt
     get remote file    ${pcapfile}    ${LOCAL_TMP_DIR}/capture_local.pcap
-    verify fid in fidfilter by contextId and constit against pcap    ${LOCAL_TMP_DIR}/capture_local.pcap    ${contextId}    ${constit}    ${VENUE_DIR}    ${DAS_DIR}
+    verify fid in fidfilter by contextId and constit against pcap    ${LOCAL_TMP_DIR}/capture_local.pcap    ${contextId}    ${constit}
     delete remote files    ${pcapfile}
     Remove Files    ${LOCAL_TMP_DIR}/capture_local.pcap
     [Teardown]
@@ -461,13 +453,13 @@ Validate MTE Capture Against FIDFilter
 Validate MTE Capture Within FID Range For Constituent
     [Arguments]    ${pcapfile}    ${constit}    @{fid_range}
     get remote file    ${pcapfile}    ${LOCAL_TMP_DIR}/capture_local.pcap
-    verify fid in range by constit against pcap    ${LOCAL_TMP_DIR}/capture_local.pcap    ${DAS_DIR}    ${constit}    @{fid_range}
+    verify fid in range by constit against pcap    ${LOCAL_TMP_DIR}/capture_local.pcap    ${constit}    @{fid_range}
     delete remote files    ${pcapfile}
     Remove Files    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify RIC In MTE Cache
-    [Arguments]    ${mte}    ${ric}
-    ${ricFields}=    Get All Fields For RIC From Cache    ${mte}    ${VENUE_DIR}    ${ric}
+    [Arguments]    ${ric}
+    ${ricFields}=    Get All Fields For RIC From Cache    ${ric}
     Should Not Be Empty    ${ricFields}    RIC ${ric} not found in MTE cache
     ${ric}=    set variable    ${ricFields['RIC']}
     ${publish_key}=    set variable    ${ricFields['PUBLISH_KEY']}
@@ -475,34 +467,34 @@ Verify RIC In MTE Cache
     [Return]    ${ric}    ${publish_key}
 
 Verify RIC Not In MTE Cache
-    [Arguments]    ${mte}    ${ric}
-    ${ricFields}=    Get All Fields For RIC From Cache    ${mte}    ${VENUE_DIR}    ${ric}
+    [Arguments]    ${ric}
+    ${ricFields}=    Get All Fields For RIC From Cache    ${ric}
     Should Be Empty    ${ricFields}    RIC ${ric} found in MTE cache
 
 Verify RIC Is Dropped In MTE Cache
-    [Arguments]    ${MTE}    ${ric}
+    [Arguments]    ${ric}
     [Documentation]    If a RIC be dropped, it will be non-publishable and be in InDeletionDelay state
-    ${allricFields}=    get all fields for ric from cache    ${MTE}    ${VENUE_DIR}    ${ric}
+    ${allricFields}=    get all fields for ric from cache    ${ric}
     Should Be Equal    ${allricFields['PUBLISHABLE']}    FALSE
     Should Be True    ${allricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
 
 Verfiy RIC Persisted
-    [Arguments]    ${mte}    ${ric}    ${domain}
+    [Arguments]    ${ric}    ${domain}
     [Documentation]    Dump persist file to XML and check if ric and domain exist in MTE persist file.
     ${cacheDomainName}=    Remove String    ${domain}    _
     ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
-    ${pmatDumpfile}=    Dump Persist File To XML    ${mte}    --ric ${ric}    --domain ${pmatDomain}
+    ${pmatDumpfile}=    Dump Persist File To XML    --ric ${ric}    --domain ${pmatDomain}
     Verify RIC in Persist Dump File    ${pmatDumpfile}    ${ric}    ${cacheDomainName}
     Remove Files    ${pmatDumpfile}
 
 Wait For FMS Reorg
-    [Arguments]    ${mte}    ${waittime}=5    ${timeout}=600
+    [Arguments]    ${waittime}=5    ${timeout}=600
     [Documentation]    Wait for the MTE to complete the FMS reorg.
-    wait for HealthCheck    ${mte}    FMSStartupReorgHasCompleted    ${waittime}    ${timeout}
+    wait for HealthCheck    ${MTE}    FMSStartupReorgHasCompleted    ${waittime}    ${timeout}
 
 Wait For Persist File Update
-    [Arguments]    ${mte}    ${venuedir}    ${waittime}=5    ${timeout}=60
+    [Arguments]    ${waittime}=5    ${timeout}=60
     [Documentation]    Wait for the MTE persist file to be updated (it should be updated every 30 seconds)
-    ${res}=    search remote files    ${venuedir}    PERSIST_${mte}.DAT    recurse=${True}
-    Length Should Be    ${res}    1    PERSIST_${mte}.DAT file not found (or multiple files found).
+    ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
+    Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
     wait for file update    ${res[0]}    ${waittime}    ${timeout}

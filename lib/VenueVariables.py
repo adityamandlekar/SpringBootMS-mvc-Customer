@@ -24,7 +24,7 @@ PLAYBACK_PASSWORD = 'Pegestech1'
 PLAYBACK_PCAP_DIR ='/data/'
 
 # Local Machine Settings
-DAS_DIR          = 'C:\\Program Files\\Reuters Test Tools\\DAS'
+LOCAL_DAS_DIR    = 'C:\\Program Files\\Reuters Test Tools\\DAS'
 LOCAL_PMAT_DIR   = 'C:\\PMAT\\x64'
 LOCAL_FMS_DIR    = 'D:\\tools\\FMSCMD\\config\\DataFiles\\Groups'
 LOCAL_FMS_BIN    = 'D:\\tools\\FMSCMD\\bin'
