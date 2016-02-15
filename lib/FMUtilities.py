@@ -221,10 +221,14 @@ class _FMUtil:
             if modifyflag == False:
                 raise AssertionError("*ERROR* not found field %s for %s and %s in exl" % (field, ric, domain))
 
-        f = open(dstfile,'w')  
-        #print dom.documentElement.childNodes.item(9).childNodes.item(11).childNodes.item(1).childNodes
-        dom.writexml(f,addindent='',newl='',encoding = 'utf-8')  
-        f.close()  
+        #f = open(dstfile,'w')        
+        ##print dom.documentElement.childNodes.item(9).childNodes.item(11).childNodes.item(1).childNodes
+        #dom.writexml(f,addindent='',newl='',encoding = 'utf-8')
+        #f.close() 
+        
+        with codecs.open(dstfile,'w','utf-8') as out:
+            dom.writexml(out,addindent='',newl='',encoding='utf-8')
+        
         return dstfile
         
 

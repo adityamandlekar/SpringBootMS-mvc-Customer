@@ -1566,7 +1566,7 @@ class LocalBoxUtilities(_ToolUtil):
         # Save the output EXL file
         try:
             fileHandle = open(exlFileTarget, 'w') 
-            fileHandle.write(xmlParser.toxml())
+            fileHandle.write(xmlParser.toxml("utf-8"))
             fileHandle.close()
         except Exception, exception:
             raise AssertionError('Failed to open EXL target file %s Exception: %s' % (exlFileTarget, exception))
