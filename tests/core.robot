@@ -39,6 +39,14 @@ Suite Setup
     Start MTE
     [Return]    ${ret}
 
+Suite Setup with Playback
+    [Documentation]    Setup Playback box and suit scope variable Suit_Playback_Session.
+    Should Not be Empty    ${PLAYBACK_IP}
+    ${plyblk}    open connection    host=${PLAYBACK_IP}    port=${PLAYBACK_PORT}    timeout=5
+    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
+    Set Suite Variable    ${Suit_Playback_Session}    ${plyblk}
+    Suite Setup
+
 Suite Teardown
     [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
     close all connections
@@ -276,6 +284,20 @@ Get RIC List From StatBlock
     ${ricList}=    Run Keyword if    '${ricType}'=='Trade Time'    get stat blocks for category    ${MTE}    TradeTimes
     Return from keyword if    '${ricType}'=='Trade Time'    ${ricList}
     FAIL    RIC not found. Valid choices are: 'Closing Run', 'DST', 'Feed Time', 'Holiday', 'Trade Time'
+
+Inject PCAP File on UDP
+    [Arguments]    @{pcapFileList}
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-72
+    ...
+    ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
+    ${host}=    get current connection index
+    Switch Connection    ${Suit_Playback_Session}
+    : FOR    ${pcapFile}    IN    @{pcapFileList}
+    \    remote file should exist    ${pcapFile}
+    \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps 10000 --intf1=eth6 ${pcapFile}    return_rc=True
+    \    Should Be Equal As Integers    ${rc}    0
+    close connection
+    Switch Connection    ${host}
 
 Load All EXL Files
     [Arguments]    ${service}    ${headendIP}    @{optargs}
