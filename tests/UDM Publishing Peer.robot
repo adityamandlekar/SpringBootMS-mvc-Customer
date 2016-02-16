@@ -10,29 +10,29 @@ Verify Live Instance Publishing
     ...
     ...    1. Checking if LIVE Box has output
     ...    2. Checking if STANDBY Box has NO output
+    [Tags]    Peer
     [Setup]
     Force MTE to Status    ${CHE_A_IP}    A    LIVE
     ${domain}=    Get Preferred Domain
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     Switch To TD Box    ${CHE_A_IP}
-    ${ret}    Send TRWF2 Refresh Request    ${MTE}    ${pubRic}    ${domain}
+    ${ret}    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
     Should Not be Empty    ${ret}    CHE_A is LIVE box , should have output
     Switch To TD Box    ${CHE_B_IP}
-    ${ret}    Send TRWF2 Refresh Request    ${MTE}    ${pubRic}    ${domain}
+    ${ret}    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
     Should be Empty    ${ret}    CHE_B is STANDBY box , should NOT have output
     Force MTE to Status    ${CHE_A_IP}    B    LIVE
     Switch To TD Box    ${CHE_B_IP}
-    ${ret}    Send TRWF2 Refresh Request    ${MTE}    ${pubRic}    ${domain}
+    ${ret}    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
     Should Not be Empty    ${ret}    CHE_B is LIVE box , should have output
     Switch To TD Box    ${CHE_A_IP}
-    ${ret}    Send TRWF2 Refresh Request    ${MTE}    ${pubRic}    ${domain}
+    ${ret}    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
     Should be Empty    ${ret}    CHE_A is STANDBY box , should NOT have output
 
 *** Keywords ***
 Force MTE to Status
     [Arguments]    ${che_ip}    ${Node}    ${state}
     [Documentation]    Force specific MTE (by CHE_X_IP) to decided stat (LIVE or STANDBY)
-    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    ${Node}    ${state}    ${USERNAME}    ${PASSWORD}
-    ...    ${che_ip}
+    switch MTE LIVE STANDBY status    ${Node}    ${state}    ${che_ip}
     Switch To TD Box    ${che_ip}
-    verify MTE state    ${MTE}    ${state}
+    verify MTE state    ${state}

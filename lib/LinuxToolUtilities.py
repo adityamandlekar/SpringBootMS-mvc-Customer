@@ -35,21 +35,19 @@ class LinuxToolUtilities():
     COMMANDER = ''
     HOSTMANAGER = ''
     STATBLOCKFIELDREADER = ''
-    SMFLOGDIR = ''
+    DATAVIEW = ''
+    SMFLOGDIR = BASE_DIR + '/smf/log/'
     MANGLINGRULE = {'SOU': '3', 'BETA': '2', 'RRG': '1', 'UNMANGLED' : '0'};
     MTESTATE = {'0': 'UNDEFINED', '1': 'LIVE', '2': 'STANDBY', '3' : 'LOCKED_LIVE', '4' : 'LOCKED_STANDBY'};
     
-    def setUtilPath(self, path):
-        """Setting the Utilities paths by given base directory for searching
-        
-        Examples:
-        | setUtilPath | '/ThomsonReuters' |   
+    def setUtilPath(self):
+        """Setting the Utilities paths by searching under BASE_DIR from VenueVariables
+        This is called by suite setup in core.robot to make these variables available to the keywords
          """
-        self.COMMANDER = _search_file(path,'Commander',True)[0]
-        self.STATBLOCKFIELDREADER = _search_file(path,'StatBlockFieldReader',True)[0]
-        self.HOSTMANAGER = _search_file(path,'HostManager',True)[0]
-        self.SMFLOGDIR = path + '/smf/log/'
-        self.BASE_DIR = path
+        self.COMMANDER = _search_file(BASE_DIR,'Commander',True)[0]
+        self.STATBLOCKFIELDREADER = _search_file(BASE_DIR,'StatBlockFieldReader',True)[0]
+        self.HOSTMANAGER = _search_file(BASE_DIR,'HostManager',True)[0]
+        self.DATAVIEW = _search_file(TOOLS_DIR,'DataView',True)[0]
 
     def run_commander(self, application, command):
         """Runs the Commander tool to execute the specified CHE command.
@@ -120,8 +118,8 @@ class LinuxToolUtilities():
             raise AssertionError('*ERROR* ' + msg)
         return rc
 
-    def wait_for_StatBlock(self, MTEName, statBlock, fieldToCheck, fieldValue, waittime=2, timeout=60):
-        """Reads the Stat Block for the specified MTE and wait for the specified 'fieldToCheck' value to be fieldValue.
+    def wait_for_StatBlock(self, writerName, statBlock, fieldToCheck, fieldValue, waittime=2, timeout=60):
+        """Reads the Stat Block for the specified writerName and wait for the specified 'fieldToCheck' value to be fieldValue.
 
         Argument 'waittime' specifies the time to wait between checks, in seconds.
         Argument 'timeout' specifies the maximum time to wait, in seconds.
@@ -138,14 +136,14 @@ class LinuxToolUtilities():
         maxtime = time.time() + float(timeout)
         while time.time() <= maxtime:
             time.sleep(waittime)
-            val = self.get_stat_block_field(MTEName,statBlock,fieldToCheck)
+            val = self.get_stat_block_field(writerName,statBlock,fieldToCheck)
 #             print 'DEBUG time=%f maxtime=%f value=%s' %(time.time(),maxtime,val)
             if val.strip() == fieldValue:
                 return 0
-        raise AssertionError('*ERROR* %s for %s  %s did not get value %s before timeout %ds' %(MTEName,statBlock,fieldToCheck,fieldValue,timeout))
+        raise AssertionError('*ERROR* %s for %s  %s did not get value %s before timeout %ds' %(writerName,statBlock,fieldToCheck,fieldValue,timeout))
     
-    def wait_for_HealthCheck(self, MTEName, fieldToCheck, waittime=2, timeout=60):
-        """Reads the Stat Block for the specified MTE and wait for the specified 'fieldToCheck' value to be 1 (true).
+    def wait_for_HealthCheck(self, writerName, fieldToCheck, waittime=2, timeout=60):
+        """Read the HealthCheck Stat Block for the specified writerName and wait for the specified 'fieldToCheck' value to be 1 (true).
 
         Argument 'waittime' specifies the time to wait between checks, in seconds.
         Argument 'timeout' specifies the maximum time to wait, in seconds.
@@ -156,7 +154,7 @@ class LinuxToolUtilities():
         | Wait for HealthCheck  | ${mte}  | IsLinehandlerStartupComplete  |
         | Wait for HealthCheck  | ${mte}  | FMSStartupReorgHasCompleted   | 5  | 600  |
         """
-        return self.wait_for_StatBlock(MTEName, 'HealthCheck', fieldToCheck, '1', waittime, timeout)
+        return self.wait_for_StatBlock(writerName, 'HealthCheck', fieldToCheck, '1', waittime, timeout)
 
     def wait_for_process_to_exist(self, pattern, waittime=2, timeout=60):
         """Wait until a process matching the specified pattern exists.
@@ -211,7 +209,7 @@ class LinuxToolUtilities():
     def wait_for_search_file(self, topdir, filename, waittime=2, timeout=60):
         """Wait until the remote filename to exist somewhere under the specified directory.
 
-        Arguement venuedir is the top directory to do the search from.
+        Arguement topdir is the top directory to do the search from.
         Argument filename may contain UNIX filename wildcard values.
         Argument 'waittime' specifies the time to wait between checks, in seconds.
         Argument 'timeout' specifies the maximum time to wait, in seconds.
@@ -219,8 +217,8 @@ class LinuxToolUtilities():
         Does not return a value; raises an error if the file does not exist within timeout seconds.
 
         Examples:
-        | Wait for searchfile  | venuedir | filepathname  |
-        | Wait for searchfile  | venuedir | filepathname  | 2  | 30  |
+        | Wait for searchfile  | VENUE_DIR | filepathname  |
+        | Wait for searchfile  | VENUE_DIR | filepathname  | 2  | 30  |
         """
         # convert  unicode to int (it is unicode if it came from the Robot test)
         timeout = int(timeout)
@@ -331,8 +329,10 @@ class LinuxToolUtilities():
         """
         refDate = '%s-%s-%s' %(timeRef[0], timeRef[1], timeRef[2])
         refTime = '%s:%s:%s' %(timeRef[3], timeRef[4], timeRef[5])
+#         print 'DEBUG refDate %s, refTime %s' %(refDate,refTime)
         dt = LinuxCoreUtilities().get_date_and_time()
         currentFile = '%s/smf-log-files.%s%s%s.txt' %(self.SMFLOGDIR, dt[0], dt[1], dt[2])
+#         print 'DEBUG checking SMF log file %s' %currentFile
 
         # convert  unicode to int (it is unicode if it came from the Robot test)
         timeout = int(timeout)
@@ -340,6 +340,7 @@ class LinuxToolUtilities():
         maxtime = time.time() + float(timeout)
         while time.time() <= maxtime:            
             retMessages = LinuxFSUtilities().grep_remote_file(currentFile, message)
+#             print 'DEBUG retMessages: %s' %retMessages
             if (len(retMessages) > 0):
                 logContents = retMessages[-1].split(';')
                 if (len(logContents) >= 2):
@@ -347,26 +348,59 @@ class LinuxToolUtilities():
                         return
             time.sleep(waittime)
         raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smf log before timeout %ds' %(message, timeout)) 
-    
-    def dump_cache(self, MTEName, venuedir, waittime=2, timeout=60):
-        """Dump the MTE cache to a file (on the MTE machine).
+    def wait_smf_log_does_not_contain(self, message, waittime=2, timeout=60):
+        """Wait until the SMF log file does not contain the specified message within the last 'waittime' interval
 
-        Argument venuedir specifies the base directory on the CHE machine where the Venue data/programs are located.
+        Argument :
+            message : target message in grep format to find in smf log
+            waittime : specifies the time to wait between checks, in seconds.
+            timeout : specifies the maximum time to wait, in seconds.
+        
+        Return : Nil if success or raise error
+
+        Example:
+        | wait smf log does not contain | Drop message sent for |
+        """
+
+        dt = LinuxCoreUtilities().get_date_and_time()
+        
+        # convert  unicode to int (it is unicode if it came from the Robot test)
+        timeout = int(timeout)
+        waittime = int(waittime)
+        maxtime = time.time() + float(timeout)
+        while time.time() <= maxtime:
+            time.sleep(waittime)
+            refDate = '%s-%s-%s' %(dt[0], dt[1], dt[2])
+            refTime = '%s:%s:%s' %(dt[3], dt[4], dt[5])
+            currentFile = '%s/smf-log-files.%s%s%s.txt' %(self.SMFLOGDIR, dt[0], dt[1], dt[2])
+            cmd = "grep '%s' %s | tail --lines=1" %(message, currentFile)
+            stdout, stderr, rc = _exec_command(cmd)
+            retMessage = stdout.split(';')
+            if (len(retMessage) < 2):
+                return
+            else:
+                if retMessage[0].strip() <= refDate and retMessage[1].strip() <= refTime:
+                    return
+            dt = LinuxCoreUtilities().get_date_and_time()
+        raise AssertionError('*ERROR* SMF log still contains pattern \'%s\' after timeout %ds' %(message, timeout))    
+    
+    def dump_cache(self, waittime=2, timeout=60):
+        """Dump the MTE cache to a file (on the MTE machine).
         
         Returns the full path name to the dumped file.
 
         Examples:
-        | Dump Cache  | TTView3  | /ThompsonReuters/Venues  |
-        | Dump Cache  | ${mte}   | ${VENUE_DIR}             |
+        | Dump Cache  | 
+        | Dump Cache  | 10 | 60 |
         """
-        stdout = self.run_commander('linehandler', 'lhcommand %s dumpcache' %MTEName)
+        stdout = self.run_commander('linehandler', 'lhcommand %s dumpcache' %MTE)
         if stdout.lower().find('successfully processed command:') == -1:
-            raise AssertionError('*ERROR* dumpcache %s failed, %s' %(MTEName,stdout))
+            raise AssertionError('*ERROR* dumpcache %s failed, %s' %(MTE,stdout))
         
         # get path to the cache file
         today = LinuxCoreUtilities().get_date_and_time()
-        filename = '%s_%s%s%s.csv' %(MTEName, today[0], today[1], today[2])
-        foundfiles = self.wait_for_search_file(venuedir,filename,waittime,timeout)
+        filename = '%s_%s%s%s.csv' %(MTE, today[0], today[1], today[2])
+        foundfiles = self.wait_for_search_file(VENUE_DIR,filename,waittime,timeout)
         if len(foundfiles) > 1:
             raise AssertionError('*ERROR* Found more than one cache file: %s' %foundfiles)
         print '*INFO* cache file is %s' %foundfiles[0]
@@ -374,20 +408,18 @@ class LinuxToolUtilities():
         return foundfiles[0]
 
         # if GATS provides Venue name, then use this code instead of _search_file
-        # This requires venuedir to include the venue name
-#         filename = '%s/MTE/%s_%s.csv' %(venuedir,MTEName,today)
+        # This requires VENUE_DIR to include the venue name
+#         filename = '%s/MTE/%s_%s.csv' %(VENUE_DIR,MTE,today)
 #         G_SSHInstance.file_should_exist(filename)
 #         return filename
     
-    def get_ric_fields_from_cache(self, MTEName, venuedir, numrows, domain, contextID):
+    def get_ric_fields_from_cache(self, numrows, domain, contextID):
         """Get the first n rows' ric fields data for the specified domain or/and contextID from MTE cache.
         Ignore RICs that contain 'TEST' and non-publishable RICs.
         Returns an array of dictionary containing all fields for the match.  Returns empty dictionary if match are not found
  
         Arguments:
-            MTEname:   MTE name
-            venuedir:  venue directory name
-            rows:      number of rows to return
+            numrows:   number of rows to return
             domain:    RIC must belong to this domain if domain is not NONE
             contextID: RIC must belong to this contextID if contextID is not NONE
                        If domain and contextID are NONE, first PUBLISHABLE=TRUE will be checked
@@ -396,10 +428,10 @@ class LinuxToolUtilities():
         E.g. [ {RIC : ric1, SIC sic1, DOMAIN MarketPrice, CONTEXT_ID : 1052 ...}, {RIC : ric2, SIC sic2, DOMAIN MarketPrice, CONTEXT_ID : 1052 ...} ]
  
         Example:
-        | get_ric_fields_from_cache  | ${MTE} | ${VENUE_DIR} | 1 | MARKET_PRICE |
-        | get_ric_fields_from_cache  | ${MTE} | ${VENUE_DIR} | 1 | ${EMPTY} | 1052 |
-        | get_ric_fields_from_cache  | ${MTE} | ${VENUE_DIR} | 2 | MARKET_PRICE | 1052 |
-        | get_ric_fields_from_cache  | ${MTE} | ${VENUE_DIR} | 2 |
+        | get_ric_fields_from_cache  | 1 | MARKET_PRICE |
+        | get_ric_fields_from_cache  | 1 | ${EMPTY} | 1052 |
+        | get_ric_fields_from_cache  | 2 | MARKET_PRICE | 1052 |
+        | get_ric_fields_from_cache  | 2 |
         """
         if numrows != 'all':
             numrows = int(numrows)
@@ -407,7 +439,7 @@ class LinuxToolUtilities():
         if domain:
             newDomain = self._convert_domain_to_cache_format(domain)
             
-        cacheFile = self.dump_cache(MTEName, venuedir)
+        cacheFile = self.dump_cache()
         # create hash of header values
         cmd = "head -1 %s | tr ',' '\n'" %cacheFile
         stdout, stderr, rc = _exec_command(cmd)
@@ -482,20 +514,18 @@ class LinuxToolUtilities():
         _delete_file(cacheFile,'',False)
         return result 
     
-    def get_all_fields_for_ric_from_cache(self, MTEName, venuedir, ric):
+    def get_all_fields_for_ric_from_cache(self, ric):
         """Get the field values from the MTE cache for the specifed RIC.
  
         Arguments:
-            MTEname:  MTE name
-            venuedir: venue directory name
             ric:   RIC name
          
         Returns a dictionary containing all fields for the RIC.  Returns empty dictionary if RIC not found.
  
         Example:
-        | get random RICs from cache  | ${MTE} | ${VENUE_DIR} | TESTRIC |
+        | get random RICs from cache  | TESTRIC |
         """
-        cacheFile = self.dump_cache(MTEName, venuedir)
+        cacheFile = self.dump_cache()
          
         # create hash of header values
         cmd = "head -1 %s | tr ',' '\n'" %cacheFile
@@ -708,22 +738,23 @@ class LinuxToolUtilities():
         
         return interfaceName
     
-    def get_outputAddress_and_port_for_mte(self,mte,field='multicast'):
+    def get_outputAddress_and_port_for_mte(self,field='multicast'):
         """Get ip address (based on type) and port for TD MTE
         
-        mte        : instance name of MTE
         field      : 'multicast', 'primary', 'secondary'
         Returns    : list = [ip,port] 
 
         Examples:
-        | get ip address and port for different field of specific MTE | MFDS1M |
+        | get ip address and port for MTE |
+        | get ip address and port for MTE | primary   |
+        | get ip address and port for MTE | secondary |
         """                  
                 
-        statblockNames = self.get_stat_blocks_for_category(mte, 'OutputStats')
+        statblockNames = self.get_stat_blocks_for_category(MTE, 'OutputStats')
                                    
-        ipAndPort = self.get_stat_block_field(mte, statblockNames[-1], field + 'OutputAddress').strip().split(':')
+        ipAndPort = self.get_stat_block_field(MTE, statblockNames[-1], field + 'OutputAddress').strip().split(':')
         if (len(ipAndPort) != 2):            
-            raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port (return %s)'%(field))
+            raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port, got [%s]'%(field,':'.join(ipAndPort)))
         
         return ipAndPort
     
@@ -911,11 +942,11 @@ class LinuxToolUtilities():
         else:   
             print '*INFO* tcpdump process stop successfully'
 
-    def get_contextID_from_FidFilter(self, venue_dir):
-        fidfilter = self.get_contextId_fids_constit_from_fidfiltertxt(venue_dir)
+    def get_contextID_from_FidFilter(self):
+        fidfilter = self.get_contextId_fids_constit_from_fidfiltertxt()
         return fidfilter.keys()
     
-    def get_contextId_fids_constit_from_fidfiltertxt(self,venuedir):
+    def get_contextId_fids_constit_from_fidfiltertxt(self):
         """Get context ID, FIDs and Constituent from FIDFilter.txt
         Argument : NIL
         Returns : Dictionary of FIDFilter [contextID][constituent][fid]='1'
@@ -927,7 +958,7 @@ class LinuxToolUtilities():
         constitWithFIDs = {} #dictionary with key=contituent number and content=array of FIDs
         contextIdsMap = {} #dictionary with key=contextID and content=map of constit with FIDs
         
-        cmd = 'cat `find ' + venuedir + ' -name FIDFilter.txt`'
+        cmd = 'cat `find ' + VENUE_DIR + ' -name FIDFilter.txt`'
         stdout, stderr, rc = _exec_command(cmd)
         
         if rc !=0 or stderr !='':
@@ -979,39 +1010,6 @@ class LinuxToolUtilities():
 
         return contextIdsMap
     
-    def get_fids_from_fidfiltertxt_by_contextId(self,contextId,venuedir):
-        """Get FIDs list from FIDFilter Dictionary given context ID
-        Argument : required context ID
-        Returns : Dictionary of FID List with key=constituent number
-
-        Examples:
-        | get fids from fidfiltertxt by contextId | 1234 |     
-        """
-                
-        contextIdsMap = self.get_contextId_fids_constit_from_fidfiltertxt(venuedir)
-        
-        if (contextIdsMap.has_key(contextId) == True):
-            return  contextIdsMap[contextId]
-        
-        return dict({})
-    
-    def get_fids_from_fidfiltertxt_by_contextId_and_constit(self,contextId,constit,venuedir):
-        """Get FIDs list from FIDFilter Dictionary given context ID
-        Argument : required context ID and constituent number
-        Returns : List of FIDs
-
-        Examples:
-        | get fids from fidfiltertxt by contextId | 1234 |     
-        """        
-
-        contextIdsMap = self.get_contextId_fids_constit_from_fidfiltertxt(venuedir)
-        
-        if (contextIdsMap.has_key(contextId) == True):
-            if (contextIdsMap[contextId].has_key(constit) == True):
-                return  contextIdsMap[contextId][constit]
-        
-        return dict({})
-
     def backup_cfg_file(self,searchdir,cfgfile,suffix='.backup'):
         """backup config file by create a new copy with filename append with suffix
         Argument : 
@@ -1029,8 +1027,8 @@ class LinuxToolUtilities():
         foundfiles = _search_file(searchdir,cfgfile,True)        
         if len(foundfiles) < 1:
             raise AssertionError('*ERROR* %s not found' %cfgfile)
-        elif len(foundfiles) > 1:
-            raise AssertionError('*ERROR* Found more than one file: %s' %cfgfile)     
+        """elif len(foundfiles) > 1:
+            raise AssertionError('*ERROR* Found more than one file: %s' %cfgfile)   """  
                 
         #backup config file
         backupfile = foundfiles[0] + suffix
@@ -1063,34 +1061,7 @@ class LinuxToolUtilities():
         
         if rc !=0 or stderr !='':
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))                
-
-    def set_PE_mangling_value(self,enabled,cfgfile):
-        """enable or disalbe PE mangling by chaning the content of manglingConfiguration.xml
-        enabled : True=enable , False=disable
-        cfgfile : full path of mangling config file xml
-        Returns : Nil
-
-        Examples:
-        | set PE mangling value | True | /ThomsonReuters/Venues/MFDS/MTE/manglingConfiguration.xml |
-        """         
-        #Find configuration file
-        LinuxFSUtilities().remote_file_should_exist(cfgfile)
-
-        #Check if <PE> tag exist
-        searchKeyWord = "<PE enabled="
-        foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-        if (len(foundlines) == 0):
-            raise AssertionError('*ERROR* <PE> tag is missing in %s' %cfgfile)
-                
-        if (enabled):
-            cmd = "sed -i 's/PE enabled=\"false\"/PE enabled=\"true\"/' " + cfgfile
-        else:
-            cmd = "sed -i 's/PE enabled=\"true\"/PE enabled=\"false\"/' " + cfgfile
-        stdout, stderr, rc = _exec_command(cmd)
-        
-        if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))        
-    
+ 
     def set_value_in_MTE_cfg(self, mtecfgfile, tagName, value):
         """change tag value in ${MTE}.xml
         
@@ -1121,22 +1092,20 @@ class LinuxToolUtilities():
         if rc !=0 or stderr !='':
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))    
     
-    def generate_persistence_backup(self, venuedir, MTEName, keepDays):
+    def generate_persistence_backup(self, keepDays):
         """ based on the no. of keeping days generate dummy persistence backup files 
             
-            params : venuedir - path where search for persist files
-                     MTEName - instance name of MTE
-                     keepDays = value found in MTE config tag <NumberOfDailyBackupsToKeep>
+            params : keepDays = value found in MTE config tag <NumberOfDailyBackupsToKeep>
 
             return : N/A
             
             Examples :
-                | generate persistence backup | /ThomsonReuters/Venues | JSDA01M | 3
+                | generate persistence backup | 3
         """
                 
         #Persistence backup filename format : PERSIST_${MTE}_YYYYMMDDTHHMMSS.DAT
-        dummyRefFile = 'PERSIST_' + MTEName + '.DAT'
-        listOfPersistBackupFiles = LinuxFSUtilities().search_remote_files(venuedir, dummyRefFile, True)
+        dummyRefFile = 'PERSIST_' + MTE + '.DAT'
+        listOfPersistBackupFiles = LinuxFSUtilities().search_remote_files(VENUE_DIR, dummyRefFile, True)
         if (len(listOfPersistBackupFiles) == 0):
             raise AssertionError('*ERROR* Persistence file is missing' )
         
@@ -1145,109 +1114,36 @@ class LinuxToolUtilities():
         oneDayInSecond = 60*60*24*-1
         for dayCount in range(0, int(keepDays)+2):
             dummyDatetime = datetime(int(tdBoxDatetime[0]), int(tdBoxDatetime[1]), int(tdBoxDatetime[2]), int('01'), int('00'), int('00')) + timedelta(seconds=int(dayCount*oneDayInSecond))
-            targetFile = 'PERSIST_%s_%s%02d%02dT010000.DAT' %(MTEName,dummyDatetime.year,dummyDatetime.month,dummyDatetime.day)
+            targetFile = 'PERSIST_%s_%s%02d%02dT010000.DAT' %(MTE,dummyDatetime.year,dummyDatetime.month,dummyDatetime.day)
             cmd = "cp -a %s %s"%(listOfPersistBackupFiles[0], backupfileDir + '/' + targetFile)
             stdout, stderr, rc = _exec_command(cmd)
         
             if rc !=0 or stderr !='':
                 raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
         
-    def verify_persistence_cleanup(self, venuedir, MTEName, keepDays):
+    def verify_persistence_cleanup(self, keepDays):
         """ verify if cleanup action has carried out properly after EndOfDay time
             
-            params : venuedir - path where search for persist files
-                     MTEName - instance name of MTE
-                     keepDays = value found in MTE config tag <NumberOfDailyBackupsToKeep>
+            params : keepDays = value found in MTE config tag <NumberOfDailyBackupsToKeep>
 
             return : N/A
             
             Examples :
-             | verify persistence cleanup | /ThomsonReuters/Venues | JSDA01M | 3
+             | verify persistence cleanup | 3 |
         """
             
         #Get a list of persist backup file
-        targetFile = 'PERSIST_' + MTEName + '_*.DAT'
-        listOfPersistBackupFiles = LinuxFSUtilities().search_remote_files(venuedir, targetFile, True)
+        targetFile = 'PERSIST_' + MTE + '_*.DAT'
+        listOfPersistBackupFiles = LinuxFSUtilities().search_remote_files(VENUE_DIR, targetFile, True)
         
         # 1. Test Case will use generate_persistence_backup_files() to generate dummy persist backup files
         # 2. Total no. of backup file generated is 1(current day) + keeyDays + 1(Suppose to be cleanup/deleted)
         originalNoOfBackupFile = 1 + int(keepDays) + 1
         if not ((originalNoOfBackupFile - len(listOfPersistBackupFiles)) == 1):
             raise AssertionError('*ERROR* Expected no. of backup file remain after cleanup (%d), but (%d) has found' %(originalNoOfBackupFile-1,len(listOfPersistBackupFiles)))
-    
-    def set_mangling_rule_default_value(self,rule,cfgfile):
-        """set the mangling rule (defaultRule) in manglingConfiguration.xml
         
-        rule : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
-        cfgfile : full path of mangling config file xml
-        Returns : Nil
-
-        Examples:
-        | set mangling rule default value | SOU | /ThomsonReuters/Venues/MFDS/MTE/manglingConfiguration.xml |
-        """
-        
-        #safe check for rule value
-        if (self.MANGLINGRULE.has_key(rule.upper()) == False):
-            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
-            
-        #Find configuration file
-        LinuxFSUtilities().remote_file_should_exist(cfgfile)
-
-        #Check if defaultRule attribute (found under <Partitions> tag) is exist
-        searchKeyWord = "defaultRule="
-        foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-        if (len(foundlines) == 0):
-            raise AssertionError('*ERROR* defaultRule attribute is missing in %s' %cfgfile)
-         
-        cmd = "sed -i 's/defaultRule=\"[^\"]*\"/defaultRule=\"%s\"/' "%self.MANGLINGRULE[rule.upper()] + cfgfile
-        stdout, stderr, rc = _exec_command(cmd)
-        if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))        
-        
-    def set_mangling_rule_partition_value(self,rule,cfgfile,listOfvalues=[]):
-        """set the mangling rule in manglingConfiguration.xml
-        
-        listOfvalues    : list of data of attribute for <Partition> 'value'
-        rule            : SOU (rule="3"), BETA (rule="2"), RRG (rule="1") or UNMANGLED (rule="0") [Case-insensitive]
-        cfgfile         : full path of mangling config file xml
-        Returns         : Nil
-
-        Examples:
-        | set mangling rule partition value | SOU | /ThomsonReuters/Venues/MFDS/MTE/manglingConfiguration.xml |[]|
-        """         
-               
-        #safe check for rule value
-        if (self.MANGLINGRULE.has_key(rule.upper()) == False):
-            raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
-            
-        #Find configuration file
-        LinuxFSUtilities().remote_file_should_exist(cfgfile)
-        
-        #Optional (If the config file has <Partition> under <Partitions> also replace all the rule value with required one
-        if (len(listOfvalues) == 0):
-            #Empty List = Replace all <Partition> (if exist) with same rule
-            searchKeyWord = "rule="
-            foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-            if (len(foundlines) > 0):
-                cmd = "sed -i 's/rule=\".*\"/rule=\"%s\"/' "%self.MANGLINGRULE[rule.upper()] + cfgfile
-                stdout, stderr, rc = _exec_command(cmd)
-                if rc !=0 or stderr !='':
-                    raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))             
-        else:
-            for value in listOfvalues:
-                searchKeyWord = "Partition value=\\\"%s\\\""%value
-                foundlines = LinuxFSUtilities().grep_remote_file(cfgfile, searchKeyWord)
-                if (len(foundlines) > 0):
-                    cmd = "sed -i 's/Partition value=\"%s\" rule=\".*\"/Partition value=\"%s\" rule=\"%s\"/' "%(value,value,self.MANGLINGRULE[rule.upper()]) + cfgfile
-                    stdout, stderr, rc = _exec_command(cmd)
-                    if rc !=0 or stderr !='':
-                        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
-                else:
-                    print 'Partition value="%s" does not exist in %s' %(value,cfgfile)
-        
-    def run_dataview(self, dataviewPath, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain, *optArgs):
+    def run_dataview(self, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain, *optArgs):
         """ Argument :
-                dataviewPath : DataView full path
                 dataType : Could be TRWF2 or RWF
                 multicastIP : multicast IP DataView listen to
                 multicastPort : muticast port DataView used to get data
@@ -1262,8 +1158,11 @@ class LinuxToolUtilities():
                 DataView -TRWF2 -IM 232.2.19.229 -IH 10.91.57.71  -PM 7777 -L 4096 -R .[SPSCB1L2_I -D SERVICE_PROVIDER_STATUS -EXITDELAY 5
         """
                             
-        cmd = '%s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (dataviewPath, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
+        # use pathfail to detect failure of a command within a pipeline
+        # remove non-printable chars; dataview COMP_NAME output contains binary characters that can cause utf-8 decode problems
+        cmd = 'set -o pathfail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (self.DATAVIEW, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
         cmd = cmd + ' ' + ' '.join( map(str, optArgs))
+        cmd = cmd + ' | tr -dc \'[:print:],[:space:]\''
         print '*INFO* ' + cmd
         stdout, stderr, rc = _exec_command(cmd)
                 
@@ -1291,11 +1190,10 @@ class LinuxToolUtilities():
         
         return stdout
     
-    def Get_MTE_state(self,mteName):
+    def Get_MTE_state(self):
         """check MTE state (UNDEFINED,LIVE,STANDBY,LOCKED_LIVE,LOCKED_STANDBY) through HostManger
         
          Argument:
-            mteName  : name of MTE instance
                     
         Returns    :  either 'UNDEFINED' or 'LIVE' or 'STANDBY' or 'LOCKED_LIVE' or 'LOCKED_STANDBY'
 
@@ -1303,7 +1201,7 @@ class LinuxToolUtilities():
         | check MTE state | HKF02M
         """           
         
-        cmd = '-readparams /%s/LiveStandby'%mteName
+        cmd = '-readparams /%s/LiveStandby'%MTE
         ret = self.run_HostManger(cmd).splitlines()
         if (len(ret) == 0):
             raise AssertionError('*ERROR* Running HostManger %s return empty response'%cmd)
@@ -1321,11 +1219,10 @@ class LinuxToolUtilities():
         
         return self.MTESTATE[idx]  
     
-    def verify_MTE_state(self,mteName,state):
+    def verify_MTE_state(self, state):
         """verify MTE instance is in specific state
         
          Argument:
-            mteName  : name of MTE instance
             state    : expected state of MTE (UNDEFINED,LIVE,STANDBY,LOCKED_LIVE,LOCKED_STANDBY)
         
         Returns    : 
@@ -1333,14 +1230,28 @@ class LinuxToolUtilities():
         Examples:
         | verify MTE state | HKF02M | LIVE
         """             
-     
+        
         #verify if input 'state' is a valid one
         if not (state in self.MTESTATE.values()):
             raise AssertionError('*ERROR* Invalid input (%s). Valid value for state is UNDEFINED , LIVE , STANDBY , LOCKED_LIVE , LOCKED_STANDBY '%state)
+        
+        cmd = '-readparams /%s/LiveStandby'%MTE
+        ret = self.run_HostManger(cmd).splitlines()
+        if (len(ret) == 0):
+            raise AssertionError('*ERROR* Running HostManger %s return empty response'%cmd)
+     
+        idx = '-1'
+        for line in ret:
+            if (line.find('LiveStandby') != -1):
+                contents = line.split(' ')
+                idx = contents[-1].strip()
                  
-        current_state = self.check_MTE_state(mteName)
-        if (current_state != state):
-            raise AssertionError('*ERROR* %s is not at %s (current state : %s)'%(mteName,state,current_state))       
+        if (idx == '-1'):
+            raise AssertionError('*ERROR* Keyword LiveStandby was not found in response')
+        elif not (self.MTESTATE.has_key(idx)):
+            raise AssertionError('*ERROR* Unknown state %s found in response'%idx)
+        elif (self.MTESTATE[idx] != state):
+                raise AssertionError('*ERROR* %s is not at %s (current state : %s)'%(MTE,state,self.MTESTATE[idx]))            
         
     def get_FID_Name_by_FIDId(self,FidId):
         """get FID Name from TRWF2.DAT based on fidID
@@ -1352,7 +1263,7 @@ class LinuxToolUtilities():
         |get FID Name by FIDId | 22 |     
         """
         
-        filelist = LinuxFSUtilities().search_remote_files(self.BASE_DIR, 'TRWF2.DAT',True)
+        filelist = LinuxFSUtilities().search_remote_files(BASE_DIR, 'TRWF2.DAT',True)
         if (len(filelist) == 0):
             raise AssertionError('no file is found, can not located the field ID')
         
@@ -1384,7 +1295,7 @@ class LinuxToolUtilities():
         |get FID ID by FIDName | ASK |     
         """
         
-        filelist = LinuxFSUtilities().search_remote_files(self.BASE_DIR, 'TRWF2.DAT',True)
+        filelist = LinuxFSUtilities().search_remote_files(BASE_DIR, 'TRWF2.DAT',True)
         if (len(filelist) == 0):
             raise AssertionError('no file is found, can not located the field ID')
         
@@ -1403,6 +1314,38 @@ class LinuxToolUtilities():
             return elements[1]
         else:
             raise AssertionError('*ERROR* The FID can not be found')        
+
+    def rollover_MTE_start_date(self, GMTStartTime):   
+        """Change the MTE machine date to a few seconds before the next StartOfDay time.
+        If current time <  specified time, change to specified time today.
+        If current time >= specified time, change to specified time tomorrow.
+        Waits for start of day instrument update to complete.
+                
+        Argument:         
+                    GMTStartTime     : StartOfDay GMT time with format HH:MM.
+      
+        return nil
+        
+        Examples:
+                    Rollover MTE Start Date  |  09:00 |
+        """  
+
+        secondsBeforeStartTime = timedelta(seconds = 5)
+        aDay = timedelta(days = 1 )
+        currTimeArray = LinuxCoreUtilities().get_date_and_time() # current time as array of strings
+        C = map(int,currTimeArray) # current time as array of INTs
+        T = map(int,GMTStartTime.split(':')) #start time as array of INTs
+        
+        currDateTime = datetime(*C) # current time as dateTime object
+        newDateTime = datetime(C[0],C[1],C[2],T[0],T[1]) - secondsBeforeStartTime
+            
+        if currDateTime >= newDateTime:
+            newDateTime += aDay
+
+        LinuxCoreUtilities().set_date_and_time(newDateTime.year, newDateTime.month, newDateTime.day, newDateTime.hour, newDateTime.minute, newDateTime.second)
+        currTimeArray = newDateTime.strftime('%Y,%m,%d,%H,%M,%S').split(',')
+        self.wait_smf_log_message_after_time('handleStartOfDayInstrumentUpdate.*Ending',currTimeArray)
+    
 
     def block_dataflow_by_port_protocol(self,inOrOut,protocol,port):
         """using iptables command to block specific port and protocol data
@@ -1465,7 +1408,6 @@ class LinuxToolUtilities():
         """  
                 
         cmd = "find " + BASE_DIR + " -type f -name \"" + filename + "\" | grep -v SCWatchdog"
-        print cmd
         
         stdout, stderr, rc = _exec_command(cmd)
         if rc !=0 or stderr !='':
