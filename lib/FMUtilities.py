@@ -104,6 +104,7 @@ class _FMUtil:
     
     def modify_icf(self, srcfile, dstfile, ric, domain, *ModifyItem):
         """modify icf file for assigned ric and domain item.
+        if the modified item can't be found, then add it.
         
         srcfile is the original file.\n
         dstfile is the modified output file.\n
@@ -121,8 +122,7 @@ class _FMUtil:
         return self._modify_fm_file(srcfile, dstfile, 'r', ric, domain, *ModifyItem)
 
     def modify_exl(self, srcfile, dstfile, ric, domain, *ModifyItem):
-        """ originally the function is named modify exl
-        modify exist item in exl file for assigned ric and domain item.
+        """modify exl file for assigned ric and domain item.
         
         srcfile is the original file.\n
         dstfile is the modified output file.\n
@@ -133,7 +133,7 @@ class _FMUtil:
         Return the modified output file path.
 
         Examples:
-        | ${result} | modify exist item in exl |c:/temp/ACLJ.exl | c:/temp/output.exl | ACLJ.JO | MARKET_PRICE | <it:DSPLY_NAME>xiaoqin</it:DSPLY_NAME> | 
+        | ${result} | modify exl |c:/temp/ACLJ.exl | c:/temp/output.exl | ACLJ.JO | MARKET_PRICE | <it:DSPLY_NAME>xiaoqin</it:DSPLY_NAME> | 
         """
         return self._modify_fm_file(srcfile, dstfile, 'exlObject', ric, domain, *ModifyItem)
     
@@ -221,11 +221,12 @@ class _FMUtil:
                     modifyflag = setvalue(iteratoroot, field, value, False)
                 if modifyflag == False:
                     #raise AssertionError("*ERROR* not found field %s for %s and %s in exl" % (field, ric, domain))
+                    print '*INFO* requested field %s does not exist, adding new field'%field
                     note = iteratoroot.getElementsByTagName('exlObjectFields')   
                     tempnode.removeAttribute('xmlns:it')
                     note[0].appendChild(tempnode)
             else:
-                raise AssertionError("*ERROR* the para of modified item is incorrect")
+                raise AssertionError("*ERROR* the format of modified item is incorrect")
 
         f = open(dstfile,'w')  
         #print dom.documentElement.childNodes.item(9).childNodes.item(11).childNodes.item(1).childNodes
