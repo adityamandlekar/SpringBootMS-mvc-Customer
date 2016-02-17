@@ -104,7 +104,6 @@ class _FMUtil:
     
     def modify_icf(self, srcfile, dstfile, ric, domain, *ModifyItem):
         """modify icf file for assigned ric and domain item.
-        if the modified item can't be found, then add it.
         
         srcfile is the original file.\n
         dstfile is the modified output file.\n
@@ -123,6 +122,7 @@ class _FMUtil:
 
     def modify_exl(self, srcfile, dstfile, ric, domain, *ModifyItem):
         """modify exl file for assigned ric and domain item.
+        if the modified item can't be found, then add it.
         
         srcfile is the original file.\n
         dstfile is the modified output file.\n
