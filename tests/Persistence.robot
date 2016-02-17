@@ -11,55 +11,55 @@ Variables         ../lib/VenueVariables.py
 Persistence File Backup
     [Documentation]    Verify persistence file could be backup after end of connection time http://www.iajira.amers.ime.reuters.com/browse/CATF-1756
     [Setup]
-    Start MTE    ${MTE}
+    Start MTE
     Delete Persist Backup
     Trigger Persistence File Backup
-    @{existingPersistBackupFiles}=    wait for search file    ${VENUE_DIR}    PERSIST_${mte}_*.DAT    2    180
+    @{existingPersistBackupFiles}=    wait for search file    ${VENUE_DIR}    PERSIST_${MTE}_*.DAT    2    180
     Delete Persist Backup
     [Teardown]
 
 Persistence File Cleanup
-    Start MTE    ${MTE}
+    Start MTE
     ${keepDays}=    Get Backup Keep Days
     Delete Persist Backup
-    generate persistence backup    ${VENUE_DIR}    ${MTE}    ${keepDays}
+    generate persistence backup    ${keepDays}
     Go Into EndOfDay time
-    verify persistence cleanup    ${VENUE_DIR}    ${MTE}    ${keepDays}
+    verify persistence cleanup    ${keepDays}
     Delete Persist Backup
 
 Persistence File Creation
     [Documentation]    Verify that on startup, the MTE creates a persist file.
-    Stop MTE    ${MTE}
-    Delete Persist Files    ${MTE}    ${VENUE_DIR}
-    Start MTE    ${MTE}
-    Persist File Should Exist    ${MTE}    ${VENUE_DIR}
+    Stop MTE
+    Delete Persist Files
+    Start MTE
+    Persist File Should Exist
     [Teardown]
 
 Persistence File Loading
     [Documentation]    Verify that the MTE correctly loads the existing persist file on startup to initialize its cache.
     Comment    The initial start MTE, wait for FMS reorg, wait for persist file update, and stop MTE KWs are a workaround of a MTE defect (ERTCADVAMT-827). They may be removed when the defect is fixed.    When the MTE is started and the PERSIST file does not exist (full Reorg), the CHE%FMSREORGTIMESTAMP RIC has MANGLING_RULE = Unmangled (Default).    When the MTE is restarted without removing the PERSIST file (partial Reorg), the CHE%FMSREORGTIMESTAMP RIC has MANGLING_RULE = CATF Specified Mangle Settings
-    Start MTE    ${MTE}
-    Wait For FMS Reorg    ${MTE}
-    Wait For Persist File Update    ${MTE}    ${VENUE_DIR}
-    Stop MTE    ${MTE}
-    Start MTE    ${MTE}
-    Wait For FMS Reorg    ${MTE}
-    Wait For Persist File Update    ${MTE}    ${VENUE_DIR}
-    Dumpcache And Copyback Result    ${MTE}    ${LOCAL_TMP_DIR}/cache_before.csv
-    Stop MTE    ${MTE}
-    Start MTE    ${MTE}
-    Dumpcache And Copyback Result    ${MTE}    ${LOCAL_TMP_DIR}/cache_after.csv
+    Start MTE
+    Wait For FMS Reorg
+    Wait For Persist File Update
+    Stop MTE
+    Start MTE
+    Wait For FMS Reorg
+    Wait For Persist File Update
+    Dumpcache And Copyback Result    ${LOCAL_TMP_DIR}/cache_before.csv
+    Stop MTE
+    Start MTE
+    Dumpcache And Copyback Result    ${LOCAL_TMP_DIR}/cache_after.csv
     verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
 Verify FMS filter string
     [Documentation]    Verify that all context ids in the MTE cache are listed in FilterString in the MTE xml configuration file.
-    Stop MTE    ${MTE}
-    Delete Persist Files    ${MTE}    ${VENUE_DIR}
-    Start MTE    ${MTE}
-    Wait For FMS Reorg    ${MTE}
+    Stop MTE
+    Delete Persist Files
+    Start MTE
+    Wait For FMS Reorg
     ${dstdumpfile}=    set variable    ${LOCAL_TMP_DIR}/cachedump.csv
-    Dumpcache And Copyback Result    ${MTE}    ${dstdumpfile}
+    Dumpcache And Copyback Result    ${dstdumpfile}
     ${mteConfigFile}=    Get MTE Config File
     ${serviceName}    Get FMS Service Name
     ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
@@ -70,33 +70,33 @@ Verify New Item Added to Persist File via FMS
     [Documentation]    Add new RIC to EXL, load the EXL file, use PMT to dump persist file and check if new RIC exists in the dump file.
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1844
-    Start MTE    ${MTE}
-    Wait For FMS Reorg    ${MTE}
+    Start MTE
+    Wait For FMS Reorg
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${EXLfullpath}=    Get EXL For RIC    ${LOCAL_FMS_DIR}    ${domain}    ${serviceName}    ${ric}
+    ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
     ${localEXLfile}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
     ${newRic}    Create Unique RIC Name    newric
     add ric to exl file    ${EXLfullpath}    ${localEXLfile}    ${newRic}    ${None}    ${domain}
-    Load Single EXL File    ${localEXLfile}    ${serviceName}    ${CHE_IP}    25000
-    Wait For Persist File Update    ${MTE}    ${VENUE_DIR}    5    60
-    Verfiy RIC Persisted    ${MTE}    ${newRic}    ${domain}
+    Load Single EXL File    ${localEXLfile}    ${serviceName}    ${CHE_IP}
+    Wait For Persist File Update    5    60
+    Verfiy RIC Persisted    ${newRic}    ${domain}
     [Teardown]    case teardown    ${localEXLfile}
 
 Persistence file FIDs existence check
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
     ...    Make sure below fids don’t exist in the dumped persistence file:
     ...    6401 DDS_DSO_ID 6480 SPS_SP_RIC 6394 MC_LABEL
-    Start MTE    ${MTE}
+    Start MTE
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    Wait For Persist File Update    ${MTE}    ${VENUE_DIR}    5    60
+    Wait For Persist File Update    5    60
     ${cacheDomainName}=    Remove String    ${domain}    _
     ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
-    ${pmatDumpfile}=    Dump Persist File To XML    ${MTE}    --ric ${ric}    --domain ${pmatDomain}
+    ${pmatDumpfile}=    Dump Persist File To XML    --ric ${ric}    --domain ${pmatDomain}
     ${fidsSet}    get all fids from PersistXML    ${pmatDumpfile}
     List Should Not Contain Value    ${fidsSet}    6401
     List Should Not Contain Value    ${fidsSet}    6480
@@ -109,7 +109,7 @@ Persistence file FIDs existence check
 *** Keywords ***
 Delete Persist Backup
     [Documentation]    Delete all persist backup files in Thunderdome box
-    @{existingPersistBackupFiles}=    search remote files    ${VENUE_DIR}    PERSIST_${mte}_*.DAT    ${True}
+    @{existingPersistBackupFiles}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}_*.DAT    ${True}
     delete remote files    @{existingPersistBackupFiles}
 
 Get Backup Keep Days
@@ -132,12 +132,12 @@ Go Into EndOfDay time
     ${endOfDay}    add time to date    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]    ${offsetInSecond} second    result_format=%H:%M
     ${orgFile}    ${backupFile}    backup cfg file    ${VENUE_DIR}    ${mtecfgfile}
     set value in MTE cfg    ${orgFile}    EndOfDayTime    ${endOfDay}
-    stop MTE    ${MTE}
-    start MTE    ${MTE}
+    stop MTE
+    start MTE
     sleep    ${offsetInSecond}
     restore cfg file    ${orgFile}    ${backupFile}
-    stop MTE    ${MTE}
-    start MTE    ${MTE}
+    stop MTE
+    start MTE
     Comment    Revert changes in local venue config file
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
     ${configFileLocal}=    Get MTE Config File
@@ -158,8 +158,7 @@ Go Into Feed Time And Set End Feed Time
     @{exlBackupFiles}=    Create List
     @{exlFiles}=    Create List
     : FOR    ${connectTimesIdentifier}    IN    @{connectTimesIdentifierList}
-    \    ${exlFile}=    get state EXL file    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${serviceName}    ${LOCAL_FMS_DIR}
-    \    ...    Feed Time
+    \    ${exlFile}=    get state EXL file    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${serviceName}    Feed Time
     \    ${count}=    Get Count    ${exlFiles}    ${exlFile}
     \    ${exlBackupFile}    set variable    ${exlFile}.backup
     \    Run Keyword if    ${count} == 0    append to list    ${exlFiles}    ${exlFile}
@@ -180,7 +179,7 @@ Go Into Feed Time And Set End Feed Time
     \    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}
     \    ...    ${connectTimeRicDomain}    ${startTime}    ${endTime}    ${endWeekDay}
     : FOR    ${exlFile}    IN    @{exlFiles}
-    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}    25000    25000
+    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
     [Teardown]
     [Return]    ${exlFiles}    ${exlBackupFiles}
 

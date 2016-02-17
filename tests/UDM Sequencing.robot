@@ -16,18 +16,18 @@ Validate Item Sequence Numbering on Startup
     ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${service}    Get FMS Service Name
     ${icf_file}=    set variable    ${LOCAL_TMP_DIR}/extract_output.icf
-    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}    Extract    --Services ${service}    --RIC ${ric}
-    ...    --HandlerName ${MTE}    --Domain ${domain}    --OutputFile ${icf_file}
-    Stop MTE    ${MTE}
-    Delete Persist Files    ${MTE}    ${VENUE_DIR}
-    Start Capture MTE Output    ${MTE}    ${remoteCapture}
-    Start MTE    ${MTE}
-    Wait For FMS Reorg    ${MTE}
-    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}    Insert    --Services ${service}    --InputFile "${icf_file}"
-    Stop Capture MTE Output    ${MTE}
+    Run FmsCmd    ${CHE_IP}    Extract    --Services ${service}    --RIC ${ric}    --HandlerName ${MTE}    --Domain ${domain}
+    ...    --OutputFile ${icf_file}
+    Stop MTE
+    Delete Persist Files
+    Start Capture MTE Output    ${remoteCapture}
+    Start MTE
+    Wait For FMS Reorg
+    Run FmsCmd    ${CHE_IP}    Insert    --Services ${service}    --InputFile "${icf_file}"
+    Stop Capture MTE Output
     get remote file    ${remoteCapture}    ${localCapture}
-    ${last_response_seq}    verify unsolicited response sequence numbers in capture    ${localCapture}    ${DAS_DIR}    ${publishKey}    ${domain}    startup
-    ${first_update_seq}    verify updated message sequence numbers in capture    ${localCapture}    ${DAS_DIR}    ${publishKey}    ${domain}    startup
+    ${last_response_seq}    verify unsolicited response sequence numbers in capture    ${localCapture}    ${publishKey}    ${domain}    startup
+    ${first_update_seq}    verify updated message sequence numbers in capture    ${localCapture}    ${publishKey}    ${domain}    startup
     ${last_response_seq_plus_one} =    Evaluate    ${last_response_seq}+ 1
     ${first_updatemsg_seq} =    Convert To Integer    ${first_update_seq}
     Run Keyword If    ${last_response_seq}==0    Should Be Equal    ${first_updatemsg_seq}    4
