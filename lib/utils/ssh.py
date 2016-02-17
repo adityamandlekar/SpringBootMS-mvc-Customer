@@ -89,6 +89,25 @@ def _count_lines(filename):
         pat = re.compile('\d+')
         return int(re.findall(pat,stdout)[0])
 
+def _return_ps_cmd_list():
+    cmd = 'ps -eo pid,cmd'
+    stdout, stderr, rc = _get_current_connection().execute_command(cmd)
+    #stdout, stderr, rc = G_SSHInstance.current.execute_command(cmd)
+    if rc != 0:
+        raise AssertionError('*ERROR* %s' %stderr)
+    return stdout
+
+def _get_process_pid_pattern_dict(process_pattern_list):
+    stdout = _return_ps_cmd_list()
+    pid_cmd_list = stdout.split('\n')
+    dict = {}
+    for process_item in pid_cmd_list:
+        for pattern_item in process_pattern_list:
+            if process_item.lower().find(pattern_item.lower()) != -1:
+                dict[process_item.split()[0]] = pattern_item
+    return dict  
+
+
 def _return_pslist():
     cmd = 'ps -eo pid,comm='
     stdout, stderr, rc = _get_current_connection().execute_command(cmd)
