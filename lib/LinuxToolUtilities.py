@@ -1344,7 +1344,8 @@ class LinuxToolUtilities():
 
         LinuxCoreUtilities().set_date_and_time(newDateTime.year, newDateTime.month, newDateTime.day, newDateTime.hour, newDateTime.minute, newDateTime.second)
         currTimeArray = newDateTime.strftime('%Y,%m,%d,%H,%M,%S').split(',')
-        self.wait_smf_log_message_after_time('handleStartOfDayInstrumentUpdate.*Ending',currTimeArray)
+        self.wait_smf_log_does_not_contain('dropped due to expiration' , 5, 300)
+        self.wait_smf_log_message_after_time('%s.*handleStartOfDayInstrumentUpdate.*Ending' %MTE, currTimeArray)
     
 
     def block_dataflow_by_port_protocol(self,inOrOut,protocol,port):
