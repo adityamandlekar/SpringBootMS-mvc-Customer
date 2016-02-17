@@ -49,6 +49,13 @@ Verify Manual Live-Standby Switch via SCW CLI
     [Teardown]    Manual Switch Live-Standby Case Teardown    ${master_ip}
 
 Verify Critical Logs forwarded to EventLogAdapterGMILog
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1754
+    ...    To verify SMF Critical Message generates alert in GMI Log when using SCW CLI to switch Live/Standby
+    ...    The test steps as follow:
+    ...    1 Restart SMF
+    ...    2 Switch A to Live
+    ...    3 Switch A to Standby
+    ...    4 Verify log in EventLogAdapterGMILog.txt
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${LOCAL_SCWCLI_BIN}    ${USERNAME}    ${PASSWORD}    ${ip_list}
     Switch To TD Box    ${CHE_A_IP}
