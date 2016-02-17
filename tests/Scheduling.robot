@@ -101,10 +101,12 @@ Verify Manual Closing Runs
 Check input port stats
     [Arguments]    ${identifierName}    ${statIdentifier}    ${statField}    ${statValue}
     [Documentation]    Note that all input port stats blocks (that have ${identifierName} set to ${statIdentifier}) will be checked here.
+    ...    Will stop checking when an empty stats block is encountered.
     : FOR    ${index}    IN RANGE    0    255
     \    ${identifier}    get stat block field    ${MTE}    InputPortStatsBlock_${index}    ${identifierName}
     \    run keyword if    '${identifier}' == '${statIdentifier}'    wait for statBlock    ${MTE}    InputPortStatsBlock_${index}    ${statField}
     \    ...    ${statValue}    waittime=2    timeout=300
+    \    return from keyword if    '${identifier}' == ''
 
 Get venue local datetime from MTE
     [Arguments]    ${ricName}
