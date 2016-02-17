@@ -476,13 +476,13 @@ Correct MTE Machine Time
     Restore MTE Clock Sync
     start smf
 
-<<<<<<< HEAD
+
 Undrop ric
     [Arguments]    ${ric}    ${domain}    ${serviceName}
     ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}
     ...    undrop    --RIC ${ric}    --Domain ${domain}    --HandlerName ${MTE}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
-=======
+
 Disable MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, disable the VirtualBox Guest Additions service. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
     ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service stop; fi
@@ -490,4 +490,4 @@ Disable MTE Clock Sync
 Restore MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
     ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
->>>>>>> master
+
