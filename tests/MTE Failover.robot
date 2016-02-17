@@ -48,6 +48,22 @@ Verify Manual Live-Standby Switch via SCW CLI
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     [Teardown]    Manual Switch Live-Standby Case Teardown    ${master_ip}
 
+Verify Critical Logs forwarded to EventLogAdapterGMILog
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${LOCAL_SCWCLI_BIN}    ${USERNAME}    ${PASSWORD}    ${ip_list}
+    Switch To TD Box    ${CHE_A_IP}
+    ${currDateTime}    get date and time
+    stop smf
+    start smf
+    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    A    LIVE    ${USERNAME}    ${PASSWORD}
+    ...    ${master_ip}
+    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    A    STANDBY    ${USERNAME}    ${PASSWORD}
+    ...    ${master_ip}
+    wait GMI message after time    |Hostname|API call returned error|    ${currDateTime}
+    wait GMI message after time    |Hostname|Watchdog event|    ${currDateTime}    2    100
+    wait GMI message after time    |Hostname|Normal Processing|    ${currDateTime}    2    100
+    wait GMI message after time    |Hostname|[${MTE}]]CommunicationObject: Sub Id 0 has gone ACTIVE    ${currDateTime}    2    100
+
 *** Keywords ***
 Verify MTE State In Specific Box
     [Arguments]    ${che_ip}    ${state}
