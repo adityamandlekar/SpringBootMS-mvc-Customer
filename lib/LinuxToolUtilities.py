@@ -38,6 +38,7 @@ class LinuxToolUtilities():
     DATAVIEW = ''
     SMFLOGDIR = BASE_DIR + '/smf/log/'
     MANGLINGRULE = {'SOU': '3', 'BETA': '2', 'RRG': '1', 'UNMANGLED' : '0'};
+    MTESTATE = {'0': 'UNDEFINED', '1': 'LIVE', '2': 'STANDBY', '3' : 'LOCKED_LIVE', '4' : 'LOCKED_STANDBY'};
     
     def setUtilPath(self):
         """Setting the Utilities paths by searching under BASE_DIR from VenueVariables
@@ -347,7 +348,6 @@ class LinuxToolUtilities():
                         return
             time.sleep(waittime)
         raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smf log before timeout %ds' %(message, timeout)) 
- 
     def wait_smf_log_does_not_contain(self, message, waittime=2, timeout=60):
         """Wait until the SMF log file does not contain the specified message within the last 'waittime' interval
 
@@ -1190,6 +1190,35 @@ class LinuxToolUtilities():
         
         return stdout
     
+    def Get_MTE_state(self):
+        """check MTE state (UNDEFINED,LIVE,STANDBY,LOCKED_LIVE,LOCKED_STANDBY) through HostManger
+        
+         Argument:
+                    
+        Returns    :  either 'UNDEFINED' or 'LIVE' or 'STANDBY' or 'LOCKED_LIVE' or 'LOCKED_STANDBY'
+
+        Examples:
+        | check MTE state | HKF02M
+        """           
+        
+        cmd = '-readparams /%s/LiveStandby'%MTE
+        ret = self.run_HostManger(cmd).splitlines()
+        if (len(ret) == 0):
+            raise AssertionError('*ERROR* Running HostManger %s return empty response'%cmd)
+        
+        idx = '-1'
+        for line in ret:
+            if (line.find('LiveStandby') != -1):
+                contents = line.split(' ')
+                idx = contents[-1].strip()
+        
+        if (idx == '-1'):
+            raise AssertionError('*ERROR* Keyword LiveStandby was not found in response')
+        elif not (self.MTESTATE.has_key(idx)):
+            raise AssertionError('*ERROR* Unknown state %s found in response'%idx)
+        
+        return self.MTESTATE[idx]  
+    
     def verify_MTE_state(self, state):
         """verify MTE instance is in specific state
         
@@ -1201,11 +1230,9 @@ class LinuxToolUtilities():
         Examples:
         | verify MTE state | HKF02M | LIVE
         """             
-     
-        stateDict = {'0': 'UNDEFINED', '1': 'LIVE', '2': 'STANDBY', '3' : 'LOCKED_LIVE', '4' : 'LOCKED_STANDBY'};
         
         #verify if input 'state' is a valid one
-        if not (state in stateDict.values()):
+        if not (state in self.MTESTATE.values()):
             raise AssertionError('*ERROR* Invalid input (%s). Valid value for state is UNDEFINED , LIVE , STANDBY , LOCKED_LIVE , LOCKED_STANDBY '%state)
         
         cmd = '-readparams /%s/LiveStandby'%MTE
@@ -1221,10 +1248,10 @@ class LinuxToolUtilities():
                  
         if (idx == '-1'):
             raise AssertionError('*ERROR* Keyword LiveStandby was not found in response')
-        elif not (stateDict.has_key(idx)):
+        elif not (self.MTESTATE.has_key(idx)):
             raise AssertionError('*ERROR* Unknown state %s found in response'%idx)
-        elif (stateDict[idx] != state):
-                raise AssertionError('*ERROR* %s is not at %s (current state : %s)'%(MTE,state,stateDict[idx]))            
+        elif (self.MTESTATE[idx] != state):
+                raise AssertionError('*ERROR* %s is not at %s (current state : %s)'%(MTE,state,self.MTESTATE[idx]))            
         
     def get_FID_Name_by_FIDId(self,FidId):
         """get FID Name from TRWF2.DAT based on fidID
@@ -1319,4 +1346,72 @@ class LinuxToolUtilities():
         currTimeArray = newDateTime.strftime('%Y,%m,%d,%H,%M,%S').split(',')
         self.wait_smf_log_message_after_time('handleStartOfDayInstrumentUpdate.*Ending',currTimeArray)
     
-    
+
+    def block_dataflow_by_port_protocol(self,inOrOut,protocol,port):
+        """using iptables command to block specific port and protocol data
+        
+         Argument:
+            inOrOut  : either 'INPUT' or 'OUTPUT'
+            protocol : UDP, TCP
+            port     : port number
+        
+        Returns    : 
+
+        Examples:
+        | block dataflow by port protocol | INPUT | UDP | 9002
+        """  
+                
+        cmd = "/sbin/iptables -A %s -p %s --destination-port %s -j DROP"%(inOrOut,protocol,port)
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        
+        cmd = "/sbin/service iptables save"
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))                     
+        
+    def unblock_dataflow(self):
+        """using iptables command to unblock all ports
+        
+        Argument   :        
+        Returns    : 
+
+        Examples:
+        | unblock dataflow | 
+        """  
+                
+        cmd = "iptables -F"
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))       
+        
+        cmd = "/sbin/service iptables save"
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        
+    def Get_CHE_Config_Filepath(self, filename):
+        """Get file path for specific filename from TD Box, we would ignore certain folder e.g.SCWatchdog during search
+        
+        Argument: 
+            filename : config filename
+                    
+        Returns: 
+
+        Examples:
+        | Get CHE Config Filepath | ddnPublishers.xml 
+        """  
+                
+        cmd = "find " + BASE_DIR + " -type f -name \"" + filename + "\" | grep -v SCWatchdog"
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        
+        return stdout.strip()       
+ 

@@ -1730,10 +1730,12 @@ class LocalBoxUtilities(_ToolUtil):
         modified_label_file.close()
         
     
-    def get_multicast_address_from_label_file(self, ddnLabels_file, labelID):
+    def get_multicast_address_from_label_file(self, ddnLabels_file, labelID, mteName=""):
         ''' Extract multicast IP and port from label file based on the labelID
-            Argument : ddnLabels_file:  ddnLabels or ddnReqLabels file
+        
+            Argument : ddnLabels_file:  ddnLabels or ddnReqLabels file or ddnPublishers (if mteName is not empty)
                        labelID : labelID defined in venue config file
+                       mteName : MTE instance name 
             Return : list contains multicast ip and port
         '''     
         tree = ET.parse(ddnLabels_file)
@@ -1743,12 +1745,27 @@ class LocalBoxUtilities(_ToolUtil):
         if not labelNode: 
             raise AssertionError('*ERROR* label element does not exist in %s' % ddnLabels_file)
         
+        multTagText = ""
+        multicast_port_tag = ""
+        multicast_ip = ""
+        multicast_port = ""
         for node in labelNode:
             if node.get('ID') == labelID:
-                multTagText = node.find('multTag').text
+                if (mteName != ""): #indicate checking ddnPublishers.xml
+                    providers = node.findall('provider')
+                    print providers
+                    found = False
+                    for provider in providers:
+                       if provider.get('NAME') == mteName:
+                        multTagText = provider.find('cvaMultTag').text
+                        found = True
+                    if not (found):
+                        raise AssertionError('*ERROR* could not find provider NAME = %s text for labelID %s' %(mteName, labelID))
+                else:
+                    multTagText = node.find('multTag').text
                 break
         
-        if not multTagText:
+        if (multTagText == None):
             raise AssertionError('*ERROR* could not find multTag text for labelID %s' % labelID)
         
         multAddrNode = root.findall('.//multAddr')    
@@ -1758,14 +1775,14 @@ class LocalBoxUtilities(_ToolUtil):
                 multicast_port_tag = node.get('PORT')
                 break;
             
-        if not multicast_port_tag:
+        if (multicast_port_tag == None):
             raise AssertionError('*ERROR* could not find port for multAddr node %s' % multTagText)
         
         for node in root.findall('.//port'):
             if node.get('ID') == multicast_port_tag:
                 multicast_port = node.text
                 
-        if not multicast_ip and not multicast_port: 
+        if (multicast_ip == None) or (multicast_port == ""): 
             raise AssertionError('*ERROR* failed to get multicast address for LabelID %s' % labelID)
         
         multicast_address = []        
@@ -2546,7 +2563,7 @@ class LocalBoxUtilities(_ToolUtil):
         cmd = 'SCWCLi.exe %s'%cmd
         print cmd
     
-        rc,stdout,stderr  = _run_local_command(cmd, True, scwcli_dir)
+        rc,stdout,stderr  = _run_local_command(cmd, True, LOCAL_SCWCLI_BIN)
         if rc != 0:
             raise AssertionError('*ERROR* in running SCWLLi.exe %s' %stderr)  
         
@@ -2583,6 +2600,53 @@ class LocalBoxUtilities(_ToolUtil):
         cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(MTE,node,che_ip,port,USERNAME,PASSWORD)
         self._run_local_SCWCLI(cmd)
 
+    def get_SyncPulseMissed(self, master_ip, port='27000'):
+        """ get sync pulse missing count through SCWCli
+
+            Argument : master_ip - IP of the master SCW box
+                       port - port no. that used to communicate with the SCW at TD box
+                             
+            Return : a list with sync pulse missing count for both instance A instance B i.e. [A-instance-missing-count, B-instance-missing-count]
+            
+            Examples :
+            |get SyncPulseMissed |${CHE_A_IP} | 
+        """
+                
+        syncPulseMissed = []
+        cmd = '-ip %s -port %s -user %s -pass %s -entity %s'%(master_ip,port,USERNAME,PASSWORD,MTE)
+        ret = self._run_local_SCWCLI(cmd).splitlines()
+        for line in ret:
+            if (line.find('SyncPulseMissed') != -1):
+                contents = line.split('|')
+                if (len(contents) >= 5):
+                    syncPulseMissed.append(int(contents[3].strip()))
+                    syncPulseMissed.append(int(contents[4].strip()))
+                    return syncPulseMissed
+                else:
+                    raise AssertionError('*ERROR* (%s) not match with expected format |SyncPulseMissed   |ID | A sync pulse | B sync pulse | | |'%(line))
+    
+        raise AssertionError('*ERROR* No SyncPulseMissed Information found')
+    
+    def verify_sync_pulse_missed_Qos(self,syncPulseBefore,syncPulseAfter):
+        """ To verify if sync pulse missing count has increased after port has been blocked
+
+            Argument : SyncPulseMissed - list of sync pulse missing count before port blocked
+                       syncPulseAfter - list of sync pulse missing count after port blocked
+                             
+            Return :
+            
+            Examples :
+            |verify sync pulse missed Qos |[0,0]|[0,100]| 
+        """
+                
+        if (syncPulseAfter[0] > 0):
+            if ((syncPulseAfter[0] - syncPulseBefore[0]) <= 0):
+                raise AssertionError('*ERROR* Sync Pulse Missed Count has not increased after port blocked (before : %d, after : %d)' %(syncPulseBefore[0], syncPulseAfter[0]))
+        else:
+            if ((syncPulseAfter[1] - syncPulseBefore[1]) <= 0):
+                raise AssertionError('*ERROR* Sync Pulse Missed Count has not increased after port blocked (before : %d, after : %d)' %(syncPulseBefore[1], syncPulseAfter[1]))
+        
+    
     def get_master_box_ip(self, che_ip_list, port='27000'):
         """ To find the master box from pair boxes
 
@@ -2755,4 +2819,3 @@ class LocalBoxUtilities(_ToolUtil):
                 file_content = file_content + item + '\n'
                 
         return file_content
-        
