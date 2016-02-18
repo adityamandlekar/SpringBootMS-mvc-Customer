@@ -689,7 +689,7 @@ class LinuxToolUtilities():
                 
         return listOfInterfaceName  
     
-    def _get_interface_name_by_ip(self,ip):
+    def get_interface_name_by_ip(self,ip):
         """Get network card interface name by given ip
 
         Argument ip specifies the ip address that used to find interface name
@@ -734,7 +734,7 @@ class LinuxToolUtilities():
         """        
         
         aliasIp = self._get_alias_ip(alias)
-        interfaceName = self._get_interface_name_by_ip(aliasIp)
+        interfaceName = self.get_interface_name_by_ip(aliasIp)
         
         return interfaceName
     
