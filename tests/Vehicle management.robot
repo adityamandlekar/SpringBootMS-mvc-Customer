@@ -320,26 +320,26 @@ Verify Drop/Undrop from FMSCmd
     ...
     ...    Test Case - Verify Drop/Undrop form FMSCmd
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2009
-    start mte    ${MTE}
+    start mte
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${mteConfigFile}=    Get MTE Config File
     ${currDateTime}    get date and time
-    Start Capture MTE Output    ${MTE}
+    Start Capture MTE Output
     Drop ric    ${ric}    ${domain}    ${serviceName}
     wait smf log message after time    Drop message sent    ${currDateTime}
-    Verify RIC Is Dropped In MTE Cache    ${MTE}    ${ric}
-    Stop Capture MTE Output    ${MTE}
+    Verify RIC Is Dropped In MTE Cache    ${ric}
+    Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
-    verify DROP message in itemstatus messages    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}
-    Start Capture MTE Output    ${MTE}
+    verify DROP message in itemstatus messages    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}
+    Start Capture MTE Output
     Undrop ric    ${ric}    ${domain}    ${serviceName}
     wait smf log message after time    was Undropped    ${currDateTime}
-    Verify RIC In MTE Cache    ${MTE}    ${ric}
-    Stop Capture MTE Output    ${MTE}
+    Verify RIC In MTE Cache    ${ric}
+    Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
-    verify_all_response_message_num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${VENUE_DIR}    ${DAS_DIR}    ${pubRic}
+    verify_all_response_message_num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 *** Keywords ***
@@ -476,12 +476,13 @@ Correct MTE Machine Time
     Restore MTE Clock Sync
     start smf
 
-
 Undrop ric
     [Arguments]    ${ric}    ${domain}    ${serviceName}
-    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    25000    ${LOCAL_FMS_BIN}
-    ...    undrop    --RIC ${ric}    --Domain ${domain}    --HandlerName ${MTE}
+    ${currDateTime}    get date and time
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    undrop    --RIC ${ric}
+    ...    --Domain ${domain}    --HandlerName ${MTE}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+    wait smf log message after time    Undrop    ${currDateTime}
 
 Disable MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, disable the VirtualBox Guest Additions service. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
@@ -490,4 +491,3 @@ Disable MTE Clock Sync
 Restore MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
     ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
-
