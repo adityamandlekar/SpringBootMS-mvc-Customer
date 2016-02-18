@@ -881,7 +881,7 @@ class LocalBoxUtilities(_ToolUtil):
             return : Nil
             
             Verify:
-            1. Drop message: msg class: Item Status, ContainerType should be NoData
+            1. Drop message: msg class: Item Status, ContainerType should be NoData, streamState should be 'TRWF_MSG_SST_CLOSED'
         """         
         
         outputfileprefix = 'peChgCheckC'+str(constnum)
@@ -894,7 +894,10 @@ class LocalBoxUtilities(_ToolUtil):
         if (len(messages) == 1):
             containterType = self._xml_parse_get_HeaderTag_Value_for_messageNode (messages[0],'MsgBase','ContainerType')
             if (containterType != 'NoData'):
-                raise AssertionError('*ERROR* C%s message : Drop message for RIC (%s) not found'%(constnum,ricname))                   
+                raise AssertionError('*ERROR* C%s message : Drop message for RIC (%s) not found'%(constnum,ricname))    
+            streamState = self._xml_parse_get_HeaderTag_Value_for_messageNode (messages[0],'ItemState','StreamState')
+            if (streamState != '4'):
+                raise AssertionError('*ERROR* C%s message : Drop message for RIC (%s) not found'%(constnum,ricname))                    
         else:
             raise AssertionError('*ERROR* No. of C%s message received not equal to 1 for RIC %s during RIC drop, received (%d) message(s)'%(constnum,ricname,len(messages)))        
         
