@@ -14,7 +14,7 @@ from datetime import datetime, date
 from utils.version import get_version
 from utils.rc import _rc
 
-from utils.ssh import _check_process, _exec_command, _get_datetime, _set_datetime, _return_pslist, _kill_process
+from utils.ssh import _get_process_pid_pattern_dict, _check_process, _exec_command, _get_datetime, _set_datetime, _return_pslist, _kill_process
 from utils.ssh import G_SSHInstance
        
 class LinuxCoreUtilities():    
@@ -31,6 +31,9 @@ class LinuxCoreUtilities():
         return G_SSHInstance.open_connection(host, alias, port, timeout,
                         newline, prompt, term_type, width,
                         height, path_separator, encoding)
+        
+    def get_current_connection_index(self):   
+        return G_SSHInstance.get_connection(index = True)
         
     def close_connection(self):
         G_SSHInstance.close_connection()
@@ -57,11 +60,22 @@ class LinuxCoreUtilities():
         return G_SSHInstance.read_command_output(return_stdout, return_stderr,
                             return_rc)
         
+    def Get_process_and_pid_matching_pattern(self, *process_pattern): 
+        """
+        From process patterns return dictionary contains pid and process_pattern
+        Examples:
+        | MTE -c ${MTE} | GRS -cfg  | FHController -cfg |
+        
+        """
+        return _get_process_pid_pattern_dict(list(process_pattern))
+        
+        
     def check_processes(self, *process):
         """
         Check processes existence. Return Foundlist and NotFoundlist.
         
         Process is the process name, which can be provided one or more items.\n
+        
         
         Return [Foundlist, NotFoundlist].
 
@@ -136,6 +150,7 @@ class LinuxCoreUtilities():
         | ${res} | set date and time | ${2014} | ${5} | ${6} | ${12} | ${23} | ${59} |
         | ${res} | set date and time | ${EMPTY} | ${EMPTY} | ${EMPTY} | 12 | 23 | 59 |
         """
+        print '*INFO* Setting date/time to: %04d-%02d-%02d %02d:%02d:%02d' %(int(year),int(month),int(day),int(hour),int(min),int(sec))
         return _set_datetime(year, month,day,hour,min,sec, 'linux')
     
     
@@ -152,6 +167,7 @@ class LinuxCoreUtilities():
         | ${res} | set date and time unix | ${2014} | ${5} | ${6} | ${12} | ${23} | ${59} |
         | ${res} | set date and time unix | ${EMPTY} | ${EMPTY} | ${EMPTY} | 12 | 23 | 59 |
         """
+        print '*INFO* Setting date/time to: %04d-%02d-%02d %02d:%02d:%02d' %(int(year),int(month),int(day),int(hour),int(min),int(sec))
         return _set_datetime(year, month,day,hour,min,sec, 'unix')
     
     def convert_EXL_datetime_to_statblock_format(self,exlDatetime):

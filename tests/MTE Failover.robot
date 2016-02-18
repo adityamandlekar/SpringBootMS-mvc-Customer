@@ -17,36 +17,30 @@ Verify Manual Live-Standby Switch via SCW CLI
     ...    7 Unlock A, verify A is Live, B is Standby
     [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
-    ${master_ip}    get master box ip    ${LOCAL_SCWCLI_BIN}    ${USERNAME}    ${PASSWORD}    ${ip_list}
-    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    A    LIVE    ${USERNAME}    ${PASSWORD}
-    ...    ${master_ip}
+    ${master_ip}    get master box ip    ${ip_list}
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    A    STANDBY    ${USERNAME}    ${PASSWORD}
-    ...    ${master_ip}
+    switch MTE LIVE STANDBY status    A    STANDBY    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
-    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    A    LOCK_LIVE    ${USERNAME}    ${PASSWORD}
-    ...    ${master_ip}
+    switch MTE LIVE STANDBY status    A    LOCK_LIVE    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    B    LOCK_STANDBY    ${USERNAME}    ${PASSWORD}
-    ...    ${master_ip}
+    switch MTE LIVE STANDBY status    B    LOCK_STANDBY    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_STANDBY
-    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    B    UNLOCK    ${USERNAME}    ${PASSWORD}
-    ...    ${master_ip}
+    switch MTE LIVE STANDBY status    B    UNLOCK    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    B    LOCK_LIVE    ${USERNAME}    ${PASSWORD}
-    ...    ${master_ip}
+    switch MTE LIVE STANDBY status    B    LOCK_LIVE    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    A    UNLOCK    ${USERNAME}    ${PASSWORD}
-    ...    ${master_ip}
+    switch MTE LIVE STANDBY status    A    UNLOCK    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     [Teardown]    Manual Switch Live-Standby Case Teardown    ${master_ip}
+
 
 Verify Critical Logs forwarded to EventLogAdapterGMILog
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1754
@@ -71,16 +65,53 @@ Verify Critical Logs forwarded to EventLogAdapterGMILog
     wait GMI message after time    |Hostname|Normal Processing|    ${currDateTime}    2    100
     wait GMI message after time    |Hostname|[${MTE}]]CommunicationObject: Sub Id 0 has gone ACTIVE    ${currDateTime}    2    100
 
+Verify Sync Pulse Missed QoS
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
+    ...
+    ...    Test Case - Verify Sync Pulse Missed QoS by blocking sync pulse publiscation port and check the missing statistic by SCWCli
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    ${localVenueConfig}=    get MTE config file
+    @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
+    ${ddnpublishersLabelfilepath}=    Get CHE Config Filepath    ddnPublishers.xml
+    ${labelfile_local}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishers.xml
+    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
+    ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
+    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
+    Comment    Blocking Standby Side INPUT
+    Switch to TD Box    ${CHE_A_IP}
+    ${state}=    Get MTE state
+    Run Keyword If    '${state}' != 'STANDBY'    Switch to TD Box    ${CHE_B_IP}
+    : FOR    ${labelID}    IN    @{labelIDs}
+    \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
+    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
+    \    block dataflow by port protocol    INPUT    UDP    @{multicastIPandPort}[1]
+    \    sleep    5
+    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
+    \    unblock_dataflow
+    \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
+    Comment    Blocking Live Side OUTPUT
+    Switch to TD Box    ${CHE_A_IP}
+    ${state}=    Get MTE state
+    Run Keyword If    '${state}' != 'LIVE'    Switch to TD Box    ${CHE_B_IP}
+    : FOR    ${labelID}    IN    @{labelIDs}
+    \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
+    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
+    \    block dataflow by port protocol    OUTPUT    UDP    @{multicastIPandPort}[1]
+    \    sleep    5
+    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
+    \    unblock_dataflow
+    \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
+    [Teardown]    Case Teardown    ${modifyLabelFile}    ${labelfile_local}
+
 *** Keywords ***
 Verify MTE State In Specific Box
     [Arguments]    ${che_ip}    ${state}
     Switch To TD Box    ${che_ip}
-    verify MTE state    ${MTE}    ${state}
+    verify MTE state    ${state}
 
 Manual Switch Live-Standby Case Teardown
     [Arguments]    ${master_ip}
     [Documentation]    If a KW fail, unlocking both A and B
-    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    A    UNLOCK    ${USERNAME}    ${PASSWORD}
-    ...    ${master_ip}
-    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    B    UNLOCK    ${USERNAME}    ${PASSWORD}
-    ...    ${master_ip}
+    switch MTE LIVE STANDBY status    A    UNLOCK    ${master_ip}
+    switch MTE LIVE STANDBY status    B    UNLOCK    ${master_ip}
