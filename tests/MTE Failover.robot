@@ -45,6 +45,7 @@ Verify Sync Pulse Missed QoS
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
     ...
     ...    Test Case - Verify Sync Pulse Missed QoS by blocking sync pulse publiscation port and check the missing statistic by SCWCli
+    [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     ${localVenueConfig}=    get MTE config file

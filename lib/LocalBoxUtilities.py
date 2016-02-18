@@ -2572,14 +2572,13 @@ class LocalBoxUtilities(_ToolUtil):
         
         return stdout
     
-    def switch_MTE_LIVE_STANDBY_status(self,node,status,che_ip,port='27000'):
+    def switch_MTE_LIVE_STANDBY_status(self,node,status,che_ip):
         """ To switch specific MTE instance to LIVE, STANDBY, LOCK_LIVE or LOCK_STANDY. Or unlock the MTE instance.
 
             Argument : node - A,B,C,D
                        status - LIVE:Switch to Live, STANDBY:Switch to Standby, 
                                 LOCK_LIVE to lock live, LOCK_STANDY to lock standby, UNLOCK to unlock the MTE
                        che_ip - IP of the TD box
-                       port - port no. that used to communicate with the SCW at TD box
                              
             Return :
             
@@ -2600,14 +2599,13 @@ class LocalBoxUtilities(_ToolUtil):
         else:
             raise AssertionError('*ERROR* Unknown status %s' %status)
             
-        cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(MTE,node,che_ip,port,USERNAME,PASSWORD)
+        cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(MTE,node,che_ip,SCWCLI_PORT,USERNAME,PASSWORD)
         self._run_local_SCWCLI(cmd)
 
-    def get_SyncPulseMissed(self, master_ip, port='27000'):
+    def get_SyncPulseMissed(self, master_ip):
         """ get sync pulse missing count through SCWCli
 
             Argument : master_ip - IP of the master SCW box
-                       port - port no. that used to communicate with the SCW at TD box
                              
             Return : a list with sync pulse missing count for both instance A instance B i.e. [A-instance-missing-count, B-instance-missing-count]
             
@@ -2616,7 +2614,7 @@ class LocalBoxUtilities(_ToolUtil):
         """
                 
         syncPulseMissed = []
-        cmd = '-ip %s -port %s -user %s -pass %s -entity %s'%(master_ip,port,USERNAME,PASSWORD,MTE)
+        cmd = '-ip %s -port %s -user %s -pass %s -entity %s'%(master_ip,SCWCLI_PORT,USERNAME,PASSWORD,MTE)
         ret = self._run_local_SCWCLI(cmd).splitlines()
         for line in ret:
             if (line.find('SyncPulseMissed') != -1):
@@ -2650,11 +2648,11 @@ class LocalBoxUtilities(_ToolUtil):
                 raise AssertionError('*ERROR* Sync Pulse Missed Count has not increased after port blocked (before : %d, after : %d)' %(syncPulseBefore[1], syncPulseAfter[1]))
         
     
-    def get_master_box_ip(self, che_ip_list, port='27000'):
+    def get_master_box_ip(self, che_ip_list):
         """ To find the master box from pair boxes
 
             Argument : che_ip_list - IP list of the TD boxes
-                       port - port no. that used to communicate with the SCW at TD box
+
             Return :   the ip of master box
             
             Examples :
@@ -2662,7 +2660,7 @@ class LocalBoxUtilities(_ToolUtil):
             | ${master_ip} | get master box ip | ${iplist} |
         """
         for che_ip in che_ip_list:
-            cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,port,USERNAME,PASSWORD)
+            cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,SCWCLI_PORT,USERNAME,PASSWORD)
             stdout = self._run_local_SCWCLI(cmd)
             if (stdout.find('SCW state MASTER') != -1):
                 return che_ip
