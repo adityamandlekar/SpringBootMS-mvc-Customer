@@ -40,11 +40,11 @@ Suite Setup
     [Return]    ${ret}
 
 Suite Setup with Playback
-    [Documentation]    Setup Playback box and suit scope variable Suit_Playback_Session.
-    Should Not be Empty    ${PLAYBACK_IP}
-    ${plyblk}    open connection    host=${PLAYBACK_IP}    port=${PLAYBACK_PORT}    timeout=5
+    [Documentation]    Setup Playback box and suit scope variable Playback_Session.
+    Should Not be Empty    ${PLAYBACK_MACHINE_IP}
+    ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
     login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
-    Set Suite Variable    ${Suit_Playback_Session}    ${plyblk}
+    Set Suite Variable    ${Playback_Session}    ${plyblk}
     Suite Setup
 
 Suite Teardown
@@ -291,12 +291,13 @@ Inject PCAP File on UDP
     ...
     ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
     ${host}=    get current connection index
-    Switch Connection    ${Suit_Playback_Session}
+    Switch Connection    ${Playback_Session}
+    ${intfName}=    get interface name by ip    ${PLAYBACK_BIND_IP}
+    Should Not be Empty    ${intfName}
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
-    \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps 10000 --intf1=eth6 ${pcapFile}    return_rc=True
+    \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} ${pcapFile}    return_rc=True
     \    Should Be Equal As Integers    ${rc}    0
-    close connection
     Switch Connection    ${host}
 
 Load All EXL Files
