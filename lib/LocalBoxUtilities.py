@@ -2553,14 +2553,13 @@ class LocalBoxUtilities(_ToolUtil):
         
         return stdout
     
-    def switch_MTE_LIVE_STANDBY_status(self,node,status,che_ip,port='27000'):
+    def switch_MTE_LIVE_STANDBY_status(self,node,status,che_ip):
         """ To switch specific MTE instance to LIVE, STANDBY, LOCK_LIVE or LOCK_STANDY. Or unlock the MTE instance.
 
             Argument : node - A,B,C,D
                        status - LIVE:Switch to Live, STANDBY:Switch to Standby, 
                                 LOCK_LIVE to lock live, LOCK_STANDY to lock standby, UNLOCK to unlock the MTE
                        che_ip - IP of the TD box
-                       port - port no. that used to communicate with the SCW at TD box
                              
             Return :
             
@@ -2581,14 +2580,13 @@ class LocalBoxUtilities(_ToolUtil):
         else:
             raise AssertionError('*ERROR* Unknown status %s' %status)
             
-        cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(MTE,node,che_ip,port,USERNAME,PASSWORD)
+        cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(MTE,node,che_ip,SCWCLI_PORT,USERNAME,PASSWORD)
         self._run_local_SCWCLI(cmd)
 
-    def get_master_box_ip(self, che_ip_list, port='27000'):
+    def get_master_box_ip(self, che_ip_list):
         """ To find the master box from pair boxes
 
             Argument : che_ip_list - IP list of the TD boxes
-                       port - port no. that used to communicate with the SCW at TD box
             Return :   the ip of master box
             
             Examples :
@@ -2596,20 +2594,19 @@ class LocalBoxUtilities(_ToolUtil):
             | ${master_ip} | get master box ip | ${iplist} |
         """
         for che_ip in che_ip_list:
-            cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,port,USERNAME,PASSWORD)
+            cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,SCWCLI_PORT,USERNAME,PASSWORD)
             stdout = self._run_local_SCWCLI(cmd)
             if (stdout.find('SCW state MASTER') != -1):
                 return che_ip
         raise AssertionError('*ERROR* cannot find a master box')
 
-    def wait_for_QOS(self, node, QOSName, QOSValue, che_ip, port='27000', waittime=10, timeout=100):
+    def wait_for_QOS(self, node, QOSName, QOSValue, che_ip, waittime=10, timeout=100):
         """ wait the QOS until it is changed to the specific value, break the wait after timeout.
 
             Argument : node - A,B,C,D
                        QOSName - the QOS name you want to check, should be "IngressNIC", "EgressNIC", "FMSNIC" etc
                        QOSValue - the specific QOS value, 100 or 50 or 0
-                       che_ip - IP of the TD box
-                       port - port no. that used to communicate with the SCW at TD box
+                       che_ip - IP of the master TD box
                        waittime - specifies the time to wait between checks, in seconds.
                        timeout - specifies the maximum time to wait, in seconds.
             Return :   None
@@ -2620,44 +2617,41 @@ class LocalBoxUtilities(_ToolUtil):
         timeout = int(timeout)
         waittime = int(waittime)
         maxtime = time.time() + float(timeout)
-        actualQOSValue = '0'
         while time.time() <= maxtime:
             time.sleep(waittime)
-            actualQOSValue = self.get_QOS_value(node, QOSName, che_ip, port)
+            actualQOSValue = self.get_QOS_value(node, QOSName, che_ip, SCWCLI_PORT)
             if (actualQOSValue == QOSValue):
                 return
         raise AssertionError('*ERROR* QOS %s on %s is %s did not change to %s before timeout %ds' %(QOSName,node,actualQOSValue,QOSValue,timeout))
     
-    def verify_QOS_equal_to_specific_value(self, node, QOSName, QOSValue, che_ip, port='27000'):
+    def verify_QOS_equal_to_specific_value(self, node, QOSName, QOSValue, che_ip):
         """ verify QOS is equal to the specific value
 
             Argument : node - A,B,C,D
                        QOSName - the QOS name you want to check, should be "IngressNIC", "EgressNIC", "FMSNIC" etc
                        QOSValue - the specific QOS value, 100 or 50 or 0
                        che_ip - IP of the TD box
-                       port - port no. that used to communicate with the SCW at TD box
             Return :   None
             
             Examples :
             | verify QOS equal to specific value | A | IngressNIC | 100 | ${CHE_IP} |
         """
-        actualQOSValue = self.get_QOS_value(node, QOSName, che_ip, port)
+        actualQOSValue = self.get_QOS_value(node, QOSName, che_ip, SCWCLI_PORT)
         if (actualQOSValue != QOSValue):
             raise AssertionError('*ERROR* QOS %s on %s is %s, is not equal to %s' %(QOSName,node,actualQOSValue,QOSValue))
 
-    def get_QOS_value(self, node, QOSName, che_ip, port='27000'):
+    def get_QOS_value(self, node, QOSName, che_ip):
         """ get QOS value via watchdog
 
             Argument : node - A,B,C,D
                        QOSName - the QOS name you want to check, should be "IngressNIC", "EgressNIC", "FMSNIC" etc
-                       che_ip - IP of the TD box
-                       port - port no. that used to communicate with the SCW at TD box
+                       che_ip - IP of the master TD box
             Return :   QOS value returned from watchdog
             
             Examples :
             | get QOS equal | A | IngressNIC | ${CHE_IP} |
         """
-        cmd ='-entity %s -ip %s -port %s -user %s -pass %s'%(MTE, che_ip, port, USERNAME, PASSWORD)
+        cmd ='-entity %s -ip %s -port %s -user %s -pass %s'%(MTE, che_ip, SCWCLI_PORT, USERNAME, PASSWORD)
         stdout = self._run_local_SCWCLI(cmd)
         for line in stdout.split('\n'):
             if (line.find(QOSName) != -1):
@@ -2674,8 +2668,10 @@ class LocalBoxUtilities(_ToolUtil):
                     actualQOSValue = items[5].strip()
                 elif (node == 'D'):
                     actualQOSValue = items[6].strip()
+                else:
+                    raise AssertionError('*ERROR* node is %s, it must be A, B, C or D' %node)
                 return actualQOSValue
-        raise AssertionError('*ERROR* Cannot find the specific QOS Name %s, confirm it is correct' %QOSName)
+        raise AssertionError('*ERROR* Cannot find the specific QOS Name %s' %QOSName)
 
     def get_FidValue_in_message(self,pcapfile,ricname, msgClass):
         """ To verify the insert icf file can update the changed fid and value correct

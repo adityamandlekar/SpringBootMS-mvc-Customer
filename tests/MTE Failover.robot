@@ -50,7 +50,7 @@ Verify QoS Failover for Critical Process Failure
     ...    3. Verify A is UNDEFINED, B is LIVE
     ...    4. Verify QOS on A side, CritProcessFail is 1, and Total QOS is 0
     ...    2. Stop below critical processes:
-    ...    GPS
+    ...    GRS
     ...    FMSClient
     ...    NetConStat
     ...    EventScheduler
@@ -71,6 +71,7 @@ Verify QoS Failover for Critical Process Failure
     Verify QoS for CritProcessFail    A    1    0    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    UNDEFINED
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Switch To TD Box    ${CHE_A_IP}
     Stop Process    GRS
     Stop Process    FMSClient
     Stop Process    NetConStat
@@ -127,4 +128,4 @@ Verify QoS for CritProcessFail
     [Arguments]    ${node}    ${CritProcessFailValue}    ${totalQoSValue}    ${master_ip}
     [Documentation]    Verify the QOS of CritProcessFail and TotalQOS on specified node, &{node} should be A, B, C or D
     wait for QOS    ${node}    CritProcessFail    ${CritProcessFailValue}    ${master_ip}
-    verify QOS equal to specific value     ${node}    Total QOS    ${totalQoSValue}    ${master_ip}
+    verify QOS equal to specific value    ${node}    Total QOS    ${totalQoSValue}    ${master_ip}
