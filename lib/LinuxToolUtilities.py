@@ -1360,12 +1360,10 @@ class LinuxToolUtilities():
         Return : Nil if success or raise error
 
         Examples:
-        | ${dt}= | get date and time |
-        | wait smf log message after time | FMS REORG DONE | ${dt} |
+        | wait GMI message after time | FMS REORG DONE | ${dt} |
         """
         refDate = '%s-%s-%s' %(timeRef[0], timeRef[1], timeRef[2])
         refTime = '%s:%s:%s' %(timeRef[3], timeRef[4], timeRef[5])
-        dt = LinuxCoreUtilities().get_date_and_time()
         currentFile = '%s/EventLogAdapterGMILog.txt' %(self.SMFLOGDIR)
 
         # convert  unicode to int (it is unicode if it came from the Robot test)

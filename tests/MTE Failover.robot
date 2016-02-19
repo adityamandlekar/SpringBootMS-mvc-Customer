@@ -41,29 +41,30 @@ Verify Manual Live-Standby Switch via SCW CLI
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     [Teardown]    Manual Switch Live-Standby Case Teardown    ${master_ip}
 
-
 Verify Critical Logs forwarded to EventLogAdapterGMILog
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1754
     ...    To verify SMF Critical Message generates alert in GMI Log when using SCW CLI to switch Live/Standby
     ...    The test steps as follow:
-    ...    1 Restart SMF
+    ...    1 Get MTE state on A
     ...    2 Switch A to Live
     ...    3 Switch A to Standby
     ...    4 Verify log in EventLogAdapterGMILog.txt
+    [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
-    ${master_ip}    get master box ip    ${LOCAL_SCWCLI_BIN}    ${USERNAME}    ${PASSWORD}    ${ip_list}
+    ${master_ip}    get master box ip    ${ip_list}
     Switch To TD Box    ${CHE_A_IP}
     ${currDateTime}    get date and time
-    stop smf
-    start smf
-    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    A    LIVE    ${USERNAME}    ${PASSWORD}
-    ...    ${master_ip}
-    switch MTE LIVE STANDBY status    ${LOCAL_SCWCLI_BIN}    ${MTE}    A    STANDBY    ${USERNAME}    ${PASSWORD}
-    ...    ${master_ip}
-    wait GMI message after time    |Hostname|API call returned error|    ${currDateTime}
-    wait GMI message after time    |Hostname|Watchdog event|    ${currDateTime}    2    100
-    wait GMI message after time    |Hostname|Normal Processing|    ${currDateTime}    2    100
-    wait GMI message after time    |Hostname|[${MTE}]]CommunicationObject: Sub Id 0 has gone ACTIVE    ${currDateTime}    2    100
+    ${start_state}    Get_MTE_state
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    wait smf log message after time    WatchDogService: STATE_CHANGE    ${currDateTime}
+    ${currDateTime2}    get date and time
+    switch MTE LIVE STANDBY status    A    STANDBY    ${master_ip}
+    wait smf log message after time    WatchDogService: STATE_CHANGE    ${currDateTime2}
+    wait GMI message after time    CRITICAL.+API call returned error    ${currDateTime}    2    100
+    wait GMI message after time    CRITICAL.+Watchdog event    ${currDateTime}    2    100
+    wait GMI message after time    CRITICAL.+Normal Processing    ${currDateTime}    2    100
+    wait GMI message after time    HARMLESS.+CommunicationObject    ${currDateTime}    2    100
+    [Teardown]    switch MTE LIVE STANDBY status    A    ${start_state}    ${master_ip}
 
 Verify Sync Pulse Missed QoS
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
