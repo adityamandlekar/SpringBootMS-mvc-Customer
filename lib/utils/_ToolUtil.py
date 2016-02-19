@@ -246,8 +246,7 @@ class _ToolUtil():
         | ${res}= | run fmscmd | ${IP} | dbrebuild | --HandlerName VAE_1 | --Services NYSE |
         """ 
             
-        headendPort = 25000
-        cmd = 'FmsCmd.exe --HeadendIP %s --HeadendPort %s --TaskType %s ' % (headendIP, headendPort, TaskType)
+        cmd = 'FmsCmd.exe --HeadendIP %s --HeadendPort %s --TaskType %s ' % (headendIP, FMSCMD_PORT, TaskType)
         cmd = cmd + ' ' + ' '.join(map(str, optargs))
         rc,stdout,stderr = _run_local_command(cmd, True, LOCAL_FMS_BIN)
         
