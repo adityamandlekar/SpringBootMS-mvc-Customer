@@ -305,7 +305,7 @@ Verify Deletion Delay
     Verify RIC Not In MTE Cache    ${ric}
     [Teardown]    Correct MTE Machine Time
 
-Verify Drop/Undrop from FMSCmd
+Verify Drop and Undrop from FMSCmd
     [Documentation]    Verify Drop/Undrop form FMSCmd, 1) Verify MTE is running.
     ...    2) Start output capture.
     ...    3) Generate Drop from FMSCmd,
