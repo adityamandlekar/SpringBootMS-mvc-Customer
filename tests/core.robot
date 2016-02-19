@@ -292,7 +292,7 @@ Inject PCAP File on UDP
     ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
     ${host}=    get current connection index
     Switch Connection    ${Playback_Session}
-    ${intfName}=    get interface name by ip    ${PLAYBACK_BIND_IP}
+    ${intfName}=    get interface name by ip    ${PLAYBACK_BIND_IP_A}
     Should Not be Empty    ${intfName}
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
