@@ -107,12 +107,12 @@ Verify QoS Failover for Critical Process Failure
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Switch To TD Box    ${CHE_A_IP}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Stop MTE
     Verify QoS for CritProcessFail    A    1    0    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    UNDEFINED
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
-    Switch To TD Box    ${CHE_A_IP}
     Stop Process    GRS
     Stop Process    FMSClient
     Stop Process    NetConStat
@@ -125,7 +125,6 @@ Verify QoS Failover for Critical Process Failure
     Verify QoS for CritProcessFail    A    10    0    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    UNDEFINED
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
-    Switch To TD Box    ${CHE_A_IP}
     Start Process    StatRicGen
     Start Process    DudtGen
     Start Process    LatencyHandler
@@ -143,8 +142,10 @@ Verify QoS Failover for Critical Process Failure
 *** Keywords ***
 Verify MTE State In Specific Box
     [Arguments]    ${che_ip}    ${state}
+    ${host}=    get current connection index
     Switch To TD Box    ${che_ip}
     verify MTE state    ${state}
+    Switch Connection    ${host}
 
 Manual Switch Live-Standby Case Teardown
     [Arguments]    ${master_ip}
