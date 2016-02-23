@@ -2686,7 +2686,7 @@ class LocalBoxUtilities(_ToolUtil):
         maxtime = time.time() + float(timeout)
         while time.time() <= maxtime:
             time.sleep(waittime)
-            actualQOSValue = self.get_QOS_value(node, QOSName, che_ip, SCWCLI_PORT)
+            actualQOSValue = self.get_QOS_value(node, QOSName, che_ip)
             if (actualQOSValue == QOSValue):
                 return
         raise AssertionError('*ERROR* QOS %s on %s is %s did not change to %s before timeout %ds' %(QOSName,node,actualQOSValue,QOSValue,timeout))
@@ -2703,7 +2703,7 @@ class LocalBoxUtilities(_ToolUtil):
             Examples :
             | verify QOS equal to specific value | A | IngressNIC | 100 | ${CHE_IP} |
         """
-        actualQOSValue = self.get_QOS_value(node, QOSName, che_ip, SCWCLI_PORT)
+        actualQOSValue = self.get_QOS_value(node, QOSName, che_ip)
         if (actualQOSValue != QOSValue):
             raise AssertionError('*ERROR* QOS %s on %s is %s, is not equal to %s' %(QOSName,node,actualQOSValue,QOSValue))
 
