@@ -689,7 +689,7 @@ class LinuxToolUtilities():
                 
         return listOfInterfaceName  
     
-    def _get_interface_name_by_ip(self,ip):
+    def get_interface_name_by_ip(self,ip):
         """Get network card interface name by given ip
 
         Argument ip specifies the ip address that used to find interface name
@@ -734,7 +734,7 @@ class LinuxToolUtilities():
         """        
         
         aliasIp = self._get_alias_ip(alias)
-        interfaceName = self._get_interface_name_by_ip(aliasIp)
+        interfaceName = self.get_interface_name_by_ip(aliasIp)
         
         return interfaceName
     
@@ -1344,7 +1344,8 @@ class LinuxToolUtilities():
 
         LinuxCoreUtilities().set_date_and_time(newDateTime.year, newDateTime.month, newDateTime.day, newDateTime.hour, newDateTime.minute, newDateTime.second)
         currTimeArray = newDateTime.strftime('%Y,%m,%d,%H,%M,%S').split(',')
-        self.wait_smf_log_message_after_time('handleStartOfDayInstrumentUpdate.*Ending',currTimeArray)
+        self.wait_smf_log_does_not_contain('dropped due to expiration' , 5, 300)
+        self.wait_smf_log_message_after_time('%s.*handleStartOfDayInstrumentUpdate.*Ending' %MTE, currTimeArray)
     
 
     def block_dataflow_by_port_protocol(self,inOrOut,protocol,port):
