@@ -327,6 +327,19 @@ Manual ClosingRun for ClosingRun Rics
     \    ...    --RIC ${closingrunRicName}    --Services ${serviceName}    --Domain MARKET_PRICE    --ClosingRunOperation Invoke    --HandlerName ${MTE}
     \    wait SMF log message after time    ClosingRun.*?CloseItemGroup.*?Found [0-9]* closeable items out of [0-9]* items    ${currentDateTime}    2    60
 
+Manual ClosingRun for a RIC
+    [Arguments]    ${sampleRic}    ${publishKey}    ${domain}
+    Start Capture MTE Output
+    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    Close    --RIC ${sampleRic}
+    ...    --Domain ${domain}
+    Wait For Persist File Update
+    Stop Capture MTE Output
+    ${localcapture}    set variable    ${LOCAL_TMP_DIR}/capture_local.pcap
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
+    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${publishKey}
+    remove files    ${localcapture}
+    delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
+
 Persist File Should Exist
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).

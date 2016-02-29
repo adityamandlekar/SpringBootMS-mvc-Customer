@@ -488,7 +488,50 @@ class LocalBoxUtilities(_ToolUtil):
             raise AssertionError('*ERROR* No FID dictionary exists in FIDFilter.txt file for Context ID %s' %(context_id))  
         
         return fidDic.keys()
+    
+    def verify_realtime_update_type_in_capture(self, pcapfile, domain):
+        """ verify if "Quote", "Trade" update messages for MP domain.
+            or if "unspecified" updates for MBP domain in pcapfile
+            Argument : pcapfile : MTE output capture pcap file fullpath
+            return : Nil
+        """  
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        filterstring = ''
+        filterDomain = 'TRWF_TRDM_DMT_' + domain
+        outputfileprefix = 'updates_pcap'
+        if filterDomain == 'TRWF_TRDM_DMT_MARKET_PRICE':
+            filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, OR(Update_updateTypeNum= &quot;TRWF_TRDM_UPT_QUOTE&quot;, Update_updateTypeNum= &quot;TRWF_TRDM_UPT_TRADE&quot;)))'%(filterDomain)
+        if filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_ORDER' or filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_PRICE':
+            filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_updateTypeNum= &quot;TRWF_TRDM_UPT_UNSPECIFIED&quot;))'%(filterDomain)
+        if len(filterstring) == 0:
+            raise AssertionError('*ERROR* Need MARKET_PRICE, MARKET_BY_ORDER or MARKET_BY_PRICE for domain parameter ')  
+                                      
+        outputxmlfile = self._get_extractorXml_from_pcap(pcapfile, filterstring, outputfileprefix)                
+                
+        for exist_file in outputxmlfile:
+            os.remove(exist_file)
+        
+        os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")   
+                
              
+    def verify_correction_updates_in_capture(self, pcapfile):
+        """ verify if correction update messages are in pcapfile.
+            Argument : pcapfile : MTE output capture pcap file fullpath
+            return : Nil
+        """           
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        outputfileprefix = 'correction_pcap'
+        filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;TRWF_TRDM_DMT_MARKET_PRICE&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_updateTypeNum= &quot;TRWF_TRDM_UPT_CORRECTION&quot;))'
+        outputxmlfile = self._get_extractorXml_from_pcap(pcapfile, filterstring, outputfileprefix)                
+                
+        for exist_file in outputxmlfile:
+            os.remove(exist_file)
+        
+        os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")         
            
     def verify_solicited_response_in_capture(self, pcapfile, ric, domain, constituent_list):
         """ verify the pcap file contains solicited response messages for all possible constituents defined in fidfilter.txt
