@@ -121,6 +121,7 @@ class _FMUtil:
     
     def modify_exl(self, srcfile, dstfile, ric, domain, *ModifyItem):
         """modify exl file for assigned ric and domain item.
+        if the modified item can't be found, then add it.
         
         srcfile is the original file.\n
         dstfile is the modified output file.\n
@@ -209,16 +210,22 @@ class _FMUtil:
             if match:
                 field = match.group(1)
                 value = match.group(2)
+                tempdom = xml.dom.minidom.parseString('<%s xmlns:it="DbFieldsSchema">'%field +value + '</%s>'%field)  
+                tempnode = tempdom.documentElement
                 if pat.search(value):
                     # multiple layers
-                    tempdom = xml.dom.minidom.parseString('<%s xmlns:it="DbFieldsSchema">'%field +value + '</%s>'%field)  
-                    tempnode = tempdom.documentElement
                     modifyflag = setvalue(iteratoroot, field, tempnode, True)
                     #print iteratoroot.childNodes.item(11).childNodes.item(1).childNodes
                 else:
                     modifyflag = setvalue(iteratoroot, field, value, False)
             if modifyflag == False:
-                raise AssertionError("*ERROR* not found field %s for %s and %s in exl" % (field, ric, domain))
+                    #raise AssertionError("*ERROR* not found field %s for %s and %s in exl" % (field, ric, domain))
+                    print '*INFO* requested field %s does not exist, adding new field'%field
+                    note = iteratoroot.getElementsByTagName('exlObjectFields')   
+                    tempnode.removeAttribute('xmlns:it')
+                    note[0].appendChild(tempnode)
+            else:
+                raise AssertionError("*ERROR* the format of modified item is incorrect")
         
         with codecs.open(dstfile,'w','utf-8') as out:
             dom.writexml(out,addindent='',newl='',encoding='utf-8')
