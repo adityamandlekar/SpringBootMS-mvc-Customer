@@ -244,8 +244,7 @@ Verify TRWF Update Type
     ...    Trigger normal closing run via FMS and verify the normal closing run update has update type "Closing Run"
     ${service}    Get FMS Service Name
     Verify FMS Correction Update    ${service}
-    ${testCase}    Set Variable    CATF-1970
-    ${pcapFileName} =    Generate PCAP File Name    ${service}    ${testCase}    FH=${MTE}
+    ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
     Verify Realtime Update    ${service}    ${pcapFileName}
     ${sampleRic}    ${publishKey}    Get RIC From MTE Cache
     ${domain}    Get Preferred Domain
