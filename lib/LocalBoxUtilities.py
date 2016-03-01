@@ -25,6 +25,7 @@ from FMUtilities import _FMUtil
 from utils.local import _run_local_command
 from utils._ToolUtil import _ToolUtil
 from VenueVariables import *
+import time
 
 FID_CONTEXTID = '5357'
 
@@ -2665,7 +2666,80 @@ class LocalBoxUtilities(_ToolUtil):
             if (stdout.find('SCW state MASTER') != -1):
                 return che_ip
         raise AssertionError('*ERROR* cannot find a master box')
+
+    def wait_for_QOS(self, node, QOSName, QOSValue, che_ip, waittime=10, timeout=100):
+        """ wait the QOS until it is changed to the specific value, break the wait after timeout.
+
+            Argument : node - A,B,C,D
+                       QOSName - the QOS name you want to check, should be "IngressNIC", "EgressNIC", "FMSNIC" etc
+                       QOSValue - the specific QOS value, 100 or 50 or 0
+                       che_ip - IP of the master TD box
+                       waittime - specifies the time to wait between checks, in seconds.
+                       timeout - specifies the maximum time to wait, in seconds.
+            Return :   None
+            
+            Examples :
+            | wait for QOS | A | IngressNIC | 100 | ${CHE_IP} |
+        """
+        timeout = int(timeout)
+        waittime = int(waittime)
+        maxtime = time.time() + float(timeout)
+        while time.time() <= maxtime:
+            time.sleep(waittime)
+            actualQOSValue = self.get_QOS_value(node, QOSName, che_ip)
+            if (actualQOSValue == QOSValue):
+                return
+        raise AssertionError('*ERROR* QOS %s on %s is %s did not change to %s before timeout %ds' %(QOSName,node,actualQOSValue,QOSValue,timeout))
     
+    def verify_QOS_equal_to_specific_value(self, node, QOSName, QOSValue, che_ip):
+        """ verify QOS is equal to the specific value
+
+            Argument : node - A,B,C,D
+                       QOSName - the QOS name you want to check, should be "IngressNIC", "EgressNIC", "FMSNIC" etc
+                       QOSValue - the specific QOS value, 100 or 50 or 0
+                       che_ip - IP of the TD box
+            Return :   None
+            
+            Examples :
+            | verify QOS equal to specific value | A | IngressNIC | 100 | ${CHE_IP} |
+        """
+        actualQOSValue = self.get_QOS_value(node, QOSName, che_ip)
+        if (actualQOSValue != QOSValue):
+            raise AssertionError('*ERROR* QOS %s on %s is %s, is not equal to %s' %(QOSName,node,actualQOSValue,QOSValue))
+
+    def get_QOS_value(self, node, QOSName, che_ip):
+        """ get QOS value via watchdog
+
+            Argument : node - A,B,C,D
+                       QOSName - the QOS name you want to check, should be "IngressNIC", "EgressNIC", "FMSNIC" etc
+                       che_ip - IP of the master TD box
+            Return :   QOS value returned from watchdog
+            
+            Examples :
+            | get QOS equal | A | IngressNIC | ${CHE_IP} |
+        """
+        cmd ='-entity %s -ip %s -port %s -user %s -pass %s'%(MTE, che_ip, SCWCLI_PORT, USERNAME, PASSWORD)
+        stdout = self._run_local_SCWCLI(cmd)
+        for line in stdout.split('\n'):
+            if (line.find(QOSName) != -1):
+                items = line.split('|')
+                if (items[1].strip() != QOSName):
+                    raise AssertionError('*ERROR* QOSName %s is not correct' %QOSName)
+
+                actualQOSValue = '0';
+                if (node == 'A'):
+                    actualQOSValue = items[3].strip()
+                elif (node == 'B'):
+                    actualQOSValue = items[4].strip()
+                elif (node == 'C'):
+                    actualQOSValue = items[5].strip()
+                elif (node == 'D'):
+                    actualQOSValue = items[6].strip()
+                else:
+                    raise AssertionError('*ERROR* node is %s, it must be A, B, C or D' %node)
+                return actualQOSValue
+        raise AssertionError('*ERROR* Cannot find the specific QOS Name %s' %QOSName)
+
     def get_FidValue_in_message(self,pcapfile,ricname, msgClass):
         """ To verify the insert icf file can update the changed fid and value correct
         
