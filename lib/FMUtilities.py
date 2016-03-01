@@ -218,7 +218,7 @@ class _FMUtil:
                     #print iteratoroot.childNodes.item(11).childNodes.item(1).childNodes
                 else:
                     modifyflag = setvalue(iteratoroot, field, value, False)
-            if modifyflag == False:
+                if modifyflag == False:
                     #raise AssertionError("*ERROR* not found field %s for %s and %s in exl" % (field, ric, domain))
                     print '*INFO* requested field %s does not exist, adding new field'%field
                     note = iteratoroot.getElementsByTagName('exlObjectFields')   
