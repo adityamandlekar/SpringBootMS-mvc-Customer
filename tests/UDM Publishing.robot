@@ -246,8 +246,8 @@ Verify TRWF Update Type
     Verify FMS Correction Update    ${service}
     ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
     Verify Realtime Update    ${service}    ${pcapFileName}
-    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache
     ${domain}    Get Preferred Domain
+    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     Manual ClosingRun for a RIC    ${sampleRic}    ${publishKey}    ${domain}
 
 *** Keywords ***
