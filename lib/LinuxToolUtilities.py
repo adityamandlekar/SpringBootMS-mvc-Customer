@@ -1435,7 +1435,5 @@ class LinuxToolUtilities():
             raise AssertionError('*ERROR* the status is %s, it should be enable or disable' %status)
         cmd = cmd + interfaceName
         stdout, stderr, rc = _exec_command(cmd)
-        print cmd
-        print stdout
         if rc !=0:
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))

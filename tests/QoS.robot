@@ -125,19 +125,19 @@ QoS Case Teardown
     \    Enable Disable Interface    ${interfaceName}    Enable
 
 Verify QOS for Egress NIC
-    [Arguments]    ${IngressQOS}    ${TotalQOS}
-    [Documentation]    Put Egress QOS and Total QOS into arguments
+    [Arguments]    ${EgressQOS}    ${TotalQOS}
+    [Documentation]    Check whether the Egress QOS and Total QOS are equal to the given value
     Wait For QOS    A    EgressNIC    ${IngressQOS}    ${CHE_IP}
     Verify QOS Equal To Specific Value    A    Total QOS    ${TotalQOS}    ${CHE_IP}
 
 Verify QOS for Ingress NIC
     [Arguments]    ${IngressQOS}    ${TotalQOS}
-    [Documentation]    Put Ingress QOS and Total QOS into arguments
+    [Documentation]    Check whether the Ingress QOS and Total QOS are equal to the given value
     Wait For QOS    A    IngressNIC    ${IngressQOS}    ${CHE_IP}
     Verify QOS Equal To Specific Value    A    Total QOS    ${TotalQOS}    ${CHE_IP}
 
 Verify QOS for FMS NIC
-    [Arguments]    ${IngressQOS}    ${TotalQOS}
-    [Documentation]    Put FMS NIC QOS and Total QOS into arguments
+    [Arguments]    ${FMSQOS}    ${TotalQOS}
+    [Documentation]    Check whether the FMS QOS and Total QOS are equal to the given value
     Wait For QOS    A    FMSNIC    ${IngressQOS}    ${CHE_IP}
     Verify QOS Equal To Specific Value    A    Total QOS    ${TotalQOS}    ${CHE_IP}
