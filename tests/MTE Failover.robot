@@ -55,10 +55,11 @@ Verify Sync Pulse Missed QoS
     get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
     remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     Comment    Blocking Standby Side INPUT
-    Switch to TD Box    ${CHE_A_IP}
-    ${state}=    Get MTE state
-    Run Keyword If    '${state}' != 'STANDBY'    Switch to TD Box    ${CHE_B_IP}
+    Switch to TD Box    ${CHE_B_IP}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
@@ -69,8 +70,6 @@ Verify Sync Pulse Missed QoS
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     Comment    Blocking Live Side OUTPUT
     Switch to TD Box    ${CHE_A_IP}
-    ${state}=    Get MTE state
-    Run Keyword If    '${state}' != 'LIVE'    Switch to TD Box    ${CHE_B_IP}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
