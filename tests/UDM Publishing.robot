@@ -322,7 +322,6 @@ Verify FMS Correction Update
     [Arguments]    ${service}
     Start Capture MTE Output
     Load All EXL Files    ${service}    ${CHE_IP}
-    Wait For Persist File Update
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     verify correction updates in capture    ${LOCAL_TMP_DIR}/capture_local.pcap
