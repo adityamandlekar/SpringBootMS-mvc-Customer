@@ -221,9 +221,14 @@ class _FMUtil:
                 if modifyflag == False:
                     #raise AssertionError("*ERROR* not found field %s for %s and %s in exl" % (field, ric, domain))
                     print '*INFO* requested field %s does not exist, adding new field'%field
-                    note = iteratoroot.getElementsByTagName('exlObjectFields')   
                     tempnode.removeAttribute('xmlns:it')
-                    note[0].appendChild(tempnode)
+                    if modifyType == 'r':                       
+                        note = iteratoroot
+                        note.appendChild(tempnode)
+                    else :
+                        note = iteratoroot.getElementsByTagName('exlObjectFields') 
+                        note[0].appendChild(tempnode)
+                    
             else:
                 raise AssertionError("*ERROR* the format of modified item is incorrect")
         

@@ -521,3 +521,21 @@ Wait For Persist File Update
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
     wait for file update    ${res[0]}    ${waittime}    ${timeout}
+
+Inject pcap in TCP
+    [Arguments]    @{pcapFileList}
+    [Documentation]    Use PcapPlybk to inject TCP Pcap
+    ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
+    ${host}=    get current connection index
+    Switch Connection    ${Playback_Session}
+    : FOR    ${pcapFile}    IN    @{pcapFileList}
+    \    remote file should exist    ${pcapFile}
+    \    ${stdout}    ${rc}    execute_command    /usr/local/bin/PCapPlybk.Linux.1.0.1.7.b2/PCapPlybk -ifile ${pcapFile} -intf ${PLAYBACK_MACHINE_IP} -port ${PLAYBACK_TCP_PORT} -sendmode tcp -tcpclients 1    return_rc=True
+    \    Should Be Equal As Integers    ${rc}    0
+    Switch Connection    ${host}
+
+Extract icf
+    [Arguments]    ${ric}    ${domain}    ${extractFile}    ${serviceName}
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    extract    --RIC ${ric}
+    ...    --Domain ${domain}    --ExcludeNullFields true    --HandlerName ${MTE}    --OutputFile ${extractFile}    --Services ${serviceName}
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
