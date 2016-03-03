@@ -230,6 +230,26 @@ Perform DVT Validation - Closing Run for all RICs
     validate messages against DVT rules    ${localCapture}    ${ruleFilePath}
     [Teardown]    case teardown    ${localCapture}
 
+Verify TRWF Update Type
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1970
+    ...
+    ...    Verify FMS correction update type is "Correction"
+    ...
+    ...    Verify the realtime updates for MP updates are either "Quote", "Trade" or "Correction".
+    ...
+    ...    Verify the realtime updates for MBP updates are "unspecified".
+    ...
+    ...    verify "Closing Run" message triggered by FMSCMD
+    ...
+    ...    Trigger normal closing run via FMS and verify the normal closing run update has update type "Closing Run"
+    ${service}    Get FMS Service Name
+    Verify FMS Correction Update    ${service}
+    ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
+    Verify Realtime Update    ${service}    ${pcapFileName}
+    ${domain}    Get Preferred Domain
+    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    Manual ClosingRun for a RIC    ${sampleRic}    ${publishKey}    ${domain}
+
 *** Keywords ***
 Rebuild FMS service
     [Arguments]    ${serviceName}
@@ -297,3 +317,24 @@ Verify MC_REC_LAB
     ${fids}    Create List    9140
     ${values}    Create List    ${labelid}
     verify fid value in message    ${pcapfilename}    ${ricname}    0    ${fids}    ${values}
+
+Verify FMS Correction Update
+    [Arguments]    ${service}
+    Start Capture MTE Output
+    Load All EXL Files    ${service}    ${CHE_IP}
+    Stop Capture MTE Output
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    verify correction updates in capture    ${LOCAL_TMP_DIR}/capture_local.pcap
+    remove file    ${LOCAL_TMP_DIR}/capture_local.pcap
+
+Verify Realtime Update
+    [Arguments]    ${service}    @{pcap_file_list}
+    ${mteConfigFile} =    Get MTE Config File
+    @{domainList} =    Get Domain Names    ${mteConfigFile}
+    Start Capture MTE Output
+    Inject PCAP File on UDP    @{pcap_file_list}
+    Stop Capture MTE Output
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    : FOR    ${domain}    IN    @{domainList}
+    \    verify realtime update type in capture    ${LOCAL_TMP_DIR}/capture_local.pcap    ${domain}
+    remove file    ${LOCAL_TMP_DIR}/capture_local.pcap
