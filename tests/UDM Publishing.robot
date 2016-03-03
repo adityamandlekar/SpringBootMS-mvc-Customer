@@ -1,5 +1,5 @@
 *** Settings ***
-Suite Setup       Suite Setup
+Suite Setup       Suite Setup with Playback
 Suite Teardown    Suite Teardown
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
