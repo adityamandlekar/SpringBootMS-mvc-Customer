@@ -286,7 +286,7 @@ Get RIC List From StatBlock
     FAIL    RIC not found. Valid choices are: 'Closing Run', 'DST', 'Feed Time', 'Holiday', 'Trade Time'
 
 Inject PCAP File on UDP
-    [Arguments]    @{pcapFileList}
+    [Arguments]    ${pps}    @{pcapFileList}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-72
     ...
     ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
@@ -296,7 +296,7 @@ Inject PCAP File on UDP
     Should Not be Empty    ${intfName}
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
-    \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} ${pcapFile}    return_rc=True
+    \    ${stdout}    ${rc}    execute_command    /usr/sbin/tcpreplay/tcpreplay-edit --enet-vlan=del --pps ${pps} --intf1=${intfName} '${pcapFile}'    return_rc=True
     \    Should Be Equal As Integers    ${rc}    0
     Switch Connection    ${host}
 
