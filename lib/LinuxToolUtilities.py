@@ -1219,39 +1219,49 @@ class LinuxToolUtilities():
         
         return self.MTESTATE[idx]  
     
-    def verify_MTE_state(self, state):
-        """verify MTE instance is in specific state
+    def verify_MTE_state(self, state, waittime=5, timeout=150):
+        """Verify MTE instance is in specific state.
+        State change is not instantaneous, so loop and check up to timeout seconds.
         
          Argument:
             state    : expected state of MTE (UNDEFINED,LIVE,STANDBY,LOCKED_LIVE,LOCKED_STANDBY)
+            waittime : specifies the time to wait between checks, in seconds.
+            timeout  : specifies the maximum time to wait, in seconds.
         
         Returns    : 
 
         Examples:
-        | verify MTE state | HKF02M | LIVE
+        | verify MTE state | LIVE |
         """             
-        
+        # convert  unicode to int (it is unicode if it came from the Robot test)
+        timeout = int(timeout)
+        waittime = int(waittime)
+        maxtime = time.time() + float(timeout)
+
         #verify if input 'state' is a valid one
         if not (state in self.MTESTATE.values()):
             raise AssertionError('*ERROR* Invalid input (%s). Valid value for state is UNDEFINED , LIVE , STANDBY , LOCKED_LIVE , LOCKED_STANDBY '%state)
         
         cmd = '-readparams /%s/LiveStandby'%MTE
-        ret = self.run_HostManger(cmd).splitlines()
-        if (len(ret) == 0):
-            raise AssertionError('*ERROR* Running HostManger %s return empty response'%cmd)
-     
-        idx = '-1'
-        for line in ret:
-            if (line.find('LiveStandby') != -1):
-                contents = line.split(' ')
-                idx = contents[-1].strip()
-                 
-        if (idx == '-1'):
-            raise AssertionError('*ERROR* Keyword LiveStandby was not found in response')
-        elif not (self.MTESTATE.has_key(idx)):
-            raise AssertionError('*ERROR* Unknown state %s found in response'%idx)
-        elif (self.MTESTATE[idx] != state):
-                raise AssertionError('*ERROR* %s is not at %s (current state : %s)'%(MTE,state,self.MTESTATE[idx]))            
+        while time.time() <= maxtime:
+            ret = self.run_HostManger(cmd).splitlines()
+            if (len(ret) == 0):
+                raise AssertionError('*ERROR* Running HostManger %s return empty response'%cmd)
+         
+            idx = '-1'
+            for line in ret:
+                if (line.find('LiveStandby') != -1):
+                    contents = line.split(' ')
+                    idx = contents[-1].strip()
+                     
+            if (idx == '-1'):
+                raise AssertionError('*ERROR* Keyword LiveStandby was not found in response')
+            elif not (self.MTESTATE.has_key(idx)):
+                raise AssertionError('*ERROR* Unknown state %s found in response'%idx)
+            elif (self.MTESTATE[idx] == state):
+                return
+            time.sleep(waittime)
+        raise AssertionError('*ERROR* %s is not at state %s (current state : %s, timeout : %ds)'%(MTE,state,self.MTESTATE[idx],timeout))            
         
     def get_FID_Name_by_FIDId(self,FidId):
         """get FID Name from TRWF2.DAT based on fidID
