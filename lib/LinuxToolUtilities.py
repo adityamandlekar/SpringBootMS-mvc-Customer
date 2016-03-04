@@ -1416,3 +1416,24 @@ class LinuxToolUtilities():
         
         return stdout.strip()       
  
+    def enable_disable_interface(self, interfaceName, status):
+        """ Enable or disable the interface
+
+            Argument : interfaceName - should be eth1 ... eth5
+                       status - should be enable or disable
+
+            Return :   None
+            
+            Examples :
+            | enable disable interface| eth1 | enable |
+        """
+        if (status.lower() == 'enable'):
+           cmd = 'ifup '
+        elif (status.lower() == 'disable'):
+            cmd = 'ifdown '
+        else:
+            raise AssertionError('*ERROR* the status is %s, it should be enable or disable' %status)
+        cmd = cmd + interfaceName
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0:
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))

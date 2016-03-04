@@ -2807,7 +2807,6 @@ class LocalBoxUtilities(_ToolUtil):
                 if (items[1].strip() != QOSName):
                     raise AssertionError('*ERROR* QOSName %s is not correct' %QOSName)
 
-                actualQOSValue = '0';
                 if (node == 'A'):
                     actualQOSValue = items[3].strip()
                 elif (node == 'B'):
