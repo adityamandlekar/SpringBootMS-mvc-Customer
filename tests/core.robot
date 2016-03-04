@@ -337,6 +337,8 @@ Send TRWF2 Refresh Request
     [Documentation]    Call DataView to send TRWF2 Refresh Request to MTE.
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
+    Comment    LabelID may be different across machines, so make sure we have config file for this machine.
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
     ${localVenueConfig}=    get MTE config file
     ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
