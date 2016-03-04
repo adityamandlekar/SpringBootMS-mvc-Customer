@@ -1,5 +1,6 @@
 *** Settings ***
 Suite Setup       Suite Setup Two TD Boxes
+Suite Teardown    Suite Teardown
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
@@ -39,7 +40,7 @@ Verify Manual Live-Standby Switch via SCW CLI
     switch MTE LIVE STANDBY status    A    UNLOCK    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    [Teardown]    Manual Switch Live-Standby Case Teardown    ${master_ip}
+    [Teardown]    MTE Failover Case Teardown    ${master_ip}
 
 Verify Sync Pulse Missed QoS
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
@@ -78,7 +79,7 @@ Verify Sync Pulse Missed QoS
     \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
     \    unblock_dataflow
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
-    [Teardown]    Case Teardown    ${modifyLabelFile}    ${labelfile_local}
+    [Teardown]    MTE Failover Case Teardown    ${master_ip}    ${modifyLabelFile}    ${labelfile_local}
 
 Verify QoS Failover for Critical Process Failure
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1762 to verify QOS CritProcessFail will increase and failover happen if critical process is shutdown.
@@ -109,9 +110,10 @@ Verify QoS Failover for Critical Process Failure
     Switch To TD Box    ${CHE_A_IP}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Stop MTE
-    Verify QoS for CritProcessFail    A    1    0    ${master_ip}
-    Verify MTE State In Specific Box    ${CHE_A_IP}    UNDEFINED
-    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Comment    Use 'continue on failure' \ so the processes are restarted even if a validation fails.
+    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_A_IP}    UNDEFINED
+    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    1    0    ${master_ip}
     Stop Process    GRS
     Stop Process    FMSClient
     Stop Process    NetConStat
@@ -121,9 +123,7 @@ Verify QoS Failover for Critical Process Failure
     Stop Process    LatencyHandler
     Stop Process    DudtGen
     Stop Process    StatRicGen
-    Verify QoS for CritProcessFail    A    10    0    ${master_ip}
-    Verify MTE State In Specific Box    ${CHE_A_IP}    UNDEFINED
-    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    10    0    ${master_ip}
     Start Process    StatRicGen
     Start Process    DudtGen
     Start Process    LatencyHandler
@@ -134,9 +134,10 @@ Verify QoS Failover for Critical Process Failure
     Start Process    FMSClient
     Start Process    GRS
     Start MTE
-    Verify QoS for CritProcessFail    A    0    100    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Verify QoS for CritProcessFail    A    0    100    ${master_ip}
+    [Teardown]
 
 *** Keywords ***
 Verify MTE State In Specific Box
@@ -146,11 +147,14 @@ Verify MTE State In Specific Box
     verify MTE state    ${state}
     Switch Connection    ${host}
 
-Manual Switch Live-Standby Case Teardown
-    [Arguments]    ${master_ip}
+MTE Failover Case Teardown
+    [Arguments]    ${master_ip}    @{filesToRemove}
     [Documentation]    If a KW fail, unlocking both A and B
     switch MTE LIVE STANDBY status    A    UNLOCK    ${master_ip}
     switch MTE LIVE STANDBY status    B    UNLOCK    ${master_ip}
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Switch To TD Box    ${CHE_A_IP}
+    Run Keyword If    ${filesToRemove}    Case Teardown    @{filesToRemove}
 
 Start Process
     [Arguments]    ${process}
