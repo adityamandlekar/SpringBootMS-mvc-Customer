@@ -49,18 +49,17 @@ Verify Sync Pulse Missed QoS
     [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
-    ${localVenueConfig}=    get MTE config file
-    @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
     ${ddnpublishersLabelfilepath}=    Get CHE Config Filepath    ddnPublishers.xml
     ${labelfile_local}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishers.xml
-    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
-    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     Comment    Blocking Standby Side INPUT
     Switch to TD Box    ${CHE_B_IP}
+    @{labelIDs}=    Get labelIDs
+    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
+    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
@@ -71,6 +70,9 @@ Verify Sync Pulse Missed QoS
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     Comment    Blocking Live Side OUTPUT
     Switch to TD Box    ${CHE_A_IP}
+    @{labelIDs}=    Get labelIDs
+    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
+    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
@@ -140,6 +142,14 @@ Verify QoS Failover for Critical Process Failure
     [Teardown]
 
 *** Keywords ***
+Get labelIDs
+    [Documentation]    Get the labelID from MTE config file on current machine.
+    ...    The LabelID may be different across machines, so use config files from current machine.
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
+    ${localVenueConfig}=    get MTE config file
+    @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
+    [Return]    @{labelIDs}
+
 Verify MTE State In Specific Box
     [Arguments]    ${che_ip}    ${state}
     ${host}=    get current connection index
