@@ -46,56 +46,55 @@ class _FMUtil:
         if os.path.abspath(exlfilefullpath) == os.path.abspath(outputfile):
             outputfile= os.path.abspath(os.path.dirname(outputfile)) +'\\' + 'GATS_' +os.path.basename(outputfile)
         try:
-            exlfile = open(exlfilefullpath, 'r')          
-            exlnewfile = open(outputfile,'w')
-            exlline = exlfile.readline()
-            objfind = False
-            Ricfind = False
-            Domainfind = False
-            exlobjlist = []
-            while exlline:
-                if objfind:
-                    exlobjlist.append(exlline)
-                    if exlline.find('</exlObject>') != -1:
-                        objfind = False
-                        if Domainfind and Ricfind:
-                            if not keep:
-                                exlobjlist = []
-                                Domainfind = False
-                                Ricfind = False
-                                exlline = exlfile.readline()
-                                continue
-                            else:
-                                Domainfind = False
-                                Ricfind = False
-                                exlnewfile.writelines(exlobjlist)
-                                exlobjlist = []
-                        else:
-                            if not keep:
-                                Domainfind = False
-                                Ricfind = False
-                                exlnewfile.writelines(exlobjlist)
-                                exlobjlist = []
-                            else:
-                                exlobjlist = []
-                                Domainfind = False
-                                Ricfind = False
-                                exlline = exlfile.readline()
-                                continue        
 
-                    elif exlline.find('<it:RIC>%s</it:RIC>' % RIC) != -1:
-                        Ricfind = True
-                    elif exlline.find('<it:DOMAIN>%s</it:DOMAIN>' % Domain) != -1:
-                        Domainfind = True
-                else:
-                    if exlline.find('<exlObject>') != -1:
-                        exlobjlist.append(exlline)
-                        objfind = True
-                    else:
-                        exlnewfile.write(exlline)
-                exlline = exlfile.readline()
-            exlfile.close()
-            exlnewfile.close()
+            with codecs.open(exlfilefullpath, 'r', 'utf-8') as exlfile:
+                with codecs.open(outputfile, 'w', 'utf-8') as exlnewfile:
+                    exlline = exlfile.readline()
+                    objfind = False
+                    Ricfind = False
+                    Domainfind = False
+                    exlobjlist = []
+                    while exlline:
+                        if objfind:
+                            exlobjlist.append(exlline)
+                            if exlline.find('</exlObject>') != -1:
+                                objfind = False
+                                if Domainfind and Ricfind:
+                                    if not keep:
+                                        exlobjlist = []
+                                        Domainfind = False
+                                        Ricfind = False
+                                        exlline = exlfile.readline()
+                                        continue
+                                    else:
+                                        Domainfind = False
+                                        Ricfind = False
+                                        exlnewfile.writelines(exlobjlist)
+                                        exlobjlist = []
+                                else:
+                                    if not keep:
+                                        Domainfind = False
+                                        Ricfind = False
+                                        exlnewfile.writelines(exlobjlist)
+                                        exlobjlist = []
+                                    else:
+                                        exlobjlist = []
+                                        Domainfind = False
+                                        Ricfind = False
+                                        exlline = exlfile.readline()
+                                        continue        
+
+                            elif exlline.find('<it:RIC>%s</it:RIC>' % RIC) != -1:
+                                Ricfind = True
+                            elif exlline.find('<it:DOMAIN>%s</it:DOMAIN>' % Domain) != -1:
+                                Domainfind = True
+                        else:
+                            if exlline.find('<exlObject>') != -1:
+                                exlobjlist.append(exlline)
+                                objfind = True
+                            else:
+                                exlnewfile.write(exlline)
+                        exlline = exlfile.readline()
 
         except IOError,e:
             raise AssertionError('*ERROR* %s' %e)
@@ -119,7 +118,7 @@ class _FMUtil:
         * change EXCHANGE's value to test and TRDPRC_1's value to 20\n
         """
         return self._modify_fm_file(srcfile, dstfile, 'r', ric, domain, *ModifyItem)
-
+    
     def modify_exl(self, srcfile, dstfile, ric, domain, *ModifyItem):
         """modify exl file for assigned ric and domain item.
         if the modified item can't be found, then add it.
@@ -227,11 +226,10 @@ class _FMUtil:
                     note[0].appendChild(tempnode)
             else:
                 raise AssertionError("*ERROR* the format of modified item is incorrect")
-
-        f = open(dstfile,'w')  
-        #print dom.documentElement.childNodes.item(9).childNodes.item(11).childNodes.item(1).childNodes
-        dom.writexml(f,addindent='',newl='',encoding = 'utf-8')  
-        f.close()  
+        
+        with codecs.open(dstfile,'w','utf-8') as out:
+            dom.writexml(out,addindent='',newl='',encoding='utf-8')
+        
         return dstfile
         
 
