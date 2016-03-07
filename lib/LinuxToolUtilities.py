@@ -1073,7 +1073,23 @@ class LinuxToolUtilities():
             return : N/A
             
             Examples :
-              | set value in_MTE cfg | jsda01.xml | NumberOfDailyBackupsToKeep | 12:00
+              | set value in_MTE cfg | jsda01.xml | NumberOfDailyBackupsToKeep | 5 |
+
+              Would change a config file containing:
+                 <Persistence>
+                   <DDS>
+                     <MutexNameForStaggering>TDDS_Persistence_Mutex</MutexNameForStaggering>
+                    <NumberOfDailyBackupsToKeep type="ul">3</NumberOfDailyBackupsToKeep>
+                  </DDS>
+                 </Persistence>
+
+              To
+                 <Persistence>
+                  <DDS>
+                     <MutexNameForStaggering>TDDS_Persistence_Mutex</MutexNameForStaggering>
+                     <NumberOfDailyBackupsToKeep type="ul">5</NumberOfDailyBackupsToKeep>
+                  </DDS>
+                 </Persistence>
         """         
         #Find configuration file
         LinuxFSUtilities().remote_file_should_exist(mtecfgfile)
