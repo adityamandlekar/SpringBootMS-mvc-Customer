@@ -1084,10 +1084,9 @@ class LinuxToolUtilities():
         if (len(foundlines) == 0):
             raise AssertionError('*ERROR* <%s> tag is missing in %s' %(tagName, mtecfgfile))
 
-        for line in foundlines:
-            cmd = "sed -i 's/%s/<%s>%s<\/%s>/' "%(line.replace('/','\/'),tagName,value,tagName)
-            cmd = cmd + mtecfgfile
-            stdout, stderr, rc = _exec_command(cmd)
+        cmd = "sed -i 's/\(<%s[^>]*>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value)
+        cmd = cmd + mtecfgfile
+        stdout, stderr, rc = _exec_command(cmd)
         
         if rc !=0 or stderr !='':
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))    
