@@ -5,41 +5,101 @@ Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
 *** Test Cases ***
-Verify Manual Live-Standby Switch via SCW CLI
+Valid Manual State Changes
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1764
-    ...    To verify switch Live/Standby and lock Live/Standby using SCW CLI
-    ...    The test steps as follow:
-    ...    1 Switch A to Live, verify A is Live, B is Standby
-    ...    2 Switch A to Standby, verify A is Standby, B is Live
-    ...    3 Switch A to Lock_Live, verify A is Locked_Live, B is Standby
-    ...    4 Switch B to Lock_Standby, verify A is Locked_Live, B is Locked_Standby
-    ...    5 Unlock B, verify A is Locked_Live, B is Standby
-    ...    6 Switch B to Lock_Live, verify A is Locked_Live, B is Standby
-    ...    7 Unlock A, verify A is Live, B is Standby
+    ...    Verify valid requests to switch Live/Standby and lock Live/Standby using SCW CLI
+    ...
+    ...    The following valid state transitions are tested:
+    ...    Promote from Standby to Live
+    ...    Demote from Live to Standby
+    ...    Switch Live to Locked Live
+    ...    Unlock Live
+    ...    Switch Standby to Locked Live
+    ...    Switch Standby to Locked Standby
+    ...    Unlock Standby
+    ...    Switch Live to Locked Standby
     [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    switch MTE LIVE STANDBY status    A    STANDBY    ${master_ip}
+    Comment    Promote from Standby to Live
+    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Comment    Demote from Live to Standby
+    switch MTE LIVE STANDBY status    B    STANDBY    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
+    Comment    Switch Live to Locked Live
     switch MTE LIVE STANDBY status    A    LOCK_LIVE    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    switch MTE LIVE STANDBY status    B    LOCK_STANDBY    ${master_ip}
-    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
-    Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_STANDBY
-    switch MTE LIVE STANDBY status    B    UNLOCK    ${master_ip}
-    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
-    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    switch MTE LIVE STANDBY status    B    LOCK_LIVE    ${master_ip}
-    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
-    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
+    Comment    Unlock Live
     switch MTE LIVE STANDBY status    A    UNLOCK    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
+    Comment    Switch Standby to Locked Live
+    switch MTE LIVE STANDBY status    B    LOCK_LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_LIVE
+    Comment    Switch Standby to Locked Standby
+    switch MTE LIVE STANDBY status    A    LOCK_STANDBY    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_STANDBY
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_LIVE
+    Comment    Unlock Standby (and Live)
+    switch MTE LIVE STANDBY status    A    UNLOCK    ${master_ip}
+    switch MTE LIVE STANDBY status    B    UNLOCK    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Comment    Switch Live to Locked Standby
+    switch MTE LIVE STANDBY status    B    LOCK_STANDBY    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_STANDBY
+    [Teardown]    MTE Failover Case Teardown    ${master_ip}
+
+Invalid Manual State Changes
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1764
+    ...    Verify invalid requests to switch Live/Standby and lock Live/Standby using SCW CLI are rejected
+    ...    Test will wait 60 seconds and verify no state change occured
+    ...
+    ...    The following invalid state transitions are tested:
+    ...    Promote from Locked_Standby
+    ...    Demote from Locked_Live
+    ...    Switch Standby to Locked_Live when other instance is already Locked_Live
+    ...    Switch a Locked_Live to Locked_Standby (without first unlocking)
+    [Tags]    Peer
+    ${sleeptime}=    Set Variable    60
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    Comment    Attempt Promote from Locked_Standby
+    switch MTE LIVE STANDBY status    B    LOCK_STANDBY    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_STANDBY
+    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
+    sleep    ${sleeptime}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE    waittime=1    timeout=1
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_STANDBY    waittime=1    timeout=1
+    Comment    Attempt Demote from Locked_Live
+    switch MTE LIVE STANDBY status    B    UNLOCK    ${master_ip}
+    switch MTE LIVE STANDBY status    A    LOCK_LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
+    switch MTE LIVE STANDBY status    A    STANDBY    ${master_ip}
+    sleep    ${sleeptime}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE    waittime=1    timeout=1
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY    waittime=1    timeout=1
+    Comment    Attempt Switch from Standby to Locked_Live when other instance is already Locked_Live
+    switch MTE LIVE STANDBY status    B    LOCK_LIVE    ${master_ip}
+    sleep    ${sleeptime}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE    waittime=1    timeout=1
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY    waittime=1    timeout=1
+    Comment    Attempt Switch from Locked_Live to Locked_Standby (without first unlocking)
+    switch MTE LIVE STANDBY status    A    LOCK_STANDBY    ${master_ip}
+    sleep    ${sleeptime}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE    waittime=1    timeout=1
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY    waittime=1    timeout=1
     [Teardown]    MTE Failover Case Teardown    ${master_ip}
 
 Verify Sync Pulse Missed QoS
@@ -151,10 +211,10 @@ Get labelIDs
     [Return]    @{labelIDs}
 
 Verify MTE State In Specific Box
-    [Arguments]    ${che_ip}    ${state}
+    [Arguments]    ${che_ip}    ${state}    ${waittime}=5    ${timeout}=150
     ${host}=    get current connection index
     Switch To TD Box    ${che_ip}
-    verify MTE state    ${state}
+    verify MTE state    ${state}    ${waittime}    ${timeout}
     Switch Connection    ${host}
 
 MTE Failover Case Teardown
