@@ -490,7 +490,21 @@ class LocalBoxUtilities(_ToolUtil):
         
         return fidDic.keys()
     
-    
+    def verify_no_realtime_update_type_in_capture(self, pcapfile, domain):
+        """ Verify update message does not exist for MARKET PRICE, or MARKET_BY_ORDER or MARKET_BY_PRICE domain.
+            Argument : pcapfile : MTE output pcap file fullpath
+                       domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+            return : Nil
+        """  
+        try:
+            self.verify_updated_message_exist_in_capture(pcapfile, domain)     
+        except AssertionError:
+            return
+               
+        raise AssertionError('*ERROR* realtime updates exist for domain %s.' %domain)
+             
+
+
     def verify_realtime_update_type_in_capture(self, pcapfile, domain):
         """ Verify the realtime updates for MP domain have type "Quote", "Trade".
             Verify the realtime updates for MBP domain have type "unspecified".
