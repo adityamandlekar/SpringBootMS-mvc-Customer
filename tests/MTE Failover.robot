@@ -57,13 +57,18 @@ Verify Critical Logs forwarded to EventLogAdapterGMILog
     ${start_state}    Get_MTE_state
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     wait smf log message after time    WatchDogService: STATE_CHANGE    ${currDateTime}
-    ${currDateTime2}    get date and time
+    ${currDateTime}    get date and time
     switch MTE LIVE STANDBY status    A    STANDBY    ${master_ip}
-    wait smf log message after time    WatchDogService: STATE_CHANGE    ${currDateTime2}
-    wait GMI message after time    CRITICAL.+API call returned error    ${currDateTime}    2    100
-    wait GMI message after time    CRITICAL.+Watchdog event    ${currDateTime}    2    100
-    wait GMI message after time    CRITICAL.+Normal Processing    ${currDateTime}    2    100
-    wait GMI message after time    HARMLESS.+CommunicationObject    ${currDateTime}    2    100
+    wait smf log message after time    WatchDogService: STATE_CHANGE    ${currDateTime}
+    wait GMI message after time    CRITICAL.*Connection Failure.*MTE.*ReportSituation    ${currDateTime}    2    100
+    wait GMI message after time    CRITICAL.*Watchdog event.*MTE.*ReportSituation    ${currDateTime}    2    100
+    wait GMI message after time    CRITICAL.*Normal Processing.*MTE.*ReportSituation    ${currDateTime}    2    100
+    wait GMI message after time    CRITICAL.*MTEname is no longer running.*MTE.*ReportSituation    ${currDateTime}    2    100
+    ${currDateTime}    get date and time
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    wait smf log message after time    WatchDogService: STATE_CHANGE    ${currDateTime}
+    wait GMI message after time    CRITICAL.*Watchdog event.*MTE.*ReportSituation    ${currDateTime}    2    100
+    wait GMI message after time    CRITICAL.*Normal Processing.*MTE.*ReportSituation    ${currDateTime}    2    100
     [Teardown]    switch MTE LIVE STANDBY status    A    ${start_state}    ${master_ip}
 
 Verify Sync Pulse Missed QoS
