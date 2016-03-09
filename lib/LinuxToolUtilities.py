@@ -1010,7 +1010,7 @@ class LinuxToolUtilities():
 
         return contextIdsMap
     
-    def backup_cfg_file(self,searchdir,cfgfile,suffix='.backup'):
+    def backup_remote_cfg_file(self,searchdir,cfgfile,suffix='.backup'):
         """backup config file by create a new copy with filename append with suffix
         Argument : 
         searchdir  : directary where we search for the configuration file
@@ -1040,7 +1040,7 @@ class LinuxToolUtilities():
         
         return [foundfiles[0], backupfile]
         
-    def restore_cfg_file(self,cfgfile,backupfile):
+    def restore_remote_cfg_file(self,cfgfile,backupfile):
         """restore config file by rename backupfile to cfgfile
         Argument : 
         cfgfile    : full path of configuration file

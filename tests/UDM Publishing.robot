@@ -9,19 +9,19 @@ Empty Payload Detection with Blank FIDFilter
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1988
     ...
     ...    Restart MTE with empty FIDFilter file. Verify no update messages with playback data. Restart MTE with restored FIDFilter file
-    ${remoteFidfilter}=    search remote files    ${VENUE_DIR}    FIDFilter.txt    recurse=${True}
-    Should Be True    len(${remoteFidfilter}) >= 1
-    ${localFIDFilter}    set variable    ${LOCAL_TMP_DIR}/localFIDFilter.txt
-    get remote file    ${remoteFidfilter[0]}    ${localFIDFilter}
-    File Should Not Be Empty    ${localFIDFilter}
+    ${fileList}=    backup remote cfg file    ${VENUE_DIR}    FIDFilter.txt
+    ${fidfilterFile}    set variable    ${fileList[0]}
+    ${fidfilterBackup}    set variable    ${fileList[1]}
     ${emptyFidFilter}    set variable    ${LOCAL_TMP_DIR}/empty_FIDFilter.txt
     Create File    ${emptyFidFilter}
-    Push File to Remote and Restart MTE    ${emptyFidFilter}    ${remoteFidfilter[0]}
+    Stop MTE
+    Push File to Remote and Restart MTE    ${emptyFidFilter}    ${fidfilterFile}
     ${service}    Get FMS Service Name
     ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
-    Run Keyword And Continue On Failure    Verify No Realtime Update    ${service}    ${PLAYBACK_PCAP_DIR}${pcapFileName}
-    Push File to Remote and Restart MTE    ${localFIDFilter}    ${remoteFidfilter[0]}
-    [Teardown]    case teardown    ${emptyFidFilter}    ${localFIDFilter}
+    Run Keyword And Continue On Failure    Verify No Realtime Update    ${pcapFileName}
+    Stop MTE
+    Restore Remote and Restart MTE    ${fidfilterFile}    ${fidfilterBackup}
+    [Teardown]    case teardown    ${emptyFidFilter}
 
 Validate Downstream FID publication
     [Documentation]    Verify if MTE has publish fids that matches fids defined in fidfilter file
@@ -263,19 +263,26 @@ Verify TRWF Update Type
     ${service}    Get FMS Service Name
     Verify FMS Correction Update    ${service}
     ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
-    Verify Realtime Update    ${service}    ${PLAYBACK_PCAP_DIR}${pcapFileName}
+    Verify Realtime Update    ${pcapFileName}
     ${domain}    Get Preferred Domain
     ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     Manual ClosingRun for a RIC    ${sampleRic}    ${publishKey}    ${domain}
 
 *** Keywords ***
+Delete Persist Files and Restart MTE
+    Delete Persist Files
+    Start MTE
+
 Push File to Remote and Restart MTE
     [Arguments]    ${localFile}    ${remoteFile}
-    Stop MTE
-    Delete Persist Files
     delete remote files    ${remoteFile}
     put remote file    ${localFile}    ${remoteFile}
-    Start MTE
+    Delete Persist Files and Restart MTE
+
+Restore Remote and Restart MTE
+    [Arguments]    ${remoteFile}    ${remoteBackupFile}
+    restore remote cfg file    ${remoteFile}    ${remoteBackupFile}
+    Delete Persist Files and Restart MTE
 
 Rebuild FMS service
     [Arguments]    ${serviceName}
@@ -354,7 +361,7 @@ Verify FMS Correction Update
     remove file    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify Realtime Update
-    [Arguments]    ${service}    @{pcap_file_list}
+    [Arguments]    @{pcap_file_list}
     ${mteConfigFile} =    Get MTE Config File
     @{domainList} =    Get Domain Names    ${mteConfigFile}
     Start Capture MTE Output
@@ -366,7 +373,7 @@ Verify Realtime Update
     remove file    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify No Realtime Update
-    [Arguments]    ${service}    @{pcap_file_list}
+    [Arguments]    @{pcap_file_list}
     ${mteConfigFile} =    Get MTE Config File
     @{domainList} =    Get Domain Names    ${mteConfigFile}
     Start Capture MTE Output
