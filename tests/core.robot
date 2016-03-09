@@ -108,7 +108,7 @@ Generate PCAP File Name
     ...
     ...    Example: TDDS_BDDS-MyTestName-FH=TDDS01F.pcap TDDS_BDDS-TransientGap-FH=TDDS01F.pcap
     ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}
-    ${pcapFileName} =    Catenate    SEPARATOR=    ${pcapFileName}    .pcap
+    ${pcapFileName} =    Catenate    SEPARATOR=    ${PLAYBACK_PCAP_DIR}    ${pcapFileName}    .pcap
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
 
@@ -417,14 +417,14 @@ Set Mangling Rule
     ...    Remark :
     ...    Current avaliable valid value for \ ${rule} : SOU, BETA, RRG \ or UNMANGLED
     ...    The KW would restore the config file to original value, but it would rely on user to calling KW : Load Mangling Settings to carry out the restore action at the end of their test case
-    @{files}=    backup cfg file    ${VENUE_DIR}    ${configFile}
+    @{files}=    backup remote cfg file    ${VENUE_DIR}    ${configFile}
     ${configFileLocal}=    Get Mangling Config File
     set mangling rule default value    ${rule}    ${configFileLocal}
     set mangling rule parition value    ${rule}    ${Empty}    ${configFileLocal}
     delete remote files    @{files}[0]
     put remote file    ${configFileLocal}    @{files}[0]
     Run Keyword And Continue On Failure    Load Mangling Settings
-    restore cfg file    @{files}
+    restore remote cfg file    @{files}
     Comment    Revert changes in local mangling config file
     Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${None}
     ${configFileLocal}=    Get Mangling Config File
