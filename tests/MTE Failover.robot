@@ -41,7 +41,7 @@ Verify Manual Live-Standby Switch via SCW CLI
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     [Teardown]    Manual Switch Live-Standby Case Teardown    ${master_ip}
 
-Verify Critical Logs forwarded to EventLogAdapterGMILog
+MTE State change Verify Critical Logs forwarded to EventLogAdapterGMILog
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1754
     ...    To verify SMF Critical Message generates alert in GMI Log when using SCW CLI to switch Live/Standby
     ...    The test steps as follow:
@@ -53,22 +53,15 @@ Verify Critical Logs forwarded to EventLogAdapterGMILog
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     Switch To TD Box    ${CHE_A_IP}
-    ${currDateTime}    get date and time
     ${start_state}    Get_MTE_state
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
-    wait smf log message after time    WatchDogService: STATE_CHANGE    ${currDateTime}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     ${currDateTime}    get date and time
     switch MTE LIVE STANDBY status    A    STANDBY    ${master_ip}
-    wait smf log message after time    WatchDogService: STATE_CHANGE    ${currDateTime}
-    wait GMI message after time    CRITICAL.*Connection Failure.*MTE.*ReportSituation    ${currDateTime}    2    100
+    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
     wait GMI message after time    CRITICAL.*Watchdog event.*MTE.*ReportSituation    ${currDateTime}    2    100
     wait GMI message after time    CRITICAL.*Normal Processing.*MTE.*ReportSituation    ${currDateTime}    2    100
-    wait GMI message after time    CRITICAL.*MTEname is no longer running.*MTE.*ReportSituation    ${currDateTime}    2    100
-    ${currDateTime}    get date and time
-    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
-    wait smf log message after time    WatchDogService: STATE_CHANGE    ${currDateTime}
-    wait GMI message after time    CRITICAL.*Watchdog event.*MTE.*ReportSituation    ${currDateTime}    2    100
-    wait GMI message after time    CRITICAL.*Normal Processing.*MTE.*ReportSituation    ${currDateTime}    2    100
+    wait GMI message after time    WARNING.*LIVE switch has occurred.*Entity: MTEname.*EVENT:WDG_ERROR_ENTITY_LIVE_SWITCH : Investigate the cause of the entity switch    ${currDateTime}    2    100
     [Teardown]    switch MTE LIVE STANDBY status    A    ${start_state}    ${master_ip}
 
 Verify Sync Pulse Missed QoS
