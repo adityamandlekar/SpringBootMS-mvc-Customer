@@ -18,8 +18,8 @@ OTFC Persistence
     @{otfRicListBeforePlayback}=    get otf rics from cahce    ${preferredDomain}
     Should Be Empty    ${otfRicListBeforePlayback}    OTFC item found before starting playback
     Comment    Start Playback
-    ${pcapFile}=    Generate PCAP File Name    ${serviceName}    OTFC-Persistence
-    Inject PCAP File on UDP    20    ${PLAYBACK_PCAP_DIR}${pcapFile}
+    ${pcapFile}=    Generate PCAP File Name    ${serviceName}    ${TEST NAME}
+    Inject PCAP File on UDP    ${PLAYBACK_PCAP_DIR}${pcapFile}
     @{otfRicListAfterPlayback}=    get otf rics from cahce    ${preferredDomain}
     Comment    Verify OTFC has saved to MTE cache
     Should Not Be Empty    ${otfRicListAfterPlayback}    No OTFC items created or saved to persist file after playback completed
@@ -45,11 +45,11 @@ Start MTE for OTFC
     Return from keyword if    ${len} != 0
     run commander    process    start ${MTE}
     wait for process to exist    MTE -c ${MTE}
-    wait for HealthCheck    ${MTE}    DownstreamRecoveryConfigurationIsvalid    waittime=5    timeout=600
-    wait for HealthCheck    ${MTE}    FMSConfigurationIsValid    waittime=5    timeout=600
-    wait for HealthCheck    ${MTE}    IsConnectedToFMSClient    waittime=5    timeout=600
-    wait for HealthCheck    ${MTE}    IsConnectedToFMSServer    waittime=5    timeout=600
-    wait for HealthCheck    ${MTE}    IsConnectedToSCW    waittime=5    timeout=600
+    wait for HealthCheck    ${MTE}    DownstreamRecoveryConfigurationIsvalid
+    wait for HealthCheck    ${MTE}    FMSConfigurationIsValid
+    wait for HealthCheck    ${MTE}    IsConnectedToFMSClient
+    wait for HealthCheck    ${MTE}    IsConnectedToFMSServer
+    wait for HealthCheck    ${MTE}    IsConnectedToSCW
 
 OTFC Teardown
     [Arguments]    ${serviceName}
@@ -62,14 +62,12 @@ OTFC Teardown
     Delete Persist Files
     Start MTE
     Comment    Restore MTE cache to original status
-    Load All EXL Files    ${serviceName}    ${CHE_IP}
 
 OTFC Setup
     [Documentation]    Change the MTE config for
     ...    1. Enable OTFC
     ...    2. Disable ResendFM so that No Ric will be created from FMS Server provided EXL files.
     ...    (This actual empty the cache of MTE so that making OTFC easier)
-    ...
     ${mtecfgfile}=    Convert To Lowercase    ${MTE}.xml
     ${orgFile}    ${backupFile}    backup cfg file    ${VENUE_DIR}    ${mtecfgfile}
     Set Suite Variable    ${mtecfgfile_backup}    ${backupFile}
