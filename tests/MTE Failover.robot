@@ -41,7 +41,7 @@ Verify Manual Live-Standby Switch via SCW CLI
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     [Teardown]    Manual Switch Live-Standby Case Teardown    ${master_ip}
 
-MTE State change Verify Critical Logs forwarded to EventLogAdapterGMILog
+Critical Message Logging - MTE State change
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1754
     ...    To verify SMF Critical Message generates alert in GMI Log when using SCW CLI to switch Live/Standby
     ...    The test steps as follow:
