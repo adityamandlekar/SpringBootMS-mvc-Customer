@@ -1,45 +1,106 @@
 *** Settings ***
 Suite Setup       Suite Setup Two TD Boxes
+Suite Teardown    Suite Teardown
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
 *** Test Cases ***
-Verify Manual Live-Standby Switch via SCW CLI
+Valid Manual State Changes
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1764
-    ...    To verify switch Live/Standby and lock Live/Standby using SCW CLI
-    ...    The test steps as follow:
-    ...    1 Switch A to Live, verify A is Live, B is Standby
-    ...    2 Switch A to Standby, verify A is Standby, B is Live
-    ...    3 Switch A to Lock_Live, verify A is Locked_Live, B is Standby
-    ...    4 Switch B to Lock_Standby, verify A is Locked_Live, B is Locked_Standby
-    ...    5 Unlock B, verify A is Locked_Live, B is Standby
-    ...    6 Switch B to Lock_Live, verify A is Locked_Live, B is Standby
-    ...    7 Unlock A, verify A is Live, B is Standby
+    ...    Verify valid requests to switch Live/Standby and lock Live/Standby using SCW CLI
+    ...
+    ...    The following valid state transitions are tested:
+    ...    Promote from Standby to Live
+    ...    Demote from Live to Standby
+    ...    Switch Live to Locked Live
+    ...    Unlock Live
+    ...    Switch Standby to Locked Live
+    ...    Switch Standby to Locked Standby
+    ...    Unlock Standby
+    ...    Switch Live to Locked Standby
     [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    switch MTE LIVE STANDBY status    A    STANDBY    ${master_ip}
+    Comment    Promote from Standby to Live
+    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Comment    Demote from Live to Standby
+    switch MTE LIVE STANDBY status    B    STANDBY    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
+    Comment    Switch Live to Locked Live
     switch MTE LIVE STANDBY status    A    LOCK_LIVE    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    switch MTE LIVE STANDBY status    B    LOCK_STANDBY    ${master_ip}
-    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
-    Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_STANDBY
-    switch MTE LIVE STANDBY status    B    UNLOCK    ${master_ip}
-    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
-    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    switch MTE LIVE STANDBY status    B    LOCK_LIVE    ${master_ip}
-    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
-    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
+    Comment    Unlock Live
     switch MTE LIVE STANDBY status    A    UNLOCK    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    [Teardown]    Manual Switch Live-Standby Case Teardown    ${master_ip}
+    Comment    Switch Standby to Locked Live
+    switch MTE LIVE STANDBY status    B    LOCK_LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_LIVE
+    Comment    Switch Standby to Locked Standby
+    switch MTE LIVE STANDBY status    A    LOCK_STANDBY    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_STANDBY
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_LIVE
+    Comment    Unlock Standby (and Live)
+    switch MTE LIVE STANDBY status    A    UNLOCK    ${master_ip}
+    switch MTE LIVE STANDBY status    B    UNLOCK    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Comment    Switch Live to Locked Standby
+    switch MTE LIVE STANDBY status    B    LOCK_STANDBY    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_STANDBY
+    [Teardown]    MTE Failover Case Teardown    ${master_ip}
+
+Invalid Manual State Changes
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1764
+    ...    Verify invalid requests to switch Live/Standby and lock Live/Standby using SCW CLI are rejected
+    ...    Test will wait 60 seconds and verify no state change occured
+    ...
+    ...    The following invalid state transitions are tested:
+    ...    Promote from Locked_Standby
+    ...    Demote from Locked_Live
+    ...    Switch Standby to Locked_Live when other instance is already Locked_Live
+    ...    Switch a Locked_Live to Locked_Standby (without first unlocking)
+    [Tags]    Peer
+    ${sleeptime}=    Set Variable    60
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    Comment    Attempt Promote from Locked_Standby
+    switch MTE LIVE STANDBY status    B    LOCK_STANDBY    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_STANDBY
+    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
+    sleep    ${sleeptime}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE    waittime=1    timeout=1
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LOCKED_STANDBY    waittime=1    timeout=1
+    Comment    Attempt Demote from Locked_Live
+    switch MTE LIVE STANDBY status    B    UNLOCK    ${master_ip}
+    switch MTE LIVE STANDBY status    A    LOCK_LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
+    switch MTE LIVE STANDBY status    A    STANDBY    ${master_ip}
+    sleep    ${sleeptime}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE    waittime=1    timeout=1
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY    waittime=1    timeout=1
+    Comment    Attempt Switch from Standby to Locked_Live when other instance is already Locked_Live
+    switch MTE LIVE STANDBY status    B    LOCK_LIVE    ${master_ip}
+    sleep    ${sleeptime}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE    waittime=1    timeout=1
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY    waittime=1    timeout=1
+    Comment    Attempt Switch from Locked_Live to Locked_Standby (without first unlocking)
+    switch MTE LIVE STANDBY status    A    LOCK_STANDBY    ${master_ip}
+    sleep    ${sleeptime}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LOCKED_LIVE    waittime=1    timeout=1
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY    waittime=1    timeout=1
+    [Teardown]    MTE Failover Case Teardown    ${master_ip}
 
 Verify Sync Pulse Missed QoS
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
@@ -48,17 +109,17 @@ Verify Sync Pulse Missed QoS
     [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
-    ${localVenueConfig}=    get MTE config file
-    @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
     ${ddnpublishersLabelfilepath}=    Get CHE Config Filepath    ddnPublishers.xml
     ${labelfile_local}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishers.xml
-    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
-    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     Comment    Blocking Standby Side INPUT
-    Switch to TD Box    ${CHE_A_IP}
-    ${state}=    Get MTE state
-    Run Keyword If    '${state}' != 'STANDBY'    Switch to TD Box    ${CHE_B_IP}
+    Switch to TD Box    ${CHE_B_IP}
+    @{labelIDs}=    Get labelIDs
+    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
+    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
@@ -69,8 +130,9 @@ Verify Sync Pulse Missed QoS
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     Comment    Blocking Live Side OUTPUT
     Switch to TD Box    ${CHE_A_IP}
-    ${state}=    Get MTE state
-    Run Keyword If    '${state}' != 'LIVE'    Switch to TD Box    ${CHE_B_IP}
+    @{labelIDs}=    Get labelIDs
+    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
+    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
@@ -79,7 +141,7 @@ Verify Sync Pulse Missed QoS
     \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
     \    unblock_dataflow
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
-    [Teardown]    Case Teardown    ${modifyLabelFile}    ${labelfile_local}
+    [Teardown]    MTE Failover Case Teardown    ${master_ip}    ${modifyLabelFile}    ${labelfile_local}
 
 Verify QoS Failover for Critical Process Failure
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1762 to verify QOS CritProcessFail will increase and failover happen if critical process is shutdown.
@@ -110,9 +172,10 @@ Verify QoS Failover for Critical Process Failure
     Switch To TD Box    ${CHE_A_IP}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Stop MTE
-    Verify QoS for CritProcessFail    A    1    0    ${master_ip}
-    Verify MTE State In Specific Box    ${CHE_A_IP}    UNDEFINED
-    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Comment    Use 'continue on failure' \ so the processes are restarted even if a validation fails.
+    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_A_IP}    UNDEFINED
+    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    1    0    ${master_ip}
     Stop Process    GRS
     Stop Process    FMSClient
     Stop Process    NetConStat
@@ -122,9 +185,7 @@ Verify QoS Failover for Critical Process Failure
     Stop Process    LatencyHandler
     Stop Process    DudtGen
     Stop Process    StatRicGen
-    Verify QoS for CritProcessFail    A    10    0    ${master_ip}
-    Verify MTE State In Specific Box    ${CHE_A_IP}    UNDEFINED
-    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    10    0    ${master_ip}
     Start Process    StatRicGen
     Start Process    DudtGen
     Start Process    LatencyHandler
@@ -135,23 +196,35 @@ Verify QoS Failover for Critical Process Failure
     Start Process    FMSClient
     Start Process    GRS
     Start MTE
-    Verify QoS for CritProcessFail    A    0    100    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Verify QoS for CritProcessFail    A    0    100    ${master_ip}
+    [Teardown]
 
 *** Keywords ***
+Get labelIDs
+    [Documentation]    Get the labelID from MTE config file on current machine.
+    ...    The LabelID may be different across machines, so use config files from current machine.
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
+    ${localVenueConfig}=    get MTE config file
+    @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
+    [Return]    @{labelIDs}
+
 Verify MTE State In Specific Box
-    [Arguments]    ${che_ip}    ${state}
+    [Arguments]    ${che_ip}    ${state}    ${waittime}=5    ${timeout}=150
     ${host}=    get current connection index
     Switch To TD Box    ${che_ip}
-    verify MTE state    ${state}
+    verify MTE state    ${state}    ${waittime}    ${timeout}
     Switch Connection    ${host}
 
-Manual Switch Live-Standby Case Teardown
-    [Arguments]    ${master_ip}
+MTE Failover Case Teardown
+    [Arguments]    ${master_ip}    @{filesToRemove}
     [Documentation]    If a KW fail, unlocking both A and B
     switch MTE LIVE STANDBY status    A    UNLOCK    ${master_ip}
     switch MTE LIVE STANDBY status    B    UNLOCK    ${master_ip}
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Switch To TD Box    ${CHE_A_IP}
+    Run Keyword If    ${filesToRemove}    Case Teardown    @{filesToRemove}
 
 Start Process
     [Arguments]    ${process}

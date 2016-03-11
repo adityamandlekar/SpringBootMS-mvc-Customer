@@ -1852,7 +1852,6 @@ class LocalBoxUtilities(_ToolUtil):
             if node.get('ID') == labelID:
                 if (mteName != ""): #indicate checking ddnPublishers.xml
                     providers = node.findall('provider')
-                    print providers
                     found = False
                     for provider in providers:
                        if provider.get('NAME') == mteName:
