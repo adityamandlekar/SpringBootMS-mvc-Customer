@@ -127,7 +127,7 @@ QoS Case Teardown
 Verify QOS for Egress NIC
     [Arguments]    ${EgressQOS}    ${TotalQOS}
     [Documentation]    Check whether the Egress QOS and Total QOS are equal to the given value
-    Wait For QOS    A    EgressNIC    ${IngressQOS}    ${CHE_IP}
+    Wait For QOS    A    EgressNIC    ${EgressQOS}    ${CHE_IP}
     Verify QOS Equal To Specific Value    A    Total QOS    ${TotalQOS}    ${CHE_IP}
 
 Verify QOS for Ingress NIC
@@ -139,5 +139,5 @@ Verify QOS for Ingress NIC
 Verify QOS for FMS NIC
     [Arguments]    ${FMSQOS}    ${TotalQOS}
     [Documentation]    Check whether the FMS QOS and Total QOS are equal to the given value
-    Wait For QOS    A    FMSNIC    ${IngressQOS}    ${CHE_IP}
+    Wait For QOS    A    FMSNIC    ${FMSQOS}    ${CHE_IP}
     Verify QOS Equal To Specific Value    A    Total QOS    ${TotalQOS}    ${CHE_IP}
