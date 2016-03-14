@@ -1,6 +1,6 @@
 *** Settings ***
 Documentation     Verify QoS value when disable the NIC
-Suite Setup       Suite Setup
+Suite Setup       Suite Setup Two TD Boxes
 Suite Teardown    Suite Teardown
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
@@ -17,7 +17,9 @@ Watchdog QOS - MTE Egress NIC
     ...    5. Enable DDNB, EgressNIC:100, Total QOS:100
     ...    6. Disable both DDNA and DDNB, EgressNIC:0, Total QOS:0
     ...    7. Enable both DDNA and DDNB, EgressNIC:100, Total QOS:100
+    [Tags]    Peer
     [Setup]    QoS Case Setup
+    Switch to TD Box    ${CHE_A_IP}
     Verify QOS for Egress NIC    100    100
     Disable NIC    DDNA
     Verify QOS for Egress NIC    50    0
@@ -46,7 +48,9 @@ Watchdog QOS - SFH Ingress NIC
     ...    5. Enable EXCHIPB, IngressNIC:100, Total QOS:100
     ...    6. Disable both EXCHIPA and EXCHIPB, IngressNIC:0, Total QOS:0
     ...    7. Enable both EXCHIPA and EXCHIPB, IngressNIC:100, Total QOS:100
+    [Tags]    Peer
     [Setup]    QoS Case Setup
+    Switch to TD Box    ${CHE_A_IP}
     Verify QOS for Ingress NIC    100    100
     Disable NIC    EXCHIPA
     Verify QOS for Ingress NIC    50    0
@@ -74,7 +78,9 @@ Watchdog QOS - FMS NIC
     ...    4. Verify FMS NIC:0, Total QOS:0
     ...    5. Enable FMS NIC
     ...    6. Verify FMS NIC:100, Total QOS:100
+    [Tags]    Peer
     [Setup]    QoS Case Setup
+    Switch to TD Box    ${CHE_A_IP}
     ${interfaceFM}    Get Interface Name By Alias    DB_P_FM
     ${interfaceMGMT}    Get Interface Name By Alias    MGMT
     Should Not Be Equal    ${interfaceFM}    ${interfaceMGMT}    The FMS NIC is equal to MGMT NIC
@@ -125,19 +131,19 @@ QoS Case Teardown
     \    Enable Disable Interface    ${interfaceName}    Enable
 
 Verify QOS for Egress NIC
-    [Arguments]    ${EgressQOS}    ${TotalQOS}
+    [Arguments]    ${EgressQOS}    ${TotalQOS}    ${node}=A
     [Documentation]    Check whether the Egress QOS and Total QOS are equal to the given value
-    Wait For QOS    A    EgressNIC    ${EgressQOS}    ${CHE_IP}
-    Verify QOS Equal To Specific Value    A    Total QOS    ${TotalQOS}    ${CHE_IP}
+    Wait For QOS    ${node}    EgressNIC    ${EgressQOS}    ${CHE_IP}
+    Verify QOS Equal To Specific Value    ${node}    Total QOS    ${TotalQOS}    ${CHE_IP}
 
 Verify QOS for Ingress NIC
-    [Arguments]    ${IngressQOS}    ${TotalQOS}
+    [Arguments]    ${IngressQOS}    ${TotalQOS}    ${node}=A
     [Documentation]    Check whether the Ingress QOS and Total QOS are equal to the given value
-    Wait For QOS    A    IngressNIC    ${IngressQOS}    ${CHE_IP}
-    Verify QOS Equal To Specific Value    A    Total QOS    ${TotalQOS}    ${CHE_IP}
+    Wait For QOS    ${node}    IngressNIC    ${IngressQOS}    ${CHE_IP}
+    Verify QOS Equal To Specific Value    ${node}    Total QOS    ${TotalQOS}    ${CHE_IP}
 
 Verify QOS for FMS NIC
-    [Arguments]    ${FMSQOS}    ${TotalQOS}
+    [Arguments]    ${FMSQOS}    ${TotalQOS}    ${node}=A
     [Documentation]    Check whether the FMS QOS and Total QOS are equal to the given value
-    Wait For QOS    A    FMSNIC    ${FMSQOS}    ${CHE_IP}
-    Verify QOS Equal To Specific Value    A    Total QOS    ${TotalQOS}    ${CHE_IP}
+    Wait For QOS    ${node}    FMSNIC    ${FMSQOS}    ${CHE_IP}
+    Verify QOS Equal To Specific Value    ${node}    Total QOS    ${TotalQOS}    ${CHE_IP}
