@@ -146,37 +146,22 @@ Verify Sync Pulse Missed QoS
 Verify QoS Failover for Critical Process Failure
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1762 to verify QOS CritProcessFail will increase and failover happen if critical process is shutdown.
     ...
-    ...    Test steps
-    ...    1. Make sure A is LIVE
-    ...    2. Stop MTE
-    ...    3. Verify A is UNDEFINED, B is LIVE
-    ...    4. Verify QOS on A side, CritProcessFail is 1, and Total QOS is 0
-    ...    2. Stop below critical processes:
-    ...    GRS
-    ...    FMSClient
-    ...    NetConStat
-    ...    EventScheduler
-    ...    StatsGen
-    ...    GapStatGen
-    ...    LatencyHandler
-    ...    StatRicGen
-    ...    3. Verify QOS on A side, CritProcessFail is 10, and Total QOS is 0
-    ...    4. Verify A is UNDEFINED, B is LIVE
-    ...    5. Restart above processes
-    ...    6. Verify QOS on A side, CritProcessFail is 0, and Total QOS is 100
-    ...    7. Verify A is STANDBY, B is LIVE
+    ...    1. Stop each of the following critical processes: \ GRS, FMSClient, NetConStat, EventScheduler, StatsGen, GapStatGen, LatencyHandler, StatRicGen.
+    ...    2. Verify LIVE MTE failover after first Critical Process failure.
+    ...    3. Verify CritProcessFail count indicates the number of critical processes that are down.
+    ...    4. Restart the components.
+    ...    5. Verify CritProcessFail count goes back to zero and Total QoS goes back to 100.
     [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     Switch To TD Box    ${CHE_A_IP}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
-    Stop MTE
-    Comment    Use 'continue on failure' \ so the processes are restarted even if a validation fails.
-    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_A_IP}    UNDEFINED
-    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
-    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    1    0    ${master_ip}
     Stop Process    GRS
+    Comment    Use 'continue on failure' so the processes are restarted even if a validation fails.
+    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    ${master_ip}    1    0
     Stop Process    FMSClient
     Stop Process    NetConStat
     Stop Process    EventScheduler
@@ -185,20 +170,18 @@ Verify QoS Failover for Critical Process Failure
     Stop Process    LatencyHandler
     Stop Process    DudtGen
     Stop Process    StatRicGen
-    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    10    0    ${master_ip}
-    Start Process    StatRicGen
-    Start Process    DudtGen
-    Start Process    LatencyHandler
-    Start Process    GapStatGen
-    Start Process    StatsGen
-    Start Process    EventScheduler
-    Start Process    NetConStat
-    Start Process    FMSClient
-    Start Process    GRS
-    Start MTE
-    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
-    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
-    Verify QoS for CritProcessFail    A    0    100    ${master_ip}
+    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    ${master_ip}    9    0
+    Comment    Restart process in same order that SMF starts them
+    Run Keyword and Continue on Failure    Start Process    StatRicGen
+    Run Keyword and Continue on Failure    Start Process    DudtGen
+    Run Keyword and Continue on Failure    Start Process    LatencyHandler
+    Run Keyword and Continue on Failure    Start Process    GapStatGen
+    Run Keyword and Continue on Failure    Start Process    StatsGen
+    Run Keyword and Continue on Failure    Start Process    EventScheduler
+    Run Keyword and Continue on Failure    Start Process    NetConStat
+    Run Keyword and Continue on Failure    Start Process    FMSClient
+    Run Keyword and Continue on Failure    Start Process    GRS
+    Verify QoS for CritProcessFail    A    ${master_ip}    0    100
     [Teardown]
 
 *** Keywords ***
@@ -240,7 +223,8 @@ Stop Process
     wait for process to not exist    ${process}
 
 Verify QoS for CritProcessFail
-    [Arguments]    ${node}    ${CritProcessFailValue}    ${totalQoSValue}    ${master_ip}
-    [Documentation]    Verify the QOS of CritProcessFail and TotalQOS on specified node, &{node} should be A, B, C or D
+    [Arguments]    ${node}    ${master_ip}    ${CritProcessFailValue}    ${totalQoSValue}=${EMPTY}
+    [Documentation]    Verify the QOS of CritProcessFail on specified node, &{node} should be A, B, C or D.
+    ...    If TotalQOS value is specified, also verify it.
     wait for QOS    ${node}    CritProcessFail    ${CritProcessFailValue}    ${master_ip}
-    verify QOS equal to specific value    ${node}    Total QOS    ${totalQoSValue}    ${master_ip}
+    Run Keyword If    '${totalQoSValue}'    verify QOS equal to specific value    ${node}    Total QOS    ${totalQoSValue}    ${master_ip}
