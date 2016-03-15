@@ -19,7 +19,7 @@ OTFC Persistence
     Should Be Empty    ${otfRicListBeforePlayback}    OTFC item found before starting playback
     Comment    Start Playback
     ${pcapFile}=    Generate PCAP File Name    ${serviceName}    ${TEST NAME}
-    Inject PCAP File on UDP    ${PLAYBACK_PCAP_DIR}${pcapFile}
+    Inject PCAP File on UDP    ${pcapFile}
     @{otfRicListAfterPlayback}=    get otf rics from cahce    ${preferredDomain}
     Comment    Verify OTFC has saved to MTE cache
     Should Not Be Empty    ${otfRicListAfterPlayback}    No OTFC items created or saved to persist file after playback completed
