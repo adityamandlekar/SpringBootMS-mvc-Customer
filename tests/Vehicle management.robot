@@ -305,6 +305,43 @@ Verify Deletion Delay
     Verify RIC Not In MTE Cache    ${ric}
     [Teardown]    Correct MTE Machine Time
 
+Verify Drop and Undrop from FMSCmd
+    [Documentation]    Verify Drop/Undrop form FMSCmd, 1) Verify MTE is running.
+    ...    2) Start output capture.
+    ...    3) Generate Drop from FMSCmd,
+    ...    4) Verify item is dropped in MTE cache.
+    ...    5) Stop output capture
+    ...    6) Verify an Item Drop was published (MsgClass: \ TRWF_MSG_MC_ITEM_STATUS, StreamState: TRWF_MSG_SST_CLOSED)
+    ...    7) Start output capture.
+    ...    8) Generate Undrop from FMSCmd,
+    ...    9) Verify item is in MTE cache.
+    ...    10) Stop output capture
+    ...    11) verify a response was published.
+    ...
+    ...    Test Case - Verify Drop/Undrop form FMSCmd
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2009
+    start mte
+    ${domain}    Get Preferred Domain
+    ${serviceName}    Get FMS Service Name
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${mteConfigFile}=    Get MTE Config File
+    ${currDateTime}    get date and time
+    Start Capture MTE Output
+    Drop ric    ${ric}    ${domain}    ${serviceName}
+    wait smf log message after time    Drop message sent    ${currDateTime}
+    Verify RIC Is Dropped In MTE Cache    ${ric}
+    Stop Capture MTE Output
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    verify DROP message in itemstatus messages    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}
+    Start Capture MTE Output
+    Undrop ric    ${ric}    ${domain}    ${serviceName}
+    wait smf log message after time    was Undropped    ${currDateTime}
+    Verify RIC In MTE Cache    ${ric}
+    Stop Capture MTE Output
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    verify_all_response_message_num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}
+    [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
+
 *** Keywords ***
 Calculate UpdateSince for REORG
     [Arguments]    ${exlFile}
@@ -438,6 +475,14 @@ Correct MTE Machine Time
     ...    ${RIDEMachineTime.second}
     Restore MTE Clock Sync
     start smf
+
+Undrop ric
+    [Arguments]    ${ric}    ${domain}    ${serviceName}
+    ${currDateTime}    get date and time
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    undrop    --RIC ${ric}
+    ...    --Domain ${domain}    --HandlerName ${MTE}
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+    wait smf log message after time    Undrop    ${currDateTime}
 
 Disable MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, disable the VirtualBox Guest Additions service. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.

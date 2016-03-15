@@ -101,10 +101,12 @@ Verify Manual Closing Runs
 Check input port stats
     [Arguments]    ${identifierName}    ${statIdentifier}    ${statField}    ${statValue}
     [Documentation]    Note that all input port stats blocks (that have ${identifierName} set to ${statIdentifier}) will be checked here.
+    ...    Will stop checking when an empty stats block is encountered.
     : FOR    ${index}    IN RANGE    0    255
     \    ${identifier}    get stat block field    ${MTE}    InputPortStatsBlock_${index}    ${identifierName}
     \    run keyword if    '${identifier}' == '${statIdentifier}'    wait for statBlock    ${MTE}    InputPortStatsBlock_${index}    ${statField}
     \    ...    ${statValue}    waittime=2    timeout=300
+    \    return from keyword if    '${identifier}' == ''
 
 Get venue local datetime from MTE
     [Arguments]    ${ricName}
@@ -567,20 +569,6 @@ Re-schedule Closing Run teardown
     Load Single EXL File    ${closingRunHolidayEXL}    ${serviceName}    ${CHE_IP}
     : FOR    ${closingRunExlFile}    IN    @{closingRunExlFiles}
     \    Load Single EXL File    ${closingRunExlFile}    ${serviceName}    ${CHE_IP}
-
-Manual ClosingRun for a RIC
-    [Arguments]    ${sampleRic}    ${publishKey}    ${domain}
-    Start Capture MTE Output
-    ${currentDateTime}    get date and time
-    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    Close    --RIC ${sampleRic}
-    ...    --Domain ${domain}
-    wait SMF log message after time    Closing RIC: ${sampleRic}    ${currentDateTime}    2    60
-    Stop Capture MTE Output
-    ${localcapture}    set variable    ${LOCAL_TMP_DIR}/capture_local.pcap
-    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
-    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${publishKey}
-    remove files    ${localcapture}
-    delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
 
 Manual ClosingRun for the EXL File including target Ric
     [Arguments]    ${sampleRic}    ${publishKey}    ${domain}

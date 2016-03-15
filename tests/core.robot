@@ -39,6 +39,14 @@ Suite Setup
     Start MTE
     [Return]    ${ret}
 
+Suite Setup with Playback
+    [Documentation]    Setup Playback box and suit scope variable Playback_Session.
+    Should Not be Empty    ${PLAYBACK_MACHINE_IP}
+    ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
+    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
+    Set Suite Variable    ${Playback_Session}    ${plyblk}
+    Suite Setup
+
 Suite Teardown
     [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
     close all connections
@@ -100,7 +108,8 @@ Generate PCAP File Name
     ...
     ...    Example: TDDS_BDDS-MyTestName-FH=TDDS01F.pcap TDDS_BDDS-TransientGap-FH=TDDS01F.pcap
     ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}
-    ${pcapFileName} =    Catenate    SEPARATOR=    ${pcapFileName}    .pcap
+    ${pcapFileName} =    Catenate    SEPARATOR=    ${PLAYBACK_PCAP_DIR}    ${pcapFileName}    .pcap
+    ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
 
 Get ConnectTimesIdentifier
@@ -277,6 +286,21 @@ Get RIC List From StatBlock
     Return from keyword if    '${ricType}'=='Trade Time'    ${ricList}
     FAIL    RIC not found. Valid choices are: 'Closing Run', 'DST', 'Feed Time', 'Holiday', 'Trade Time'
 
+Inject PCAP File on UDP
+    [Arguments]    @{pcapFileList}
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-72
+    ...
+    ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
+    ${host}=    get current connection index
+    Switch Connection    ${Playback_Session}
+    ${intfName}=    get interface name by ip    ${PLAYBACK_BIND_IP_A}
+    Should Not be Empty    ${intfName}
+    : FOR    ${pcapFile}    IN    @{pcapFileList}
+    \    remote file should exist    ${pcapFile}
+    \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} ${pcapFile}    return_rc=True
+    \    Should Be Equal As Integers    ${rc}    0
+    Switch Connection    ${host}
+
 Load All EXL Files
     [Arguments]    ${service}    ${headendIP}    @{optargs}
     [Documentation]    Loads all EXL files for a given service using FMSCMD. The FMS files for the given service must be on the local machine. The input parameters to this keyword are the FMS service name and headend's IP.
@@ -304,6 +328,19 @@ Manual ClosingRun for ClosingRun Rics
     \    ...    --RIC ${closingrunRicName}    --Services ${serviceName}    --Domain MARKET_PRICE    --ClosingRunOperation Invoke    --HandlerName ${MTE}
     \    wait SMF log message after time    ClosingRun.*?CloseItemGroup.*?Found [0-9]* closeable items out of [0-9]* items    ${currentDateTime}    2    60
 
+Manual ClosingRun for a RIC
+    [Arguments]    ${sampleRic}    ${publishKey}    ${domain}
+    Start Capture MTE Output
+    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    Close    --RIC ${sampleRic}
+    ...    --Domain ${domain}
+    Wait For Persist File Update
+    Stop Capture MTE Output
+    ${localcapture}    set variable    ${LOCAL_TMP_DIR}/capture_local.pcap
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
+    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${publishKey}
+    remove files    ${localcapture}
+    delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
+
 Persist File Should Exist
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
@@ -314,6 +351,8 @@ Send TRWF2 Refresh Request
     [Documentation]    Call DataView to send TRWF2 Refresh Request to MTE.
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
+    Comment    LabelID may be different across machines, so make sure we have config file for this machine.
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
     ${localVenueConfig}=    get MTE config file
     ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
@@ -380,14 +419,14 @@ Set Mangling Rule
     ...    Remark :
     ...    Current avaliable valid value for \ ${rule} : SOU, BETA, RRG \ or UNMANGLED
     ...    The KW would restore the config file to original value, but it would rely on user to calling KW : Load Mangling Settings to carry out the restore action at the end of their test case
-    @{files}=    backup cfg file    ${VENUE_DIR}    ${configFile}
+    @{files}=    backup remote cfg file    ${VENUE_DIR}    ${configFile}
     ${configFileLocal}=    Get Mangling Config File
     set mangling rule default value    ${rule}    ${configFileLocal}
     set mangling rule parition value    ${rule}    ${Empty}    ${configFileLocal}
     delete remote files    @{files}[0]
     put remote file    ${configFileLocal}    @{files}[0]
     Run Keyword And Continue On Failure    Load Mangling Settings
-    restore cfg file    @{files}
+    restore remote cfg file    @{files}
     Comment    Revert changes in local mangling config file
     Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${None}
     ${configFileLocal}=    Get Mangling Config File

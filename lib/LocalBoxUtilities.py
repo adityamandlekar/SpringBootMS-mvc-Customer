@@ -25,6 +25,7 @@ from FMUtilities import _FMUtil
 from utils.local import _run_local_command
 from utils._ToolUtil import _ToolUtil
 from VenueVariables import *
+import time
 
 FID_CONTEXTID = '5357'
 
@@ -488,8 +489,103 @@ class LocalBoxUtilities(_ToolUtil):
             raise AssertionError('*ERROR* No FID dictionary exists in FIDFilter.txt file for Context ID %s' %(context_id))  
         
         return fidDic.keys()
+    
+    def verify_no_realtime_update_type_in_capture(self, pcapfile, domain):
+        """ Verify update message does not exist for MARKET PRICE, or MARKET_BY_ORDER or MARKET_BY_PRICE domain.
+            Argument : pcapfile : MTE output pcap file fullpath
+                       domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+            return : Nil
+        """  
+        try:
+            self.verify_updated_message_exist_in_capture(pcapfile, domain)     
+        except AssertionError:
+            return
+               
+        raise AssertionError('*ERROR* realtime updates exist for domain %s.' %domain)
              
+
+
+    def verify_realtime_update_type_in_capture(self, pcapfile, domain):
+        """ Verify the realtime updates for MP domain have type "Quote", "Trade".
+            Verify the realtime updates for MBP domain have type "unspecified".
+            Argument : pcapfile : MTE output pcap file fullpath
+                       domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+            return : Nil
+        """  
+        
+        self.verify_updated_message_exist_in_capture(pcapfile, domain)     
+                   
+        filterstring = ''
+        filterDomain = 'TRWF_TRDM_DMT_' + domain
+        outputfileprefix = 'updates_pcap'
+        if filterDomain == 'TRWF_TRDM_DMT_MARKET_PRICE':
+            filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, AND (Update_constitNum = &quot;1&quot;, AND(Update_updateTypeNum != &quot;TRWF_TRDM_UPT_QUOTE&quot;, Update_updateTypeNum != &quot;TRWF_TRDM_UPT_TRADE&quot;))))'%(filterDomain)
+        if filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_ORDER' or filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_PRICE':
+            filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND (Update_constitNum = &quot;1&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_updateTypeNum != &quot;TRWF_TRDM_UPT_UNSPECIFIED&quot;)))'%(filterDomain)
+        if len(filterstring) == 0:
+            raise AssertionError('*ERROR* Need MARKET_PRICE, MARKET_BY_ORDER or MARKET_BY_PRICE for domain parameter ')  
+                  
+        try:               
+            outputxmlfile = self._get_extractorXml_from_pcap(pcapfile, filterstring, outputfileprefix) 
+        except AssertionError:
+            return 
+          
+        if (os.path.exists(outputxmlfile[0]) == True):                   
+            for exist_file in outputxmlfile:
+                os.remove(exist_file)
+        
+            os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
+            if filterDomain == 'TRWF_TRDM_DMT_MARKET_PRICE':
+                raise AssertionError('*ERROR* realtime updates for domain %s have type other than "Quote", "Trade".' %domain)
+            if filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_ORDER' or filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_PRICE':  
+                raise AssertionError('*ERROR* realtime updates for domain %s have type other than "unspecified".' %domain)
+            
+            
+    def verify_correction_updates_in_capture(self, pcapfile):
+        """ verify if correction update messages are in pcapfile.
+            Argument : pcapfile : MTE output capture pcap file fullpath
+            return : Nil
+        """           
+        self.verify_updated_message_exist_in_capture(pcapfile, 'MARKET_PRICE')                  
+        
+        outputfileprefix = 'correction_pcap'
+        filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;TRWF_TRDM_DMT_MARKET_PRICE&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_updateTypeNum != &quot;TRWF_TRDM_UPT_CORRECTION&quot;))'
+        try:
+            outputxmlfile = self._get_extractorXml_from_pcap(pcapfile, filterstring, outputfileprefix)                
+        except AssertionError:
+            print 'update messages with market price domain in pcap file have correction type '
+            return   
+        
+        if (os.path.exists(outputxmlfile[0]) == True): 
+            for exist_file in outputxmlfile:
+                os.remove(exist_file)
+            os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")   
+            raise AssertionError('*ERROR* updates for Market Price domain have type other than "correction" ' )      
            
+           
+    def verify_updated_message_exist_in_capture(self, pcapfile, domain):
+        """ Verify updates for the domain exist in the pcap file
+            Argument : pcapfile : MTE output pcap file fullpath
+                       domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+            return : Nil
+        """  
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        filterDomain = 'TRWF_TRDM_DMT_' + domain
+        outputfileprefix = 'updates_pcap'
+        filterstring = 'AND (All_msgBase_msgKey_domainType = &quot;%s&quot;, All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;)'%filterDomain
+        
+        outputxmlfile = self._get_extractorXml_from_pcap(pcapfile, filterstring, outputfileprefix)  
+        
+        if (os.path.exists(outputxmlfile[0]) == True):
+            for exist_file in outputxmlfile:
+                os.remove(exist_file)
+            os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")   
+        else:
+           raise AssertionError('*ERROR* No update messages found for domain %s in %s' %(domain, pcapfile))  
+       
+              
     def verify_solicited_response_in_capture(self, pcapfile, ric, domain, constituent_list):
         """ verify the pcap file contains solicited response messages for all possible constituents defined in fidfilter.txt
             Argument : pcapfile : MTE output capture pcap file fullpath
@@ -881,7 +977,7 @@ class LocalBoxUtilities(_ToolUtil):
             return : Nil
             
             Verify:
-            1. Drop message: msg class: Item Status, ContainerType should be NoData
+            1. Drop message: msg class: Item Status, ContainerType should be NoData, streamState should be 'TRWF_MSG_SST_CLOSED'
         """         
         
         outputfileprefix = 'peChgCheckC'+str(constnum)
@@ -894,7 +990,10 @@ class LocalBoxUtilities(_ToolUtil):
         if (len(messages) == 1):
             containterType = self._xml_parse_get_HeaderTag_Value_for_messageNode (messages[0],'MsgBase','ContainerType')
             if (containterType != 'NoData'):
-                raise AssertionError('*ERROR* C%s message : Drop message for RIC (%s) not found'%(constnum,ricname))                   
+                raise AssertionError('*ERROR* C%s message : Drop message for RIC (%s) not found'%(constnum,ricname))    
+            streamState = self._xml_parse_get_HeaderTag_Value_for_messageNode (messages[0],'ItemState','StreamState')
+            if (streamState != '4'):
+                raise AssertionError('*ERROR* C%s message : Drop message for RIC (%s) not found'%(constnum,ricname))                    
         else:
             raise AssertionError('*ERROR* No. of C%s message received not equal to 1 for RIC %s during RIC drop, received (%d) message(s)'%(constnum,ricname,len(messages)))        
         
@@ -1566,7 +1665,7 @@ class LocalBoxUtilities(_ToolUtil):
         # Save the output EXL file
         try:
             fileHandle = open(exlFileTarget, 'w') 
-            fileHandle.write(xmlParser.toxml())
+            fileHandle.write(xmlParser.toxml("utf-8"))
             fileHandle.close()
         except Exception, exception:
             raise AssertionError('Failed to open EXL target file %s Exception: %s' % (exlFileTarget, exception))
@@ -1753,7 +1852,6 @@ class LocalBoxUtilities(_ToolUtil):
             if node.get('ID') == labelID:
                 if (mteName != ""): #indicate checking ddnPublishers.xml
                     providers = node.findall('provider')
-                    print providers
                     found = False
                     for provider in providers:
                        if provider.get('NAME') == mteName:
@@ -2569,14 +2667,13 @@ class LocalBoxUtilities(_ToolUtil):
         
         return stdout
     
-    def switch_MTE_LIVE_STANDBY_status(self,node,status,che_ip,port='27000'):
+    def switch_MTE_LIVE_STANDBY_status(self,node,status,che_ip):
         """ To switch specific MTE instance to LIVE, STANDBY, LOCK_LIVE or LOCK_STANDY. Or unlock the MTE instance.
 
             Argument : node - A,B,C,D
                        status - LIVE:Switch to Live, STANDBY:Switch to Standby, 
                                 LOCK_LIVE to lock live, LOCK_STANDY to lock standby, UNLOCK to unlock the MTE
                        che_ip - IP of the TD box
-                       port - port no. that used to communicate with the SCW at TD box
                              
             Return :
             
@@ -2597,14 +2694,13 @@ class LocalBoxUtilities(_ToolUtil):
         else:
             raise AssertionError('*ERROR* Unknown status %s' %status)
             
-        cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(MTE,node,che_ip,port,USERNAME,PASSWORD)
+        cmd = cmd + '%s %s -ip %s -port %s -user %s -pass %s'%(MTE,node,che_ip,SCWCLI_PORT,USERNAME,PASSWORD)
         self._run_local_SCWCLI(cmd)
 
-    def get_SyncPulseMissed(self, master_ip, port='27000'):
+    def get_SyncPulseMissed(self, master_ip):
         """ get sync pulse missing count through SCWCli
 
             Argument : master_ip - IP of the master SCW box
-                       port - port no. that used to communicate with the SCW at TD box
                              
             Return : a list with sync pulse missing count for both instance A instance B i.e. [A-instance-missing-count, B-instance-missing-count]
             
@@ -2613,7 +2709,7 @@ class LocalBoxUtilities(_ToolUtil):
         """
                 
         syncPulseMissed = []
-        cmd = '-ip %s -port %s -user %s -pass %s -entity %s'%(master_ip,port,USERNAME,PASSWORD,MTE)
+        cmd = '-ip %s -port %s -user %s -pass %s -entity %s'%(master_ip,SCWCLI_PORT,USERNAME,PASSWORD,MTE)
         ret = self._run_local_SCWCLI(cmd).splitlines()
         for line in ret:
             if (line.find('SyncPulseMissed') != -1):
@@ -2647,11 +2743,11 @@ class LocalBoxUtilities(_ToolUtil):
                 raise AssertionError('*ERROR* Sync Pulse Missed Count has not increased after port blocked (before : %d, after : %d)' %(syncPulseBefore[1], syncPulseAfter[1]))
         
     
-    def get_master_box_ip(self, che_ip_list, port='27000'):
+    def get_master_box_ip(self, che_ip_list):
         """ To find the master box from pair boxes
 
             Argument : che_ip_list - IP list of the TD boxes
-                       port - port no. that used to communicate with the SCW at TD box
+
             Return :   the ip of master box
             
             Examples :
@@ -2659,12 +2755,84 @@ class LocalBoxUtilities(_ToolUtil):
             | ${master_ip} | get master box ip | ${iplist} |
         """
         for che_ip in che_ip_list:
-            cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,port,USERNAME,PASSWORD)
+            cmd ='-state -ip %s -port %s -user %s -pass %s'%(che_ip,SCWCLI_PORT,USERNAME,PASSWORD)
             stdout = self._run_local_SCWCLI(cmd)
             if (stdout.find('SCW state MASTER') != -1):
                 return che_ip
         raise AssertionError('*ERROR* cannot find a master box')
+
+    def wait_for_QOS(self, node, QOSName, QOSValue, che_ip, waittime=10, timeout=100):
+        """ wait the QOS until it is changed to the specific value, break the wait after timeout.
+
+            Argument : node - A,B,C,D
+                       QOSName - the QOS name you want to check, should be "IngressNIC", "EgressNIC", "FMSNIC" etc
+                       QOSValue - the specific QOS value, 100 or 50 or 0
+                       che_ip - IP of the master TD box
+                       waittime - specifies the time to wait between checks, in seconds.
+                       timeout - specifies the maximum time to wait, in seconds.
+            Return :   None
+            
+            Examples :
+            | wait for QOS | A | IngressNIC | 100 | ${CHE_IP} |
+        """
+        timeout = int(timeout)
+        waittime = int(waittime)
+        maxtime = time.time() + float(timeout)
+        while time.time() <= maxtime:
+            time.sleep(waittime)
+            actualQOSValue = self.get_QOS_value(node, QOSName, che_ip)
+            if (actualQOSValue == QOSValue):
+                return
+        raise AssertionError('*ERROR* QOS %s on %s is %s did not change to %s before timeout %ds' %(QOSName,node,actualQOSValue,QOSValue,timeout))
     
+    def verify_QOS_equal_to_specific_value(self, node, QOSName, QOSValue, che_ip):
+        """ verify QOS is equal to the specific value
+
+            Argument : node - A,B,C,D
+                       QOSName - the QOS name you want to check, should be "IngressNIC", "EgressNIC", "FMSNIC" etc
+                       QOSValue - the specific QOS value, 100 or 50 or 0
+                       che_ip - IP of the TD box
+            Return :   None
+            
+            Examples :
+            | verify QOS equal to specific value | A | IngressNIC | 100 | ${CHE_IP} |
+        """
+        actualQOSValue = self.get_QOS_value(node, QOSName, che_ip)
+        if (actualQOSValue != QOSValue):
+            raise AssertionError('*ERROR* QOS %s on %s is %s, is not equal to %s' %(QOSName,node,actualQOSValue,QOSValue))
+
+    def get_QOS_value(self, node, QOSName, che_ip):
+        """ get QOS value via watchdog
+
+            Argument : node - A,B,C,D
+                       QOSName - the QOS name you want to check, should be "IngressNIC", "EgressNIC", "FMSNIC" etc
+                       che_ip - IP of the master TD box
+            Return :   QOS value returned from watchdog
+            
+            Examples :
+            | get QOS equal | A | IngressNIC | ${CHE_IP} |
+        """
+        cmd ='-entity %s -ip %s -port %s -user %s -pass %s'%(MTE, che_ip, SCWCLI_PORT, USERNAME, PASSWORD)
+        stdout = self._run_local_SCWCLI(cmd)
+        for line in stdout.split('\n'):
+            if (line.find(QOSName) != -1):
+                items = line.split('|')
+                if (items[1].strip() != QOSName):
+                    raise AssertionError('*ERROR* QOSName %s is not correct' %QOSName)
+
+                if (node == 'A'):
+                    actualQOSValue = items[3].strip()
+                elif (node == 'B'):
+                    actualQOSValue = items[4].strip()
+                elif (node == 'C'):
+                    actualQOSValue = items[5].strip()
+                elif (node == 'D'):
+                    actualQOSValue = items[6].strip()
+                else:
+                    raise AssertionError('*ERROR* node is %s, it must be A, B, C or D' %node)
+                return actualQOSValue
+        raise AssertionError('*ERROR* Cannot find the specific QOS Name %s' %QOSName)
+
     def get_FidValue_in_message(self,pcapfile,ricname, msgClass):
         """ To verify the insert icf file can update the changed fid and value correct
         

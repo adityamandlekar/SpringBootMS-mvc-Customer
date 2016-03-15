@@ -1394,6 +1394,7 @@ class LinuxToolUtilities():
         raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smfGMI log before timeout %ds' %(message, timeout)) 
                   
 
+
     
 
     def block_dataflow_by_port_protocol(self,inOrOut,protocol,port):
