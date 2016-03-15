@@ -102,6 +102,29 @@ Invalid Manual State Changes
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY    waittime=1    timeout=1
     [Teardown]    MTE Failover Case Teardown    ${master_ip}
 
+Critical Message Logging - MTE State change
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1754
+    ...    To verify SMF Critical Message generates alert in GMI Log when using SCW CLI to switch Live/Standby
+    ...    The test steps as follow:
+    ...    1 Get MTE state on A
+    ...    2 Switch A to Live
+    ...    3 Switch A to Standby
+    ...    4 Verify log in EventLogAdapterGMILog.txt
+    [Tags]    Peer
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    Switch To TD Box    ${CHE_A_IP}
+    ${start_state}    Get_MTE_state
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    ${currDateTime}    get date and time
+    switch MTE LIVE STANDBY status    A    STANDBY    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    wait GMI message after time    CRITICAL.*Watchdog event.*MTE.*ReportSituation    ${currDateTime}    2    100
+    wait GMI message after time    CRITICAL.*Normal Processing.*MTE.*ReportSituation    ${currDateTime}    2    100
+    wait GMI message after time    WARNING.*LIVE switch has occurred.*Entity: MTEname.*EVENT:WDG_ERROR_ENTITY_LIVE_SWITCH : Investigate the cause of the entity switch    ${currDateTime}    2    100
+    [Teardown]    switch MTE LIVE STANDBY status    A    ${start_state}    ${master_ip}
+
 Verify Sync Pulse Missed QoS
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
     ...
