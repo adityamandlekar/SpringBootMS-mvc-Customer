@@ -299,7 +299,7 @@ Inject PCAP File on UDP
     \    remote file should exist    ${pcapFile}
     \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} ${pcapFile}    return_rc=True
     \    Should Be Equal As Integers    ${rc}    0
-    Switch Connection    ${host}
+    [Teardown]    Switch Connection    ${host}
 
 Load All EXL Files
     [Arguments]    ${service}    ${headendIP}    @{optargs}
