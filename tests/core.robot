@@ -17,6 +17,7 @@ Switch To TD Box
     [Documentation]    To switch the current ssh session to specific CHE_X_IP
     ${switchBox}    Run Keyword If    '${che_ip}' == '${CHE_A_IP}'    set variable    ${CHE_A_Session}
     ...    ELSE IF    '${che_ip}' == '${CHE_B_IP}'    set variable    ${CHE_B_Session}
+    ...    ELSE IF    '${che_ip}' == '${PLAYBACK_MACHINE_IP}'    set variable    ${Playback_Session}
     ...    ELSE    Fail    Invaild IP
     switch connection    ${switchBox}
 
@@ -42,10 +43,12 @@ Suite Setup
 Suite Setup with Playback
     [Documentation]    Setup Playback box and suit scope variable Playback_Session.
     Should Not be Empty    ${PLAYBACK_MACHINE_IP}
+    Should Not be Empty    ${CHE_A_IP}
     ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
     login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
     Set Suite Variable    ${Playback_Session}    ${plyblk}
-    Suite Setup
+    ${ret}    suite setup    ${CHE_A_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${ret}
 
 Suite Teardown
     [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
