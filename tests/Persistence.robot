@@ -130,12 +130,12 @@ Go Into EndOfDay time
     ...    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
     ${offsetInSecond}=    set variable    300
     ${endOfDay}    add time to date    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]    ${offsetInSecond} second    result_format=%H:%M
-    ${orgFile}    ${backupFile}    backup cfg file    ${VENUE_DIR}    ${mtecfgfile}
+    ${orgFile}    ${backupFile}    backup remote cfg file    ${VENUE_DIR}    ${mtecfgfile}
     set value in MTE cfg    ${orgFile}    EndOfDayTime    ${endOfDay}
     stop MTE
     start MTE
     sleep    ${offsetInSecond}
-    restore cfg file    ${orgFile}    ${backupFile}
+    restore remote cfg file    ${orgFile}    ${backupFile}
     stop MTE
     start MTE
     Comment    Revert changes in local venue config file
