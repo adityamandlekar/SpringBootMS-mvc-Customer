@@ -570,20 +570,6 @@ Re-schedule Closing Run teardown
     : FOR    ${closingRunExlFile}    IN    @{closingRunExlFiles}
     \    Load Single EXL File    ${closingRunExlFile}    ${serviceName}    ${CHE_IP}
 
-Manual ClosingRun for a RIC
-    [Arguments]    ${sampleRic}    ${publishKey}    ${domain}
-    Start Capture MTE Output
-    ${currentDateTime}    get date and time
-    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    Close    --RIC ${sampleRic}
-    ...    --Domain ${domain}
-    wait SMF log message after time    Closing RIC: ${sampleRic}    ${currentDateTime}    2    60
-    Stop Capture MTE Output
-    ${localcapture}    set variable    ${LOCAL_TMP_DIR}/capture_local.pcap
-    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
-    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${publishKey}
-    remove files    ${localcapture}
-    delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
-
 Manual ClosingRun for the EXL File including target Ric
     [Arguments]    ${sampleRic}    ${publishKey}    ${domain}
     ${sampleExlFile}    get_EXL_for_RIC    ${domain}    ${serviceName}    ${sampleRic}
