@@ -1073,7 +1073,23 @@ class LinuxToolUtilities():
             return : N/A
             
             Examples :
-              | set value in_MTE cfg | jsda01.xml | NumberOfDailyBackupsToKeep | 12:00
+              | set value in_MTE cfg | jsda01.xml | NumberOfDailyBackupsToKeep | 5 |
+
+              Would change a config file containing:
+                 <Persistence>
+                   <DDS>
+                     <MutexNameForStaggering>TDDS_Persistence_Mutex</MutexNameForStaggering>
+                    <NumberOfDailyBackupsToKeep type="ul">3</NumberOfDailyBackupsToKeep>
+                  </DDS>
+                 </Persistence>
+
+              To
+                 <Persistence>
+                  <DDS>
+                     <MutexNameForStaggering>TDDS_Persistence_Mutex</MutexNameForStaggering>
+                     <NumberOfDailyBackupsToKeep type="ul">5</NumberOfDailyBackupsToKeep>
+                  </DDS>
+                 </Persistence>
         """         
         #Find configuration file
         LinuxFSUtilities().remote_file_should_exist(mtecfgfile)
@@ -1084,10 +1100,9 @@ class LinuxToolUtilities():
         if (len(foundlines) == 0):
             raise AssertionError('*ERROR* <%s> tag is missing in %s' %(tagName, mtecfgfile))
 
-        for line in foundlines:
-            cmd = "sed -i 's/%s/<%s>%s<\/%s>/' "%(line.replace('/','\/'),tagName,value,tagName)
-            cmd = cmd + mtecfgfile
-            stdout, stderr, rc = _exec_command(cmd)
+        cmd = "sed -i 's/\(<%s[^>]*>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value)
+        cmd = cmd + mtecfgfile
+        stdout, stderr, rc = _exec_command(cmd)
         
         if rc !=0 or stderr !='':
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))    
