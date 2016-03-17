@@ -108,7 +108,7 @@ Generate PCAP File Name
     ...
     ...    Example: TDDS_BDDS-MyTestName-FH=TDDS01F.pcap TDDS_BDDS-TransientGap-FH=TDDS01F.pcap
     ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}
-    ${pcapFileName} =    Catenate    SEPARATOR=    ${pcapFileName}    .pcap
+    ${pcapFileName} =    Catenate    SEPARATOR=    ${PLAYBACK_PCAP_DIR}    ${pcapFileName}    .pcap
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
 
@@ -351,6 +351,8 @@ Send TRWF2 Refresh Request
     [Documentation]    Call DataView to send TRWF2 Refresh Request to MTE.
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
+    Comment    LabelID may be different across machines, so make sure we have config file for this machine.
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
     ${localVenueConfig}=    get MTE config file
     ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
@@ -417,14 +419,14 @@ Set Mangling Rule
     ...    Remark :
     ...    Current avaliable valid value for \ ${rule} : SOU, BETA, RRG \ or UNMANGLED
     ...    The KW would restore the config file to original value, but it would rely on user to calling KW : Load Mangling Settings to carry out the restore action at the end of their test case
-    @{files}=    backup cfg file    ${VENUE_DIR}    ${configFile}
+    @{files}=    backup remote cfg file    ${VENUE_DIR}    ${configFile}
     ${configFileLocal}=    Get Mangling Config File
     set mangling rule default value    ${rule}    ${configFileLocal}
     set mangling rule parition value    ${rule}    ${Empty}    ${configFileLocal}
     delete remote files    @{files}[0]
     put remote file    ${configFileLocal}    @{files}[0]
     Run Keyword And Continue On Failure    Load Mangling Settings
-    restore cfg file    @{files}
+    restore remote cfg file    @{files}
     Comment    Revert changes in local mangling config file
     Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${None}
     ${configFileLocal}=    Get Mangling Config File
