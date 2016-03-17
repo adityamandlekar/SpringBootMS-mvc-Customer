@@ -1070,7 +1070,7 @@ class LinuxToolUtilities():
 
         return contextIdsMap
     
-    def backup_cfg_file(self,searchdir,cfgfile,suffix='.backup'):
+    def backup_remote_cfg_file(self,searchdir,cfgfile,suffix='.backup'):
         """backup config file by create a new copy with filename append with suffix
         Argument : 
         searchdir  : directary where we search for the configuration file
@@ -1100,7 +1100,7 @@ class LinuxToolUtilities():
         
         return [foundfiles[0], backupfile]
         
-    def restore_cfg_file(self,cfgfile,backupfile):
+    def restore_remote_cfg_file(self,cfgfile,backupfile):
         """restore config file by rename backupfile to cfgfile
         Argument : 
         cfgfile    : full path of configuration file
@@ -1490,4 +1490,25 @@ class LinuxToolUtilities():
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
         
         return stdout.strip()       
-      
+ 
+    def enable_disable_interface(self, interfaceName, status):
+        """ Enable or disable the interface
+
+            Argument : interfaceName - should be eth1 ... eth5
+                       status - should be enable or disable
+
+            Return :   None
+            
+            Examples :
+            | enable disable interface| eth1 | enable |
+        """
+        if (status.lower() == 'enable'):
+           cmd = 'ifup '
+        elif (status.lower() == 'disable'):
+            cmd = 'ifdown '
+        else:
+            raise AssertionError('*ERROR* the status is %s, it should be enable or disable' %status)
+        cmd = cmd + interfaceName
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0:
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
