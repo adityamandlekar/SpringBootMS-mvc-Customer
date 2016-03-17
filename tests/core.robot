@@ -297,7 +297,7 @@ Inject PCAP File on UDP
     Should Not be Empty    ${intfName}
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
-    \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} ${pcapFile}    return_rc=True
+    \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'    return_rc=True
     \    Should Be Equal As Integers    ${rc}    0
     Switch Connection    ${host}
 

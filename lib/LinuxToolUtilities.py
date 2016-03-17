@@ -412,7 +412,67 @@ class LinuxToolUtilities():
 #         filename = '%s/MTE/%s_%s.csv' %(VENUE_DIR,MTE,today)
 #         G_SSHInstance.file_should_exist(filename)
 #         return filename
-    
+    def get_otf_rics_from_cahce(self,domain):
+        """Checking how many otf item found in MTE cache dump
+        
+        Returns a list of dictionaries for OTF items (within each dictionary, it has DOMAIN, PUBLISH_KEY, OTF_STATUS fields)
+
+        Examples:
+        | get otf rics from cache  | MARKET_BY_PRICE 
+        """
+
+        if domain:
+            newDomain = self._convert_domain_to_cache_format(domain)
+            
+        cacheFile = self.dump_cache()
+        # create hash of header values
+        cmd = "head -1 %s | tr ',' '\n'" %cacheFile
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+
+        headerList = stdout.strip().split()
+        index = 1;
+        headerDict = {}
+        for fieldName in headerList:
+            headerDict[fieldName] = index
+            index += 1
+        if not headerDict.has_key('DOMAIN'):
+            raise AssertionError('*ERROR* Did not find required column names in cache file (DOMAIN)')
+
+        # get all fields for selected RICs
+        domainCol = headerDict['DOMAIN']
+        otfCol = headerDict['OTF_STATUS']
+        
+        cmd = "grep -v TEST %s | awk -F',' '$%d == \"%s\" && ($%d == \"FULL_OTF\" || $%d == \"PARTIAL_OTF\") {print}' " %(cacheFile, domainCol, newDomain, otfCol, otfCol)
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+
+        rows = stdout.splitlines()
+                
+        # get the requested fields
+        result = []
+        for row in rows:
+            values = row.split(',')
+            
+            if len(values) != len(headerList):
+                raise AssertionError('*ERROR* Number of values (%d) does not match number of headers (%d)' %(len(values), len(headerList)))
+            
+            fieldDict = {}
+            for i in range(0, len(values)):
+                if headerList[i] == 'DOMAIN':
+                    newdomain = self._convert_cachedomain_to_normal_format(values[i]) 
+                    fieldDict[headerList[i]] = newdomain
+                elif (headerList[i] == 'PUBLISH_KEY' or headerList[i] == 'OTF_STATUS'):
+                    fieldDict[headerList[i]] = values[i]
+               
+            result.append(fieldDict)
+                  
+        _delete_file(cacheFile,'',False)
+
+        return result       
+	
     def get_ric_fields_from_cache(self, numrows, domain, contextID):
         """Get the first n rows' ric fields data for the specified domain or/and contextID from MTE cache.
         Ignore RICs that contain 'TEST' and non-publishable RICs.
@@ -1105,7 +1165,7 @@ class LinuxToolUtilities():
         stdout, stderr, rc = _exec_command(cmd)
         
         if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))    
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))   
     
     def generate_persistence_backup(self, keepDays):
         """ based on the no. of keeping days generate dummy persistence backup files 
