@@ -107,7 +107,7 @@ Generate PCAP File Name
     [Arguments]    ${service}    ${testCase}    ${playbackBindSide}=A    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
     ...
-    ...    Generate the file name based on service name, test case and input key/value pairs and .
+    ...    Generate the file name based on service name, test case, input key/value pairs and playback side designation --- default to A side
     ...
     ...    Example: MFDS-Testcase-B.pcap TDDS_BDDS-MyTestName-FH=TDDS01F-A.pcap TDDS_BDDS-TransientGap-FH=TDDS01F-A.pcap
     ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}    ${playbackBindSide}
