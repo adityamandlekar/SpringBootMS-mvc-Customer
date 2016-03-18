@@ -56,7 +56,7 @@ OTFC Teardown
     [Documentation]    Before end the test we
     ...    1. restore MTE config file
     ...    2. delete persist file and trigger reconcile one more time. (to restore the cache to original status)
-    restore cfg file    ${mtecfgfile_org}    ${mtecfgfile_backup}
+    restore remote cfg file    ${mtecfgfile_org}    ${mtecfgfile_backup}
     Stop MTE
     Comment    Remove OTFC items from cache
     Delete Persist Files
@@ -69,7 +69,7 @@ OTFC Setup
     ...    2. Disable ResendFM so that No Ric will be created from FMS Server provided EXL files.
     ...    (This actual empty the cache of MTE so that making OTFC easier)
     ${mtecfgfile}=    Convert To Lowercase    ${MTE}.xml
-    ${orgFile}    ${backupFile}    backup cfg file    ${VENUE_DIR}    ${mtecfgfile}
+    ${orgFile}    ${backupFile}    backup remote cfg file    ${VENUE_DIR}    ${mtecfgfile}
     Set Suite Variable    ${mtecfgfile_backup}    ${backupFile}
     Set Suite Variable    ${mtecfgfile_org}    ${orgFile}
     Stop MTE

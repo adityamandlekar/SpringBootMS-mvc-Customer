@@ -1080,7 +1080,7 @@ class LinuxToolUtilities():
         Returns : a list with 1st item = full path config filename and 2nd itme = full path backup filename
 
         Examples:
-        | backup cfg file | /ThomsonReuters/Venues | manglingConfiguration.xml |  
+        | backup remote cfg file | /ThomsonReuters/Venues | manglingConfiguration.xml |  
         """         
         
         #Find configuration file
@@ -1109,7 +1109,7 @@ class LinuxToolUtilities():
         Returns : Nil
 
         Examples:
-        | restore cfg file | /reuters/Venues/HKF/MTE/manglingConfiguration.xml | /reuters/Venues/HKF/MTE/manglingConfiguration.xml.backup |  
+        | restore remote cfg file | /reuters/Venues/HKF/MTE/manglingConfiguration.xml | /reuters/Venues/HKF/MTE/manglingConfiguration.xml.backup |  
         """       
         
         LinuxFSUtilities().remote_file_should_exist(cfgfile)
