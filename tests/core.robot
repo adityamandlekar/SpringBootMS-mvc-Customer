@@ -109,7 +109,10 @@ Generate PCAP File Name
     ...
     ...    Generate the file name based on service name, test case, input key/value pairs and playback side designation --- default to A side
     ...
-    ...    Example: MFDS-Testcase-B.pcap TDDS_BDDS-MyTestName-FH=TDDS01F-A.pcap TDDS_BDDS-TransientGap-FH=TDDS01F-A.pcap
+    ...    Example:
+    ...    MFDS-Testcase-B.pcap
+    ...    TDDS_BDDS-MyTestName-FH=TDDS01F-A.pcap
+    ...    TDDS_BDDS-TransientGap-FH=TDDS01F-A.pcap
     ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}    ${playbackBindSide}
     ${pcapFileName} =    Catenate    SEPARATOR=    ${PLAYBACK_PCAP_DIR}    ${pcapFileName}    .pcap
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
@@ -124,6 +127,7 @@ Get Playback NIC For PCAP File
     ...    ELSE IF    '${uppercaseName}' == 'B'    set variable    ${PLAYBACK_BIND_IP_B}
     ...    ELSE    Fail    pcap file name must end with Side designation, e.g. service-testcase-A.pcap or service-testcase-B.pcap
     ${intfName}=    get interface name by ip    ${nicBindTo}
+    Should Not be Empty    ${intfName}
     [Return]    ${intfName}
 
 Get ConnectTimesIdentifier
@@ -310,7 +314,6 @@ Inject PCAP File on UDP
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
     \    ${intfName}    Get Playback NIC For PCAP File    ${pcapFile}
-    \    Should Not be Empty    ${intfName}
     \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'    return_rc=True
     \    Should Be Equal As Integers    ${rc}    0
     [Teardown]    Switch Connection    ${host}
