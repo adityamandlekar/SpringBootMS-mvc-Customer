@@ -107,23 +107,24 @@ Generate PCAP File Name
     [Arguments]    ${service}    ${testCase}    ${playbackBindSide}=A    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
     ...
-    ...    Generate the file name based on service name, test case and input key/value pairs.
+    ...    Generate the file name based on service name, test case and input key/value pairs and .
     ...
-    ...    Example: TDDS_BDDS-MyTestName-FH=TDDS01F.pcap TDDS_BDDS-TransientGap-FH=TDDS01F.pcap
+    ...    Example: MFDS-Testcase-B.pcap TDDS_BDDS-MyTestName-FH=TDDS01F-A.pcap TDDS_BDDS-TransientGap-FH=TDDS01F-A.pcap
     ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}    ${playbackBindSide}
     ${pcapFileName} =    Catenate    SEPARATOR=    ${PLAYBACK_PCAP_DIR}    ${pcapFileName}    .pcap
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
 
-Generate Playback Binding IP From PCAP File
+Get Playback NIC For PCAP File
     [Arguments]    ${pcapFile}
     ${partialFile}=    Fetch From Right    ${pcapFile}    -
     ${sideInfo}    Fetch From Left    ${partialFile}    .
     ${uppercaseName} =    Convert To Uppercase    ${sideInfo}
     ${nicBindTo}    Run Keyword If    '${uppercaseName}' == 'A'    set variable    ${PLAYBACK_BIND_IP_A}
     ...    ELSE IF    '${uppercaseName}' == 'B'    set variable    ${PLAYBACK_BIND_IP_B}
-    ...    ELSE    Fail    pcap file missing playback binding IP info.
-    [Return]    ${nicBindTo}
+    ...    ELSE    Fail    pcap file name must end with Side designation, e.g. service-testcase-A.pcap or service-testcase-B.pcap
+    ${intfName}=    get interface name by ip    ${nicBindTo}
+    [Return]    ${intfName}
 
 Get ConnectTimesIdentifier
     [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
@@ -308,8 +309,7 @@ Inject PCAP File on UDP
     Switch Connection    ${Playback_Session}
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
-    \    ${bindTo}    Generate Playback Binding IP From PCAP File    ${pcapFile}
-    \    ${intfName}=    get interface name by ip    ${bindTo}
+    \    ${intfName}    Get Playback NIC For PCAP File    ${pcapFile}
     \    Should Not be Empty    ${intfName}
     \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'    return_rc=True
     \    Should Be Equal As Integers    ${rc}    0
