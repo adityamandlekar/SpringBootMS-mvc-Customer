@@ -104,16 +104,31 @@ Dump Persist File To XML
     [Return]    ${pmatXmlDumpfile}
 
 Generate PCAP File Name
-    [Arguments]    ${service}    ${testCase}    @{keyValuePairs}
+    [Arguments]    ${service}    ${testCase}    ${playbackBindSide}=A    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
     ...
-    ...    Generate the file name based on service name, test case and input key/value pairs.
+    ...    Generate the file name based on service name, test case, input key/value pairs and playback side designation --- default to A side
     ...
-    ...    Example: TDDS_BDDS-MyTestName-FH=TDDS01F.pcap TDDS_BDDS-TransientGap-FH=TDDS01F.pcap
-    ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}
+    ...    Example:
+    ...    MFDS-Testcase-B.pcap
+    ...    TDDS_BDDS-MyTestName-FH=TDDS01F-A.pcap
+    ...    TDDS_BDDS-TransientGap-FH=TDDS01F-A.pcap
+    ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}    ${playbackBindSide}
     ${pcapFileName} =    Catenate    SEPARATOR=    ${PLAYBACK_PCAP_DIR}    ${pcapFileName}    .pcap
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
+
+Get Playback NIC For PCAP File
+    [Arguments]    ${pcapFile}
+    ${partialFile}=    Fetch From Right    ${pcapFile}    -
+    ${sideInfo}    Fetch From Left    ${partialFile}    .
+    ${uppercaseName} =    Convert To Uppercase    ${sideInfo}
+    ${nicBindTo}    Run Keyword If    '${uppercaseName}' == 'A'    set variable    ${PLAYBACK_BIND_IP_A}
+    ...    ELSE IF    '${uppercaseName}' == 'B'    set variable    ${PLAYBACK_BIND_IP_B}
+    ...    ELSE    Fail    pcap file name must end with Side designation, e.g. service-testcase-A.pcap or service-testcase-B.pcap
+    ${intfName}=    get interface name by ip    ${nicBindTo}
+    Should Not be Empty    ${intfName}
+    [Return]    ${intfName}
 
 Get ConnectTimesIdentifier
     [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
@@ -296,10 +311,9 @@ Inject PCAP File on UDP
     ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
     ${host}=    get current connection index
     Switch Connection    ${Playback_Session}
-    ${intfName}=    get interface name by ip    ${PLAYBACK_BIND_IP_A}
-    Should Not be Empty    ${intfName}
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
+    \    ${intfName}    Get Playback NIC For PCAP File    ${pcapFile}
     \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'    return_rc=True
     \    Should Be Equal As Integers    ${rc}    0
     [Teardown]    Switch Connection    ${host}
