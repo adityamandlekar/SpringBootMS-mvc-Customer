@@ -26,7 +26,7 @@ GRS Control by SMF
     wait for process to exist    GRS
     [Teardown]    start smf
 
-GRS Start of Day Recovery
+MTE Start of Day Recovery
     [Documentation]    Verify that the MTE recovers lost messages by sending 'start of day' request to GRS.
     ...    1. Get the list of RICs that are changed by the PCAP file.
     ...    2. Get the initial FID values for those RICs before injection.
