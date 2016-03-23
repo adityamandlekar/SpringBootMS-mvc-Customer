@@ -26,4 +26,7 @@ GRS Control by SMF
     wait for process to exist    GRS
     [Teardown]    start smf
 
+MTE Start of Day Recovery
+    Fail    Not yet implemented
+
 *** Keywords ***
