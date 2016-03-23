@@ -1150,6 +1150,7 @@ class LinuxToolUtilities():
                      <NumberOfDailyBackupsToKeep type="ul">5</NumberOfDailyBackupsToKeep>
                   </DDS>
                  </Persistence>
+                 
         """         
         #Find configuration file
         LinuxFSUtilities().remote_file_should_exist(mtecfgfile)
@@ -1160,9 +1161,15 @@ class LinuxToolUtilities():
         if (len(foundlines) == 0):
             raise AssertionError('*ERROR* <%s> tag is missing in %s' %(tagName, mtecfgfile))
 
-        cmd = "sed -i 's/\(<%s[^>]*>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value)
-        cmd = cmd + mtecfgfile
-        stdout, stderr, rc = _exec_command(cmd)
+        # match tags with attributes, e.g.
+        # <NumberOfDailyBackupsToKeep type="ul">3</NumberOfDailyBackupsToKeep>
+        cmd_match_tag_with_attributes = "sed -i 's/\(<%s [^>]*>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value) + mtecfgfile
+        # match exact tag name, e.g.
+        #<TransformConfig>C4652_OB.tconf</TransformConfig> but not  <TransformConfigOptimized>true</TransformConfigOptimized>
+        cmd_match_tag_only = "sed -i 's/\(<%s>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value) + mtecfgfile
+        
+        stdout, stderr, rc = _exec_command(cmd_match_tag_with_attributes)
+        stdout, stderr, rc = _exec_command(cmd_match_tag_only)
         
         if rc !=0 or stderr !='':
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))   
