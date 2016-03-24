@@ -1,7 +1,13 @@
-﻿import time
-import re
+﻿import re
+import time
 
-class _FSUtil():
+from utils.version import get_version
+
+class WinFSUtilities():
+    
+    ROBOT_LIBRARY_SCOPE = 'GLOBAL'
+    ROBOT_LIBRARY_VERSION = get_version()
+    
     def Modify_lines(self, oldFile, newFile, modifydic):
         """
         Modify the old contents to new contents.\n
