@@ -1169,10 +1169,12 @@ class LinuxToolUtilities():
         cmd_match_tag_only = "sed -i 's/\(<%s>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value) + mtecfgfile
         
         stdout, stderr, rc = _exec_command(cmd_match_tag_with_attributes)
-        stdout, stderr, rc = _exec_command(cmd_match_tag_only)
-        
         if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))   
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_with_attributes,rc,stdout,stderr))   
+        
+        stdout, stderr, rc = _exec_command(cmd_match_tag_only)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_only,rc,stdout,stderr)) 
     
     def generate_persistence_backup(self, keepDays):
         """ based on the no. of keeping days generate dummy persistence backup files 
