@@ -124,11 +124,10 @@ class LocalBoxUtilities(_ToolUtil):
             
         raise AssertionError('*ERROR* MsgKey:%s is missing from message'%(fieldName))    
     
-    def _get_RICs_from_das_xml(self, xmlfile, ricsDict, includeSystemRics):
+    def _get_RICs_from_das_xml(self, xmlfile, ricsDict):
         """Get RICs from all messages in the xml file and add to ricsDict
-            pcapFile: is the pcap fullpath at local control PC  
+            xmlfile: is the fullpath at local control PC of the XML file created from a pcap file
             ricsDict: dictionary of RIC names to be updated
-            includeSystemRics: should system RICs be included in the list
 
             return : Nil (updates ricDict)     
         """        
@@ -138,17 +137,13 @@ class LocalBoxUtilities(_ToolUtil):
         
         for message in messages:
             ric = self._xml_parse_get_field_from_MsgKey(message,'Name')
-            if (not includeSystemRics):
-                if (ric.startswith('.[SPS') or ric.startswith('.[----')):
-                    continue
             ricsDict[ric] = 1 # value is not important, just need RIC name as key
     
-    def get_RICs_from_pcap(self,pcapfile,domain,includeSystemRics=False):
+    def get_RICs_from_pcap(self,pcapfile,domain):
         """ Get the unique set of RIC names from a PCAP file
         
             pcapFile : is the pcap fullpath at local control PC
             domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
-            includeSystemRics: should system RICs be included in the list
             return : sorted list of RICs found in pcap file   
         """                
         ricsDict = dict({})
@@ -164,7 +159,7 @@ class LocalBoxUtilities(_ToolUtil):
         outputxmlfilelist = self._get_extractorXml_from_pcap(pcapfile,filterstring,outputfileprefix,20)
         
         for outputxmlfile in outputxmlfilelist:
-            self._get_RICs_from_das_xml(outputxmlfile, ricsDict, includeSystemRics)
+            self._get_RICs_from_das_xml(outputxmlfile, ricsDict)
             os.remove(outputxmlfile)
         os.remove(os.path.dirname(outputxmlfile) + "/" + outputfileprefix + "xmlfromDAS.log")
         
