@@ -78,6 +78,17 @@ Delete Persist Files
     Should Be Empty    ${res}
     Comment    Currently, GATS does not provide the Venue name, so the pattern matching Keywords must be used. If GATS provides the Venue name, then "delete remote file" and "remote file should not exist" Keywords could be used here.
 
+Dictionary of Dictionaries Should Be Equal
+    [Arguments]    ${dict1}    ${dict2}
+    [Documentation]    Verify that two dictionaries, where the values are also dictionaries, match.
+    ...    First verify the keys between the two dictionaries match, then loop through each sub-dictionary and verify they match.
+    ...    Although the Robot 'Should Be Equal' KW works for nested dictionaries, the error message generated when they do not match does not pinpoint the differences.
+    @{keys1}=    Get Dictionary Keys    ${dict1}
+    @{keys2}=    Get Dictionary Keys    ${dict2}
+    Should Be Equal    ${keys1}    ${keys2}
+    : FOR    ${key}    IN    @{keys1}
+    \    Dictionaries Should Be Equal    ${dict1['${key}']}    ${dict2['${key}']}
+
 Dumpcache And Copyback Result
     [Arguments]    ${destfile}    # where will the csv be copied back
     [Documentation]    Dump the MTE cache to a file and copy the file to the local temp directory.
@@ -363,8 +374,26 @@ Persist File Should Exist
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
     Comment    Currently, GATS does not provide the Venue name, so the pattern matching Keywords must be used. If GATS provides the Venue name, then "remote file should not exist" Keywords could be used here.
 
+Reset Sequence Numbers
+    [Documentation]    Reset the FH, GRS, and MTE sequence numbers.
+    ...    Currently this is done by stopping and starting the components and deleting the PERSIST files.
+    ...    If/when a hook is provided to reset the sequence numbers without restarting the component, it should be used.
+    ...
+    ...    This KW also waits for any publishing due to the MTE restart/reorg to complete.
+    ${currDateTime}    get date and time
+    Stop MTE
+    Stop Process    GRS
+    Stop Process    FHController
+    Delete Persist Files
+    Start Process    GRS
+    Start Process    FHController
+    Start MTE
+    Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
+    Comment    We don't capture the output file, but this waits for publishing to complete
+    Wait For Capture To Complete    ${MTE}
+
 Send TRWF2 Refresh Request
-    [Arguments]    ${ric}    ${domain}
+    [Arguments]    ${ric}    ${domain}    @{optargs}
     [Documentation]    Call DataView to send TRWF2 Refresh Request to MTE.
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
@@ -389,9 +418,42 @@ Send TRWF2 Refresh Request
     \    Should Be Equal As Integers    ${length}    2
     \    ${length} =    Get Length    ${interfaceIPandPort}
     \    Should Be Equal As Integers    ${length}    2
-    \    ${res}=    run dataview    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]
+    \    ${res}=    Run Dataview    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]
     \    ...    ${lineID}    ${ric}    ${domain}    -REF    -IMSG ${reqMsgMultcastAddres[0]}
-    \    ...    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10
+    \    ...    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10    @{optargs}
+    Remove Files    ${labelfile}    ${updatedlabelfile}
+    [Return]    ${res}
+
+Send TRWF2 Refresh Request No Blank FIDs
+    [Arguments]    ${ric}    ${domain}    @{optargs}
+    [Documentation]    Call DataView to send TRWF2 Refresh Request to MTE.
+    ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
+    ...    FIDs with blank value will be excluded
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
+    Comment    LabelID may be different across machines, so make sure we have config file for this machine.
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
+    ${localVenueConfig}=    get MTE config file
+    ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
+    Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
+    ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
+    get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
+    ${updatedlabelfile}=    set variable    ${LOCAL_TMP_DIR}/updated_reqLabel.xml
+    remove_xinclude_from_labelfile    ${labelfile}    ${updatedlabelfile}
+    @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
+    : FOR    ${labelID}    IN    @{labelIDs}
+    \    ${reqMsgMultcastAddres}=    get multicast address from label file    ${updatedlabelfile}    ${labelID}
+    \    ${lineID}=    get_stat_block_field    ${MTE}    multicast-${labelID}    publishedLineId
+    \    ${multcastAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    multicastOutputAddress
+    \    ${interfaceAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    primaryOutputAddress
+    \    @{multicastIPandPort}=    Split String    ${multcastAddres}    :    1
+    \    @{interfaceIPandPort}=    Split String    ${interfaceAddres}    :    1
+    \    ${length} =    Get Length    ${multicastIPandPort}
+    \    Should Be Equal As Integers    ${length}    2
+    \    ${length} =    Get Length    ${interfaceIPandPort}
+    \    Should Be Equal As Integers    ${length}    2
+    \    ${res}=    Run Dataview Noblanks    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]
+    \    ...    ${lineID}    ${ric}    ${domain}    -REF    -IMSG ${reqMsgMultcastAddres[0]}
+    \    ...    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10    @{optargs}
     Remove Files    ${labelfile}    ${updatedlabelfile}
     [Return]    ${res}
 
@@ -487,6 +549,13 @@ Start MTE
     wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
     Wait For FMS Reorg
 
+Start Process
+    [Arguments]    ${process}
+    [Documentation]    Start process, argument is the process name
+    run commander    process    start ${process}
+    wait for process to exist    ${process}
+    wait for StatBlock    CritProcMon    ${process}    m_IsAvailable    1
+
 Stop Capture MTE Output
     [Arguments]    ${waittime}=5    ${timeout}=300
     [Documentation]    Stop catpure MTE output
@@ -496,6 +565,12 @@ Stop Capture MTE Output
 Stop MTE
     run commander    process    stop ${MTE}
     wait for process to not exist    MTE -c ${MTE}
+
+Stop Process
+    [Arguments]    ${process}
+    [Documentation]    Stop process, argument is the process name
+    run commander    process    stop ${process}
+    wait for process to not exist    ${process}
 
 Validate MTE Capture Against FIDFilter
     [Arguments]    ${pcapfile}    ${contextId}    ${constit}

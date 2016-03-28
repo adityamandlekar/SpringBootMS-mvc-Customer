@@ -124,6 +124,48 @@ class LocalBoxUtilities(_ToolUtil):
             
         raise AssertionError('*ERROR* MsgKey:%s is missing from message'%(fieldName))    
     
+    def _get_RICs_from_das_xml(self, xmlfile, ricsDict):
+        """Get RICs from all messages in the xml file and add to ricsDict
+            xmlfile: is the fullpath at local control PC of the XML file created from a pcap file
+            ricsDict: dictionary of RIC names to be updated
+
+            return : Nil (updates ricDict)     
+        """        
+        
+        parentName  = 'Message'
+        messages = self._xml_parse_get_all_elements_by_name(xmlfile,parentName)
+        
+        for message in messages:
+            ric = self._xml_parse_get_field_from_MsgKey(message,'Name')
+            ricsDict[ric] = 1 # value is not important, just need RIC name as key
+    
+    def get_RICs_from_pcap(self,pcapfile,domain):
+        """ Get the unique set of RIC names from a PCAP file
+        
+            pcapFile : is the pcap fullpath at local control PC
+            domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+            return : sorted list of RICs found in pcap file   
+        """                
+        ricsDict = dict({})
+                
+        #Check if pcap file exist
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        #Convert pcap file to xml
+        outputfileprefix = 'ricList'
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        filterstring = 'All_msgBase_msgKey_domainType = &quot;%s&quot;' %filterDomain
+        outputxmlfilelist = self._get_extractorXml_from_pcap(pcapfile,filterstring,outputfileprefix,20)
+        
+        for outputxmlfile in outputxmlfilelist:
+            self._get_RICs_from_das_xml(outputxmlfile, ricsDict)
+            os.remove(outputxmlfile)
+        os.remove(os.path.dirname(outputxmlfile) + "/" + outputfileprefix + "xmlfromDAS.log")
+        
+        print '*INFO* found %d unique RICs' %len(ricsDict)
+        return sorted(ricsDict.keys())
+    
     def verify_csv_files_match(self, file1, file2, ignorefids):
         """Verify two .csv files match.
 
@@ -2473,7 +2515,7 @@ class LocalBoxUtilities(_ToolUtil):
         self._save_to_xml_file(root,configFileLocalFullPath,False)
 
     def convert_dataView_response_to_dictionary(self,dataview_response):
-        """ capture the FID Name and FID value from DateView output which return from run  run_dataview
+        """ capture the FID Name and FID value from DateView output which return from run_dataview
 
             Argument : dataview_response - stdout return from run_dataview
                        
@@ -2488,16 +2530,51 @@ class LocalBoxUtilities(_ToolUtil):
         for line in lines:
             if (line.find('->') != -1):
                 fidAndValue = line.split(',')                
-                if (len(fidAndValue) == 2):
+                if (len(fidAndValue) >= 2):
                     fidIdAndfidName = fidAndValue[0].split()
                     if (len(fidIdAndfidName) == 3):
-                        fidsAndValuesDict[fidIdAndfidName[2].strip()] = fidAndValue[1].strip()
+                        fidsAndValuesDict[fidIdAndfidName[2].strip()] = ' '.join(fidAndValue[1:]).strip()
                     else:
-                        raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)',line) 
+                        raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)' %line) 
                 else:
-                    raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)',line)
+                    raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)' %line)
         
         return fidsAndValuesDict
+    
+    def convert_dataView_response_to_multiRIC_dictionary(self,dataview_response,ignoreBlank=True):
+        """ capture the FID Name and FID value for each RIC from DateView output which return from run_dataview
+
+            Argument : dataview_response - stdout return from run_dataview
+                        ignoreBlank - should entries with blank values be ignored?
+                       
+            Return : dictionary with key=RIC value = {sub-dictionary with key=FID NAME and value=FID value}
+            
+            Examples :
+            |convert dataView response to multiRIC dictionary |  response |
+        """        
+        
+        ric = ''
+        retDict = {}
+        fidsAndValuesDict = {}
+        lines = dataview_response.split('\n')
+        for line in lines:
+            if (line.startswith('Msg Key:')):
+                if (ric):
+                    retDict[ric] = fidsAndValuesDict
+                ric = line.split(':')[1].strip()
+                fidsAndValuesDict = {}
+            if (line.find('->') != -1):
+                fidAndValue = line.split(',')                
+                if (len(fidAndValue) >= 2):
+                    fidIdAndfidName = fidAndValue[0].split()
+                    if (len(fidIdAndfidName) == 3):
+                        fidsAndValuesDict[fidIdAndfidName[2].strip()] = ' '.join(fidAndValue[1:]).strip()
+                    else:
+                        raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)' %line) 
+                else:
+                    raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)' %line)
+        
+        return retDict
     
     def verify_mangling_from_dataview_response(self,dataview_response,expected_pe,expected_ricname):
         """ Based on the DataView response to check if the expected Ric could be retrieved from MTE and having expected PE value
