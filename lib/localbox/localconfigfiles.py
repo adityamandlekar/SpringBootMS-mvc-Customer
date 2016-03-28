@@ -8,8 +8,7 @@ import xml
 import xml.etree.ElementTree as ET
 
 from LinuxToolUtilities import LinuxToolUtilities
-from xmlutilities import load_xml_file, save_to_xml_file, set_xml_tag_attributes_value, \
-                         set_xml_tag_attributes_value_with_conditions, set_xml_tag_value
+import xmlutilities
 
 def add_mangling_rule_partition_node(rule, contextID, configFileLocalFullPath):
     """Add mangling rule of specific context ID in manglingConfiguration.xml
@@ -30,7 +29,7 @@ def add_mangling_rule_partition_node(rule, contextID, configFileLocalFullPath):
         <Partition value="2345" rule="1" />
      </Partitions>
     """
-    root = load_xml_file(configFileLocalFullPath,False)
+    root = xmlutilities.load_xml_file(configFileLocalFullPath,False)
     partitions = root.find(".//Partitions")
     foundMatch = False
     for node in partitions:
@@ -38,7 +37,7 @@ def add_mangling_rule_partition_node(rule, contextID, configFileLocalFullPath):
             foundMatch = True
     if (foundMatch == False):
         partitions.append(ET.fromstring('<Partition rule="%s" value="%s" />\n' %(LinuxToolUtilities().MANGLINGRULE[rule.upper()], contextID)))
-    save_to_xml_file(root,configFileLocalFullPath,False)
+    xmlutilities.save_to_xml_file(root,configFileLocalFullPath,False)
 
 def delete_mangling_rule_partition_node(contextIDs, configFileLocalFullPath):
     """delete the mangling rule for specficied contextIDs in manglingConfiguration.xml
@@ -54,7 +53,7 @@ def delete_mangling_rule_partition_node(contextIDs, configFileLocalFullPath):
             <Partition value="2345" rule="1" />   <!-- KW will delete this line -->
      </Partitions>
     """
-    root = load_xml_file(configFileLocalFullPath,False)
+    root = xmlutilities.load_xml_file(configFileLocalFullPath,False)
     partitions = root.find(".//Partitions")
     for contextID in contextIDs:
         foundNode = None
@@ -63,7 +62,7 @@ def delete_mangling_rule_partition_node(contextIDs, configFileLocalFullPath):
                 foundNode = node
         if (foundNode != None):
             partitions.remove(foundNode)
-    save_to_xml_file(root,configFileLocalFullPath,False)
+    xmlutilities.save_to_xml_file(root,configFileLocalFullPath,False)
 
 def get_context_ids_from_fms_filter_string(fms_filter_string): 
     """Returns a set of context_ids appeared in the fms filter string.
@@ -318,7 +317,7 @@ def set_mangling_rule_default_value(rule,configFileLocalFullPath):
     
     xPath = ['Partitions']
     attribute = {'defaultRule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
-    set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
+    xmlutilities.set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
     
 def set_mangling_rule_parition_value(rule,contextIDs,configFileLocalFullPath):
     """set the mangling rule of "ALL" <Partitions rule=""> in manglingConfiguration.xml
@@ -346,12 +345,12 @@ def set_mangling_rule_parition_value(rule,contextIDs,configFileLocalFullPath):
     xPath = ['Partitions','Partition']
     attribute = {'rule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
     if (len(contextIDs) == 0):
-        set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
+        xmlutilities.set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
     else:
         for contextID in contextIDs:
             add_mangling_rule_partition_node(rule, contextID, configFileLocalFullPath)
             conditions = {'value' : contextID}
-            set_xml_tag_attributes_value_with_conditions(configFileLocalFullPath,conditions,attribute,False,xPath)
+            xmlutilities.set_xml_tag_attributes_value_with_conditions(configFileLocalFullPath,conditions,attribute,False,xPath)
             conditions.clear()
 
 def set_MTE_config_tag_value(xmlFileLocalFullPath,value,*xPath):
@@ -366,7 +365,7 @@ def set_MTE_config_tag_value(xmlFileLocalFullPath,value,*xPath):
     | set MTE config tag value | C:/tmp/venue_config.xml | 13:00 | EndOfDayTime
     """
                     
-    set_xml_tag_value(xmlFileLocalFullPath,value,True,xPath)
+    xmlutilities.set_xml_tag_value(xmlFileLocalFullPath,value,True,xPath)
 
 def _search_MTE_config_file(venueConfigFile,*xmlPath):
     foundConfigValues = []

@@ -5,12 +5,10 @@ import os
 import os.path
 import string
 
-from dasutil import run_das_dvt_locally, run_das_extractor_locally
-from fidfilter import get_constituents_from_FidFilter
+import das
+import linuxbox.fidfilter
 from LinuxToolUtilities import LinuxToolUtilities
-from xmlutilities import get_all_fids_name_from_messages, xml_parse_get_all_elements_by_name, \
-                         xml_parse_get_fidsAndValues_for_messageNode, xml_parse_get_field_for_messageNode,  \
-                         xml_parse_get_field_from_MsgKey, xml_parse_get_HeaderTag_Value_for_messageNode
+import xmlutilities
 
 FID_CONTEXTID = '5357'
 
@@ -47,10 +45,10 @@ def get_FidValue_in_message(pcapfile,ricname, msgClass):
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
     
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)        
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)        
     
     if (len(messages) == 1):            
-        fidsAndValues = xml_parse_get_fidsAndValues_for_messageNode(messages[0])                
+        fidsAndValues = xmlutilities.xml_parse_get_fidsAndValues_for_messageNode(messages[0])                
     else:
         raise AssertionError('*ERROR* No. of C1 message received not equal to 1 for RIC %s during icf insert, received (%d) message(s)'%(ricname,len(messages)))
     
@@ -99,7 +97,7 @@ def get_txt_from_pcap(pcapfile, filterstring, outputFilePrefix, maxFileSize=0):
     outdir = os.path.dirname(pcapfile)
     pcap_to_txt_file_name = 'txtfromDAS.txt'
     outputtxtfile = outdir + "/" + outputFilePrefix + pcap_to_txt_file_name   
-    rc = run_das_extractor_locally(pcapfile, outputtxtfile, filterstring, 'MTP', maxFileSize)
+    rc = das.run_das_extractor_locally(pcapfile, outputtxtfile, filterstring, 'MTP', maxFileSize)
             
     if (rc == 4 and maxFileSize == 0):
         raise AssertionError('*ERROR* No output file found : no match filter %s '%filterstring)
@@ -128,7 +126,7 @@ def get_xml_from_pcap(pcapfile, filterstring, outputFilePrefix, maxFileSize=0):
     outdir = os.path.dirname(pcapfile)
     pcap_to_xml_file_name = 'xmlfromDAS.xml'
     outputxmlfile = outdir + "/" + outputFilePrefix + pcap_to_xml_file_name   
-    rc = run_das_extractor_locally(pcapfile, outputxmlfile, filterstring, 'MTP', maxFileSize)
+    rc = das.run_das_extractor_locally(pcapfile, outputxmlfile, filterstring, 'MTP', maxFileSize)
             
     if (rc == 4 and maxFileSize == 0):
         raise AssertionError('*ERROR* No output file found : no match filter %s '%filterstring)
@@ -171,7 +169,7 @@ def validate_messages_against_DVT_rules(pcapfile,rulefile):
     pcappath = os.path.dirname(pcapfile)
     outputfile = os.path.join(pcappath, 'DVT_output.csv')
 
-    res = run_das_dvt_locally(pcapfile, outputfile, 'CHE', '', rulefile)
+    res = das.run_das_dvt_locally(pcapfile, outputfile, 'CHE', '', rulefile)
     if res != 0:
         raise AssertionError('*ERROR* DVT validate output file is not generated')
     
@@ -227,10 +225,10 @@ def verify_ClosingRun_message_in_messages(pcapfile,ricname):
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
     
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
     
     if (len(messages) == 1):
-        updateType = xml_parse_get_field_for_messageNode(messages[0],'UpdateTypeNum')
+        updateType = xmlutilities.xml_parse_get_field_for_messageNode(messages[0],'UpdateTypeNum')
         if (updateType != '6'):
             raise AssertionError('*ERROR* ClosingRun message for RIC (%s) not found'%(ricname))                   
     else:
@@ -261,11 +259,11 @@ def verify_CMP_NME_ET_in_message(pcapfile, ric):
     
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,'setIDVerificationVspcap',20)
     
-    messageNode = xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
+    messageNode = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
     
-    fidsAndValues = xml_parse_get_fidsAndValues_for_messageNode(messageNode[0])
+    fidsAndValues = xmlutilities.xml_parse_get_fidsAndValues_for_messageNode(messageNode[0])
 
-    ricname = xml_parse_get_field_from_MsgKey(messageNode[0],'Name')
+    ricname = xmlutilities.xml_parse_get_field_from_MsgKey(messageNode[0],'Name')
 
     if (len(fidsAndValues) == 0):            
         raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ricname)
@@ -297,10 +295,10 @@ def verify_correction_change_in_message(pcapfile,ricname,FIDs,newFIDValues):
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
             
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
             
     if (len(messages) == 1):
-        fidsAndValues = xml_parse_get_fidsAndValues_for_messageNode(messages[0])
+        fidsAndValues = xmlutilities.xml_parse_get_fidsAndValues_for_messageNode(messages[0])
         
         if (len(FIDs) != len(newFIDValues)):
             raise AssertionError('*ERROR* no. of item found in FIDs list (%d) and new FID values list (%d) is not equal'%(len(FIDs),len(newFIDValues)))
@@ -375,8 +373,8 @@ def verify_fid_in_fidfilter_by_contextId_against_message(messageNode,fidfilter,c
         (2) FID is not found in FIDFilter.txt given contextId     
     """ 
     
-    fidsAndValues = xml_parse_get_fidsAndValues_for_messageNode(messageNode)
-    ricname = xml_parse_get_field_from_MsgKey(messageNode,'Name')        
+    fidsAndValues = xmlutilities.xml_parse_get_fidsAndValues_for_messageNode(messageNode)
+    ricname = xmlutilities.xml_parse_get_field_from_MsgKey(messageNode,'Name')        
         
     if (len(fidsAndValues) == 0):            
         raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ricname)
@@ -422,8 +420,8 @@ def verify_fid_in_range_against_message(messageNode,fid_range):
         (2) FID is out side the specific range        
     """ 
             
-    fidsAndValues = xml_parse_get_fidsAndValues_for_messageNode(messageNode)
-    ricname = xml_parse_get_field_from_MsgKey(messageNode,'Name')        
+    fidsAndValues = xmlutilities.xml_parse_get_fidsAndValues_for_messageNode(messageNode)
+    ricname = xmlutilities.xml_parse_get_field_from_MsgKey(messageNode,'Name')        
         
     if (len(fidsAndValues) == 0):            
         raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ricname)
@@ -478,11 +476,11 @@ def verify_fid_value_in_message(pcapfile, ric, constitNum, fidList=[], valueList
     
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,'fidVerificationVspcap',20)
     
-    messageNode = xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
+    messageNode = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
     
-    fidsAndValues = xml_parse_get_fidsAndValues_for_messageNode(messageNode[0])
+    fidsAndValues = xmlutilities.xml_parse_get_fidsAndValues_for_messageNode(messageNode[0])
 
-    ricname = xml_parse_get_field_from_MsgKey(messageNode[0],'Name')
+    ricname = xmlutilities.xml_parse_get_field_from_MsgKey(messageNode[0],'Name')
 
     if (len(fidsAndValues) == 0):            
         raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ricname)
@@ -570,9 +568,9 @@ def verify_key_compression_in_message(pcapfile, ric):
     
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,'setIDVerificationVspcap',20)
     
-    messageNode = xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
+    messageNode = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
     for node in messageNode:
-        NameEncodingType = xml_parse_get_field_from_MsgKey(node,'NameEncodingType')
+        NameEncodingType = xmlutilities.xml_parse_get_field_from_MsgKey(node,'NameEncodingType')
         print NameEncodingType
         if NameEncodingType == '0':
                 raise AssertionError('*ERROR* The compression in message is %s ' % (NameEncodingType))
@@ -584,7 +582,7 @@ def verify_message_fids_are_in_FIDfilter(localPcap, ric, domain, contextId):
     '''
      verify that message's fids set from pcap for the ric, with domain, contextId is the subset of the fids set defined in FidFilter file for a particular constituent under the context id
     '''
-    constituents = get_constituents_from_FidFilter(contextId)
+    constituents = fidfilter.get_constituents_from_FidFilter(contextId)
     for constituent in constituents:
         # create fidfilter fids set under contextId and constituent
         contextIdMap = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt()
@@ -597,7 +595,7 @@ def verify_message_fids_are_in_FIDfilter(localPcap, ric, domain, contextId):
         filterDomain = 'TRWF_TRDM_DMT_'+ domain
         filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, Response_constitNum = &quot;%s&quot;))'%(filterDomain, ric, constituent)
         outputfile = get_xml_from_pcap(localPcap, filterstring, "out1")
-        msgFidSet = get_all_fid_names_from_xml(outputfile[0])
+        msgFidSet = xmlutilities.get_all_fid_names_from_xml(outputfile[0])
        
         # test messages' fids set are sub-set of the fidfilter's fids set for the constituent under contextId
         # this also reflect that there are no duplicated payload FIDs between constituent (C0, C1 etc)
@@ -769,7 +767,7 @@ def verify_setID_in_message(pcapfile, ric, expectedSetID, msgType):
     
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,'setIDVerificationVspcap',20)
     
-    messageNode = xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
+    messageNode = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
     
     for msgkey in messageNode[0].getiterator('MsgBase'):
         element = msgkey.find('SetID')
@@ -876,10 +874,10 @@ def verify_unsolicited_response_sequence_numbers_in_capture(pcapfile, ric, domai
     outputxmlfile = get_xml_from_pcap(pcapfile, filterstring, outputfileprefix)                
     
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
     seqNumList = []
     for messageNode in messages:
-        seqNum = xml_parse_get_field_for_messageNode(messageNode, 'ItemSeqNum')
+        seqNum = xmlutilities.xml_parse_get_field_for_messageNode(messageNode, 'ItemSeqNum')
         seqNumList.append(seqNum)
                 
     if len(seqNumList)== 0:
@@ -957,11 +955,11 @@ def verify_updated_message_sequence_numbers_in_capture(pcapfile, ric, domain, mt
     filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, All_msgBase_msgKey_domainType = &quot;%s&quot;))'%(ric, filterDomain)
     outputxmlfile = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
     
     seqNumList = []
     for messageNode in messages:
-        seqNum = xml_parse_get_field_for_messageNode(messageNode, 'ItemSeqNum')
+        seqNum = xmlutilities.xml_parse_get_field_for_messageNode(messageNode, 'ItemSeqNum')
         seqNumList.append(seqNum)
    
     if len(seqNumList) == 0:
@@ -1060,10 +1058,10 @@ def _get_RICs_from_das_xml(xmlfile, ricsDict, includeSystemRics):
     """        
     
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(xmlfile,parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(xmlfile,parentName)
     
     for message in messages:
-        ric = xml_parse_get_field_from_MsgKey(message,'Name')
+        ric = xmlutilities.xml_parse_get_field_from_MsgKey(message,'Name')
         if (not includeSystemRics):
             if (ric.startswith('.[SPS') or ric.startswith('.[----')):
                 continue
@@ -1085,13 +1083,13 @@ def _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,constnum):
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
     
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
     
     if (len(messages) == 1):
-        containterType = xml_parse_get_HeaderTag_Value_for_messageNode (messages[0],'MsgBase','ContainerType')
+        containterType = xmlutilities.xml_parse_get_HeaderTag_Value_for_messageNode (messages[0],'MsgBase','ContainerType')
         if (containterType != 'NoData'):
             raise AssertionError('*ERROR* C%s message : Drop message for RIC (%s) not found'%(constnum,ricname))    
-        streamState = xml_parse_get_HeaderTag_Value_for_messageNode (messages[0],'ItemState','StreamState')
+        streamState = xmlutilities.xml_parse_get_HeaderTag_Value_for_messageNode (messages[0],'ItemState','StreamState')
         if (streamState != '4'):
             raise AssertionError('*ERROR* C%s message : Drop message for RIC (%s) not found'%(constnum,ricname))                    
     else:
@@ -1111,7 +1109,7 @@ def _verify_fid_in_fidfilter_by_contextId_against_das_xml(xmlfile,fidfilter,cont
         return : Nil      
     """
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(xmlfile,parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(xmlfile,parentName)
     
     for message in messages:
         verify_fid_in_fidfilter_by_contextId_against_message(message,fidfilter,contextId,constit)           
@@ -1123,7 +1121,7 @@ def _verify_fid_in_range_against_das_xml(xmlfile,fid_range):
     """        
     
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(xmlfile,parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(xmlfile,parentName)
     
     for message in messages:
         verify_fid_in_range_against_message(message,fid_range)
@@ -1194,7 +1192,7 @@ def _verify_FIDfilter_FIDs_are_in_message_from_das_xml(xmlfile,fidfilter, ricsDi
     """            
                
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(xmlfile,parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(xmlfile,parentName)
     
     for message in messages:
         _verify_FIDfilter_FIDs_in_single_message(message,fidfilter, ricsDict)
@@ -1210,11 +1208,11 @@ def _verify_FIDfilter_FIDs_in_single_message(messageNode,fidfilter, ricsDict):
                 (3) Context ID found in MTE response not found in FIDFilter.txt  
                 
         [Pending : Response Message without FID 5357 could be SPS > Skip checking ?]                  
-    """           
+    """
     
-    fidsAndValues = xml_parse_get_fidsAndValues_for_messageNode(messageNode)
-    constit = xml_parse_get_field_for_messageNode(messageNode,'ConstitNum')
-    ricname = xml_parse_get_field_from_MsgKey(messageNode,'Name')
+    fidsAndValues = xmlutilities.xml_parse_get_fidsAndValues_for_messageNode(messageNode)
+    constit = xmlutilities.xml_parse_get_field_for_messageNode(messageNode,'ConstitNum')
+    ricname = xmlutilities.xml_parse_get_field_from_MsgKey(messageNode,'Name')
     contextId = "-1"
            
     if (len(fidsAndValues) == 0):           
@@ -1258,11 +1256,11 @@ def _verify_PE_change_in_message_c0(pcapfile,ricname,newPE):
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
     
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
     
     if (len(messages) == 1):
         #1st C0 message : C0 Response, new PE in header
-        headerPE = xml_parse_get_HeaderTag_Value_for_messageNode(messages[0],'PermissionInfo','PE')
+        headerPE = xmlutilities.xml_parse_get_HeaderTag_Value_for_messageNode(messages[0],'PermissionInfo','PE')
         if (headerPE != newPE):
             raise AssertionError('*ERROR* C0 message : New PE in header (%s) not equal to (%s)'%(headerPE,newPE))                   
     else:
@@ -1291,18 +1289,18 @@ def _verify_PE_change_in_message_c1(pcapfile,ricname,oldPEs,newPE):
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
     
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
     
     if (len(messages) == 2):
         #1st C1 message : C1 Response, OLD PE in header, New PE in payload, no other FIDs included
-        fidsAndValues = xml_parse_get_fidsAndValues_for_messageNode(messages[0])
+        fidsAndValues = xmlutilities.xml_parse_get_fidsAndValues_for_messageNode(messages[0])
         if (fidsAndValues.has_key('1')):
             if (fidsAndValues['1'] != newPE):
                 raise AssertionError('*ERROR* 1st C1 message : New PE in payload (%s) not equal to (%s)'%(fidsAndValues['1'],newPE))
         else:
             raise AssertionError('*ERROR* 1st C1 message : Missing FID 1 (PROD_PERM) in payload')
         
-        headerPE = xml_parse_get_HeaderTag_Value_for_messageNode(messages[0],'PermissionInfo','PE')
+        headerPE = xmlutilities.xml_parse_get_HeaderTag_Value_for_messageNode(messages[0],'PermissionInfo','PE')
         isPass = False
         for oldPE in oldPEs:
             if (headerPE == oldPE):
@@ -1315,7 +1313,7 @@ def _verify_PE_change_in_message_c1(pcapfile,ricname,oldPEs,newPE):
         fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt()   
         _verify_FIDfilter_FIDs_in_single_message(messages[1],fidfilter, dummyricDict)    
         
-        headerPE = xml_parse_get_HeaderTag_Value_for_messageNode(messages[1],'PermissionInfo','PE')
+        headerPE = xmlutilities.xml_parse_get_HeaderTag_Value_for_messageNode(messages[1],'PermissionInfo','PE')
         if (headerPE != newPE):
             raise AssertionError('*ERROR* 2nd C1 message : New PE in header (%s) not equal to (%s)'%(headerPE,newPE))
     else:
@@ -1354,7 +1352,7 @@ def _verify_PE_change_in_message_c63(pcapfile,ricname,newPE):
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
     
     parentName  = 'Message'
-    messages = xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
     
     if (len(messages) == 0):
         print '*INFO* NO C63 found'
@@ -1363,7 +1361,7 @@ def _verify_PE_change_in_message_c63(pcapfile,ricname,newPE):
         dummyricDict = {}
         _verify_FIDfilter_FIDs_in_single_message(messages[0],fidfilter, dummyricDict)                
         
-        headerPE = xml_parse_get_HeaderTag_Value_for_messageNode(messages[0],'PermissionInfo','PE')
+        headerPE = xmlutilities.xml_parse_get_HeaderTag_Value_for_messageNode(messages[0],'PermissionInfo','PE')
         if (headerPE != newPE):
             raise AssertionError('*ERROR* C63 message : New PE in header (%s) not equal to (%s)'%(headerPE,newPE))                
     else:
@@ -1403,7 +1401,7 @@ def _verify_response_message_num_with_constnum(pcapfile,ricname,constnum):
     
     parentName  = 'Message'        
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
-    messages = xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
     if (len(messages) == 0):
         raise AssertionError('*ERROR* no C%s message found'%constnum) 
     if (len(messages) > 1):

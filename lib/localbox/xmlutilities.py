@@ -27,7 +27,7 @@ def load_xml_file(xmlFileLocalFullPath,isNonStandardXml):
     Returns : iterator point to the first element of the xml file
     """                
     if not os.path.exists(xmlFileLocalFullPath):
-        raise AssertionError('*ERROR*  %s is not available' %xmlFileLocalFullPath)
+        raise AssertionError('*ERROR* File does not exist: %s' %xmlFileLocalFullPath)
     
     if (isNonStandardXml):
         with open(xmlFileLocalFullPath, "r") as myfile:

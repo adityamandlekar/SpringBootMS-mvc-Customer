@@ -10,7 +10,6 @@ from xml.dom import minidom
 
 from utils.local import _run_local_command
 from utils.rc import _rc
-from utils.version import get_version
 from VenueVariables import *
     
 def add_ric_to_exl_file(exlFileSource, exlFileTarget, ric, symbol=None, domain="MARKET_PRICE", instrumentType="NORMAL_RECORD", displayName="TEST RIC", officialCode="1"):

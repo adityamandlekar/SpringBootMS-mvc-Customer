@@ -4,7 +4,7 @@ import os.path
 from sets import Set
 import string
 
-from configfiles import get_context_ids_from_fms_filter_string
+import localconfigfiles
     
 def get_context_ids_from_cachedump(cachedump_file_name):  
     """Returns a set of context_ids appeared in the cachedump.csv file.
@@ -43,7 +43,7 @@ def verify_cache_contains_only_configured_context_ids(cachedump_file_name_full_p
     | verify cache contains only configured context ids | cache dump file |venue configuration file   
     """       
     
-    filterstring_context_id_set = get_context_ids_from_fms_filter_string(filter_string)
+    filterstring_context_id_set = localconfigfiles.get_context_ids_from_fms_filter_string(filter_string)
     if len(filterstring_context_id_set) == 0:
         raise AssertionError('*ERROR* cannot find context ids from fms filter string %' %filter_string)
     

@@ -8,18 +8,18 @@ Library           DateTime
 Library           LinuxCoreUtilities
 Library           LinuxToolUtilities
 Library           LinuxFSUtilities
-Library           fidfilter
-Library           configfiles
-Library           dasutil
-Library           dataview
-Library           fms_exl
-Library           mtecache
-Library           persistfile
-Library           pmat
-Library           scwcli
-Library           trwf2messages
-Library           WinFSUtilities
-Library           xmlutilities
+Library           linuxbox/fidfilter.py
+Library           localbox/das.py
+Library           localbox/dataview.py
+Library           localbox/fms_exl.py
+Library           localbox/localcache.py
+Library           localbox/localconfigfiles.py
+Library           localbox/localmessages.py
+Library           localbox/localpersist.py
+Library           localbox/pmat.py
+Library           localbox/scwcli.py
+Library           localbox/WinFSUtilities.py
+Library           localbox/xmlutilities.py
 
 *** Keywords ***
 Switch To TD Box
