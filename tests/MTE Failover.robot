@@ -232,19 +232,6 @@ MTE Failover Case Teardown
     Switch To TD Box    ${CHE_A_IP}
     Run Keyword If    ${filesToRemove}    Case Teardown    @{filesToRemove}
 
-Start Process
-    [Arguments]    ${process}
-    [Documentation]    Start process, argument is the process name
-    run commander    process    start ${process}
-    wait for process to exist    ${process}
-    wait for StatBlock    CritProcMon    ${process}    m_IsAvailable    1
-
-Stop Process
-    [Arguments]    ${process}
-    [Documentation]    Stop process, argument is the process name
-    run commander    process    stop ${process}
-    wait for process to not exist    ${process}
-
 Verify QoS for CritProcessFail
     [Arguments]    ${node}    ${master_ip}    ${CritProcessFailValue}    ${totalQoSValue}=${EMPTY}
     [Documentation]    Verify the QOS of CritProcessFail on specified node, &{node} should be A, B, C or D.
