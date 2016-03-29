@@ -12,16 +12,38 @@ Empty Payload Detection with Blank FIDFilter
     ${fileList}=    backup remote cfg file    ${VENUE_DIR}    FIDFilter.txt
     ${fidfilterFile}    set variable    ${fileList[0]}
     ${fidfilterBackup}    set variable    ${fileList[1]}
-    ${emptyFidFilter}    set variable    ${LOCAL_TMP_DIR}/empty_FIDFilter.txt
-    Create File    ${emptyFidFilter}
     Stop MTE
-    Push File to Remote and Restart MTE    ${emptyFidFilter}    ${fidfilterFile}
+    ${emptyContent}=    set variable    ${EMPTY}
+    Create Remote File Content    ${fidfilterFile}    ${emptyContent}
+    Delete Persist Files and Restart MTE
     ${service}    Get FMS Service Name
     ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
     Run Keyword And Continue On Failure    Verify No Realtime Update    ${pcapFileName}
     Stop MTE
     Restore Remote and Restart MTE    ${fidfilterFile}    ${fidfilterBackup}
-    [Teardown]    case teardown    ${emptyFidFilter}
+    [Teardown]
+
+Empty Payload Detection with Blank TCONF
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1987
+    ...
+    ...    Restart MTE with empty tconf file and modified ${MTE}.xml config file. Verify no update messages with playback data. Restart MTE with restored tconf and config file
+    ${lowercaseConfig}    convert to lowercase    ${MTE}.xml
+    ${fileList}=    backup remote cfg file    ${VENUE_DIR}    ${lowercaseConfig}
+    ${remoteConfig}    set variable    ${fileList[0]}
+    ${remoteConfigBackup}    set variable    ${fileList[1]}
+    ${rmtCfgPath}    ${rmtCfgFile}    Split Path    ${remoteConfig}
+    ${rmtCfgPath}=    Replace String    ${rmtCfgPath}    \\    /
+    Stop MTE
+    ${remoteEmptyTconf}    set variable    ${rmtCfgPath}/emptyTconf.tconf
+    Create Remote File Content    ${remoteEmptyTconf}    //empty file
+    Set Value in MTE cfg    ${remoteConfig}    TransformConfig    emptyTconf.tconf
+    Delete Persist Files and Restart MTE
+    ${service}    Get FMS Service Name
+    ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
+    Run Keyword And Continue On Failure    Verify No Realtime Update    ${pcapFileName}
+    Stop MTE
+    Restore Remote and Restart MTE    ${remoteConfig}    ${remoteConfigBackup}
+    [Teardown]
 
 Validate Downstream FID publication
     [Documentation]    Verify if MTE has publish fids that matches fids defined in fidfilter file
@@ -272,12 +294,6 @@ Verify TRWF Update Type
 Delete Persist Files and Restart MTE
     Delete Persist Files
     Start MTE
-
-Push File to Remote and Restart MTE
-    [Arguments]    ${localFile}    ${remoteFile}
-    delete remote files    ${remoteFile}
-    put remote file    ${localFile}    ${remoteFile}
-    Delete Persist Files and Restart MTE
 
 Restore Remote and Restart MTE
     [Arguments]    ${remoteFile}    ${remoteBackupFile}
