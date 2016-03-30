@@ -1,10 +1,50 @@
 *** Settings ***
-Suite Setup       Suite Setup
+Suite Setup       Suite Setup with Playback
 Suite Teardown    Suite Teardown
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
 *** Test Cases ***
+Empty Payload Detection with Blank FIDFilter
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1988
+    ...
+    ...    Restart MTE with empty FIDFilter file. Verify no update messages with playback data. Restart MTE with restored FIDFilter file
+    ${fileList}=    backup remote cfg file    ${VENUE_DIR}    FIDFilter.txt
+    ${fidfilterFile}    set variable    ${fileList[0]}
+    ${fidfilterBackup}    set variable    ${fileList[1]}
+    Stop MTE
+    ${emptyContent}=    set variable    ${EMPTY}
+    Create Remote File Content    ${fidfilterFile}    ${emptyContent}
+    Delete Persist Files and Restart MTE
+    ${service}    Get FMS Service Name
+    ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
+    Run Keyword And Continue On Failure    Verify No Realtime Update    ${pcapFileName}
+    Stop MTE
+    Restore Remote and Restart MTE    ${fidfilterFile}    ${fidfilterBackup}
+    [Teardown]
+
+Empty Payload Detection with Blank TCONF
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1987
+    ...
+    ...    Restart MTE with empty tconf file and modified ${MTE}.xml config file. Verify no update messages with playback data. Restart MTE with restored tconf and config file
+    ${lowercaseConfig}    convert to lowercase    ${MTE}.xml
+    ${fileList}=    backup remote cfg file    ${VENUE_DIR}    ${lowercaseConfig}
+    ${remoteConfig}    set variable    ${fileList[0]}
+    ${remoteConfigBackup}    set variable    ${fileList[1]}
+    ${rmtCfgPath}    ${rmtCfgFile}    Split Path    ${remoteConfig}
+    ${rmtCfgPath}=    Replace String    ${rmtCfgPath}    \\    /
+    Stop MTE
+    ${remoteEmptyTconf}    set variable    ${rmtCfgPath}/emptyTconf.tconf
+    Create Remote File Content    ${remoteEmptyTconf}    //empty file
+    Set Value in MTE cfg    ${remoteConfig}    TransformConfig    emptyTconf.tconf
+    Delete Persist Files and Restart MTE
+    ${service}    Get FMS Service Name
+    ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
+    Run Keyword And Continue On Failure    Verify No Realtime Update    ${pcapFileName}
+    Stop MTE
+    Restore Remote and Restart MTE    ${remoteConfig}    ${remoteConfigBackup}
+    [Teardown]
+
 Validate Downstream FID publication
     [Documentation]    Verify if MTE has publish fids that matches fids defined in fidfilter file
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1632
@@ -230,7 +270,36 @@ Perform DVT Validation - Closing Run for all RICs
     validate messages against DVT rules    ${localCapture}    ${ruleFilePath}
     [Teardown]    case teardown    ${localCapture}
 
+Verify TRWF Update Type
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1970
+    ...
+    ...    Verify FMS correction update type is "Correction"
+    ...
+    ...    Verify the realtime updates for MP updates are either "Quote", "Trade" or "Correction".
+    ...
+    ...    Verify the realtime updates for MBP updates are "unspecified".
+    ...
+    ...    verify "Closing Run" message triggered by FMSCMD
+    ...
+    ...    Trigger normal closing run via FMS and verify the normal closing run update has update type "Closing Run"
+    ${service}    Get FMS Service Name
+    Verify FMS Correction Update    ${service}
+    ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
+    Verify Realtime Update    ${pcapFileName}
+    ${domain}    Get Preferred Domain
+    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    Manual ClosingRun for a RIC    ${sampleRic}    ${publishKey}    ${domain}
+
 *** Keywords ***
+Delete Persist Files and Restart MTE
+    Delete Persist Files
+    Start MTE
+
+Restore Remote and Restart MTE
+    [Arguments]    ${remoteFile}    ${remoteBackupFile}
+    restore remote cfg file    ${remoteFile}    ${remoteBackupFile}
+    Delete Persist Files and Restart MTE
+
 Rebuild FMS service
     [Arguments]    ${serviceName}
     ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    dbrebuild    --HandlerName ${MTE}
@@ -297,3 +366,36 @@ Verify MC_REC_LAB
     ${fids}    Create List    9140
     ${values}    Create List    ${labelid}
     verify fid value in message    ${pcapfilename}    ${ricname}    0    ${fids}    ${values}
+
+Verify FMS Correction Update
+    [Arguments]    ${service}
+    Start Capture MTE Output
+    Load All EXL Files    ${service}    ${CHE_IP}
+    Stop Capture MTE Output
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    verify correction updates in capture    ${LOCAL_TMP_DIR}/capture_local.pcap
+    remove file    ${LOCAL_TMP_DIR}/capture_local.pcap
+
+Verify Realtime Update
+    [Arguments]    @{pcap_file_list}
+    ${mteConfigFile} =    Get MTE Config File
+    @{domainList} =    Get Domain Names    ${mteConfigFile}
+    Start Capture MTE Output
+    Inject PCAP File on UDP    @{pcap_file_list}
+    Stop Capture MTE Output
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    : FOR    ${domain}    IN    @{domainList}
+    \    verify realtime update type in capture    ${LOCAL_TMP_DIR}/capture_local.pcap    ${domain}
+    remove file    ${LOCAL_TMP_DIR}/capture_local.pcap
+
+Verify No Realtime Update
+    [Arguments]    @{pcap_file_list}
+    ${mteConfigFile} =    Get MTE Config File
+    @{domainList} =    Get Domain Names    ${mteConfigFile}
+    Start Capture MTE Output
+    Inject PCAP File on UDP    @{pcap_file_list}
+    Stop Capture MTE Output
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    : FOR    ${domain}    IN    @{domainList}
+    \    verify no realtime update type in capture    ${LOCAL_TMP_DIR}/capture_local.pcap    ${domain}
+    remove file    ${LOCAL_TMP_DIR}/capture_local.pcap

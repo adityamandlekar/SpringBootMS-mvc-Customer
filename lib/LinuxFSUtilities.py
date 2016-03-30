@@ -27,6 +27,14 @@ class LinuxFSUtilities():
     def put_remote_file(self, source, destination='.', mode='0744', newline=''):
         return G_SSHInstance.put_file(source, destination, mode, newline)
     
+    def create_remote_file_content(self, destination, content):
+        if type(content) == list:
+            contentAsString = '\n'.join(content)
+        else:
+            contentAsString = str(content)
+        cmd = 'cat > %s <<END_OF_DATA\n%s\nEND_OF_DATA' %(destination, contentAsString)
+        return _run_command(cmd)
+    
     def remote_file_should_exist(self, path):
         G_SSHInstance.file_should_exist(path)
         

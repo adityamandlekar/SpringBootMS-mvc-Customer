@@ -152,7 +152,7 @@ Verify Mangling Rule On All Context IDs
 Verify Mangling by Context ID Case Setup
     [Arguments]    ${configFile}=manglingConfiguration.xml
     [Documentation]    Backup remote mangling config file
-    @{files}=    backup cfg file    ${VENUE_DIR}    ${configFile}
+    @{files}=    backup remote cfg file    ${VENUE_DIR}    ${configFile}
     Set Suite Variable    @{files}
     ${configFileLocal}=    Get Mangling Config File
     Set Suite Variable    ${configFileLocal}
@@ -160,6 +160,6 @@ Verify Mangling by Context ID Case Setup
 Verify Mangling by Context ID Case Teardown
     [Arguments]    @{tmpfiles}
     [Documentation]    restore remote mangling config file and restore mangling setting
-    restore cfg file    @{files}
+    restore remote cfg file    @{files}
     Load Mangling Settings
     Case Teardown    @{tmpfiles}

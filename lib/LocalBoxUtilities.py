@@ -124,6 +124,48 @@ class LocalBoxUtilities(_ToolUtil):
             
         raise AssertionError('*ERROR* MsgKey:%s is missing from message'%(fieldName))    
     
+    def _get_RICs_from_das_xml(self, xmlfile, ricsDict):
+        """Get RICs from all messages in the xml file and add to ricsDict
+            xmlfile: is the fullpath at local control PC of the XML file created from a pcap file
+            ricsDict: dictionary of RIC names to be updated
+
+            return : Nil (updates ricDict)     
+        """        
+        
+        parentName  = 'Message'
+        messages = self._xml_parse_get_all_elements_by_name(xmlfile,parentName)
+        
+        for message in messages:
+            ric = self._xml_parse_get_field_from_MsgKey(message,'Name')
+            ricsDict[ric] = 1 # value is not important, just need RIC name as key
+    
+    def get_RICs_from_pcap(self,pcapfile,domain):
+        """ Get the unique set of RIC names from a PCAP file
+        
+            pcapFile : is the pcap fullpath at local control PC
+            domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+            return : sorted list of RICs found in pcap file   
+        """                
+        ricsDict = dict({})
+                
+        #Check if pcap file exist
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        #Convert pcap file to xml
+        outputfileprefix = 'ricList'
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        filterstring = 'All_msgBase_msgKey_domainType = &quot;%s&quot;' %filterDomain
+        outputxmlfilelist = self._get_extractorXml_from_pcap(pcapfile,filterstring,outputfileprefix,20)
+        
+        for outputxmlfile in outputxmlfilelist:
+            self._get_RICs_from_das_xml(outputxmlfile, ricsDict)
+            os.remove(outputxmlfile)
+        os.remove(os.path.dirname(outputxmlfile) + "/" + outputfileprefix + "xmlfromDAS.log")
+        
+        print '*INFO* found %d unique RICs' %len(ricsDict)
+        return sorted(ricsDict.keys())
+    
     def verify_csv_files_match(self, file1, file2, ignorefids):
         """Verify two .csv files match.
 
@@ -489,8 +531,103 @@ class LocalBoxUtilities(_ToolUtil):
             raise AssertionError('*ERROR* No FID dictionary exists in FIDFilter.txt file for Context ID %s' %(context_id))  
         
         return fidDic.keys()
+    
+    def verify_no_realtime_update_type_in_capture(self, pcapfile, domain):
+        """ Verify update message does not exist for MARKET PRICE, or MARKET_BY_ORDER or MARKET_BY_PRICE domain.
+            Argument : pcapfile : MTE output pcap file fullpath
+                       domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+            return : Nil
+        """  
+        try:
+            self.verify_updated_message_exist_in_capture(pcapfile, domain)     
+        except AssertionError:
+            return
+               
+        raise AssertionError('*ERROR* realtime updates exist for domain %s.' %domain)
              
+
+
+    def verify_realtime_update_type_in_capture(self, pcapfile, domain):
+        """ Verify the realtime updates for MP domain have type "Quote", "Trade".
+            Verify the realtime updates for MBP domain have type "unspecified".
+            Argument : pcapfile : MTE output pcap file fullpath
+                       domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+            return : Nil
+        """  
+        
+        self.verify_updated_message_exist_in_capture(pcapfile, domain)     
+                   
+        filterstring = ''
+        filterDomain = 'TRWF_TRDM_DMT_' + domain
+        outputfileprefix = 'updates_pcap'
+        if filterDomain == 'TRWF_TRDM_DMT_MARKET_PRICE':
+            filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, AND (Update_constitNum = &quot;1&quot;, AND(Update_updateTypeNum != &quot;TRWF_TRDM_UPT_QUOTE&quot;, Update_updateTypeNum != &quot;TRWF_TRDM_UPT_TRADE&quot;))))'%(filterDomain)
+        if filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_ORDER' or filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_PRICE':
+            filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND (Update_constitNum = &quot;1&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_updateTypeNum != &quot;TRWF_TRDM_UPT_UNSPECIFIED&quot;)))'%(filterDomain)
+        if len(filterstring) == 0:
+            raise AssertionError('*ERROR* Need MARKET_PRICE, MARKET_BY_ORDER or MARKET_BY_PRICE for domain parameter ')  
+                  
+        try:               
+            outputxmlfile = self._get_extractorXml_from_pcap(pcapfile, filterstring, outputfileprefix) 
+        except AssertionError:
+            return 
+          
+        if (os.path.exists(outputxmlfile[0]) == True):                   
+            for exist_file in outputxmlfile:
+                os.remove(exist_file)
+        
+            os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
+            if filterDomain == 'TRWF_TRDM_DMT_MARKET_PRICE':
+                raise AssertionError('*ERROR* realtime updates for domain %s have type other than "Quote", "Trade".' %domain)
+            if filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_ORDER' or filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_PRICE':  
+                raise AssertionError('*ERROR* realtime updates for domain %s have type other than "unspecified".' %domain)
+            
+            
+    def verify_correction_updates_in_capture(self, pcapfile):
+        """ verify if correction update messages are in pcapfile.
+            Argument : pcapfile : MTE output capture pcap file fullpath
+            return : Nil
+        """           
+        self.verify_updated_message_exist_in_capture(pcapfile, 'MARKET_PRICE')                  
+        
+        outputfileprefix = 'correction_pcap'
+        filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;TRWF_TRDM_DMT_MARKET_PRICE&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_updateTypeNum != &quot;TRWF_TRDM_UPT_CORRECTION&quot;))'
+        try:
+            outputxmlfile = self._get_extractorXml_from_pcap(pcapfile, filterstring, outputfileprefix)                
+        except AssertionError:
+            print 'update messages with market price domain in pcap file have correction type '
+            return   
+        
+        if (os.path.exists(outputxmlfile[0]) == True): 
+            for exist_file in outputxmlfile:
+                os.remove(exist_file)
+            os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")   
+            raise AssertionError('*ERROR* updates for Market Price domain have type other than "correction" ' )      
            
+           
+    def verify_updated_message_exist_in_capture(self, pcapfile, domain):
+        """ Verify updates for the domain exist in the pcap file
+            Argument : pcapfile : MTE output pcap file fullpath
+                       domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+            return : Nil
+        """  
+        if (os.path.exists(pcapfile) == False):
+            raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        
+        filterDomain = 'TRWF_TRDM_DMT_' + domain
+        outputfileprefix = 'updates_pcap'
+        filterstring = 'AND (All_msgBase_msgKey_domainType = &quot;%s&quot;, All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;)'%filterDomain
+        
+        outputxmlfile = self._get_extractorXml_from_pcap(pcapfile, filterstring, outputfileprefix)  
+        
+        if (os.path.exists(outputxmlfile[0]) == True):
+            for exist_file in outputxmlfile:
+                os.remove(exist_file)
+            os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")   
+        else:
+           raise AssertionError('*ERROR* No update messages found for domain %s in %s' %(domain, pcapfile))  
+       
+              
     def verify_solicited_response_in_capture(self, pcapfile, ric, domain, constituent_list):
         """ verify the pcap file contains solicited response messages for all possible constituents defined in fidfilter.txt
             Argument : pcapfile : MTE output capture pcap file fullpath
@@ -1757,7 +1894,6 @@ class LocalBoxUtilities(_ToolUtil):
             if node.get('ID') == labelID:
                 if (mteName != ""): #indicate checking ddnPublishers.xml
                     providers = node.findall('provider')
-                    print providers
                     found = False
                     for provider in providers:
                        if provider.get('NAME') == mteName:
@@ -2379,7 +2515,7 @@ class LocalBoxUtilities(_ToolUtil):
         self._save_to_xml_file(root,configFileLocalFullPath,False)
 
     def convert_dataView_response_to_dictionary(self,dataview_response):
-        """ capture the FID Name and FID value from DateView output which return from run  run_dataview
+        """ capture the FID Name and FID value from DateView output which return from run_dataview
 
             Argument : dataview_response - stdout return from run_dataview
                        
@@ -2394,16 +2530,51 @@ class LocalBoxUtilities(_ToolUtil):
         for line in lines:
             if (line.find('->') != -1):
                 fidAndValue = line.split(',')                
-                if (len(fidAndValue) == 2):
+                if (len(fidAndValue) >= 2):
                     fidIdAndfidName = fidAndValue[0].split()
                     if (len(fidIdAndfidName) == 3):
-                        fidsAndValuesDict[fidIdAndfidName[2].strip()] = fidAndValue[1].strip()
+                        fidsAndValuesDict[fidIdAndfidName[2].strip()] = ' '.join(fidAndValue[1:]).strip()
                     else:
-                        raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)',line) 
+                        raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)' %line) 
                 else:
-                    raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)',line)
+                    raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)' %line)
         
         return fidsAndValuesDict
+    
+    def convert_dataView_response_to_multiRIC_dictionary(self,dataview_response,ignoreBlank=True):
+        """ capture the FID Name and FID value for each RIC from DateView output which return from run_dataview
+
+            Argument : dataview_response - stdout return from run_dataview
+                        ignoreBlank - should entries with blank values be ignored?
+                       
+            Return : dictionary with key=RIC value = {sub-dictionary with key=FID NAME and value=FID value}
+            
+            Examples :
+            |convert dataView response to multiRIC dictionary |  response |
+        """        
+        
+        ric = ''
+        retDict = {}
+        fidsAndValuesDict = {}
+        lines = dataview_response.split('\n')
+        for line in lines:
+            if (line.startswith('Msg Key:')):
+                if (ric):
+                    retDict[ric] = fidsAndValuesDict
+                ric = line.split(':')[1].strip()
+                fidsAndValuesDict = {}
+            if (line.find('->') != -1):
+                fidAndValue = line.split(',')                
+                if (len(fidAndValue) >= 2):
+                    fidIdAndfidName = fidAndValue[0].split()
+                    if (len(fidIdAndfidName) == 3):
+                        fidsAndValuesDict[fidIdAndfidName[2].strip()] = ' '.join(fidAndValue[1:]).strip()
+                    else:
+                        raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)' %line) 
+                else:
+                    raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)' %line)
+        
+        return retDict
     
     def verify_mangling_from_dataview_response(self,dataview_response,expected_pe,expected_ricname):
         """ Based on the DataView response to check if the expected Ric could be retrieved from MTE and having expected PE value
@@ -2726,7 +2897,6 @@ class LocalBoxUtilities(_ToolUtil):
                 if (items[1].strip() != QOSName):
                     raise AssertionError('*ERROR* QOSName %s is not correct' %QOSName)
 
-                actualQOSValue = '0';
                 if (node == 'A'):
                     actualQOSValue = items[3].strip()
                 elif (node == 'B'):

@@ -412,7 +412,67 @@ class LinuxToolUtilities():
 #         filename = '%s/MTE/%s_%s.csv' %(VENUE_DIR,MTE,today)
 #         G_SSHInstance.file_should_exist(filename)
 #         return filename
-    
+    def get_otf_rics_from_cahce(self,domain):
+        """Checking how many otf item found in MTE cache dump
+        
+        Returns a list of dictionaries for OTF items (within each dictionary, it has DOMAIN, PUBLISH_KEY, OTF_STATUS fields)
+
+        Examples:
+        | get otf rics from cache  | MARKET_BY_PRICE 
+        """
+
+        if domain:
+            newDomain = self._convert_domain_to_cache_format(domain)
+            
+        cacheFile = self.dump_cache()
+        # create hash of header values
+        cmd = "head -1 %s | tr ',' '\n'" %cacheFile
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+
+        headerList = stdout.strip().split()
+        index = 1;
+        headerDict = {}
+        for fieldName in headerList:
+            headerDict[fieldName] = index
+            index += 1
+        if not headerDict.has_key('DOMAIN'):
+            raise AssertionError('*ERROR* Did not find required column names in cache file (DOMAIN)')
+
+        # get all fields for selected RICs
+        domainCol = headerDict['DOMAIN']
+        otfCol = headerDict['OTF_STATUS']
+        
+        cmd = "grep -v TEST %s | awk -F',' '$%d == \"%s\" && ($%d == \"FULL_OTF\" || $%d == \"PARTIAL_OTF\") {print}' " %(cacheFile, domainCol, newDomain, otfCol, otfCol)
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+
+        rows = stdout.splitlines()
+                
+        # get the requested fields
+        result = []
+        for row in rows:
+            values = row.split(',')
+            
+            if len(values) != len(headerList):
+                raise AssertionError('*ERROR* Number of values (%d) does not match number of headers (%d)' %(len(values), len(headerList)))
+            
+            fieldDict = {}
+            for i in range(0, len(values)):
+                if headerList[i] == 'DOMAIN':
+                    newdomain = self._convert_cachedomain_to_normal_format(values[i]) 
+                    fieldDict[headerList[i]] = newdomain
+                elif (headerList[i] == 'PUBLISH_KEY' or headerList[i] == 'OTF_STATUS'):
+                    fieldDict[headerList[i]] = values[i]
+               
+            result.append(fieldDict)
+                  
+        _delete_file(cacheFile,'',False)
+
+        return result       
+	
     def get_ric_fields_from_cache(self, numrows, domain, contextID):
         """Get the first n rows' ric fields data for the specified domain or/and contextID from MTE cache.
         Ignore RICs that contain 'TEST' and non-publishable RICs.
@@ -1010,7 +1070,7 @@ class LinuxToolUtilities():
 
         return contextIdsMap
     
-    def backup_cfg_file(self,searchdir,cfgfile,suffix='.backup'):
+    def backup_remote_cfg_file(self,searchdir,cfgfile,suffix='.backup'):
         """backup config file by create a new copy with filename append with suffix
         Argument : 
         searchdir  : directary where we search for the configuration file
@@ -1020,7 +1080,7 @@ class LinuxToolUtilities():
         Returns : a list with 1st item = full path config filename and 2nd itme = full path backup filename
 
         Examples:
-        | backup cfg file | /ThomsonReuters/Venues | manglingConfiguration.xml |  
+        | backup remote cfg file | /ThomsonReuters/Venues | manglingConfiguration.xml |  
         """         
         
         #Find configuration file
@@ -1040,7 +1100,7 @@ class LinuxToolUtilities():
         
         return [foundfiles[0], backupfile]
         
-    def restore_cfg_file(self,cfgfile,backupfile):
+    def restore_remote_cfg_file(self,cfgfile,backupfile):
         """restore config file by rename backupfile to cfgfile
         Argument : 
         cfgfile    : full path of configuration file
@@ -1049,7 +1109,7 @@ class LinuxToolUtilities():
         Returns : Nil
 
         Examples:
-        | restore cfg file | /reuters/Venues/HKF/MTE/manglingConfiguration.xml | /reuters/Venues/HKF/MTE/manglingConfiguration.xml.backup |  
+        | restore remote cfg file | /reuters/Venues/HKF/MTE/manglingConfiguration.xml | /reuters/Venues/HKF/MTE/manglingConfiguration.xml.backup |  
         """       
         
         LinuxFSUtilities().remote_file_should_exist(cfgfile)
@@ -1073,7 +1133,24 @@ class LinuxToolUtilities():
             return : N/A
             
             Examples :
-              | set value in_MTE cfg | jsda01.xml | NumberOfDailyBackupsToKeep | 12:00
+              | set value in_MTE cfg | jsda01.xml | NumberOfDailyBackupsToKeep | 5 |
+
+              Would change a config file containing:
+                 <Persistence>
+                   <DDS>
+                     <MutexNameForStaggering>TDDS_Persistence_Mutex</MutexNameForStaggering>
+                    <NumberOfDailyBackupsToKeep type="ul">3</NumberOfDailyBackupsToKeep>
+                  </DDS>
+                 </Persistence>
+
+              To
+                 <Persistence>
+                  <DDS>
+                     <MutexNameForStaggering>TDDS_Persistence_Mutex</MutexNameForStaggering>
+                     <NumberOfDailyBackupsToKeep type="ul">5</NumberOfDailyBackupsToKeep>
+                  </DDS>
+                 </Persistence>
+                 
         """         
         #Find configuration file
         LinuxFSUtilities().remote_file_should_exist(mtecfgfile)
@@ -1084,13 +1161,20 @@ class LinuxToolUtilities():
         if (len(foundlines) == 0):
             raise AssertionError('*ERROR* <%s> tag is missing in %s' %(tagName, mtecfgfile))
 
-        for line in foundlines:
-            cmd = "sed -i 's/%s/<%s>%s<\/%s>/' "%(line.replace('/','\/'),tagName,value,tagName)
-            cmd = cmd + mtecfgfile
-            stdout, stderr, rc = _exec_command(cmd)
+        # match tags with attributes, e.g.
+        # <NumberOfDailyBackupsToKeep type="ul">3</NumberOfDailyBackupsToKeep>
+        cmd_match_tag_with_attributes = "sed -i 's/\(<%s [^>]*>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value) + mtecfgfile
+        # match exact tag name, e.g.
+        #<TransformConfig>C4652_OB.tconf</TransformConfig> but not  <TransformConfigOptimized>true</TransformConfigOptimized>
+        cmd_match_tag_only = "sed -i 's/\(<%s>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value) + mtecfgfile
         
+        stdout, stderr, rc = _exec_command(cmd_match_tag_with_attributes)
         if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))    
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_with_attributes,rc,stdout,stderr))   
+        
+        stdout, stderr, rc = _exec_command(cmd_match_tag_only)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_only,rc,stdout,stderr)) 
     
     def generate_persistence_backup(self, keepDays):
         """ based on the no. of keeping days generate dummy persistence backup files 
@@ -1143,7 +1227,8 @@ class LinuxToolUtilities():
             raise AssertionError('*ERROR* Expected no. of backup file remain after cleanup (%d), but (%d) has found' %(originalNoOfBackupFile-1,len(listOfPersistBackupFiles)))
         
     def run_dataview(self, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain, *optArgs):
-        """ Argument :
+        """ Run Dataview command with specified arguments and return stdout result.
+            Argument :
                 dataType : Could be TRWF2 or RWF
                 multicastIP : multicast IP DataView listen to
                 multicastPort : muticast port DataView used to get data
@@ -1162,7 +1247,7 @@ class LinuxToolUtilities():
         # remove non-printable chars; dataview COMP_NAME output contains binary characters that can cause utf-8 decode problems
         cmd = 'set -o pathfail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (self.DATAVIEW, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
         cmd = cmd + ' ' + ' '.join( map(str, optArgs))
-        cmd = cmd + ' | tr -dc \'[:print:],[:space:]\''
+        cmd = cmd + ' | tr -dc \'[:print:],[:blank:],\\n\''
         print '*INFO* ' + cmd
         stdout, stderr, rc = _exec_command(cmd)
                 
@@ -1171,6 +1256,37 @@ class LinuxToolUtilities():
         
         return stdout 
 
+    def run_dataview_noblanks(self, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain, *optArgs):
+        """ Run Dataview command with specified arguments, remove all FIDs with blank value and return stdout result.
+            Argument :
+                dataType : Could be TRWF2 or RWF
+                multicastIP : multicast IP DataView listen to
+                multicastPort : muticast port DataView used to get data
+                interfaceIP : interface IP (DDNA or DDNB)
+                LineID : lineID published by line handler
+                RIC : published RIC by MTE
+                Domain : published data domain
+                optargs : a variable list of optional arguments for refresh request and DataView run time.
+            Return: stdout.
+            examples:
+                DataView -TRWF2 -IM 232.2.19.229 -IH 10.91.57.71  -PM 7777 -L 4608 -R 1YWZ5_r -D MARKET_BY_PRICE  -O output_test.txt -REF -IMSG 232.2.9.0 -PMSG 9000 -S 0  -EXITDELAY 5
+                DataView -TRWF2 -IM 232.2.19.229 -IH 10.91.57.71  -PM 7777 -L 4096 -R .[SPSCB1L2_I -D SERVICE_PROVIDER_STATUS -EXITDELAY 5
+        """
+                            
+        # use pathfail to detect failure of a command within a pipeline
+        # remove non-printable chars; dataview COMP_NAME output contains binary characters that can cause utf-8 decode problems
+        cmd = 'set -o pathfail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (self.DATAVIEW, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
+        cmd = cmd + ' ' + ' '.join( map(str, optArgs))
+        cmd = cmd + ' | tr -dc \'[:print:],[:blank:],\\n\''
+        cmd = cmd + ' | grep -v \'<blank>\''
+        print '*INFO* ' + cmd
+        stdout, stderr, rc = _exec_command(cmd)
+                
+        if rc != 0:
+            raise AssertionError('*ERROR* %s' %stderr)    
+        
+        return stdout
+    
     def run_HostManger(self, *optArgs):
         """run HostManager with specific arguments
         
@@ -1219,39 +1335,49 @@ class LinuxToolUtilities():
         
         return self.MTESTATE[idx]  
     
-    def verify_MTE_state(self, state):
-        """verify MTE instance is in specific state
+    def verify_MTE_state(self, state, waittime=5, timeout=150):
+        """Verify MTE instance is in specific state.
+        State change is not instantaneous, so loop and check up to timeout seconds.
         
          Argument:
             state    : expected state of MTE (UNDEFINED,LIVE,STANDBY,LOCKED_LIVE,LOCKED_STANDBY)
+            waittime : specifies the time to wait between checks, in seconds.
+            timeout  : specifies the maximum time to wait, in seconds.
         
         Returns    : 
 
         Examples:
-        | verify MTE state | HKF02M | LIVE
+        | verify MTE state | LIVE |
         """             
-        
+        # convert  unicode to int (it is unicode if it came from the Robot test)
+        timeout = int(timeout)
+        waittime = int(waittime)
+        maxtime = time.time() + float(timeout)
+
         #verify if input 'state' is a valid one
         if not (state in self.MTESTATE.values()):
             raise AssertionError('*ERROR* Invalid input (%s). Valid value for state is UNDEFINED , LIVE , STANDBY , LOCKED_LIVE , LOCKED_STANDBY '%state)
         
         cmd = '-readparams /%s/LiveStandby'%MTE
-        ret = self.run_HostManger(cmd).splitlines()
-        if (len(ret) == 0):
-            raise AssertionError('*ERROR* Running HostManger %s return empty response'%cmd)
-     
-        idx = '-1'
-        for line in ret:
-            if (line.find('LiveStandby') != -1):
-                contents = line.split(' ')
-                idx = contents[-1].strip()
-                 
-        if (idx == '-1'):
-            raise AssertionError('*ERROR* Keyword LiveStandby was not found in response')
-        elif not (self.MTESTATE.has_key(idx)):
-            raise AssertionError('*ERROR* Unknown state %s found in response'%idx)
-        elif (self.MTESTATE[idx] != state):
-                raise AssertionError('*ERROR* %s is not at %s (current state : %s)'%(MTE,state,self.MTESTATE[idx]))            
+        while time.time() <= maxtime:
+            ret = self.run_HostManger(cmd).splitlines()
+            if (len(ret) == 0):
+                raise AssertionError('*ERROR* Running HostManger %s return empty response'%cmd)
+         
+            idx = '-1'
+            for line in ret:
+                if (line.find('LiveStandby') != -1):
+                    contents = line.split(' ')
+                    idx = contents[-1].strip()
+                     
+            if (idx == '-1'):
+                raise AssertionError('*ERROR* Keyword LiveStandby was not found in response')
+            elif not (self.MTESTATE.has_key(idx)):
+                raise AssertionError('*ERROR* Unknown state %s found in response'%idx)
+            elif (self.MTESTATE[idx] == state):
+                return
+            time.sleep(waittime)
+        raise AssertionError('*ERROR* %s is not at state %s (current state : %s, timeout : %ds)'%(MTE,state,self.MTESTATE[idx],timeout))            
         
     def get_FID_Name_by_FIDId(self,FidId):
         """get FID Name from TRWF2.DAT based on fidID
@@ -1346,6 +1472,45 @@ class LinuxToolUtilities():
         currTimeArray = newDateTime.strftime('%Y,%m,%d,%H,%M,%S').split(',')
         self.wait_smf_log_does_not_contain('dropped due to expiration' , 5, 300)
         self.wait_smf_log_message_after_time('%s.*handleStartOfDayInstrumentUpdate.*Ending' %MTE, currTimeArray)
+
+
+    def wait_GMI_message_after_time(self,message,timeRef, waittime=2, timeout=60):
+        """Wait until the EventLogAdapterGMILog file contains the specified message with a timestamp newer than the specified reference time
+        NOTE: This does not yet handle log file rollover at midnight
+
+        Argument :
+            message : target message in grep format to find in smf log
+            timeRef : UTC time message must be after. It is a list of values as returned by the get_date_and_time Keyword [year, month, day, hour, min, second]
+            waittime : specifies the time to wait between checks, in seconds.
+            timeout : specifies the maximum time to wait, in seconds.
+        
+        Return : Nil if success or raise error
+
+        Examples:
+        | wait GMI message after time | FMS REORG DONE | ${dt} |
+        """
+        refDate = '%s-%s-%s' %(timeRef[0], timeRef[1], timeRef[2])
+        refTime = '%s:%s:%s' %(timeRef[3], timeRef[4], timeRef[5])
+        currentFile = '%s/EventLogAdapterGMILog.txt' %(self.SMFLOGDIR)
+
+        # convert  unicode to int (it is unicode if it came from the Robot test)
+        timeout = int(timeout)
+        waittime = int(waittime)
+        maxtime = time.time() + float(timeout)
+        while time.time() <= maxtime:            
+            retMessages = LinuxFSUtilities().grep_remote_file(currentFile, message)
+            if (len(retMessages) > 0):
+                logContents = retMessages[-1].split('|')
+                if (len(logContents) >= 2):
+                    logDateTime = logContents[0].split('T')
+                    if (len(logDateTime) >= 2):
+                        if logDateTime[0].strip() >= refDate and logDateTime[1].strip() >= refTime:
+                            return
+            time.sleep(waittime)
+        raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smfGMI log before timeout %ds' %(message, timeout)) 
+                  
+
+
     
 
     def block_dataflow_by_port_protocol(self,inOrOut,protocol,port):
@@ -1415,6 +1580,28 @@ class LinuxToolUtilities():
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
         
         return stdout.strip()       
+ 
+    def enable_disable_interface(self, interfaceName, status):
+        """ Enable or disable the interface
+
+            Argument : interfaceName - should be eth1 ... eth5
+                       status - should be enable or disable
+
+            Return :   None
+            
+            Examples :
+            | enable disable interface| eth1 | enable |
+        """
+        if (status.lower() == 'enable'):
+           cmd = 'ifup '
+        elif (status.lower() == 'disable'):
+            cmd = 'ifdown '
+        else:
+            raise AssertionError('*ERROR* the status is %s, it should be enable or disable' %status)
+        cmd = cmd + interfaceName
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0:
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
  
     def wait_and_get_OTFC_ric_from_smf(self,message,timeRef, waittime=2, timeout=60):
         """Wait until the SMF log file contains the specified message with a timestamp newer than the specified reference time, return RIC name

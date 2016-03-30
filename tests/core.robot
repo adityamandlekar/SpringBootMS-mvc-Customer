@@ -17,6 +17,7 @@ Switch To TD Box
     [Documentation]    To switch the current ssh session to specific CHE_X_IP
     ${switchBox}    Run Keyword If    '${che_ip}' == '${CHE_A_IP}'    set variable    ${CHE_A_Session}
     ...    ELSE IF    '${che_ip}' == '${CHE_B_IP}'    set variable    ${CHE_B_Session}
+    ...    ELSE IF    '${che_ip}' == '${PLAYBACK_MACHINE_IP}'    set variable    ${Playback_Session}
     ...    ELSE    Fail    Invaild IP
     switch connection    ${switchBox}
 
@@ -42,10 +43,12 @@ Suite Setup
 Suite Setup with Playback
     [Documentation]    Setup Playback box and suit scope variable Playback_Session.
     Should Not be Empty    ${PLAYBACK_MACHINE_IP}
+    Should Not be Empty    ${CHE_A_IP}
     ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
     login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
     Set Suite Variable    ${Playback_Session}    ${plyblk}
-    Suite Setup
+    ${ret}    suite setup    ${CHE_A_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${ret}
 
 Suite Teardown
     [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
@@ -75,6 +78,17 @@ Delete Persist Files
     Should Be Empty    ${res}
     Comment    Currently, GATS does not provide the Venue name, so the pattern matching Keywords must be used. If GATS provides the Venue name, then "delete remote file" and "remote file should not exist" Keywords could be used here.
 
+Dictionary of Dictionaries Should Be Equal
+    [Arguments]    ${dict1}    ${dict2}
+    [Documentation]    Verify that two dictionaries, where the values are also dictionaries, match.
+    ...    First verify the keys between the two dictionaries match, then loop through each sub-dictionary and verify they match.
+    ...    Although the Robot 'Should Be Equal' KW works for nested dictionaries, the error message generated when they do not match does not pinpoint the differences.
+    @{keys1}=    Get Dictionary Keys    ${dict1}
+    @{keys2}=    Get Dictionary Keys    ${dict2}
+    Should Be Equal    ${keys1}    ${keys2}
+    : FOR    ${key}    IN    @{keys1}
+    \    Dictionaries Should Be Equal    ${dict1['${key}']}    ${dict2['${key}']}
+
 Dumpcache And Copyback Result
     [Arguments]    ${destfile}    # where will the csv be copied back
     [Documentation]    Dump the MTE cache to a file and copy the file to the local temp directory.
@@ -101,15 +115,31 @@ Dump Persist File To XML
     [Return]    ${pmatXmlDumpfile}
 
 Generate PCAP File Name
-    [Arguments]    ${service}    ${testCase}    @{keyValuePairs}
+    [Arguments]    ${service}    ${testCase}    ${playbackBindSide}=A    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
     ...
-    ...    Generate the file name based on service name, test case and input key/value pairs.
+    ...    Generate the file name based on service name, test case, input key/value pairs and playback side designation --- default to A side
     ...
-    ...    Example: TDDS_BDDS-MyTestName-FH=TDDS01F.pcap TDDS_BDDS-TransientGap-FH=TDDS01F.pcap
-    ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}
-    ${pcapFileName} =    Catenate    SEPARATOR=    ${pcapFileName}    .pcap
+    ...    Example:
+    ...    MFDS-Testcase-B.pcap
+    ...    TDDS_BDDS-MyTestName-FH=TDDS01F-A.pcap
+    ...    TDDS_BDDS-TransientGap-FH=TDDS01F-A.pcap
+    ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}    ${playbackBindSide}
+    ${pcapFileName} =    Catenate    SEPARATOR=    ${PLAYBACK_PCAP_DIR}    ${pcapFileName}    .pcap
+    ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
+
+Get Playback NIC For PCAP File
+    [Arguments]    ${pcapFile}
+    ${partialFile}=    Fetch From Right    ${pcapFile}    -
+    ${sideInfo}    Fetch From Left    ${partialFile}    .
+    ${uppercaseName} =    Convert To Uppercase    ${sideInfo}
+    ${nicBindTo}    Run Keyword If    '${uppercaseName}' == 'A'    set variable    ${PLAYBACK_BIND_IP_A}
+    ...    ELSE IF    '${uppercaseName}' == 'B'    set variable    ${PLAYBACK_BIND_IP_B}
+    ...    ELSE    Fail    pcap file name must end with Side designation, e.g. service-testcase-A.pcap or service-testcase-B.pcap
+    ${intfName}=    get interface name by ip    ${nicBindTo}
+    Should Not be Empty    ${intfName}
+    [Return]    ${intfName}
 
 Get ConnectTimesIdentifier
     [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
@@ -292,13 +322,12 @@ Inject PCAP File on UDP
     ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
     ${host}=    get current connection index
     Switch Connection    ${Playback_Session}
-    ${intfName}=    get interface name by ip    ${PLAYBACK_BIND_IP_A}
-    Should Not be Empty    ${intfName}
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
-    \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} ${pcapFile}    return_rc=True
+    \    ${intfName}    Get Playback NIC For PCAP File    ${pcapFile}
+    \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'    return_rc=True
     \    Should Be Equal As Integers    ${rc}    0
-    Switch Connection    ${host}
+    [Teardown]    Switch Connection    ${host}
 
 Load All EXL Files
     [Arguments]    ${service}    ${headendIP}    @{optargs}
@@ -327,16 +356,49 @@ Manual ClosingRun for ClosingRun Rics
     \    ...    --RIC ${closingrunRicName}    --Services ${serviceName}    --Domain MARKET_PRICE    --ClosingRunOperation Invoke    --HandlerName ${MTE}
     \    wait SMF log message after time    ClosingRun.*?CloseItemGroup.*?Found [0-9]* closeable items out of [0-9]* items    ${currentDateTime}    2    60
 
+Manual ClosingRun for a RIC
+    [Arguments]    ${sampleRic}    ${publishKey}    ${domain}
+    Start Capture MTE Output
+    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    Close    --RIC ${sampleRic}
+    ...    --Domain ${domain}
+    Wait For Persist File Update
+    Stop Capture MTE Output
+    ${localcapture}    set variable    ${LOCAL_TMP_DIR}/capture_local.pcap
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
+    Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${publishKey}
+    remove files    ${localcapture}
+    delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
+
 Persist File Should Exist
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
     Comment    Currently, GATS does not provide the Venue name, so the pattern matching Keywords must be used. If GATS provides the Venue name, then "remote file should not exist" Keywords could be used here.
 
+Reset Sequence Numbers
+    [Documentation]    Reset the FH, GRS, and MTE sequence numbers.
+    ...    Currently this is done by stopping and starting the components and deleting the PERSIST files.
+    ...    If/when a hook is provided to reset the sequence numbers without restarting the component, it should be used.
+    ...
+    ...    This KW also waits for any publishing due to the MTE restart/reorg to complete.
+    ${currDateTime}    get date and time
+    Stop MTE
+    Stop Process    GRS
+    Stop Process    FHController
+    Delete Persist Files
+    Start Process    GRS
+    Start Process    FHController
+    Start MTE
+    Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
+    Comment    We don't capture the output file, but this waits for publishing to complete
+    Wait For Capture To Complete    ${MTE}
+
 Send TRWF2 Refresh Request
-    [Arguments]    ${ric}    ${domain}
+    [Arguments]    ${ric}    ${domain}    @{optargs}
     [Documentation]    Call DataView to send TRWF2 Refresh Request to MTE.
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
+    Comment    LabelID may be different across machines, so make sure we have config file for this machine.
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
     ${localVenueConfig}=    get MTE config file
     ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
@@ -356,9 +418,42 @@ Send TRWF2 Refresh Request
     \    Should Be Equal As Integers    ${length}    2
     \    ${length} =    Get Length    ${interfaceIPandPort}
     \    Should Be Equal As Integers    ${length}    2
-    \    ${res}=    run dataview    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]
+    \    ${res}=    Run Dataview    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]
     \    ...    ${lineID}    ${ric}    ${domain}    -REF    -IMSG ${reqMsgMultcastAddres[0]}
-    \    ...    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10
+    \    ...    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10    @{optargs}
+    Remove Files    ${labelfile}    ${updatedlabelfile}
+    [Return]    ${res}
+
+Send TRWF2 Refresh Request No Blank FIDs
+    [Arguments]    ${ric}    ${domain}    @{optargs}
+    [Documentation]    Call DataView to send TRWF2 Refresh Request to MTE.
+    ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
+    ...    FIDs with blank value will be excluded
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
+    Comment    LabelID may be different across machines, so make sure we have config file for this machine.
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
+    ${localVenueConfig}=    get MTE config file
+    ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
+    Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
+    ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
+    get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
+    ${updatedlabelfile}=    set variable    ${LOCAL_TMP_DIR}/updated_reqLabel.xml
+    remove_xinclude_from_labelfile    ${labelfile}    ${updatedlabelfile}
+    @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
+    : FOR    ${labelID}    IN    @{labelIDs}
+    \    ${reqMsgMultcastAddres}=    get multicast address from label file    ${updatedlabelfile}    ${labelID}
+    \    ${lineID}=    get_stat_block_field    ${MTE}    multicast-${labelID}    publishedLineId
+    \    ${multcastAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    multicastOutputAddress
+    \    ${interfaceAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    primaryOutputAddress
+    \    @{multicastIPandPort}=    Split String    ${multcastAddres}    :    1
+    \    @{interfaceIPandPort}=    Split String    ${interfaceAddres}    :    1
+    \    ${length} =    Get Length    ${multicastIPandPort}
+    \    Should Be Equal As Integers    ${length}    2
+    \    ${length} =    Get Length    ${interfaceIPandPort}
+    \    Should Be Equal As Integers    ${length}    2
+    \    ${res}=    Run Dataview Noblanks    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]
+    \    ...    ${lineID}    ${ric}    ${domain}    -REF    -IMSG ${reqMsgMultcastAddres[0]}
+    \    ...    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10    @{optargs}
     Remove Files    ${labelfile}    ${updatedlabelfile}
     [Return]    ${res}
 
@@ -403,14 +498,14 @@ Set Mangling Rule
     ...    Remark :
     ...    Current avaliable valid value for \ ${rule} : SOU, BETA, RRG \ or UNMANGLED
     ...    The KW would restore the config file to original value, but it would rely on user to calling KW : Load Mangling Settings to carry out the restore action at the end of their test case
-    @{files}=    backup cfg file    ${VENUE_DIR}    ${configFile}
+    @{files}=    backup remote cfg file    ${VENUE_DIR}    ${configFile}
     ${configFileLocal}=    Get Mangling Config File
     set mangling rule default value    ${rule}    ${configFileLocal}
     set mangling rule parition value    ${rule}    ${Empty}    ${configFileLocal}
     delete remote files    @{files}[0]
     put remote file    ${configFileLocal}    @{files}[0]
     Run Keyword And Continue On Failure    Load Mangling Settings
-    restore cfg file    @{files}
+    restore remote cfg file    @{files}
     Comment    Revert changes in local mangling config file
     Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${None}
     ${configFileLocal}=    Get Mangling Config File
@@ -454,6 +549,13 @@ Start MTE
     wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
     Wait For FMS Reorg
 
+Start Process
+    [Arguments]    ${process}
+    [Documentation]    Start process, argument is the process name
+    run commander    process    start ${process}
+    wait for process to exist    ${process}
+    wait for StatBlock    CritProcMon    ${process}    m_IsAvailable    1
+
 Stop Capture MTE Output
     [Arguments]    ${waittime}=5    ${timeout}=300
     [Documentation]    Stop catpure MTE output
@@ -463,6 +565,12 @@ Stop Capture MTE Output
 Stop MTE
     run commander    process    stop ${MTE}
     wait for process to not exist    MTE -c ${MTE}
+
+Stop Process
+    [Arguments]    ${process}
+    [Documentation]    Stop process, argument is the process name
+    run commander    process    stop ${process}
+    wait for process to not exist    ${process}
 
 Validate MTE Capture Against FIDFilter
     [Arguments]    ${pcapfile}    ${contextId}    ${constit}
