@@ -380,6 +380,9 @@ Reset Sequence Numbers
     ...    If/when a hook is provided to reset the sequence numbers without restarting the component, it should be used.
     ...
     ...    This KW also waits for any publishing due to the MTE restart/reorg to complete.
+    ...
+    ...    Note: several test cases need to stop and restart MTE to load new configuration file, for example 'Empty Payload Detection with Blank FIDFilter'
+    ...    'Empty Payload Detection with Blank TCONF'. Stopping MTE, deleting persist file, and starting MTE need to be added to those test cases when the new 'reset sequence numbers' is implemented.
     ${currDateTime}    get date and time
     Stop MTE
     Stop Process    GRS
