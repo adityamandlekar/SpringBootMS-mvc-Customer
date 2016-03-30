@@ -3064,36 +3064,4 @@ class LocalBoxUtilities(_ToolUtil):
                 file_content = file_content + item + '\n'
                 
         return file_content
-
-    def check_PE_in_icf_file(self, srcfile, *ExpectPENum  ):
-        """to Check the value of FID PROD_PERM in icf file 
-         
-        Argument:    
-                srcfile : the icf file.\n
-                *ExpectPENum  : the expected PE number list
-        
-        return:
-                Fidlist : nil or the error infor  
-        Examples :
-        
-            |  @{expected_pe}  |  Create List  |  4128  |  4245  |  4247
-            | check PE in icf file   | ${otfcExtractFile}  |  @{expected_pe}  
-        """
-        dom = xml.dom.minidom.parse(srcfile)  
-        root = dom.documentElement  
-        iteratorlist = dom.getElementsByTagName('r')     
-        Fidlist= []    
-        fidCount = 0
-                
-        for node in iteratorlist:
-            for subnode in node.childNodes:
-                if subnode.nodeType == node.ELEMENT_NODE and subnode.nodeName == 'it:PROD_PERM' :
-                    curPE =  subnode.firstChild.data   
-                    for PENum in ExpectPENum: 
-                        if curPE ==  PENum :
-                           return
-                    raise AssertionError('*ERROR* the current PE number in icf file is %s , not %s'%(curPE, PENum))   
-        
-        
-        raise AssertionError('*ERROR* not enough REAL type Fids found in icf file %s'%(srcfile))   
- 
+    

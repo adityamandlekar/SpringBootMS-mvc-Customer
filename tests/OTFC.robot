@@ -1,42 +1,37 @@
 *** Settings ***
 Suite Setup       Suite Setup with Playback
+Suite Teardown    Suite Teardown
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
 *** Test Cases ***
 OTFC PE and RIC mangling
-    [Documentation]    For OTFC RIC, PE mangling and RIC mangling still works, it includes below scenario:
-    ...    a.	Mangled PE + Prefix ![ mangling
-    ...    b.	Non-mangled PE + Prefix !! mangling
-    ...    1. Change to Elektron SOU stage
-    ...    2. Inject PCAP
-    ...    3. Check OTFC log
-    ...    4. Get an OTFC RIC
-    ...    5. Check the Prefix mangling
-    ...    6. Check the PE
-    ...    7. Change to Elektron RRG
-    ...    8. Check the Prefix mangling
-    ...    9. Fallback the mangling setting
-    Start MTE
+    [Documentation]    Verify PE and RIC mangling for OTFC RICs:
+    ...    a. SOU Phase: Mangled PE and Mangled RIC (![ mangling)
+    ...    b. RRG Phase: Non-mangled PE and Mangled RIC (!! mangling)
+    [Setup]    OTFC Setup
     Set Mangling Rule    SOU
     @{expected_pe}    Create List    4128    4245    4247
+    ${expected_RicPrefix}    set variable    ![
     ${domain}    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${currDateTime}    get date and time
-    ${otfcExtractFile}    set variable    ${LOCAL_TMP_DIR}/otfcExtractFile.icf
-    Inject PCAP in TCP    ${PLAYBACK_PCAP_DIR}
-    ${Ric}    wait and get OTFC RIC from smf    ${MTE}.+Created on-the-fly Real-time    ${currDateTime}
-    ${Ric}    ${pubRic}    Run Keyword And Continue On Failure    Verify RIC In MTE Cache    ${Ric}
-    ${mangelPrefix}    Remove String    ${pubRic}    ${Ric}
-    should be equal    ${mangelPrefix}    ![
-    extract icf    ${Ric}    ${domain}    ${otfcExtractFile}    ${serviceName}
-    check PE in icf file    ${otfcExtractFile}    @{expected_pe}
+    ${pcapFile}=    Generate PCAP File Name    ${serviceName}    OTFC
+    Reset Sequence Numbers
+    Inject PCAP File on UDP    ${pcapFile}
+    ${otfRicListAfterPlayback}=    get otf rics from cahce    ${domain}
+    ${Ric}=    set variable    ${otfRicListAfterPlayback[1]['RIC']}
+    ${output}    Send TRWF2 Refresh Request    ${expected_RicPrefix}${Ric}    ${domain}
+    verify mangling from dataview response    ${output}    ${expected_pe}    ${expected_RicPrefix}${Ric}
     Set Mangling Rule    RRG
-    ${Ric}    ${pubRic}    Run Keyword And Continue On Failure    Verify RIC In MTE Cache    ${Ric}
-    ${mangelPrefix}    Remove String    ${pubRic}    ${Ric}
-    should be equal    ${mangelPrefix}    !!
-    Load Mangling Settings
-    [Teardown]    case teardown    ${PLAYBACK_PCAP_DIR}
+    ${exlfile}=    Get EXL For RIC    ${domain}    ${serviceName}    ${Ric}
+    @{pe}=    get ric fields from EXL    ${exlfile}    ${Ric}    PROD_PERM
+    ${expected_pe}=    set variable    @{pe}[0]
+    ${expected_RicPrefix}    set variable    !!
+    Reset Sequence Numbers
+    Inject PCAP File on UDP    ${pcapFile}
+    ${output}    Send TRWF2 Refresh Request    ${expected_RicPrefix}${Ric}    ${domain}
+    verify mangling from dataview response    ${output}    ${expected_pe}    ${expected_RicPrefix}${Ric}
+    [Teardown]    OTFC Teardown
 
 OTFC Persistence
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1999
@@ -51,7 +46,7 @@ OTFC Persistence
     @{otfRicListBeforePlayback}=    get otf rics from cahce    ${preferredDomain}
     Should Be Empty    ${otfRicListBeforePlayback}    OTFC item found before starting playback
     Comment    Start Playback
-    ${pcapFile}=    Generate PCAP File Name    ${serviceName}    ${TEST NAME}
+    ${pcapFile}=    Generate PCAP File Name    ${serviceName}    OTFC
     Inject PCAP File on UDP    ${pcapFile}
     @{otfRicListAfterPlayback}=    get otf rics from cahce    ${preferredDomain}
     Comment    Verify OTFC has saved to MTE cache
@@ -63,7 +58,7 @@ OTFC Persistence
     ${NoOfOTFAfterRestart}    Get Length    ${otfRicListAfterRestart}
     Comment    Verify OTFC has saved to persist file and also can recreated from persist file after restart MTE
     Should Be Equal    ${NoOfOTFAfterPlayback}    ${NoOfOTFAfterRestart}    Number of OTFC items is different after restart i.e. not all OTFC items successful loaded from persist file
-    [Teardown]    OTFC Teardown    ${serviceName}
+    [Teardown]    OTFC Teardown
 
 *** Keywords ***
 Start MTE for OTFC
@@ -85,7 +80,6 @@ Start MTE for OTFC
     wait for HealthCheck    ${MTE}    IsConnectedToSCW
 
 OTFC Teardown
-    [Arguments]    ${serviceName}
     [Documentation]    Before end the test we
     ...    1. restore MTE config file
     ...    2. delete persist file and trigger reconcile one more time. (to restore the cache to original status)
