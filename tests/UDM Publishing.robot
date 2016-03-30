@@ -12,12 +12,11 @@ Empty Payload Detection with Blank FIDFilter
     ${fileList}=    backup remote cfg file    ${VENUE_DIR}    FIDFilter.txt
     ${fidfilterFile}    set variable    ${fileList[0]}
     ${fidfilterBackup}    set variable    ${fileList[1]}
-    Stop MTE
     ${emptyContent}=    set variable    ${EMPTY}
     Create Remote File Content    ${fidfilterFile}    ${emptyContent}
-    Delete Persist Files and Restart MTE
+    Reset Sequence Numbers
     ${service}    Get FMS Service Name
-    ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
+    ${pcapFileName} =    Generate PCAP File Name    ${service}    General RIC Update
     Run Keyword And Continue On Failure    Verify No Realtime Update    ${pcapFileName}
     Stop MTE
     Restore Remote and Restart MTE    ${fidfilterFile}    ${fidfilterBackup}
@@ -33,13 +32,12 @@ Empty Payload Detection with Blank TCONF
     ${remoteConfigBackup}    set variable    ${fileList[1]}
     ${rmtCfgPath}    ${rmtCfgFile}    Split Path    ${remoteConfig}
     ${rmtCfgPath}=    Replace String    ${rmtCfgPath}    \\    /
-    Stop MTE
     ${remoteEmptyTconf}    set variable    ${rmtCfgPath}/emptyTconf.tconf
     Create Remote File Content    ${remoteEmptyTconf}    //empty file
     Set Value in MTE cfg    ${remoteConfig}    TransformConfig    emptyTconf.tconf
-    Delete Persist Files and Restart MTE
+    Reset Sequence Numbers
     ${service}    Get FMS Service Name
-    ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
+    ${pcapFileName} =    Generate PCAP File Name    ${service}    General RIC Update
     Run Keyword And Continue On Failure    Verify No Realtime Update    ${pcapFileName}
     Stop MTE
     Restore Remote and Restart MTE    ${remoteConfig}    ${remoteConfigBackup}
@@ -284,7 +282,8 @@ Verify TRWF Update Type
     ...    Trigger normal closing run via FMS and verify the normal closing run update has update type "Closing Run"
     ${service}    Get FMS Service Name
     Verify FMS Correction Update    ${service}
-    ${pcapFileName} =    Generate PCAP File Name    ${service}    ${TEST NAME}
+    ${pcapFileName} =    Generate PCAP File Name    ${service}    General RIC Update
+    Reset Sequence Numbers
     Verify Realtime Update    ${pcapFileName}
     ${domain}    Get Preferred Domain
     ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}
