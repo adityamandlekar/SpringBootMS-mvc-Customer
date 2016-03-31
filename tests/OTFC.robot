@@ -19,7 +19,8 @@ OTFC PE and RIC mangling
     Reset Sequence Numbers
     Inject PCAP File on UDP    ${pcapFile}
     ${otfRicListAfterPlayback}=    get otf rics from cahce    ${domain}
-    ${Ric}=    set variable    ${otfRicListAfterPlayback[1]['RIC']}
+    Should Not Be Empty    ${otfRicListAfterPlayback}    No OTF RICs exist in cache
+    ${Ric}=    set variable    ${otfRicListAfterPlayback[0]['RIC']}
     ${output}    Send TRWF2 Refresh Request    ${expected_RicPrefix}${Ric}    ${domain}
     verify mangling from dataview response    ${output}    ${expected_pe}    ${expected_RicPrefix}${Ric}
     Set Mangling Rule    RRG
@@ -41,22 +42,21 @@ OTFC Persistence
     [Setup]    OTFC Setup
     ${serviceName}=    Get FMS Service Name
     ${preferredDomain}=    Get Preferred Domain
-    Comment    Inject FMS file assoicate with playback test pcap file
-    Load All EXL Files    ${serviceName}    ${CHE_IP}
+    ${pcapFile}=    Generate PCAP File Name    ${serviceName}    OTFC
+    Reset Sequence Numbers
+    Comment    Verify no OTFC \ in MTE Cache at beginning
     @{otfRicListBeforePlayback}=    get otf rics from cahce    ${preferredDomain}
     Should Be Empty    ${otfRicListBeforePlayback}    OTFC item found before starting playback
-    Comment    Start Playback
-    ${pcapFile}=    Generate PCAP File Name    ${serviceName}    OTFC
     Inject PCAP File on UDP    ${pcapFile}
     @{otfRicListAfterPlayback}=    get otf rics from cahce    ${preferredDomain}
     Comment    Verify OTFC has saved to MTE cache
     Should Not Be Empty    ${otfRicListAfterPlayback}    No OTFC items created or saved to persist file after playback completed
+    Comment    Verify OTFC has saved to persist file and also can recreated from persist file after restart MTE
     Stop MTE
     Start MTE for OTFC
     @{otfRicListAfterRestart}=    get otf rics from cahce    ${preferredDomain}
     ${NoOfOTFAfterPlayback}    Get Length    ${otfRicListAfterPlayback}
     ${NoOfOTFAfterRestart}    Get Length    ${otfRicListAfterRestart}
-    Comment    Verify OTFC has saved to persist file and also can recreated from persist file after restart MTE
     Should Be Equal    ${NoOfOTFAfterPlayback}    ${NoOfOTFAfterRestart}    Number of OTFC items is different after restart i.e. not all OTFC items successful loaded from persist file
     [Teardown]    OTFC Teardown
 
