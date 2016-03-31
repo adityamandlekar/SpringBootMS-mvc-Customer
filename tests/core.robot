@@ -331,7 +331,7 @@ Inject PCAP File on TCP
     \    remote file should exist    ${pcapFile}
     \    ${stdout}    ${rc}    execute_command    PCapPlybk -ifile ${pcapFile} -intf ${PLAYBACK_MACHINE_IP} -port ${PLAYBACK_TCP_PORT} -sendmode tcp -tcpclients 1    return_rc=True
     \    Should Be Equal As Integers    ${rc}    0
-    Switch Connection    ${host}
+    [Teardown]    Switch Connection    ${host}
 
 Inject PCAP File on UDP
     [Arguments]    @{pcapFileList}
