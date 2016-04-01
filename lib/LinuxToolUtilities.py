@@ -415,7 +415,7 @@ class LinuxToolUtilities():
     def get_otf_rics_from_cahce(self,domain):
         """Checking how many otf item found in MTE cache dump
         
-        Returns a list of dictionaries for OTF items (within each dictionary, it has DOMAIN, PUBLISH_KEY, OTF_STATUS fields)
+        Returns a list of dictionaries for OTF items (within each dictionary, it has RIC, DOMAIN, PUBLISH_KEY, OTF_STATUS fields)
 
         Examples:
         | get otf rics from cache  | MARKET_BY_PRICE 
@@ -464,7 +464,7 @@ class LinuxToolUtilities():
                 if headerList[i] == 'DOMAIN':
                     newdomain = self._convert_cachedomain_to_normal_format(values[i]) 
                     fieldDict[headerList[i]] = newdomain
-                elif (headerList[i] == 'PUBLISH_KEY' or headerList[i] == 'OTF_STATUS'):
+                elif (headerList[i] == 'RIC' or headerList[i] == 'PUBLISH_KEY' or headerList[i] == 'OTF_STATUS'):
                     fieldDict[headerList[i]] = values[i]
                
             result.append(fieldDict)
@@ -1602,3 +1602,4 @@ class LinuxToolUtilities():
         stdout, stderr, rc = _exec_command(cmd)
         if rc !=0:
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+ 

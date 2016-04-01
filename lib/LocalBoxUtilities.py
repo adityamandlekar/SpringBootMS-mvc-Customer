@@ -3064,3 +3064,4 @@ class LocalBoxUtilities(_ToolUtil):
                 file_content = file_content + item + '\n'
                 
         return file_content
+    
