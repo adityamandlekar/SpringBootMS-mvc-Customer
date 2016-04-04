@@ -37,7 +37,7 @@ MTE Start of Day Recovery
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1990
     ${service}=    Get FMS Service Name
-    ${injectFile}=    Generate PCAP File Name    ${service}    ${TEST NAME}
+    ${injectFile}=    Generate PCAP File Name    ${service}    General RIC Update
     ${domain}=    Get Preferred Domain
     Reset Sequence Numbers
     ${remoteCapture}=    Inject File and Wait for Output    ${injectFile}

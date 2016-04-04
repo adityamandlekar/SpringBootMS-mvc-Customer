@@ -124,6 +124,12 @@ Dump Persist File To XML
     Remove Files    ${localPersistFile}
     [Return]    ${pmatXmlDumpfile}
 
+Extract ICF
+    [Arguments]    ${ric}    ${domain}    ${extractFile}    ${serviceName}
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    extract    --RIC ${ric}
+    ...    --Domain ${domain}    --ExcludeNullFields true    --HandlerName ${MTE}    --OutputFile ${extractFile}    --Services ${serviceName}
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+
 Generate PCAP File Name
     [Arguments]    ${service}    ${testCase}    ${playbackBindSide}=A    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
@@ -325,6 +331,18 @@ Get RIC List From StatBlock
     Return from keyword if    '${ricType}'=='Trade Time'    ${ricList}
     FAIL    RIC not found. Valid choices are: 'Closing Run', 'DST', 'Feed Time', 'Holiday', 'Trade Time'
 
+Inject PCAP File on TCP
+    [Arguments]    @{pcapFileList}
+    [Documentation]    Use PcapPlybk to inject TCP Pcap
+    ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
+    ${host}=    get current connection index
+    Switch Connection    ${Playback_Session}
+    : FOR    ${pcapFile}    IN    @{pcapFileList}
+    \    remote file should exist    ${pcapFile}
+    \    ${stdout}    ${rc}    execute_command    PCapPlybk -ifile ${pcapFile} -intf ${PLAYBACK_MACHINE_IP} -port ${PLAYBACK_TCP_PORT} -sendmode tcp -tcpclients 1    return_rc=True
+    \    Should Be Equal As Integers    ${rc}    0
+    [Teardown]    Switch Connection    ${host}
+
 Inject PCAP File on UDP
     [Arguments]    @{pcapFileList}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-72
@@ -338,6 +356,12 @@ Inject PCAP File on UDP
     \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'    return_rc=True
     \    Should Be Equal As Integers    ${rc}    0
     [Teardown]    Switch Connection    ${host}
+
+Insert ICF
+    [Arguments]    ${insertFile}    ${serviceName}
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    insert    --InputFile ${insertFile}
+    ...    --HandlerName ${MTE}    --Services ${serviceName}
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
 Load All EXL Files
     [Arguments]    ${service}    ${headendIP}    @{optargs}
@@ -390,6 +414,9 @@ Reset Sequence Numbers
     ...    If/when a hook is provided to reset the sequence numbers without restarting the component, it should be used.
     ...
     ...    This KW also waits for any publishing due to the MTE restart/reorg to complete.
+    ...
+    ...    Note: several test cases need to stop and restart MTE to load new configuration file, for example 'Empty Payload Detection with Blank FIDFilter'
+    ...    'Empty Payload Detection with Blank TCONF'. Stopping MTE, deleting persist file, and starting MTE need to be added to those test cases when the new 'reset sequence numbers' is implemented.
     ${currDateTime}    get date and time
     Stop MTE
     Stop Process    GRS

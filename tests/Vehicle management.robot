@@ -255,21 +255,21 @@ Verify FMS Extract and Insert
     ${afterExtractFile}    set variable    ${LOCAL_TMP_DIR}/afterExtractFile.icf
     ${beforeLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localBefore.pcap
     ${afterLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localAfter.pcap
-    Extract icf    ${ric}    ${domain}    ${beforeExtractFile}    ${serviceName}
+    Extract ICF    ${ric}    ${domain}    ${beforeExtractFile}    ${serviceName}
     ${FidList}    get REAL Fids in icf file    ${beforeExtractFile}    3
     ${newFidNameValue}    ${newFidNumValue}    Create Fid Value Pair    ${FidList}
     ${iniFidNameValue}    ${iniFidNumValue}    Create Fid Value Pair    ${FidList}
     Comment    //set FID 'before' values
     modify REAL items in icf    ${beforeExtractFile}    ${beforeExtractFile}    ${ric}    ${domain}    ${iniFidNameValue}
     Start Capture MTE Output
-    Insert icf    ${beforeExtractFile}    ${serviceName}
+    Insert ICF    ${beforeExtractFile}    ${serviceName}
     Stop Capture MTE Output    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${beforeLocalPcap}
     ${initialAllFidsValues}    get FidValue in message    ${beforeLocalPcap}    ${pubRic}    UPDATE
     Comment    //set FID 'after' values
     modify REAL items in icf    ${beforeExtractFile}    ${afterExtractFile}    ${ric}    ${domain}    ${newFidNameValue}
     Start Capture MTE Output
-    Insert icf    ${afterExtractFile}    ${serviceName}
+    Insert ICF    ${afterExtractFile}    ${serviceName}
     Stop Capture MTE Output    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${afterLocalPcap}
     ${newAllFidsValues}    get FidValue in message    ${afterLocalPcap}    ${pubRic}    UPDATE
@@ -387,18 +387,6 @@ rebuild ric
     [Arguments]    ${serviceName}    ${ric}    ${domain}
     ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    rebuild    --RIC ${ric}
     ...    --Domain ${domain}    --HandlerName ${MTE}    --Services ${serviceName}
-    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
-
-Extract icf
-    [Arguments]    ${ric}    ${domain}    ${extractFile}    ${serviceName}
-    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    extract    --RIC ${ric}
-    ...    --Domain ${domain}    --ExcludeNullFields false    --HandlerName ${MTE}    --OutputFile ${extractFile}    --Services ${serviceName}
-    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
-
-Insert icf
-    [Arguments]    ${insertFile}    ${serviceName}
-    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    insert    --InputFile ${insertFile}
-    ...    --HandlerName ${MTE}    --Services ${serviceName}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
 Drop ric

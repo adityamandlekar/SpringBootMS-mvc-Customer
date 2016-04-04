@@ -415,7 +415,7 @@ class LinuxToolUtilities():
     def get_otf_rics_from_cahce(self,domain):
         """Checking how many otf item found in MTE cache dump
         
-        Returns a list of dictionaries for OTF items (within each dictionary, it has DOMAIN, PUBLISH_KEY, OTF_STATUS fields)
+        Returns a list of dictionaries for OTF items (within each dictionary, it has RIC, DOMAIN, PUBLISH_KEY, OTF_STATUS fields)
 
         Examples:
         | get otf rics from cache  | MARKET_BY_PRICE 
@@ -464,7 +464,7 @@ class LinuxToolUtilities():
                 if headerList[i] == 'DOMAIN':
                     newdomain = self._convert_cachedomain_to_normal_format(values[i]) 
                     fieldDict[headerList[i]] = newdomain
-                elif (headerList[i] == 'PUBLISH_KEY' or headerList[i] == 'OTF_STATUS'):
+                elif (headerList[i] == 'RIC' or headerList[i] == 'PUBLISH_KEY' or headerList[i] == 'OTF_STATUS'):
                     fieldDict[headerList[i]] = values[i]
                
             result.append(fieldDict)
@@ -1150,6 +1150,7 @@ class LinuxToolUtilities():
                      <NumberOfDailyBackupsToKeep type="ul">5</NumberOfDailyBackupsToKeep>
                   </DDS>
                  </Persistence>
+                 
         """         
         #Find configuration file
         LinuxFSUtilities().remote_file_should_exist(mtecfgfile)
@@ -1160,12 +1161,20 @@ class LinuxToolUtilities():
         if (len(foundlines) == 0):
             raise AssertionError('*ERROR* <%s> tag is missing in %s' %(tagName, mtecfgfile))
 
-        cmd = "sed -i 's/\(<%s[^>]*>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value)
-        cmd = cmd + mtecfgfile
-        stdout, stderr, rc = _exec_command(cmd)
+        # match tags with attributes, e.g.
+        # <NumberOfDailyBackupsToKeep type="ul">3</NumberOfDailyBackupsToKeep>
+        cmd_match_tag_with_attributes = "sed -i 's/\(<%s [^>]*>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value) + mtecfgfile
+        # match exact tag name, e.g.
+        #<TransformConfig>C4652_OB.tconf</TransformConfig> but not  <TransformConfigOptimized>true</TransformConfigOptimized>
+        cmd_match_tag_only = "sed -i 's/\(<%s>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value) + mtecfgfile
         
+        stdout, stderr, rc = _exec_command(cmd_match_tag_with_attributes)
         if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))   
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_with_attributes,rc,stdout,stderr))   
+        
+        stdout, stderr, rc = _exec_command(cmd_match_tag_only)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_only,rc,stdout,stderr)) 
     
     def generate_persistence_backup(self, keepDays):
         """ based on the no. of keeping days generate dummy persistence backup files 
@@ -1593,3 +1602,4 @@ class LinuxToolUtilities():
         stdout, stderr, rc = _exec_command(cmd)
         if rc !=0:
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+ 
