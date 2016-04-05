@@ -180,16 +180,11 @@ Verify DDS RIC is published
     [Documentation]    Verify DDS RIC is published
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1758
-    ${FiveZeros}=    set variable    00000
     ${mteConfigFile}=    Get MTE Config File
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
     : FOR    ${labelID}    IN    @{labelIDs}
-    \    ${Length}=    Get Length    ${label_ID}
-    \    ${OffSet}=    Evaluate    5 - ${Length}
-    \    ${ZeroPaddedLableID}=    Get Substring    ${FiveZeros}    0    ${OffSet}
-    \    ${ZeroPaddedLableID}=    Catenate    SEPARATOR=    ${ZeroPaddedLableID}    ${label_ID}
-    \    ${published_DDS_ric}=    set variable    .[----${MTE}${ZeroPaddedLableID}
+    \    ${published_DDS_ric}=    Get DDS RIC    ${MTE}    ${labelID}    0
     \    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     \    Start Capture MTE Output    ${remoteCapture}
     \    Stop Capture MTE Output    11    11
@@ -293,6 +288,29 @@ Verify TRWF Update Type
 Delete Persist Files and Restart MTE
     Delete Persist Files
     Start MTE
+
+Get DDS RIC
+    [Arguments]    ${mte}    ${labelID}    ${instance}
+    ${mteLength}=    Get Length    ${mte}
+    Should Be True    ${mteLength} > 0 and ${mteLength} <= 10    Length of MTE should be greater than 0 and less than or equal to 10
+    ${fiveHyphens}=    Set Variable    -----
+    ${mteLeadingOffSet}=    Evaluate    10 - ${mteLength}
+    ${mteLeadingOffSet}=    Set Variable If    ${mteLength} > 6    ${mteLeadingOffSet}    4
+    ${mteTrailingOffSet}=    Evaluate    6 - ${mteLength}
+    ${mteTrailingOffSet}=    Set Variable If    ${mteLength} < 6    ${mteTrailingOffSet}    0
+    ${mteLeadingHyphens}=    Get Substring    ${fiveHyphens}    0    ${mteLeadingOffSet}
+    ${mteTrailingHyphens}=    Get Substring    ${fiveHyphens}    0    ${mteTrailingOffSet}
+    ${hyphenPaddedMte}=    Catenate    SEPARATOR=${mte}    ${mteLeadingHyphens}    ${mteTrailingHyphens}
+    ${instanceLength}    Get Length    ${instance}
+    Should Be True    ${instanceLength} == 1    Length of instance should be equal to 1
+    ${labelLength}=    Get Length    ${labelID}
+    Should Be True    ${labelLength} > 0 and ${labelLength} <= 4    Length of label ID should be greater than 0 and less than or equal to 4
+    ${fourZeros}=    Set Variable    0000
+    ${labelOffSet}=    Evaluate    4 - ${labelLength}
+    ${zeroPaddedLabelID}=    Get Substring    ${fourZeros}    0    ${labelOffSet}
+    ${zeroPaddedLabelID}=    Catenate    SEPARATOR=    ${zeroPaddedLabelID}    ${labelID}
+    ${publishedDDSRic}=    Set Variable    .[${hyphenPaddedMte}${instance}${zeroPaddedLabelID}
+    [Return]    ${publishedDDSRic}
 
 Restore Remote and Restart MTE
     [Arguments]    ${remoteFile}    ${remoteBackupFile}
