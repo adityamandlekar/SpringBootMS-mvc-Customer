@@ -35,19 +35,3 @@ LOCAL_FMS_DIR    = 'D:\\tools\\FMSCMD\\config\\DataFiles\\Groups'
 LOCAL_FMS_BIN    = 'D:\\tools\\FMSCMD\\bin'
 LOCAL_SCWCLI_BIN = 'D:\\tools\\SCWatchdog_v1.7.0'
 LOCAL_TMP_DIR    = 'D:\\temp'
-
-CHE_A_IP       = '10.32.25.96'
-USERNAME       = 'root'
-PASSWORD       = 'vagrant'
-MTE            = 'HKF03M'
-FH             = 'HKF01F'
-
-LOCAL_FMS_DIR    = 'E:\\FunctionalTestDev\\Tools\\FmsCmd\\2.3.0.3\\config\\DataFiles\\Groups'
-LOCAL_FMS_BIN    = 'E:\\FunctionalTestDev\\Tools\\FmsCmd\\2.3.0.3\\bin'
-LOCAL_SCWCLI_BIN = 'E:\\FunctionalTestDev\\Tools\\SCWatchdog_v1.7.0'
-LOCAL_TMP_DIR    = 'E:\\FunctionalTestDev\\temp\\daphne'
-
-#VM01 - JSDA
-# CHE_A_IP       = '10.32.25.98'
-# CHE_IP         = CHE_A_IP
-# MTE            = 'JSDA01M'
