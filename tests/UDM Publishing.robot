@@ -180,6 +180,32 @@ Verify DDS RIC is published
     [Documentation]    Verify DDS RIC is published
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1758
+    ...
+    ...    Verify DDS RIC is published test fails because it does not conform to DUDT DN
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2031
+    ...
+    ...    DDN124 v3.3
+    ...    https://theshare.thomsonreuters.com/sites/rttal/_layouts/WordViewer.aspx?id=/sites/rttal/Shared%20Documents/ERT%20Design%20Notes/DN124-DDS%20DUDT%20status%20instruments/DDN%20DN124%20-%20DUDT.docx&Source=https%3A%2F%2Ftheshare%2Ethomsonreuters%2Ecom%2Fsite
+    ...
+    ...    The following defines the key structure of all new status instrument items.
+    ...    The key structure is designed so that consuming applications can, if required, ‘slice’ the key at known positions to break it down into its constituents.
+    ...
+    ...    1. Prefix
+    ...    2 fixed characters to prefix status instruments. This is ‘off limits’ as a prefix to any product instrument keys and \ \ \ \ serves to indicate that the instrument is status, not product, data. The prefix for all status instrument keys should \ \ \ \ be ‘.[’ \ = \ ASCI 46 & 91 \ = \ Full Stop & Open Square bracket.
+    ...
+    ...    2. LH/EDF/MTE
+    ...    10 characters specifiying the Line Handler/EDF/MTE on the particular system (EG. 'LSEFTS', ‘TIF’). \ \ If length is \ \ \ equal or less than 6, then start at 5th byte, otherwise right justified. \ Unused characters are filled as hyphen. \ \ \ \ (This strange behaviour is aimed to be backward compatible). \ Below are examples:
+    ...    - 3 characters name ‘TIF’, it is filled as ‘----TIF---‘
+    ...    - 6 characters name ‘LSEFTS’, it is filled as ‘----LSEFTS’.
+    ...    - 7 characters name ‘TDDS01M ‘, it is filled as ‘---TDDS01M’.
+    ...
+    ...    3. Instance
+    ...    1 character to present instance in the redundancy cluster. \ ‘1’ to ‘4’ represents nodes ‘A’to ‘D’.
+    ...
+    ...    4. Label ID
+    ...    4 characters indicating the Label ID. Some feeds may use different Label IDs \ for different data (eg Level 1 and \ \ \ Level 2 data). \ Each DUDT instrument will use the same Label ID as used for the LH it tracks. If an LH generates \ \ \ data in more than one Multicast group there will be a separate DUDT instrument for each group.
+    ...    For EDF/Feed Handler, fill these 4 characters as “0000”.
     ${mteConfigFile}=    Get MTE Config File
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
@@ -300,7 +326,7 @@ Get DDS RIC
     ${mteTrailingOffSet}=    Set Variable If    ${mteLength} < 6    ${mteTrailingOffSet}    0
     ${mteLeadingHyphens}=    Get Substring    ${fiveHyphens}    0    ${mteLeadingOffSet}
     ${mteTrailingHyphens}=    Get Substring    ${fiveHyphens}    0    ${mteTrailingOffSet}
-    ${hyphenPaddedMte}=    Catenate    SEPARATOR=${mte}    ${mteLeadingHyphens}    ${mteTrailingHyphens}
+    ${hyphenPaddedMte}=    Catenate    SEPARATOR=    ${mteLeadingHyphens}    ${mte}    ${mteTrailingHyphens}
     ${instanceLength}    Get Length    ${instance}
     Should Be True    ${instanceLength} == 1    Length of instance should be equal to 1
     ${labelLength}=    Get Length    ${labelID}

@@ -1,0 +1,19 @@
+*** Settings ***
+Variables         ../lib/VenueVariables.py
+Resource          core.robot
+
+*** Test Cases ***
+test
+    Comment    ${ric}=    Get DDS RIC    TIF    8063    0
+    Comment    ${ric}=    Get DDS RIC    LSEFTS    3    0
+    Comment    Comment    ${ric}=    Get DDS RIC    TDDS01M    80    0
+    Comment    ${ric}=    Get DDS RIC    1234567890    123    0
+    Comment    ${ric}=    Get DDS RIC    A    1    0
+    Comment    ${ric}=    Get DDS RIC    \    2    0
+    Comment    ${ric}=    Get DDS RIC    12345678901    3    0
+    Comment    ${ric}=    Get DDS RIC    1    \    0
+    Comment    ${ric}=    Get DDS RIC    2    12345    0
+    Comment    ${ric}=    Get DDS RIC    3    4    12
+    ${mteconfig}=    Get MTE Config File
+    log    ${mteconfig}
+    ${instance}=    Get MTE Instance ID
