@@ -4,13 +4,19 @@ import glob
 import os
 import os.path
 import string
+import time
 
 import das
-import linuxbox.fidfilter
-from LinuxToolUtilities import LinuxToolUtilities
+import fidfilterfile
+import statblock
+from utils.ssh import _exec_command, _check_process
 import xmlutilities
 
 FID_CONTEXTID = '5357'
+
+#############################################################################
+# Keywords that use local copy of MTE output message capture file
+#############################################################################
 
 def get_FidValue_in_message(pcapfile,ricname, msgClass):
     """ To verify the insert icf file can update the changed fid and value correct
@@ -398,7 +404,7 @@ def verify_fid_in_fidfilter_by_contextId_and_constit_against_pcap(pcapfile,conte
         raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
 
     #Get the fidfilter and checking input argument context ID and constituent is valid in FIDFilter.txt
-    fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt()
+    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
     if (fidfilter.has_key(contextId) == False):
         raise AssertionError('*ERROR* required context ID %s not found in FIDFilter.txt '%contextId)
     elif ((fidfilter[contextId].has_key(constit) == False)):
@@ -523,7 +529,7 @@ def verify_FIDfilter_FIDs_are_in_message(pcapfile):
     outputxmlfilelist_1 = trwf2messages().get_xml_from_pcap(pcapfile,filterstring,'fidfilterVspcapC1',20)
     
     #Get the fidfilter
-    fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt()
+    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
     
     for outputxmlfile in outputxmlfilelist_1:
         _verify_FIDfilter_FIDs_are_in_message_from_das_xml(outputxmlfile, fidfilter, ricsDict)
@@ -534,7 +540,7 @@ def verify_FIDfilter_FIDs_are_in_message(pcapfile):
     outputxmlfilelist_0 = trwf2messages().get_xml_from_pcap(pcapfile,filterstring,'fidfilterVspcapC0',20)
     
     #Get the fidfilter
-    fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt()
+    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
     
     for outputxmlfile in outputxmlfilelist_0:
         _verify_FIDfilter_FIDs_are_in_message_from_das_xml(outputxmlfile, fidfilter, ricsDict)        
@@ -585,7 +591,7 @@ def verify_message_fids_are_in_FIDfilter(localPcap, ric, domain, contextId):
     constituents = fidfilter.get_constituents_from_FidFilter(contextId)
     for constituent in constituents:
         # create fidfilter fids set under contextId and constituent
-        contextIdMap = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt()
+        contextIdMap = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
         constitWithFIDs = contextIdMap[contextId]
         fidsdict = constitWithFIDs[constituent]
         fidsList = fidsdict.keys()
@@ -1185,7 +1191,7 @@ def _verify_FID_value_in_dict(fidsAndValues,FID,newFIDValue):
 def _verify_FIDfilter_FIDs_are_in_message_from_das_xml(xmlfile,fidfilter, ricsDict):
     """ compare value found in FIDFilter.txt against xml file which converted from MTE output pcap
         messages : iterator for all Message tag found in xml
-        fidfilter : dictionary of fidfilter (captured from LinuxToolUtilities::get_contextId_fids_constit_from_fidfiltertxt)
+        fidfilter : dictionary of fidfilter (captured from fidfilterfile::get_contextId_fids_constit_from_fidfiltertxt)
         ricsDist : updated with the RIC/contextID information during verification of reponse message with constit=1
         return : Nil
         Assertion : Nil             
@@ -1200,7 +1206,7 @@ def _verify_FIDfilter_FIDs_are_in_message_from_das_xml(xmlfile,fidfilter, ricsDi
 def _verify_FIDfilter_FIDs_in_single_message(messageNode,fidfilter, ricsDict):
     """ compare value found in FIDFilter.txt against MTE Response Message
         messageNode : iterator pointing to one message node
-        fidfilter : dictionary of fidfilter (captured from LinuxToolUtilities::get_contextId_fids_constit_from_fidfiltertxt)
+        fidfilter : dictionary of fidfilter (captured from fidfilterfile::get_contextId_fids_constit_from_fidfiltertxt)
         ricsDist : updated with the RIC/contextID information during verification of reponse message with constit=1
         return : NIL
         Error : (1) No FIDs found in response message (Empty payload case)
@@ -1310,7 +1316,7 @@ def _verify_PE_change_in_message_c1(pcapfile,ricname,oldPEs,newPE):
         
         #2nd C1 message : C1 Response, new PE in header, all payload FIDs included
         dummyricDict = {}
-        fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt()   
+        fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()   
         _verify_FIDfilter_FIDs_in_single_message(messages[1],fidfilter, dummyricDict)    
         
         headerPE = xmlutilities.xml_parse_get_HeaderTag_Value_for_messageNode(messages[1],'PermissionInfo','PE')
@@ -1335,7 +1341,7 @@ def _verify_PE_change_in_message_c63(pcapfile,ricname,newPE):
         1. C63 Response, new PE in header, all payload FIDs included.
     """         
     hasC63 = False
-    fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt()
+    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
     contextIDs = fidfilter.keys()
     for contextID in contextIDs:
         constitIDs = fidfilter[contextID].keys()
@@ -1384,7 +1390,7 @@ def _verify_response_message_num_with_constnum(pcapfile,ricname,constnum):
     """  
     if (constnum == 63):
         hasC = False
-        fidfilter = LinuxToolUtilities().get_contextId_fids_constit_from_fidfiltertxt()
+        fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
         contextIDs = fidfilter.keys()
         for contextID in contextIDs:
             constitIDs = fidfilter[contextID].keys()
@@ -1411,3 +1417,127 @@ def _verify_response_message_num_with_constnum(pcapfile,ricname,constnum):
         os.remove(delFile)
     
     os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
+
+#############################################################################
+# Keywords that use remote MTE output message capture file
+#############################################################################
+                 
+def start_capture_packets(outputfile,interface,ip,port,protocol='UDP'):
+    """start capture packets by using tcpdump
+
+    Argument 
+    outputfile : outputfilename fullpath
+    interface : the nic interface name e.g. eth1
+    ip : 'source' ip for data capture
+    port : port for data capture
+    protocol : protocol for data capture
+
+    Returns NIL.
+
+    Examples:
+    | start capture packets | mte.output.pcap | eth0 | 232.2.1.0 | 7777 |
+     """
+
+    #Pre Checking
+    checkList = _check_process(['tcpdump'])
+    if (len(checkList[0]) > 0):
+        print '*INFO* tcpdump process already started at the TD box. Kill the exising tcpdump process'
+        stop_capture_packets() 
+     
+    #Create output folder
+    cmd = 'mkdir -p' + os.path.dirname(outputfile)
+    stdout, stderr, rc = _exec_command(cmd)
+    
+    #Remove existing pcap
+    cmd = 'rm -rf ' + outputfile
+    stdout, stderr, rc = _exec_command(cmd)
+  
+    cmd = ''
+    if (len(ip) > 0 and len(port) > 0):
+        cmd = 'tcpdump -i ' + interface + ' -s0 \'(host ' + ip +  ' and port ' + port  + ')\' -w ' + outputfile
+    else:     
+        cmd = 'tcpdump -i' + interface + '-s0 ' + protocol +  '-w ' + outputfile
+    
+    print '*INFO* ' + cmd    
+    _start_command(cmd)
+    
+    #Post Checking
+    time.sleep(5) #wait a while before checking or sometimes it would return false alarm
+    checkList = _check_process(['tcpdump'])
+    if (len(checkList[1]) > 0):
+        raise AssertionError('*ERROR* Fail to start cmd=%s ' %cmd)
+                
+def stop_capture_packets():
+    """stop capture packets by using tcpdump
+    Argument NIL
+    
+    Returns NIL.
+
+    Examples:
+    | stop capture packets |
+     """
+                    
+    cmd = 'pkill tcpdump'
+    stdout, stderr, rc = _exec_command(cmd)            
+    
+    if rc==1:
+        print '*INFO* tcpdump process NOT found on target box'
+    elif rc !=0 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+    else:   
+        print '*INFO* tcpdump process stop successfully'
+
+def wait_for_capture_to_complete(instanceName,waittime=5,timeout=30):
+    """wait for capture finish by checking the stat block information
+
+    Argument 
+    instanceName : either instance of MTE of FH e.g. MFDS1M or MFDS1F
+    statBlockList : [list] of stat block name that want to monitor during capture
+    waittime : how long we wait for each cycle during checking (second)
+    timeout : how long we monitor before we timeout (second)
+
+    Returns NIL.
+
+    Examples:
+    | wait for capture to complete | HKF1A | 2 | 300 |
+     """
+    
+    statBlockList = statblock.get_statBlockList_for_mte_input()
+    
+    #initialize the msgCount for each stat block found in statBlock list 
+    msgCountPrev = {}
+    msgCountDiff = {}
+    for statBlock in statBlockList:
+        msgCountPrev[statBlock] =  statblock.get_bytes_received_from_stat_block(instanceName,statBlock)
+        msgCountDiff[statBlock] = 0
+
+    # convert  unicode to int (it is unicode if it came from the Robot test)
+    timeout = int(timeout)
+    waittime = int(waittime)
+    maxtime = time.time() + float(timeout) 
+    
+    while time.time() <= maxtime:
+                    
+        time.sleep(waittime)  
+        
+        #Check if msg count difference
+        for statBlock in statBlockList:
+            msgCountCurr = statblock.get_bytes_received_from_stat_block(instanceName,statBlock)
+            msgCountDiff[statBlock] = msgCountCurr - msgCountPrev[statBlock]
+            
+            if (msgCountDiff[statBlock] < 0):
+                raise AssertionError('*ERROR* stat block %s - Current bytes received %d < previous bytes received %d' %(statBlock,msgCountCurr,msgCountPrev[statBlock]))
+        
+            msgCountPrev[statBlock] = msgCountCurr
+            
+        #Check time to stop catpure
+        isStop = True
+        for statBlock in statBlockList:
+            if (msgCountDiff[statBlock] != 0):
+                isStop = False
+        
+        if (isStop):
+            return                    
+    
+    #Timeout                    
+    raise AssertionError('*ERROR* Timeout %ds : Playback has not ended yet for some channel (suggest to adjust timeout)' %(timeout))

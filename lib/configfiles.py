@@ -7,8 +7,17 @@ import string
 import xml
 import xml.etree.ElementTree as ET
 
-from LinuxToolUtilities import LinuxToolUtilities
+from LinuxFSUtilities import LinuxFSUtilities
+from utils.ssh import _exec_command, _search_file
 import xmlutilities
+
+from VenueVariables import *
+
+MANGLINGRULE = {'SOU': '3', 'BETA': '2', 'RRG': '1', 'UNMANGLED' : '0'};
+
+#############################################################################
+# Keywords that use local copy of configuration files
+#############################################################################
 
 def add_mangling_rule_partition_node(rule, contextID, configFileLocalFullPath):
     """Add mangling rule of specific context ID in manglingConfiguration.xml
@@ -36,7 +45,7 @@ def add_mangling_rule_partition_node(rule, contextID, configFileLocalFullPath):
         if (node.get('value') == contextID):
             foundMatch = True
     if (foundMatch == False):
-        partitions.append(ET.fromstring('<Partition rule="%s" value="%s" />\n' %(LinuxToolUtilities().MANGLINGRULE[rule.upper()], contextID)))
+        partitions.append(ET.fromstring('<Partition rule="%s" value="%s" />\n' %(MANGLINGRULE[rule.upper()], contextID)))
     xmlutilities.save_to_xml_file(root,configFileLocalFullPath,False)
 
 def delete_mangling_rule_partition_node(contextIDs, configFileLocalFullPath):
@@ -312,11 +321,11 @@ def set_mangling_rule_default_value(rule,configFileLocalFullPath):
     """
     
     #safe check for rule value
-    if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
+    if (MANGLINGRULE.has_key(rule.upper()) == False):
         raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
     
     xPath = ['Partitions']
-    attribute = {'defaultRule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
+    attribute = {'defaultRule' : MANGLINGRULE[rule.upper()]}
     xmlutilities.set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
     
 def set_mangling_rule_parition_value(rule,contextIDs,configFileLocalFullPath):
@@ -339,11 +348,11 @@ def set_mangling_rule_parition_value(rule,contextIDs,configFileLocalFullPath):
     """
     
     #safe check for rule value
-    if (LinuxToolUtilities().MANGLINGRULE.has_key(rule.upper()) == False):
+    if (MANGLINGRULE.has_key(rule.upper()) == False):
         raise AssertionError('*ERROR* (%s) is not a standard name' %rule)
     
     xPath = ['Partitions','Partition']
-    attribute = {'rule' : LinuxToolUtilities().MANGLINGRULE[rule.upper()]}
+    attribute = {'rule' : MANGLINGRULE[rule.upper()]}
     if (len(contextIDs) == 0):
         xmlutilities.set_xml_tag_attributes_value(configFileLocalFullPath,attribute,False,xPath)
     else:
@@ -393,3 +402,195 @@ def _search_MTE_config_file(venueConfigFile,*xmlPath):
         foundConfigValues.append(foundNode.text)
         
     return foundConfigValues
+
+#############################################################################
+# Keywords that use remote configuration files
+#############################################################################
+
+def backup_remote_cfg_file(searchdir,cfgfile,suffix='.backup'):
+    """backup config file by create a new copy with filename append with suffix
+    Argument : 
+    searchdir  : directary where we search for the configuration file
+    cfgfile    : configuration filename
+    suffix     : suffix used to create the backup filename 
+        
+    Returns : a list with 1st item = full path config filename and 2nd itme = full path backup filename
+
+    Examples:
+    | backup remote cfg file | /ThomsonReuters/Venues | manglingConfiguration.xml |  
+    """         
+    
+    #Find configuration file
+    foundfiles = _search_file(searchdir,cfgfile,True)        
+    if len(foundfiles) < 1:
+        raise AssertionError('*ERROR* %s not found' %cfgfile)
+    """elif len(foundfiles) > 1:
+        raise AssertionError('*ERROR* Found more than one file: %s' %cfgfile)   """  
+            
+    #backup config file
+    backupfile = foundfiles[0] + suffix
+    cmd = "cp -a %s %s"%(foundfiles[0], backupfile)
+    stdout, stderr, rc = _exec_command(cmd)
+    
+    if rc !=0 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+    
+    return [foundfiles[0], backupfile]
+
+def Get_CHE_Config_Filepath(filename):
+    """Get file path for specific filename from TD Box, we would ignore certain folder e.g.SCWatchdog during search
+    
+    Argument: 
+        filename : config filename
+                
+    Returns: 
+
+    Examples:
+    | Get CHE Config Filepath | ddnPublishers.xml 
+    """  
+            
+    cmd = "find " + BASE_DIR + " -type f -name \"" + filename + "\" | grep -v SCWatchdog"
+    
+    stdout, stderr, rc = _exec_command(cmd)
+    if rc !=0 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+    
+    return stdout.strip()
+
+def get_FID_ID_by_FIDName(fieldName):
+    """get FID ID from TRWF2.DAT based on fidName
+    
+    fieldName is the FID Name. For example BID, ASK
+    return the corresponding FID ID
+
+    Examples:
+    |get FID ID by FIDName | ASK |     
+    """
+    
+    filelist = LinuxFSUtilities().search_remote_files(BASE_DIR, 'TRWF2.DAT',True)
+    if (len(filelist) == 0):
+        raise AssertionError('no file is found, can not located the field ID')
+    
+    #sed 's/\"[^\"]*\"/ /' %s remove the string which begins with symbol " and end with symbol ", 
+    #for example in file /reuters/Config/TRWF2.DAT, remove the 2nd column
+    #tr -s ' ' remove repeat symbol ' '(space)
+    cmd = "sed 's/\"[^\"]*\"/ /' %s | grep \"^%s \" | tr -s ' '" %(filelist[0],fieldName)
+    
+    stdout, stderr, rc = _exec_command(cmd)
+    if rc !=0 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))  
+    
+    elements = stdout.split()
+    
+    if (len(elements) > 2 ):
+        return elements[1]
+    else:
+        raise AssertionError('*ERROR* The FID can not be found')        
+
+def get_FID_Name_by_FIDId(FidId):
+    """get FID Name from TRWF2.DAT based on fidID
+    
+    fidID is the FID ID number. For example 22
+    return the corresponding FID Name
+
+    Examples:
+    |get FID Name by FIDId | 22 |     
+    """
+    
+    filelist = LinuxFSUtilities().search_remote_files(BASE_DIR, 'TRWF2.DAT',True)
+    if (len(filelist) == 0):
+        raise AssertionError('no file is found, can not located the field ID')
+    
+    
+    #sed -e '/^!/d' %s | sed 's/\"[^\"]*\"/ /'    the command is to remove the comments which begins with symbol ! 
+    #and remove the string beginning with " and ending with ", for example in file /reuters/Config/TRWF2.DAT, the 2nd column
+        #tr -s ' '  it is to remove repeat symbol ' '(space)
+        #cut -d ' ' f1,2  Use symbol ' '(space) as delimiter to split the line and delete the filed f1 and f2
+        cmd = "sed -e '/^!/d' %s | sed 's/\"[^\"]*\"/ /' | grep \" %s \" | tr -s ' ' | cut -d ' ' -f1,2 | grep \" %s$\""%(filelist[0],FidId,FidId)
+    
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))  
+        
+        elements = stdout.split()
+        
+        if (len(elements) == 2 ):
+            return elements[0]
+        else:
+            raise AssertionError('*ERROR* The FID can not be found')
+    
+def restore_remote_cfg_file(cfgfile,backupfile):
+    """restore config file by rename backupfile to cfgfile
+    Argument : 
+    cfgfile    : full path of configuration file
+    backupfile : full path of backup file
+        
+    Returns : Nil
+
+    Examples:
+    | restore remote cfg file | /reuters/Venues/HKF/MTE/manglingConfiguration.xml | /reuters/Venues/HKF/MTE/manglingConfiguration.xml.backup |  
+    """       
+    
+    LinuxFSUtilities().remote_file_should_exist(cfgfile)
+    LinuxFSUtilities().remote_file_should_exist(backupfile)
+    
+    #restore config file
+    cmd = "mv -f %s %s"%(backupfile,cfgfile)
+    stdout, stderr, rc = _exec_command(cmd)
+    
+    if rc !=0 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))                
+
+def set_value_in_MTE_cfg(mtecfgfile, tagName, value):
+    """change tag value in ${MTE}.xml
+    
+        params : searchdir - path where search for mte config file
+                 mtecfgfile - filename of mte config file
+                 tagName - target tagName
+                 value - required value
+                
+        return : N/A
+        
+        Examples :
+          | set value in_MTE cfg | jsda01.xml | NumberOfDailyBackupsToKeep | 5 |
+
+          Would change a config file containing:
+             <Persistence>
+               <DDS>
+                 <MutexNameForStaggering>TDDS_Persistence_Mutex</MutexNameForStaggering>
+                <NumberOfDailyBackupsToKeep type="ul">3</NumberOfDailyBackupsToKeep>
+              </DDS>
+             </Persistence>
+
+          To
+             <Persistence>
+              <DDS>
+                 <MutexNameForStaggering>TDDS_Persistence_Mutex</MutexNameForStaggering>
+                 <NumberOfDailyBackupsToKeep type="ul">5</NumberOfDailyBackupsToKeep>
+              </DDS>
+             </Persistence>
+             
+    """         
+    #Find configuration file
+    LinuxFSUtilities().remote_file_should_exist(mtecfgfile)
+
+    #Check if <PE> tag exist
+    searchKeyWord = "</%s>"%tagName
+    foundlines = LinuxFSUtilities().grep_remote_file(mtecfgfile, searchKeyWord)
+    if (len(foundlines) == 0):
+        raise AssertionError('*ERROR* <%s> tag is missing in %s' %(tagName, mtecfgfile))
+
+    # match tags with attributes, e.g.
+    # <NumberOfDailyBackupsToKeep type="ul">3</NumberOfDailyBackupsToKeep>
+    cmd_match_tag_with_attributes = "sed -i 's/\(<%s [^>]*>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value) + mtecfgfile
+    # match exact tag name, e.g.
+    #<TransformConfig>C4652_OB.tconf</TransformConfig> but not  <TransformConfigOptimized>true</TransformConfigOptimized>
+    cmd_match_tag_only = "sed -i 's/\(<%s>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value) + mtecfgfile
+    
+    stdout, stderr, rc = _exec_command(cmd_match_tag_with_attributes)
+    if rc !=0 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_with_attributes,rc,stdout,stderr))   
+    
+    stdout, stderr, rc = _exec_command(cmd_match_tag_only)
+    if rc !=0 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_only,rc,stdout,stderr)) 

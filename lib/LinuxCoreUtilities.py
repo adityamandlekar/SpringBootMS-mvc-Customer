@@ -59,16 +59,32 @@ class LinuxCoreUtilities():
                             return_rc=False):
         return G_SSHInstance.read_command_output(return_stdout, return_stderr,
                             return_rc)
+
+    def block_dataflow_by_port_protocol(self,inOrOut,protocol,port):
+        """using iptables command to block specific port and protocol data
         
-    def Get_process_and_pid_matching_pattern(self, *process_pattern): 
-        """
-        From process patterns return dictionary contains pid and process_pattern
+         Argument:
+            inOrOut  : either 'INPUT' or 'OUTPUT'
+            protocol : UDP, TCP
+            port     : port number
+        
+        Returns    : 
+
         Examples:
-        | MTE -c ${MTE} | GRS -cfg  | FHController -cfg |
+        | block dataflow by port protocol | INPUT | UDP | 9002
+        """  
+                
+        cmd = "/sbin/iptables -A %s -p %s --destination-port %s -j DROP"%(inOrOut,protocol,port)
         
-        """
-        return _get_process_pid_pattern_dict(list(process_pattern))
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
         
+        cmd = "/sbin/service iptables save"
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
         
     def check_processes(self, *process):
         """
@@ -87,6 +103,28 @@ class LinuxCoreUtilities():
         * check one process
         """
         return _check_process(list(process))
+    
+    def enable_disable_interface(self, interfaceName, status):
+        """ Enable or disable the interface
+
+            Argument : interfaceName - should be eth1 ... eth5
+                       status - should be enable or disable
+
+            Return :   None
+            
+            Examples :
+            | enable disable interface| eth1 | enable |
+        """
+        if (status.lower() == 'enable'):
+           cmd = 'ifup '
+        elif (status.lower() == 'disable'):
+            cmd = 'ifdown '
+        else:
+            raise AssertionError('*ERROR* the status is %s, it should be enable or disable' %status)
+        cmd = cmd + interfaceName
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0:
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
     
     def find_processes_by_pattern(self, pattern):
         """
@@ -134,6 +172,95 @@ class LinuxCoreUtilities():
         | ${dow}= | get day of week from date | 2015 | 10 | 31 |
         """
         return date(int(year), int(month), int(day)).strftime('%a').upper()
+    
+    def get_interface_name_by_alias(self,alias):
+        """Get network ard interface name by given alias
+
+        Argument alias specifies the alias name that we could find in /etc/hosts
+        
+        Returns string interfance name or prompt error
+
+        Examples:
+        | get interface by alias | DDNA |
+        """        
+        
+        aliasIp = self._get_alias_ip(alias)
+        interfaceName = self.get_interface_name_by_ip(aliasIp)
+        
+        return interfaceName
+    
+    def get_interface_name_by_ip(self,ip):
+        """Get network card interface name by given ip
+
+        Argument ip specifies the ip address that used to find interface name
+        
+        Returns string interface name or prompt error
+
+        Examples:
+        | get interface name by ip | '192.168.56.10' |
+        """
+        
+        #Checking if it is valid ip address
+        ipComponents = ip.split('.')
+        if (len(ipComponents) == 4):
+            for component in ipComponents:
+                if not(component.isdigit()):
+                    raise AssertionError('*ERROR* Invalid IP address %s' %ip)     
+                           
+        listOfInterfacesNames = self._get_all_interfaces_names()
+        for interfaceName in listOfInterfacesNames:
+            cmd = 'ifconfig ' + interfaceName + ' | grep \"inet addr\" | awk \'BEGIN {FS=":"}{print $2}\''
+            stdout, stderr, rc = _exec_command(cmd)
+                
+            if rc !=0 or stderr !='':
+                raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))     
+                        
+            if len(stdout) > 0: 
+                listofContent = stdout.split()
+                if (listofContent[0] == ip):
+                    return interfaceName
+                   
+        raise AssertionError('*ERROR* Fail to get the interface name for %s' %ip)
+    
+    def Get_process_and_pid_matching_pattern(self, *process_pattern): 
+        """
+        From process patterns return dictionary contains pid and process_pattern
+        Examples:
+        | MTE -c ${MTE} | GRS -cfg  | FHController -cfg |
+        
+        """
+        return _get_process_pid_pattern_dict(list(process_pattern))
+    
+    def kill_processes(self, *Proc):
+        """
+        kill process.
+        
+        Proc is one or more process name.\n
+        
+        return [rc, not found list]. rc is 0 or 12. 12 mean some processes not found to kill.
+        
+        Examples:
+        | ${res} | kill processes | dataview |
+        | ${res} | kill processes | dataview | rdtplybk |
+        """
+        stdout = _return_pslist()
+        pat=re.compile(r'\d+')
+        PIDlist = []
+        not_found_list = []
+        for process in list(Proc):
+            findflag =0
+            for ps in stdout.split('\n'):
+                if ps !='' and (ps.split()[-1] == process or ps.split()[-1].endswith('/' + process)):
+                    PIDlist.append(re.findall(pat,ps)[0])
+                    findflag =1
+            if findflag == 0:
+                not_found_list.append(process)
+        if PIDlist != []:
+            _kill_process(PIDlist)
+        if len(not_found_list) != 0:
+            return [12,not_found_list]
+        else:
+            return [0, []]
 
     def set_date_and_time(self, year, month,day,hour,min,sec):
         """
@@ -169,54 +296,81 @@ class LinuxCoreUtilities():
         """
         print '*INFO* Setting date/time to: %04d-%02d-%02d %02d:%02d:%02d' %(int(year),int(month),int(day),int(hour),int(min),int(sec))
         return _set_datetime(year, month,day,hour,min,sec, 'unix')
-    
-    def convert_EXL_datetime_to_statblock_format(self,exlDatetime):
-        """
-        Converts the given EXL datetime string to statblock datetime string. 
-        
-        Returns the statblock datetime string.
-        
-        EXL datetime string example: '2015-03-08T02:00:00.00'
-        StatBlock datetime string example: '2015-Mar-08 07:00:00'
-        
-        Examples:
-        | ${statBlockDatetime} | convert EXL datetime to statblock format | ${exlDatetime} |
-        """
-        exlDatetimeParts = exlDatetime.split('.')
-        exlDatetimeObject = datetime.strptime(exlDatetimeParts[0], '%Y-%m-%dT%H:%M:%S')
-        return exlDatetimeObject.strftime('%Y-%b-%d %H:%M:%S')
-        
-    def kill_processes(self, *Proc):
-        """
-        kill process.
-        
-        Proc is one or more process name.\n
-        
-        return [rc, not found list]. rc is 0 or 12. 12 mean some processes not found to kill.
-        
-        Examples:
-        | ${res} | kill processes | dataview |
-        | ${res} | kill processes | dataview | rdtplybk |
-        """
-        stdout = _return_pslist()
-        pat=re.compile(r'\d+')
-        PIDlist = []
-        not_found_list = []
-        for process in list(Proc):
-            findflag =0
-            for ps in stdout.split('\n'):
-                if ps !='' and (ps.split()[-1] == process or ps.split()[-1].endswith('/' + process)):
-                    PIDlist.append(re.findall(pat,ps)[0])
-                    findflag =1
-            if findflag == 0:
-                not_found_list.append(process)
-        if PIDlist != []:
-            _kill_process(PIDlist)
-        if len(not_found_list) != 0:
-            return [12,not_found_list]
-        else:
-            return [0, []]
         
     def show_processes(self):
-        return _return_pslist()
+        return _return_pslist()                   
+        
+    def unblock_dataflow(self):
+        """using iptables command to unblock all ports
+        
+        Argument   :        
+        Returns    : 
+
+        Examples:
+        | unblock dataflow | 
+        """  
+                
+        cmd = "iptables -F"
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))       
+        
+        cmd = "/sbin/service iptables save"
+        
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        
+    def _get_alias_ip(self,alias):
+        """Get ip address by given alias name
     
+        Argument alias specifies the alias name that we could find in /etc/hosts
+        
+        Returns string 'null' if not found or ip address that matched with alias
+    
+        Examples:
+        | get alias ip | 'DDNA' |
+        """          
+        cmd = 'getent hosts ' + alias
+        stdout, stderr, rc = _exec_command(cmd)
+        
+        if rc==2:
+            print '*INFO* no alias found for given ip'  
+            return 'null'
+        
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))     
+        
+        if len(stdout) > 0:
+            listOfContent = stdout.split()
+            return listOfContent[0]
+        
+        return 'null'
+  
+    def _get_all_interfaces_names(self):
+        """Get the name for all avaliable interface from box
+    
+        Argument NIL
+            
+        Returns empty list or list of interface name
+    
+        Examples:
+        | get all interfaces names |
+        """            
+            
+        listOfInterfaceName = []
+                
+        cmd = 'ip link show | awk \'/eth[0-9]/ {print $0}\''
+        stdout, stderr, rc = _exec_command(cmd)
+    
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))               
+                
+        listOfContent = stdout.split('\n')
+        for content in listOfContent:
+            subcontent = content.split(':')
+            if (len(subcontent) > 2):
+                listOfInterfaceName.append(subcontent[1].lstrip())
+                
+        return listOfInterfaceName

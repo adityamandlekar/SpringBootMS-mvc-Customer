@@ -10,7 +10,7 @@ import time
 
 from utils.version import get_version
 
-from utils.ssh import _delete_file,_search_file, _count_lines,_run_command,_exec_command
+from utils.ssh import _count_lines, _delete_file, _exec_command, _ls, _run_command, _search_file
 from utils.ssh import G_SSHInstance
 
 class LinuxFSUtilities():
@@ -206,3 +206,107 @@ class LinuxFSUtilities():
         G_SSHInstance.read_until_regexp(pattern)
         G_SSHInstance.set_client_configuration(timeout=defaultTimeout)
     
+    def wait_for_file_update(self, filename, waittime=2, timeout=60):
+        """Wait until the remote file timestamp changes and then wait until the size does not change.
+
+        Argument filename may contain UNIX filename wildcard values.
+        Argument 'waittime' specifies the time to wait between checks, in seconds.
+        Argument 'timeout' specifies the maximum time to wait, in seconds.
+        
+        Does not return a value; raises an error if the file does not change within timeout seconds.
+
+        Examples:
+        | Wait for file update  | filepathname  |
+        | Wait for file update  | filepathname  | 5  | 90  |
+        """
+        # convert  unicode to int (it is unicode if it came from the Robot test)
+        timeout = int(timeout)
+        waittime = int(waittime)
+        maxtime = time.time() + float(timeout)
+        
+        fileInfo = _ls(filename,'--full-time')
+        if len(fileInfo) == 0:
+            raise AssertionError('*ERROR* File %s does not exist' %filename)
+        splitInfo = fileInfo.split(' ')
+        fileStartTime = ' '.join(splitInfo[5:7])
+        
+        while time.time() <= maxtime:
+            fileInfo = _ls(filename,'--full-time')
+            splitInfo = fileInfo.split(' ')
+            fileCurrTime = ' '.join(splitInfo[5:7])
+#             print 'DEBUG fileStartTime=%s fileCurrTime=%s' %(fileStartTime,fileCurrTime)
+            if fileCurrTime > fileStartTime:
+                # file has changed, now wait for writing to complete
+                fileStartSize = splitInfo[4]
+                while time.time() <= maxtime:
+                    fileInfo = _ls(filename,'--full-time')
+                    splitInfo = fileInfo.split(' ')
+                    fileCurrSize = splitInfo[4]
+#                     print 'DEBUG fileStartSize=%s fileCurrSize=%s' %(fileStartSize,fileCurrSize)
+                    if fileCurrSize == fileStartSize:
+                        return
+                    fileStartSize = fileCurrSize
+                    time.sleep(waittime)
+                raise AssertionError('*ERROR* File %s writing did not complete before timeout %ds' %(filename,timeout))
+            time.sleep(waittime)
+        raise AssertionError('*ERROR* File %s did not change before timeout %ds' %(filename,timeout))
+
+    def wait_for_file_write(self, filename, waittime=2, timeout=60):
+        """Wait until the remote file exists and the size does not change.
+
+        Argument filename may contain UNIX filename wildcard values.
+        Argument 'waittime' specifies the time to wait between checks, in seconds.
+        Argument 'timeout' specifies the maximum time to wait, in seconds.
+        
+        Does not return a value; raises an error if the file does not exist or writing complete within timeout seconds.
+
+        Examples:
+        | Wait for file write  | filepathname  |
+        | Wait for file write  | filepathname  | 1  | 10  |
+        """
+        # convert  unicode to int (it is unicode if it came from the Robot test)
+        timeout = int(timeout)
+        waittime = int(waittime)
+        maxtime = time.time() + float(timeout)
+
+        fileStartSize = -1
+        while time.time() <= maxtime:
+            fileInfo = _ls(filename,'--full-time')
+            if len(fileInfo) == 0:
+                continue
+            splitInfo = fileInfo.split(' ')
+            fileCurrSize = splitInfo[4]
+            if fileCurrSize == fileStartSize:
+                return
+            fileStartSize = fileCurrSize
+            time.sleep(waittime)
+        if fileStartSize == -1:
+            raise AssertionError('*ERROR* File %s does not exist' %filename)
+        else:
+            raise AssertionError('*ERROR* File %s writing did not complete before timeout %ds' %(filename,timeout))
+   
+    def wait_for_search_file(self, topdir, filename, waittime=2, timeout=60):
+        """Wait until the remote filename to exist somewhere under the specified directory.
+
+        Arguement topdir is the top directory to do the search from.
+        Argument filename may contain UNIX filename wildcard values.
+        Argument 'waittime' specifies the time to wait between checks, in seconds.
+        Argument 'timeout' specifies the maximum time to wait, in seconds.
+        
+        Does not return a value; raises an error if the file does not exist within timeout seconds.
+
+        Examples:
+        | Wait for searchfile  | VENUE_DIR | filepathname  |
+        | Wait for searchfile  | VENUE_DIR | filepathname  | 2  | 30  |
+        """
+        # convert  unicode to int (it is unicode if it came from the Robot test)
+        timeout = int(timeout)
+        waittime = int(waittime)
+        maxtime = time.time() + float(timeout)
+
+        while time.time() <= maxtime:
+            foundfiles = _search_file(topdir,filename,True)
+            if len(foundfiles) >= 1:
+                return foundfiles
+            time.sleep(waittime)
+        raise AssertionError('*ERROR* File %s does not exist (timeout %ds)' %(filename,timeout))
