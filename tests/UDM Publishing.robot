@@ -210,7 +210,7 @@ Verify DDS RIC is published
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
     : FOR    ${labelID}    IN    @{labelIDs}
-    \    ${published_DDS_ric}=    Get DDS RIC    ${MTE}    ${labelID}    0
+    \    ${published_DDS_ric}=    Get DDS RIC    ${labelID}    0
     \    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     \    Start Capture MTE Output    ${remoteCapture}
     \    Stop Capture MTE Output    11    11
@@ -316,8 +316,8 @@ Delete Persist Files and Restart MTE
     Start MTE
 
 Get DDS RIC
-    [Arguments]    ${mte}    ${labelID}    ${instance}
-    ${mteLength}=    Get Length    ${mte}
+    [Arguments]    ${labelID}    ${instance}
+    ${mteLength}=    Get Length    ${MTE}
     Should Be True    ${mteLength} > 0 and ${mteLength} <= 10    Length of MTE should be greater than 0 and less than or equal to 10
     ${fiveHyphens}=    Set Variable    -----
     ${mteLeadingOffSet}=    Evaluate    10 - ${mteLength}
@@ -326,7 +326,7 @@ Get DDS RIC
     ${mteTrailingOffSet}=    Set Variable If    ${mteLength} < 6    ${mteTrailingOffSet}    0
     ${mteLeadingHyphens}=    Get Substring    ${fiveHyphens}    0    ${mteLeadingOffSet}
     ${mteTrailingHyphens}=    Get Substring    ${fiveHyphens}    0    ${mteTrailingOffSet}
-    ${hyphenPaddedMte}=    Catenate    SEPARATOR=    ${mteLeadingHyphens}    ${mte}    ${mteTrailingHyphens}
+    ${hyphenPaddedMte}=    Catenate    SEPARATOR=    ${mteLeadingHyphens}    ${MTE}    ${mteTrailingHyphens}
     ${instanceLength}    Get Length    ${instance}
     Should Be True    ${instanceLength} == 1    Length of instance should be equal to 1
     ${labelLength}=    Get Length    ${labelID}
