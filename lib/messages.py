@@ -526,7 +526,7 @@ def verify_FIDfilter_FIDs_are_in_message(pcapfile):
     #[ConstitNum = 1]
     #Convert pcap file to xml
     filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;1&quot;)'
-    outputxmlfilelist_1 = trwf2messages().get_xml_from_pcap(pcapfile,filterstring,'fidfilterVspcapC1',20)
+    outputxmlfilelist_1 = get_xml_from_pcap(pcapfile,filterstring,'fidfilterVspcapC1',20)
     
     #Get the fidfilter
     fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
@@ -537,7 +537,7 @@ def verify_FIDfilter_FIDs_are_in_message(pcapfile):
     #[ConstitNum = 0]
     #Convert pcap file to xml
     filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;0&quot;)'
-    outputxmlfilelist_0 = trwf2messages().get_xml_from_pcap(pcapfile,filterstring,'fidfilterVspcapC0',20)
+    outputxmlfilelist_0 = get_xml_from_pcap(pcapfile,filterstring,'fidfilterVspcapC0',20)
     
     #Get the fidfilter
     fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
@@ -588,7 +588,7 @@ def verify_message_fids_are_in_FIDfilter(localPcap, ric, domain, contextId):
     '''
      verify that message's fids set from pcap for the ric, with domain, contextId is the subset of the fids set defined in FidFilter file for a particular constituent under the context id
     '''
-    constituents = fidfilter.get_constituents_from_FidFilter(contextId)
+    constituents = fidfilterfile.get_constituents_from_FidFilter(contextId)
     for constituent in constituents:
         # create fidfilter fids set under contextId and constituent
         contextIdMap = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
@@ -1145,7 +1145,7 @@ def _verify_fid_in_fidfilter_by_contextId_and_constit_against_pcap_msgType(pcapf
     if (msgType == 'Update'):        
         filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_constitNum = &quot;' + constit + '&quot;)'
                
-    outputxmlfile = trwf2messages().get_xml_from_pcap(pcapfile, filterstring, 'pcapVsfidfilter')
+    outputxmlfile = get_xml_from_pcap(pcapfile, filterstring, 'pcapVsfidfilter')
     
     _verify_fid_in_fidfilter_by_contextId_against_das_xml(outputxmlfile[0],fidfilter,contextId,constit)  
     os.remove(outputxmlfile)
@@ -1163,7 +1163,7 @@ def _verify_fid_in_range_by_constit_against_pcap_msgType(pcapfile,fid_range,cons
     if (msgType == 'Update'):        
         filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_constitNum = &quot;' + constit + '&quot;)'
     
-    outputxmlfile = trwf2messages().get_xml_from_pcap(pcapfile,filterstring,'pcapVsfidrange')
+    outputxmlfile = get_xml_from_pcap(pcapfile,filterstring,'pcapVsfidrange')
     
     _verify_fid_in_range_against_das_xml(outputxmlfile[0],fid_range)
     os.remove(outputxmlfile)

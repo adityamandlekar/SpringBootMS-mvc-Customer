@@ -1,6 +1,5 @@
 import re
 
-import fidfilterfile
 from utils.ssh import _exec_command
 
 from VenueVariables import *
@@ -9,7 +8,7 @@ def get_constituents_from_FidFilter(context_id):
     """ 
         Return : constituent list which contains unique constituents defined in venue FidFilter.txt file for the context_id
     """ 
-    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
+    fidfilter = get_contextId_fids_constit_from_fidfiltertxt()
     if (fidfilter.has_key(context_id) == False):
         raise AssertionError('*ERROR* Context ID %s does not exist in FIDFilter.txt file' %(context_id))  
     

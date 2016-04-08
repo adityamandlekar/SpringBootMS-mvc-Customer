@@ -11,20 +11,20 @@ Library           localtools/das.py
 Library           localtools/fmscmd.py
 Library           localtools/pmat.py
 Library           localtools/scwcli.py
-Library           cache.py
+Library           cache
 Library           CHEprocess
-Library           configfiles.py
-Library           exlfiles.py
-Library           fidfilterfile.py
+Library           configfiles
+Library           exlfiles
+Library           fidfilterfile
 Library           LinuxCoreUtilities
 Library           LinuxFSUtilities
-Library           logfiles.py
-Library           messages.py
-Library           persistfiles.py
-Library           statblock.py
-Library           WinFSUtilities.py
+Library           logfiles
+Library           messages
+Library           persistfiles
+Library           statblock
+Library           WinFSUtilities
 Library           utilpath
-Library           xmlutilities.py
+Library           xmlutilities
 
 *** Keywords ***
 Switch To TD Box

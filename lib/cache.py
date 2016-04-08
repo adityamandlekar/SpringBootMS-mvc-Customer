@@ -176,6 +176,7 @@ def get_all_fields_for_ric_from_cache(ric):
      
     # get all fields for the RIC
     cmd = "awk -F',' '$%d == \"%s\" {print}' %s" %(ricCol, ric, cacheFile)
+    print '*INFO* cmd=%s' %cmd
     stdout, stderr, rc = _exec_command(cmd)
 #         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
     if rc !=0 or stderr !='':
@@ -230,6 +231,7 @@ def get_otf_rics_from_cahce(domain):
     otfCol = headerDict['OTF_STATUS']
     
     cmd = "grep -v TEST %s | awk -F',' '$%d == \"%s\" && ($%d == \"FULL_OTF\" || $%d == \"PARTIAL_OTF\") {print}' " %(cacheFile, domainCol, newDomain, otfCol, otfCol)
+    print '*INFO* cmd=%s' %cmd
     stdout, stderr, rc = _exec_command(cmd)
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
@@ -330,8 +332,9 @@ def get_ric_fields_from_cache(numrows, domain, contextID):
         else:
             cmd = "grep -v TEST %s | awk -F',' '$%d == \"TRUE\" {print}' | head -%d" %(cacheFile, publishableCol, numrows)
             
+    print '*INFO* cmd=%s' %cmd
     stdout, stderr, rc = _exec_command(cmd)
-#         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
+#     print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
     rows = stdout.splitlines()
