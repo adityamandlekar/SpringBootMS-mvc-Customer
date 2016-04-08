@@ -329,7 +329,8 @@ Inject PCAP File on TCP
     Switch Connection    ${Playback_Session}
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
-    \    ${stdout}    ${rc}    execute_command    PCapPlybk -ifile ${pcapFile} -intf ${PLAYBACK_MACHINE_IP} -port ${PLAYBACK_TCP_PORT} -sendmode tcp -tcpclients 1    return_rc=True
+    \    ${intfName}    Get Playback NIC For PCAP File    ${pcapFile}
+    \    ${stdout}    ${rc}    execute_command    PCapPlybk -ifile ${pcapFile} -intf ${intfName} -port ${TCP_PORT} -sendmode tcp -tcpclients 1    return_rc=True
     \    Should Be Equal As Integers    ${rc}    0
     [Teardown]    Switch Connection    ${host}
 
