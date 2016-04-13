@@ -17,7 +17,7 @@ OTFC PE and RIC mangling
     ${serviceName}=    Get FMS Service Name
     ${pcapFile}=    Generate PCAP File Name    ${serviceName}    OTFC
     Reset Sequence Numbers
-    Inject PCAP File on UDP    ${pcapFile}
+    Inject PCAP File    ${pcapFile}
     ${otfRicListAfterPlayback}=    get otf rics from cahce    ${domain}
     Should Not Be Empty    ${otfRicListAfterPlayback}    No OTF RICs exist in cache
     ${Ric}=    set variable    ${otfRicListAfterPlayback[0]['RIC']}
@@ -29,7 +29,7 @@ OTFC PE and RIC mangling
     ${expected_pe}=    set variable    @{pe}[0]
     ${expected_RicPrefix}    set variable    !!
     Reset Sequence Numbers
-    Inject PCAP File on UDP    ${pcapFile}
+    Inject PCAP File    ${pcapFile}
     ${output}    Send TRWF2 Refresh Request    ${expected_RicPrefix}${Ric}    ${domain}
     verify mangling from dataview response    ${output}    ${expected_pe}    ${expected_RicPrefix}${Ric}
     [Teardown]    OTFC Teardown
@@ -47,7 +47,7 @@ OTFC Persistence
     Comment    Verify no OTFC \ in MTE Cache at beginning
     @{otfRicListBeforePlayback}=    get otf rics from cahce    ${preferredDomain}
     Should Be Empty    ${otfRicListBeforePlayback}    OTFC item found before starting playback
-    Inject PCAP File on UDP    ${pcapFile}
+    Inject PCAP File    ${pcapFile}
     @{otfRicListAfterPlayback}=    get otf rics from cahce    ${preferredDomain}
     Comment    Verify OTFC has saved to MTE cache
     Should Not Be Empty    ${otfRicListAfterPlayback}    No OTFC items created or saved to persist file after playback completed
