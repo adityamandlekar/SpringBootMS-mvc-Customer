@@ -1,15 +1,30 @@
 *** Settings ***
 Documentation     The common set of Robot imports and keywords for Thunderdome.
 ...               This file should be imported as a Resource in each Thunderdome test suite.
-Library           LinuxCoreUtilities
-Library           LinuxToolUtilities
-Library           LinuxFSUtilities
-Library           LocalBoxUtilities
-Library           FMUtilities
 Library           Collections
 Library           OperatingSystem
 Library           String
 Library           DateTime
+Library           linuxtools/dataview.py
+Library           linuxtools/hostmanager.py
+Library           localtools/das.py
+Library           localtools/fmscmd.py
+Library           localtools/pmat.py
+Library           localtools/scwcli.py
+Library           cache
+Library           CHEprocess
+Library           configfiles
+Library           exlfiles
+Library           fidfilterfile
+Library           LinuxCoreUtilities
+Library           LinuxFSUtilities
+Library           logfiles
+Library           messages
+Library           persistfiles
+Library           statblock
+Library           WinFSUtilities
+Library           utilpath
+Library           xmlutilities
 
 *** Keywords ***
 Switch To TD Box
