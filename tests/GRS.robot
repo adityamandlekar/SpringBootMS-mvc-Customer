@@ -52,6 +52,21 @@ MTE Start of Day Recovery
     Dictionary of Dictionaries Should Be Equal    ${afterInjectionFIDs}    ${afterRecoveryFIDs}
     [Teardown]    Run Keyword If Test Passed    Delete Remote Files    ${remoteCapture}    ${ricFile}
 
+Verify GRS stream creation
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1996
+    ...
+    ...    1. Parse venue grs config file and capture all the stream names
+    ...    2. Compare with StatBlock to ensure all steam names are available
+    ${files}    search remote files    ${BASE_DIR}    *_grs.json    ${TRUE}
+    ${streamNames}    Create List
+    :FOR    ${file}    IN    @{files}
+    \    ${localFile}    Set Variable    ${LOCAL_TMP_DIR}/grs.json
+    \    get remote file    ${file}    ${localFile}
+    \    ${streams}    get GRS stream names from config file    ${localFile}
+    \    Append To List    ${streamNames}    @{streams}
+    :FOR    ${streamName}    IN    @{streamNames}
+    \    get stat block field    GRS    ${streamName}    InputPacket
+
 *** Keywords ***
 Create Remote RIC List
     [Arguments]    ${remoteCapture}    ${domain}
