@@ -209,8 +209,9 @@ Verify DDS RIC is published
     ${mteConfigFile}=    Get MTE Config File
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
+    ${instance}=    Get MTE Instance    ${mteConfigFile}    Publishing    ProviderInstance
     : FOR    ${labelID}    IN    @{labelIDs}
-    \    ${published_DDS_ric}=    Get DDS RIC    ${labelID}    0
+    \    ${published_DDS_ric}=    Get DDS RIC    ${labelID}    ${instance}
     \    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     \    Start Capture MTE Output    ${remoteCapture}
     \    Stop Capture MTE Output    11    11
@@ -327,8 +328,6 @@ Get DDS RIC
     ${mteLeadingHyphens}=    Get Substring    ${fiveHyphens}    0    ${mteLeadingOffSet}
     ${mteTrailingHyphens}=    Get Substring    ${fiveHyphens}    0    ${mteTrailingOffSet}
     ${hyphenPaddedMte}=    Catenate    SEPARATOR=    ${mteLeadingHyphens}    ${MTE}    ${mteTrailingHyphens}
-    ${instanceLength}    Get Length    ${instance}
-    Should Be True    ${instanceLength} == 1    Length of instance should be equal to 1
     ${labelLength}=    Get Length    ${labelID}
     Should Be True    ${labelLength} > 0 and ${labelLength} <= 4    Length of label ID should be greater than 0 and less than or equal to 4
     ${fourZeros}=    Set Variable    0000
@@ -337,6 +336,15 @@ Get DDS RIC
     ${zeroPaddedLabelID}=    Catenate    SEPARATOR=    ${zeroPaddedLabelID}    ${labelID}
     ${publishedDDSRic}=    Set Variable    .[${hyphenPaddedMte}${instance}${zeroPaddedLabelID}
     [Return]    ${publishedDDSRic}
+
+Get MTE Instance
+    [Arguments]    ${mteConfigFile}    ${section}    ${tag}
+    [Documentation]    Get "ProviderInstance" (nodes 'A' to 'D') from MTE config and convert it to 0-3.
+    @{instances}=    Get MTE Config List By Section    ${mteConfigFile}    ${section}    ${tag}
+    ${instance}=    Evaluate    ${instances}[0]
+    ${instance}=    Evaluate    ord(('${instance}').upper())-ord('A')
+    Should Be True    ${instance} >= 0 and ${instance} < 4    Instance should be greater than or equal to 0 and less than 4
+    [Return]    ${instance}
 
 Restore Remote and Restart MTE
     [Arguments]    ${remoteFile}    ${remoteBackupFile}
