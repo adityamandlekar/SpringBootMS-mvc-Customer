@@ -1,4 +1,4 @@
-from __future__ import with_statement
+﻿from __future__ import with_statement
 import os
 import os.path
 from sets import Set
@@ -369,6 +369,8 @@ def _convert_cachedomain_to_normal_format(domain):
         newDomain = 'MARKET_BY_PRICE'
     elif domain.lower() == 'marketbyorder':
         newDomain = 'MARKET_BY_ORDER'
+    elif domain.lower() == 'marketmaker':
+        newDomain = 'MARKET_MAKER'
     else:
         raise AssertionError('*ERROR* Unsupported domain %d' %domain)
     return newDomain
@@ -381,6 +383,8 @@ def _convert_domain_to_cache_format(domain):
         newDomain = 'MarketByPrice'
     elif newDomain.lower() == 'marketbyorder':
         newDomain = 'MarketByOrder'
+    elif newDomain.lower() == 'marketmaker':
+        newDomain = 'MarketMaker'
     else:
         raise AssertionError('*ERROR* Unsupported domain %d' %domain)
     return newDomain

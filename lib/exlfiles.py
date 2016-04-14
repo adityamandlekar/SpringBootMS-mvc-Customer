@@ -1,4 +1,4 @@
-from __future__ import with_statement
+﻿from __future__ import with_statement
 import codecs
 import os
 import os.path
@@ -225,7 +225,7 @@ def get_EXL_for_RIC(domain, service, ric):
     """ Find the EXL file with the specified RIC, domain, and service
         
         Argument: 
-            domain:  The market domain ['MARKET_PRICE', 'MARKET_BY_ORDER', 'MARKET_BY_ORDER']
+            domain:  The market domain ['MARKET_PRICE', 'MARKET_BY_ORDER', 'MARKET_BY_ORDER', 'MARKET_MAKER']
             service: The service name
             ricName:  The RIC to find
         

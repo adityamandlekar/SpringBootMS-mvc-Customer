@@ -1,4 +1,4 @@
-from __future__ import with_statement
+﻿from __future__ import with_statement
 from datetime import datetime, timedelta
 import glob
 import os
@@ -70,7 +70,7 @@ def get_RICs_from_pcap(pcapfile,domain,includeSystemRics=False):
     """ Get the unique set of RIC names from a PCAP file
     
         pcapFile : is the pcap fullpath at local control PC
-        domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+        domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER, MARKET_MAKER
         includeSystemRics: should system RICs be included in the list
         return : sorted list of RICs found in pcap file   
     """                
@@ -674,9 +674,9 @@ def verify_MTE_heartbeat_in_message(pcapfile,intervalInSec):
     os.remove(os.path.dirname(outputtxtfilelist[0]) + "/mteHeartbeattxtfromDAS.log")
 
 def verify_no_realtime_update_type_in_capture( pcapfile, domain):
-    """ Verify update message does not exist for MARKET PRICE, or MARKET_BY_ORDER or MARKET_BY_PRICE domain.
+    """ Verify update message does not exist for MARKET PRICE, or MARKET_BY_ORDER or MARKET_BY_PRICE or MARKET_MAKER domain.
         Argument : pcapfile : MTE output pcap file fullpath
-                   domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+                   domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER, MARKET_MAKER
         return : Nil
     """  
     try:
@@ -718,9 +718,9 @@ def verify_PE_change_in_message(pcapfile,ricname,oldPEs,newPE):
 
 def verify_realtime_update_type_in_capture(pcapfile, domain):
     """ Verify the realtime updates for MP domain have type "Quote", "Trade".
-        Verify the realtime updates for MBP domain have type "unspecified".
+        Verify the realtime updates for MBP/MBO/MM domain have type "unspecified".
         Argument : pcapfile : MTE output pcap file fullpath
-                   domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+                   domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER, MARKET_MAKER
         return : Nil
     """  
     
@@ -731,10 +731,10 @@ def verify_realtime_update_type_in_capture(pcapfile, domain):
     outputfileprefix = 'updates_pcap'
     if filterDomain == 'TRWF_TRDM_DMT_MARKET_PRICE':
         filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, AND (Update_constitNum = &quot;1&quot;, AND(Update_updateTypeNum != &quot;TRWF_TRDM_UPT_QUOTE&quot;, Update_updateTypeNum != &quot;TRWF_TRDM_UPT_TRADE&quot;))))'%(filterDomain)
-    if filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_ORDER' or filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_PRICE':
+    if filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_ORDER' or filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_PRICE' or filterDomain == 'TRWF_TRDM_DMT_MARKET_MAKER':
         filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND (Update_constitNum = &quot;1&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_updateTypeNum != &quot;TRWF_TRDM_UPT_UNSPECIFIED&quot;)))'%(filterDomain)
     if len(filterstring) == 0:
-        raise AssertionError('*ERROR* Need MARKET_PRICE, MARKET_BY_ORDER or MARKET_BY_PRICE for domain parameter ')  
+        raise AssertionError('*ERROR* Need MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE or MARKET_MAKER for domain parameter ')  
               
     try:               
         outputxmlfile = get_xml_from_pcap(pcapfile, filterstring, outputfileprefix) 
@@ -748,7 +748,7 @@ def verify_realtime_update_type_in_capture(pcapfile, domain):
         os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
         if filterDomain == 'TRWF_TRDM_DMT_MARKET_PRICE':
             raise AssertionError('*ERROR* realtime updates for domain %s have type other than "Quote", "Trade".' %domain)
-        if filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_ORDER' or filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_PRICE':  
+        if filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_ORDER' or filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_PRICE' or filterDomain == 'TRWF_TRDM_DMT_MARKET_MAKER':  
             raise AssertionError('*ERROR* realtime updates for domain %s have type other than "unspecified".' %domain)
 
 def verify_setID_in_message(pcapfile, ric, expectedSetID, msgType):
@@ -788,7 +788,7 @@ def verify_solicited_response_in_capture(pcapfile, ric, domain, constituent_list
     """ verify the pcap file contains solicited response messages for all possible constituents defined in fidfilter.txt
         Argument : pcapfile : MTE output capture pcap file fullpath
                    ric : published RIC
-                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
                    constituent_list: list contains all possible constituents
          return : Nil      
     """ 
@@ -811,7 +811,7 @@ def verify_unsolicited_response_in_capture (pcapfile, ric, domain, constituent_l
     """ verify if unsolicited response for RIC has found in MTE output pcap message
         Argument : pcapfile : MTE output capture pcap file fullpath
                    ric : published RIC
-                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
                    constituent_list: list contains all possible constituents 
         return : Nil
     """           
@@ -835,7 +835,7 @@ def verify_unsolicited_response_NOT_in_capture (pcapfile, ric, domain, constitue
     """ verify if unsolicited response for RIC has found in MTE output pcap message
         Argument : pcapfile : MTE output capture pcap file fullpath
                    ric : published RIC
-                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
                    constituent_list: list contains all possible constituents 
         return : Nil
     """           
@@ -866,7 +866,7 @@ def verify_unsolicited_response_sequence_numbers_in_capture(pcapfile, ric, domai
         
         Argument : pcapfile : MTE output capture pcap file fullpath
                    ric : published RIC
-                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
                    mte_state: possible value startup, rollover, failover.
         return : last item from response message sequence number list
     """           
@@ -922,7 +922,7 @@ def verify_unsolicited_response_sequence_numbers_in_capture(pcapfile, ric, domai
 def verify_updated_message_exist_in_capture(pcapfile, domain):
     """ Verify updates for the domain exist in the pcap file
         Argument : pcapfile : MTE output pcap file fullpath
-                   domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER
+                   domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER, MARKET_MAKER
         return : Nil
     """  
     if (os.path.exists(pcapfile) == False):
@@ -948,7 +948,7 @@ def verify_updated_message_sequence_numbers_in_capture(pcapfile, ric, domain, mt
         if mte_state is rollover, the sequence number could start from 3, then 4, 5, ... n, n+1...
         Argument : pcapfile : MTE output capture pcap file fullpath
                    ric : published RIC
-                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE etc.
+                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
                    mte_state: possible value startup, rollover, failover.
         return : First item from update message sequence number list
     """       
