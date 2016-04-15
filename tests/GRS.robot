@@ -66,6 +66,8 @@ Verify GRS stream creation
     \    Append To List    ${streamNames}    @{streams}
     :FOR    ${streamName}    IN    @{streamNames}
     \    get stat block field    GRS    ${streamName}    InputPacket
+    ${EMPTY}
+    [Teardown]    case teardown    ${localFile}
 
 *** Keywords ***
 Create Remote RIC List
