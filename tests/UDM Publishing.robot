@@ -209,7 +209,7 @@ Verify DDS RIC is published
     ${mteConfigFile}=    Get MTE Config File
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
-    ${instance}=    Get MTE Instance    ${mteConfigFile}    Publishing    ProviderInstance
+    ${instance}=    Get MTE Instance    ${mteConfigFile}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    ${published_DDS_ric}=    Get DDS RIC    ${labelID}    ${instance}
     \    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
@@ -338,10 +338,9 @@ Get DDS RIC
     [Return]    ${publishedDDSRic}
 
 Get MTE Instance
-    [Arguments]    ${mteConfigFile}    ${section}    ${tag}
+    [Arguments]    ${mteConfigFile}
     [Documentation]    Get "ProviderInstance" (nodes 'A' to 'D') from MTE config and convert it to 0-3.
-    @{instances}=    Get MTE Config List By Section    ${mteConfigFile}    ${section}    ${tag}
-    ${instance}=    Evaluate    ${instances}[0]
+    ${instance}=    Get MTE Config Value    ${mteConfigFile}    Publishing    DDS    ProviderInstance
     ${instance}=    Evaluate    ord(('${instance}').upper())-ord('A')
     Should Be True    ${instance} >= 0 and ${instance} < 4    Instance should be greater than or equal to 0 and less than 4
     [Return]    ${instance}
