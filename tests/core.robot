@@ -293,12 +293,13 @@ Get Preferred Domain
     [Documentation]    return the first Domain in the preferenceOrder list that exists in the venue config file.
     ...
     ...    If the caller does not specify a list, the following default list is used:
-    ...    MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_PRICE
+    ...    MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_PRICE, MARKET_MAKER
     ...
     ...    Examples:
     ...    ${domain}= | get preferred Domain
-    ...    ${domain}= | get preferred Domain | MARKET_BY_PRICE | MARKET_PRICE | MARKET_BY_ORDER
+    ...    ${domain}= | get preferred Domain | MARKET_BY_PRICE | MARKET_PRICE | MARKET_BY_ORDER | MARKET_MAKER
     Run Keyword If    len(${preferenceOrder})==0    append to list    ${preferenceOrder}    MARKET_BY_ORDER    MARKET_BY_PRICE    MARKET_PRICE
+    ...    MARKET_MAKER
     ${mteConfigFile}=    Get MTE Config File
     ${domainList}=    Get Domain Names    ${mteConfigFile}
     : FOR    ${domain}    IN    @{preferenceOrder}
