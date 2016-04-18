@@ -59,14 +59,13 @@ Verify GRS stream creation
     ...    2. Compare with StatBlock to ensure all steam names are available
     ${files}    search remote files    ${BASE_DIR}    *_grs.json    ${TRUE}
     ${streamNames}    Create List
-    :FOR    ${file}    IN    @{files}
+    : FOR    ${file}    IN    @{files}
     \    ${localFile}    Set Variable    ${LOCAL_TMP_DIR}/grs.json
     \    get remote file    ${file}    ${localFile}
     \    ${streams}    get GRS stream names from config file    ${localFile}
     \    Append To List    ${streamNames}    @{streams}
-    :FOR    ${streamName}    IN    @{streamNames}
+    : FOR    ${streamName}    IN    @{streamNames}
     \    get stat block field    GRS    ${streamName}    InputPacket
-    ${EMPTY}
     [Teardown]    case teardown    ${localFile}
 
 *** Keywords ***
