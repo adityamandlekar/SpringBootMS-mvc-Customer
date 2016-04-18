@@ -201,7 +201,7 @@ Verify DDS RIC is published
     ...    - 7 characters name ‘TDDS01M ‘, it is filled as ‘---TDDS01M’.
     ...
     ...    3. Instance
-    ...    1 character to present instance in the redundancy cluster. \ ‘1’ to ‘4’ represents nodes ‘A’to ‘D’.
+    ...    1 character to present instance in the redundancy cluster. \ ‘0’ to ‘3’ represents nodes ‘A’to ‘D’.
     ...
     ...    4. Label ID
     ...    4 characters indicating the Label ID. Some feeds may use different Label IDs \ for different data (eg Level 1 and \ \ \ Level 2 data). \ Each DUDT instrument will use the same Label ID as used for the LH it tracks. If an LH generates \ \ \ data in more than one Multicast group there will be a separate DUDT instrument for each group.
