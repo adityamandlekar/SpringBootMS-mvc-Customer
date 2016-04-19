@@ -120,20 +120,14 @@ Verify UP_SOURCE_RIC Mangling in Shell RIC
     ...    Verify Shell RIC C0 Respose UP_SOURCE_RIC mangling value is same as source ric
     ${contextIds}    Get ContextIDs for Shell RIC
     Pass Execution If    len(${contextIds}) == 0    MTE does not support Shell RIC
-    ${remoteCapture}=    Set Variable    ${REMOTE_TMP_DIR}/capture.pcap
-    ${localCapture}=    Set Variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     Set Mangling Rule    SOU
-    :FOR    ${contextId}    IN    @{contextIds}
+    : FOR    ${contextId}    IN    @{contextIds}
     \    ${ricFiledList}    Get Ric Fields From Cache    1    ${EMPTY}    ${contextId}
     \    ${pubRic}=    Set Variable    ${ricFiledList[0]['PUBLISH_KEY']}
     \    ${domain}=    Set Variable    ${ricFiledList[0]['DOMAIN']}
-    \    Start Capture MTE Output    ${remoteCapture}
-    \    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
-    \    Stop Capture MTE Output
-    \    Get Remote File    ${remoteCapture}    ${localCapture}
-    \    Verify UP SOURCE RIC FID Mangling    ${localCapture}    ${pubRic}    ![
+    \    ${output}    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
+    \    Verify Mangling For UP SOURCE RIC FID From DataView Response    ${output}    ![
     [Teardown]    Run Keywords    Pass Execution If    len(${contextIds}) == 0    MTE does not support Shell RIC
-    ...    AND    case teardown    ${localCapture}
     ...    AND    Load Mangling Settings
 
 *** Keywords ***
@@ -152,7 +146,7 @@ Get ContextIDs for Shell RIC
     ${fidfilterDict}    get contextId fids constit from fidfiltertxt
     ${contextIds}    Get Dictionary Keys    ${fidfilterDict}
     ${contextIdsForShellRic}    Create List
-    :FOR    ${contextId}    IN    @{contextIds}
+    : FOR    ${contextId}    IN    @{contextIds}
     \    ${fids}    Get Dictionary Keys    ${fidfilterDict['${contextId}']['0']}
     \    ${isFIDExist}    Get Count    ${fids}    6632
     \    Run Keyword If    '${isFIDExist}' == '1'    Append To List    ${contextIdsForShellRic}    ${contextId}

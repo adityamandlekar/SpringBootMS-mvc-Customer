@@ -998,31 +998,6 @@ def verify_updated_message_sequence_numbers_in_capture(pcapfile, ric, domain, mt
         
     return seqNumList[0]
 
-def verify_UP_SOURCE_RIC_FID_mangling(pcapfile,ricname,manglingPrefix):
-    """ verify Shell RIC response message (C0) UP_SOURCE_RIC contain the source ric with proper mangling setting aligned to expected manglingPrefix
-
-        return : Nil
-    """ 
-    outputfileprefix = 'upSourceRicFIDCheck'
-    filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;0&quot;))'%(ricname)
-    outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
-    
-    parentName  = 'ElementEntry'
-    elementList = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
-
-    for elementEntry in elementList:
-        elementField = elementEntry.find('Name')
-        if (elementField != None and elementField.attrib['value'] == "UP_SOURCE_RIC"):
-            elementField = elementEntry.find('Data')
-            if (elementField != None):
-                up_source_ric= elementField.attrib['value'].decode('hex')
-                if (manglingPrefix != up_source_ric[0:len(manglingPrefix)]):
-                    raise AssertionError('*ERROR* UP_SOURCE_RIC (%s) mangling does not matched with expected value (%s)'%(up_source_ric,manglingPrefix))
-
-    for delFile in outputxmlfilelist:
-        os.remove(delFile)
-    os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
-
 def _and_DAS_filter_string(filterString1, filterStirng2):
     """  Combine two filterStrings with AND keyword
     
@@ -1042,7 +1017,6 @@ def _and_DAS_filter_string(filterString1, filterStirng2):
         else:
             return ''
     
-
 def _build_DAS_filter_string(msgClass = '*', ric = '*', constitNum = '*'):
     """ Build the DAS filter string by specified condition
     
