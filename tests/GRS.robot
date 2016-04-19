@@ -9,6 +9,9 @@ Variables         ../lib/VenueVariables.py
 
 *** Test Cases ***
 Check GRS StatBlocks
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1995
+    ...
+    ...    Checking if GRS has received data after playback has triggered and sent to FeedHandler
     Reset Sequence Numbers
     ${grsStreamNames}    get stat blocks for category    GRS    Input
     ${lastPacketSNBeforePlayback}    Create List
@@ -23,9 +26,8 @@ Check GRS StatBlocks
     :FOR    ${grsStreamName}    IN    @{grsStreamNames}
     \    ${value}    get stat block field    GRS    ${grsStreamName}    lastPacketSN
     \    Append To List    ${lastPacketSNAfterPlayback}    ${value}
-    Log    ${lastPacketSNBeforePlayback}
-    Log    ${lastPacketSNAfterPlayback}
     Should Not Be Equal    ${lastPacketSNBeforePlayback}    ${lastPacketSNAfterPlayback}    GRS last Packet Sequence Number has not increase after playback
+    [Teardown]
 
 GRS Control by SMF
     [Documentation]    Perform SMF start/stop to verify the GRS is being started or shut down by SMF
