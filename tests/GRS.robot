@@ -78,7 +78,7 @@ Inject File and Wait For Output
     [Arguments]    ${injectFile}
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     Start Capture MTE Output    ${remoteCapture}
-    Inject PCAP File on UDP    ${injectFile}
+    Inject PCAP File    ${injectFile}
     Stop Capture MTE Output
     [Return]    ${remoteCapture}
 

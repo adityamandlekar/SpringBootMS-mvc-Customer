@@ -337,6 +337,13 @@ Get RIC List From StatBlock
     Return from keyword if    '${ricType}'=='Trade Time'    ${ricList}
     FAIL    RIC not found. Valid choices are: 'Closing Run', 'DST', 'Feed Time', 'Holiday', 'Trade Time'
 
+Inject PCAP File
+    [Arguments]    @{pcapFileList}
+    [Documentation]    Inject a list of PCAP files on either UDP or TCP transport based on VenueVariables PROTOCOL value.
+    Run Keyword If    '${PROTOCOL}' == 'UDP'    Inject PCAP File on UDP    @{pcapFileList}
+    Run Keyword If    '${PROTOCOL}' == 'TCP'    Inject PCAP File on TCP    @{pcapFileList}
+    FAIL    PROTOCOL in VenueVariables must be UDP or TCP.
+
 Inject PCAP File on TCP
     [Arguments]    @{pcapFileList}
     [Documentation]    Use PcapPlybk to inject TCP Pcap
@@ -345,7 +352,7 @@ Inject PCAP File on TCP
     Switch Connection    ${Playback_Session}
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
-    \    ${stdout}    ${rc}    execute_command    PCapPlybk -ifile ${pcapFile} -intf ${PLAYBACK_MACHINE_IP} -port ${PLAYBACK_TCP_PORT} -sendmode tcp -tcpclients 1    return_rc=True
+    \    ${stdout}    ${rc}    execute_command    PCapPlybk -ifile ${pcapFile} -intf ${PLAYBACK_BIND_IP_A} -port ${TCP_PORT} -pps ${PLAYBACK_PPS} -sendmode tcp -tcptimeout 10    return_rc=True
     \    Should Be Equal As Integers    ${rc}    0
     [Teardown]    Switch Connection    ${host}
 

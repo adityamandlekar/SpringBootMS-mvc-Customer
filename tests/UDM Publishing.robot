@@ -431,7 +431,7 @@ Verify Realtime Update
     ${mteConfigFile} =    Get MTE Config File
     @{domainList} =    Get Domain Names    ${mteConfigFile}
     Start Capture MTE Output
-    Inject PCAP File on UDP    @{pcap_file_list}
+    Inject PCAP File    @{pcap_file_list}
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     : FOR    ${domain}    IN    @{domainList}
@@ -443,7 +443,7 @@ Verify No Realtime Update
     ${mteConfigFile} =    Get MTE Config File
     @{domainList} =    Get Domain Names    ${mteConfigFile}
     Start Capture MTE Output
-    Inject PCAP File on UDP    @{pcap_file_list}
+    Inject PCAP File    @{pcap_file_list}
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     : FOR    ${domain}    IN    @{domainList}
