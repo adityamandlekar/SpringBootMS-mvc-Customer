@@ -8,6 +8,25 @@ Variables         ../lib/VenueVariables.py
 *** Variables ***
 
 *** Test Cases ***
+Check GRS StatBlocks
+    Reset Sequence Numbers
+    ${grsStreamNames}    get stat blocks for category    GRS    Input
+    ${lastPacketSNBeforePlayback}    Create List
+    :FOR    ${grsStreamName}    IN    @{grsStreamNames}
+    \    ${value}    get stat block field    GRS    ${grsStreamName}    lastPacketSN
+    \    Append To List    ${lastPacketSNBeforePlayback}    ${value}
+    ${serviceName}=    Get FMS Service Name
+    ${pcapFile}=    Generate PCAP File Name    ${serviceName}    GRS
+    Inject PCAP File on UDP    ${pcapFile}
+    Sleep    10
+    ${lastPacketSNAfterPlayback}    Create List
+    :FOR    ${grsStreamName}    IN    @{grsStreamNames}
+    \    ${value}    get stat block field    GRS    ${grsStreamName}    lastPacketSN
+    \    Append To List    ${lastPacketSNAfterPlayback}    ${value}
+    Log    ${lastPacketSNBeforePlayback}
+    Log    ${lastPacketSNAfterPlayback}
+    Should Not Be Equal    ${lastPacketSNBeforePlayback}    ${lastPacketSNAfterPlayback}    GRS last Packet Sequence Number has not increase after playback
+
 GRS Control by SMF
     [Documentation]    Perform SMF start/stop to verify the GRS is being started or shut down by SMF
     ...    Kill GRS and make sure it is started by smf
