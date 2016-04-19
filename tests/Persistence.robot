@@ -16,7 +16,7 @@ Persistence File Backup
     ${serviceName}=    Get FMS Service Name
     ${offsetInSecond}=    set variable    120
     ${currDateTime}=    get date and time
-    ${exlFiles}    ${exlBackupFiles}    Go Into Feed Time And Set End Feed Time    ${offsetInSecond}
+    ${exlFiles}    ${exlBackupFiles}    Go Into Feed Time And Set End Feed Time    ${serviceName}    ${offsetInSecond}
     sleep    ${offsetInSecond}
     Wait SMF Log Message After Time    ${MTE}.*Creating Snapshot of Persister Database    ${currDateTime}    10    120
     @{existingPersistBackupFiles}=    wait for search file    ${VENUE_DIR}    PERSIST_${MTE}_*.DAT    2    180
@@ -85,7 +85,7 @@ Verify New Item Added to Persist File via FMS
     add ric to exl file    ${EXLfullpath}    ${localRicEXLFile}    ${newRic}    ${None}    ${domain}
     ${currDateTime}=    get date and time
     ${offsetInSecond}=    set variable    120
-    ${feedEXLFiles}    ${feedEXLBackupFiles}    Go Into Feed Time And Set End Feed Time    ${offsetInSecond}
+    ${feedEXLFiles}    ${feedEXLBackupFiles}    Go Into Feed Time And Set End Feed Time    ${serviceName}    ${offsetInSecond}
     Load Single EXL File    ${localRicEXLFile}    ${serviceName}    ${CHE_IP}
     sleep    ${offsetInSecond}
     Wait SMF Log Message After Time    ${MTE}.*Persist cycle completed    ${currDateTime}    10    120
@@ -102,7 +102,7 @@ Persistence file FIDs existence check
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${offsetInSecond}=    set variable    120
     ${currDateTime}=    get date and time
-    ${feedEXLFiles}    ${feedEXLBackupFiles}    Go Into Feed Time And Set End Feed Time    ${offsetInSecond}
+    ${feedEXLFiles}    ${feedEXLBackupFiles}    Go Into Feed Time And Set End Feed Time    ${serviceName}    ${offsetInSecond}
     sleep    ${offsetInSecond}
     Wait SMF Log Message After Time    ${MTE}.*Persist cycle completed    ${currDateTime}    10    120
     ${cacheDomainName}=    Remove String    ${domain}    _
@@ -156,17 +156,14 @@ Go Into EndOfDay time
     [Teardown]
 
 Go Into Feed Time And Set End Feed Time
-    [Arguments]    ${offsetInSecond}
-    [Documentation]    1. Getting the time \ (GMT) of Thunderdome box and set it as start feed time
-    ...    (need to convert back to local time of venue)
-    ...    2. Adding ${offsetInSecond} seconds to feed start time and set it as end feed time
-    ...    3. Return
-    ...    3.1 ${exlFiles} : list of exlFiles that is modified by this KW
-    ...    3.2 ${exlBackupFiles} : list of exlFiles that renamed by this KW and reserve the original value of the EXL files
+    [Arguments]    ${serviceName}    ${offsetInSecond}
+    [Documentation]    For all feeds, set start of feed time to current time and end of feed time in 2 minutes.
+    ...    Return:
+    ...    ${exlFiles} : list of exlFiles that is modified by this KW
+    ...    ${exlBackupFiles} : list of exlFiles that renamed by this KW and reserve the original value of the EXL files
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
     ${mteConfigFile}=    Get MTE Config File
     @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${Empty}
-    ${serviceName}=    Get FMS Service Name
     @{exlBackupFiles}=    Create List
     @{exlFiles}=    Create List
     : FOR    ${connectTimesIdentifier}    IN    @{connectTimesIdentifierList}
