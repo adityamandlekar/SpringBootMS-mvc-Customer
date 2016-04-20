@@ -123,12 +123,11 @@ Verify UP_SOURCE_RIC Mangling in Shell RIC
     Set Mangling Rule    SOU
     : FOR    ${contextId}    IN    @{contextIds}
     \    ${ricFiledList}    Get Ric Fields From Cache    1    ${EMPTY}    ${contextId}
-    \    ${pubRic}=    Set Variable    ${ricFiledList[0]['PUBLISH_KEY']}
-    \    ${domain}=    Set Variable    ${ricFiledList[0]['DOMAIN']}
+    \    ${pubRic}    Set Variable    ${ricFiledList[0]['PUBLISH_KEY']}
+    \    ${domain}    Set Variable    ${ricFiledList[0]['DOMAIN']}
     \    ${output}    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
     \    Verify Mangling For UP SOURCE RIC FID From DataView Response    ${output}    ![
-    [Teardown]    Run Keywords    Pass Execution If    len(${contextIds}) == 0    MTE does not support Shell RIC
-    ...    AND    Load Mangling Settings
+    [Teardown]    Run Keyword If    len(${contextIds}) != 0    Load Mangling Settings
 
 *** Keywords ***
 Change Phase
@@ -143,10 +142,17 @@ Change Phase
     [Return]    ${localcapture}
 
 Get ContextIDs for Shell RIC
-    ${fidfilterDict}    get contextId fids constit from fidfiltertxt
+    ${mteConfigFile}    Get MTE Config File
+    ${serviceName}    Get FMS Service Name
+    ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
+    ${contextIdsSupported}    Get Context Ids From Fms Filter String    ${fmsFilterString}
+    ${contextIdsSupportedLen}    Get Length    ${contextIdsSupported}
+    ${fidfilterDict}    Get ContextId Fids Constit From Fidfiltertxt
     ${contextIds}    Get Dictionary Keys    ${fidfilterDict}
     ${contextIdsForShellRic}    Create List
-    : FOR    ${contextId}    IN    @{contextIds}
+    ${contextIdsUse}    Run Keyword If    ${contextIdsSupportedLen} == 0    Set Variable    ${contextIds}
+    ...    ELSE    Set Variable    ${contextIdsSupported}
+    : FOR    ${contextId}    IN    @{contextIdsUse}
     \    ${fids}    Get Dictionary Keys    ${fidfilterDict['${contextId}']['0']}
     \    ${isFIDExist}    Get Count    ${fids}    6632
     \    Run Keyword If    '${isFIDExist}' == '1'    Append To List    ${contextIdsForShellRic}    ${contextId}
