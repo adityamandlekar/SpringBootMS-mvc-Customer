@@ -11,22 +11,21 @@ Variables         ../lib/VenueVariables.py
 Check GRS StatBlocks
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1995
     ...
-    ...    Checking if GRS has received data after playback has triggered and sent to FeedHandler
+    ...    Verify that GRS receives data from FH \ and updates lastPacketSN stat block field.
     Reset Sequence Numbers
     ${grsStreamNames}    get stat blocks for category    GRS    Input
     ${lastPacketSNBeforePlayback}    Create List
-    :FOR    ${grsStreamName}    IN    @{grsStreamNames}
+    : FOR    ${grsStreamName}    IN    @{grsStreamNames}
     \    ${value}    get stat block field    GRS    ${grsStreamName}    lastPacketSN
     \    Append To List    ${lastPacketSNBeforePlayback}    ${value}
     ${serviceName}=    Get FMS Service Name
-    ${pcapFile}=    Generate PCAP File Name    ${serviceName}    GRS
-    Inject PCAP File on UDP    ${pcapFile}
-    Sleep    10
+    ${pcapFile}=    Generate PCAP File Name    ${serviceName}    General RIC Update
+    Inject File and Wait For Output    ${pcapFile}
     ${lastPacketSNAfterPlayback}    Create List
     :FOR    ${grsStreamName}    IN    @{grsStreamNames}
     \    ${value}    get stat block field    GRS    ${grsStreamName}    lastPacketSN
     \    Append To List    ${lastPacketSNAfterPlayback}    ${value}
-    Should Not Be Equal    ${lastPacketSNBeforePlayback}    ${lastPacketSNAfterPlayback}    GRS last Packet Sequence Number has not increase after playback
+    Should Not Be Equal    ${lastPacketSNBeforePlayback}    ${lastPacketSNAfterPlayback}    GRS last Packet Sequence Number has not increased after playback
     [Teardown]
 
 GRS Control by SMF
