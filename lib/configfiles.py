@@ -1,4 +1,5 @@
 from __future__ import with_statement
+import json
 import os
 import os.path
 import re
@@ -88,6 +89,30 @@ def get_context_ids_from_fms_filter_string(fms_filter_string):
             context_id_set.add(n[1].strip())
         
     return context_id_set
+
+def get_GRS_stream_names_from_config_file(grs_config_file):
+    """get the stream names from grs config files
+    Argument : 
+    grs_config_file  : local path of grs config file
+        
+    Returns : a list of stream names
+
+    Examples:
+    | get GRS stream names from config file | E:\\temp\\hkf_grs.json|  
+    """  
+    streamNames = []
+
+    if (grs_config_file.find("configure_grs") != -1):
+        return streamNames
+
+    with open(grs_config_file) as data_file:   
+        data = json.load(data_file)
+        if (data.has_key('inputs')):
+            
+            for mte, item in (data['inputs']).iteritems():
+                streamNames += item['lines'].keys()
+
+    return streamNames
 
 def get_MTE_config_list_by_path(venueConfigFile,*xmlPath):
     """ Gets value(s) from venue config file
