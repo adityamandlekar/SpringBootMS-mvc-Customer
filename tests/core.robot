@@ -104,13 +104,6 @@ Dictionary of Dictionaries Should Be Equal
     : FOR    ${key}    IN    @{keys1}
     \    Dictionaries Should Be Equal    ${dict1['${key}']}    ${dict2['${key}']}
 
-Dumpcache And Copyback Result
-    [Arguments]    ${destfile}    # where will the csv be copied back
-    [Documentation]    Dump the MTE cache to a file and copy the file to the local temp directory.
-    ${remotedumpfile}=    dump cache
-    get remote file    ${remotedumpfile}    ${destfile}
-    delete remote files    ${remotedumpfile}
-
 Dump Persist File To XML
     [Arguments]    @{optargs}
     [Documentation]    Run PMAT on control PC and return the \ persist xml dump file.
@@ -336,6 +329,15 @@ Get RIC List From StatBlock
     ${ricList}=    Run Keyword if    '${ricType}'=='Trade Time'    get stat blocks for category    ${MTE}    TradeTimes
     Return from keyword if    '${ricType}'=='Trade Time'    ${ricList}
     FAIL    RIC not found. Valid choices are: 'Closing Run', 'DST', 'Feed Time', 'Holiday', 'Trade Time'
+
+Get Sorted Cache Dump
+    [Arguments]    ${destfile}    # where will the csv be copied back
+    [Documentation]    Dump the MTE cache to a file, sort lines 2 thru end of file, and copy the sorted file to the local temp directory.
+    ${remotedumpfile}=    dump cache
+    ${sortedfile}=    Set Variable    ${REMOTE_TMP_DIR}/sortedcache.csv
+    Execute Command    head -1 ${remotedumpfile} > ${sortedfile}; tail -n +2 ${remotedumpfile} | sort -t',' -k2 >> ${sortedfile}
+    get remote file    ${sortedfile}    ${destfile}
+    delete remote files    ${remotedumpfile}    ${sortedfile}
 
 Inject PCAP File
     [Arguments]    @{pcapFileList}

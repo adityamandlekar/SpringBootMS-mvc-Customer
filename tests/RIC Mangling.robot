@@ -97,7 +97,7 @@ Verify Mangling by Context ID
     ...    - Set mangling for contextID 1, mangling for contextID 2, and default mangling to three different values. Verify contextID 1 and 2 use the specified mangling.
     [Setup]    Verify Mangling by Context ID Case Setup
     ${dstdumpfile}=    set variable    ${LOCAL_TMP_DIR}/cachedump.csv
-    Dumpcache And Copyback Result    ${dstdumpfile}
+    Get Sorted Cache Dump    ${dstdumpfile}
     @{contextIDs}    get context ids from cachedump    ${dstdumpfile}
     Should Be True    len(${context_ids})>0    No context id is found
     Pass Execution If    len(${context_ids})==1    Only one context id, pass the test
