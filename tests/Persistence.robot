@@ -13,10 +13,15 @@ Persistence File Backup
     [Setup]
     Start MTE
     Delete Persist Backup
-    Trigger Persistence File Backup
+    ${serviceName}=    Get FMS Service Name
+    ${offsetInSecond}=    set variable    120
+    ${currDateTime}=    get date and time
+    ${exlFiles}    ${exlBackupFiles}    Go Into Feed Time And Set End Feed Time    ${serviceName}    ${offsetInSecond}
+    sleep    ${offsetInSecond}
+    Wait SMF Log Message After Time    ${MTE}.*Creating Snapshot of Persister Database    ${currDateTime}    10    120
     @{existingPersistBackupFiles}=    wait for search file    ${VENUE_DIR}    PERSIST_${MTE}_*.DAT    2    180
     Delete Persist Backup
-    [Teardown]
+    [Teardown]    Restore EXL Changes    ${serviceName}    ${exlFiles}    ${exlBackupFiles}
 
 Persistence File Cleanup
     Start MTE
@@ -70,30 +75,36 @@ Verify New Item Added to Persist File via FMS
     [Documentation]    Add new RIC to EXL, load the EXL file, use PMT to dump persist file and check if new RIC exists in the dump file.
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1844
-    Start MTE
-    Wait For FMS Reorg
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
-    ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
-    ${localEXLfile}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
+    ${RicEXLfile}    Fetch From Right    ${EXLfullpath}    \\
+    ${localRicEXLFile}    set variable    ${LOCAL_TMP_DIR}/${RicEXLfile}
     ${newRic}    Create Unique RIC Name    newric
-    add ric to exl file    ${EXLfullpath}    ${localEXLfile}    ${newRic}    ${None}    ${domain}
-    Load Single EXL File    ${localEXLfile}    ${serviceName}    ${CHE_IP}
-    Wait For Persist File Update    5    60
+    add ric to exl file    ${EXLfullpath}    ${localRicEXLFile}    ${newRic}    ${None}    ${domain}
+    ${currDateTime}=    get date and time
+    ${offsetInSecond}=    set variable    120
+    ${feedEXLFiles}    ${feedEXLBackupFiles}    Go Into Feed Time And Set End Feed Time    ${serviceName}    ${offsetInSecond}
+    Load Single EXL File    ${localRicEXLFile}    ${serviceName}    ${CHE_IP}
+    sleep    ${offsetInSecond}
+    Wait SMF Log Message After Time    ${MTE}.*Persist cycle completed    ${currDateTime}    10    120
     Verfiy RIC Persisted    ${newRic}    ${domain}
-    [Teardown]    case teardown    ${localEXLfile}
+    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}    ${feedEXLBackupFiles}
+    ...    AND    Case Teardown    ${localRicEXLFile}
 
 Persistence file FIDs existence check
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
     ...    Make sure below fids don’t exist in the dumped persistence file:
     ...    6401 DDS_DSO_ID 6480 SPS_SP_RIC 6394 MC_LABEL
-    Start MTE
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    Wait For Persist File Update    5    60
+    ${offsetInSecond}=    set variable    120
+    ${currDateTime}=    get date and time
+    ${feedEXLFiles}    ${feedEXLBackupFiles}    Go Into Feed Time And Set End Feed Time    ${serviceName}    ${offsetInSecond}
+    sleep    ${offsetInSecond}
+    Wait SMF Log Message After Time    ${MTE}.*Persist cycle completed    ${currDateTime}    10    120
     ${cacheDomainName}=    Remove String    ${domain}    _
     ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
     ${pmatDumpfile}=    Dump Persist File To XML    --ric ${ric}    --domain ${pmatDomain}
@@ -104,7 +115,8 @@ Persistence file FIDs existence check
     List Should Contain Value    ${fidsSet}    1
     List Should Contain Value    ${fidsSet}    15
     List Should Contain Value    ${fidsSet}    5357
-    [Teardown]    case teardown    ${pmatDumpfile}
+    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}    ${feedEXLBackupFiles}
+    ...    AND    Case Teardown    ${pmatDumpfile}
 
 *** Keywords ***
 Delete Persist Backup
@@ -144,17 +156,14 @@ Go Into EndOfDay time
     [Teardown]
 
 Go Into Feed Time And Set End Feed Time
-    [Arguments]    ${offsetInSecond}
-    [Documentation]    1. Getting the time \ (GMT) of Thunderdome box and set it as start feed time
-    ...    (need to convert back to local time of venue)
-    ...    2. Adding ${offsetInSecond} seconds to feed start time and set it as end feed time
-    ...    3. Return
-    ...    3.1 ${exlFiles} : list of exlFiles that is modified by this KW
-    ...    3.2 ${exlBackupFiles} : list of exlFiles that renamed by this KW and reserve the original value of the EXL files
+    [Arguments]    ${serviceName}    ${offsetInSecond}
+    [Documentation]    For all feeds, set start of feed time to current time and end of feed time in 2 minutes.
+    ...    Return:
+    ...    ${exlFiles} : list of exlFiles that is modified by this KW
+    ...    ${exlBackupFiles} : list of exlFiles that renamed by this KW and reserve the original value of the EXL files
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
     ${mteConfigFile}=    Get MTE Config File
     @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${Empty}
-    ${serviceName}=    Get FMS Service Name
     @{exlBackupFiles}=    Create List
     @{exlFiles}=    Create List
     : FOR    ${connectTimesIdentifier}    IN    @{connectTimesIdentifierList}
@@ -183,21 +192,13 @@ Go Into Feed Time And Set End Feed Time
     [Teardown]
     [Return]    ${exlFiles}    ${exlBackupFiles}
 
-Trigger Persistence File Backup
-    [Documentation]    Trigger persistence file backup action by changing the connection Ric start time to current time and end time to current time + offsetInSecond
-    ...
-    ...    Restore the EXL value afterward
-    ${offsetInSecond}=    set variable    120
-    ${exlFiles}    ${exlBackupFiles}    Go Into Feed Time And Set End Feed Time    ${offsetInSecond}
-    ${sleepTime}=    Evaluate    ${offsetInSecond} + 60
-    sleep    ${sleepTime}
-    ${serviceName}=    Get FMS Service Name
-    Comment    Restore connection time changes
+Restore EXL Changes
+    [Arguments]    ${serviceName}    ${exlFiles}    ${exlBackupFiles}
     ${index}=    set variable    0
     : FOR    ${exlBackupFile}    IN    @{exlBackupFiles}
-    \    Copy File    ${exlBackupFile}    @{exlFiles}[${index}]
+    \    Copy File    ${exlBackupFile}    ${exlFiles[${index}]}
     \    ${index}=    Evaluate    ${index} + 1
     \    Remove Files    ${exlBackupFile}
     : FOR    ${exlFile}    IN    @{exlFiles}
-    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}    25000
+    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
     [Teardown]
