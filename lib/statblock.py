@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime
 import time
 
 from utilpath import utilpath
@@ -109,18 +109,24 @@ def get_statBlockList_for_fh_output():
              
     return statBlockList    
 
-def get_statBlockList_for_mte_input():
-    """get all the stat block name for FH output
+def get_statBlockList_for_mte_input(instanceName):
+    """get all the stat block name for MTE input
 
     Argument NIL
     Returns list of stat block name
 
     Examples:
-    | get statBlockList for fh output |
+    | get statBlockList for mte input | ${mte} |
      """
     
-    statBlockList = ['InputPortStatsBlock_0']
-             
+    statBlockList = []
+    for i in range(0, 255):
+        blockName = 'InputPortStatsBlock_' + str(i)
+        connectTimeIdentifier = get_stat_block_field(instanceName, blockName, 'connectTimesIdentifier')
+        if len(connectTimeIdentifier) != 0:
+            statBlockList.append(blockName)
+        else:
+            break
     return statBlockList      
 
 def get_stat_blocks_for_category(writerName, categoryName):

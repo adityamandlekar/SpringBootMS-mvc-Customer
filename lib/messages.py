@@ -1502,7 +1502,7 @@ def wait_for_capture_to_complete(instanceName,waittime=5,timeout=30):
     | wait for capture to complete | HKF1A | 2 | 300 |
      """
     
-    statBlockList = statblock.get_statBlockList_for_mte_input()
+    statBlockList = statblock.get_statBlockList_for_mte_input(instanceName)
     
     #initialize the msgCount for each stat block found in statBlock list 
     msgCountPrev = {}
