@@ -340,8 +340,8 @@ Get RIC List From StatBlock
 Inject PCAP File
     [Arguments]    @{pcapFileList}
     [Documentation]    Inject a list of PCAP files on either UDP or TCP transport based on VenueVariables PROTOCOL value.
-    Run Keyword If    '${PROTOCOL}' == 'UDP'    Inject PCAP File on UDP    @{pcapFileList}
-    Run Keyword If    '${PROTOCOL}' == 'TCP'    Inject PCAP File on TCP    @{pcapFileList}
+    Run Keyword And Return If    '${PROTOCOL}' == 'UDP'    Inject PCAP File on UDP    @{pcapFileList}
+    Run Keyword And Return If    '${PROTOCOL}' == 'TCP'    Inject PCAP File on TCP    @{pcapFileList}
     FAIL    PROTOCOL in VenueVariables must be UDP or TCP.
 
 Inject PCAP File on TCP
