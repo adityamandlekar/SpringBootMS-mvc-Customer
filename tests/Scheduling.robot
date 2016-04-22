@@ -2,7 +2,7 @@
 Documentation     Verify scheduling of events by modifying EXL files and processing them.
 ...
 ...               Note that test cases will transition to IN, OUT, and IN states to cover all state cases without worrying about its current state.
-Suite Setup       Scheduling Suite Setup
+Suite Setup       Scheduling Setup
 Suite Teardown    Suite Teardown
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
@@ -15,76 +15,46 @@ Verify Daylight Savings Time processing
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1643
     [Tags]    CATF-1643
-    [Setup]    DST Setup
-    Go into DST and check stats    ${feedDstEXL}    ${feedDstRic}    ${domain}    ${currentDateTime}
-    Go outside DST and check stats    ${feedDstEXL}    ${feedDstRic}    ${domain}    ${currentDateTime}
-    Go into DST and check stats    ${feedDstEXL}    ${feedDstRic}    ${domain}    ${currentDateTime}
-    Go into DST and check stats    ${tradeDstEXL}    ${tradeDstRic}    ${domain}    ${currentDateTime}
-    Go outside DST and check stats    ${tradeDstEXL}    ${tradeDstRic}    ${domain}    ${currentDateTime}
-    Go into DST and check stats    ${tradeDstEXL}    ${tradeDstRic}    ${domain}    ${currentDateTime}
-    [Teardown]    DST Teardown
+    [Setup]
+    Run DST Test
+    [Teardown]    DST Cleanup
 
 Verify Feed Time processing
     [Documentation]    Verify Feed Time processing:
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1644
     [Tags]    CATF-1644
-    [Setup]    Feed Time Setup
-    Run Feed Time test
-    Sort List    ${processedFeedTimeRics}
-    Lists Should Be Equal    ${feedTimeRicList}    ${processedFeedTimeRics}
-    [Teardown]    Feed Time Teardown
+    [Setup]
+    Run Feed Time Test
+    [Teardown]    Feed Time Cleanup
 
 Verify Holiday RIC processing
     [Documentation]    Verify Holiday RIC processing:
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1640
     [Tags]    CATF-1640
-    [Setup]    Holiday Setup
-    Go into holiday and check stat    ${feedHolidayEXL}    ${feedHolidayRic}    ${domain}    ${currentDateTime}
-    Go outside holiday and check stat    ${feedHolidayEXL}    ${feedHolidayRic}    ${domain}    ${currentDateTime}
-    Go into holiday and check stat    ${feedHolidayEXL}    ${feedHolidayRic}    ${domain}    ${currentDateTime}
-    Go into holiday and check stat    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${domain}    ${currentDateTime}
-    Go outside holiday and check stat    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${domain}    ${currentDateTime}
-    Go into holiday and check stat    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${domain}    ${currentDateTime}
-    [Teardown]    Holiday Teardown
+    [Setup]
+    Run Holiday Test
+    [Teardown]    Holiday Cleanup
 
 Verify Trade Time processing
     [Documentation]    Verify Trade Time processing:
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1644
     [Tags]    CATF-1644
-    [Setup]    Trade Time Setup
-    Run Trade Time test
-    Sort List    ${processedTradeTimeRics}
-    Lists Should Be Equal    ${tradeTimeRicList}    ${processedTradeTimeRics}
-    [Teardown]    Trade Time Teardown
+    [Setup]
+    Run Trade Time Test
+    [Teardown]    Trade Time Cleanup
 
-Test inHighActivity gets updated when box goes out of feed time
-    [Documentation]    Test inHighActivity gets updated when box goes out of and into feed time:
-    ...
-    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1749
-    [Tags]    CATF-1749
-    [Setup]    Trade Time Setup
-    Go outside feed time for all feed time RICs
-    Verify trade time stats updated    0
-    Go into feed time for all feed time RICs
-    Verify trade time stats updated    1
-    Sort List    ${processedTradeTimeRics}
-    Lists Should Be Equal    ${tradeTimeRicList}    ${processedTradeTimeRics}
-    [Teardown]    Trade Time Teardown
-
-Verify Re-schedule Closing Run through modifying EXL
+Verify Re-schedule ClosingRun through modifying EXL
     [Documentation]    In EXL file for Closing Run, if the time is changed, the Closing Run will be triggered at new time
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1846
-    [Setup]    Initialize for Closing Run
-    @{processedClosingrunRicName}    Go Into Closing Run Time For All Closing Run RICs    @{closingrunRicList}
-    Sort List    ${processedClosingrunRicName}
-    Lists Should Be Equal    @{processedClosingrunRicName}    @{closingrunRicList}
-    [Teardown]    Re-schedule Closing Run teardown
+    [Setup]    ClosingRun Setup
+    Run Re-schedule ClosingRun Test
+    [Teardown]    Re-schedule ClosingRun Cleanup
 
-Verify Manual Closing Runs
+Verify Manual ClosingRun
     [Documentation]    Test Case - Verify Manual Closing Runs
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1886
@@ -94,481 +64,283 @@ Verify Manual Closing Runs
     ${domain}    Get Preferred Domain
     Manual ClosingRun for a RIC    ${sampleRic}    ${publishKey}    ${domain}
     Manual ClosingRun for the EXL File including target Ric    ${sampleRic}    ${publishKey}    ${domain}
-    ${serviceName}    Get FMS Service Name
     Manual ClosingRun for ClosingRun Rics    ${serviceName}
 
 *** Keywords ***
-Check input port stats
-    [Arguments]    ${identifierName}    ${statIdentifier}    ${statField}    ${statValue}
-    [Documentation]    Note that all input port stats blocks (that have ${identifierName} set to ${statIdentifier}) will be checked here.
-    ...    Will stop checking when an empty stats block is encountered.
-    : FOR    ${index}    IN RANGE    0    255
-    \    ${identifier}    get stat block field    ${MTE}    InputPortStatsBlock_${index}    ${identifierName}
-    \    run keyword if    '${identifier}' == '${statIdentifier}'    wait for statBlock    ${MTE}    InputPortStatsBlock_${index}    ${statField}
-    \    ...    ${statValue}    waittime=2    timeout=300
-    \    return from keyword if    '${identifier}' == ''
+Scheduling Setup
+    [Documentation]    1. Calling KW : Suite Setup
+    ...    2. Setup Variables that need in Scheduling test suite
+    ...    3. Setup Dictionary that need in Scheduling test suite
+    Suite Setup
+    Scheduling Variables
+    Scheduling Mapping
 
-Get venue local datetime from MTE
-    [Arguments]    ${ricName}
-    ${currentDateTime}    get date and time
-    ${localVenueDateTime}    Get GMT Offset And Apply To Datetime    ${ricName}    ${currentDateTime[0]}    ${currentDateTime[1]}    ${currentDateTime[2]}    ${currentDateTime[3]}
-    ...    ${currentDateTime[4]}    ${currentDateTime[5]}
-    [Return]    ${currentDateTime}    ${localVenueDateTime}
+Scheduling Variables
+    [Documentation]    1. Set some common usage value into Suite Variable before test case start
+    Comment    Feed Time
+    Set Suite Variable    ${connectTimesIdentifier}    connectTimesIdentifier
+    Set Suite Variable    ${feedTimeStatField}    shouldBeOpen
+    @{processedFeedTimeExlFiles}    create list
+    Set Suite Variable    @{processedFeedTimeExlFiles}
+    Comment    Trade time
+    Set Suite Variable    ${highactTimesIdentifier}    highactTimesIdentifier
+    Set Suite Variable    ${tradeTimeStatField}    inHighActivity
+    @{processedTradeTimeExlFiles}    create list
+    Set Suite Variable    @{processedTradeTimeExlFiles}
+    Comment    DST
+    Set Suite Variable    ${dstStartDateStatField}    dstStartDate
+    Set Suite Variable    ${dstEndDateStatField}    dstEndDate
+    Comment    FMS
+    ${serviceName}    Get FMS Service Name
+    Set Suite Variable    ${serviceName}
+    Set Suite Variable    ${statRicDomain}    MARKET_PRICE
+    Comment    Holiday
+    Set Suite Variable    ${holidayStatField}    holidayStatus
+    Comment    DST
+    @{processedDSTExlFiles}    create list
+    Set Suite Variable    @{processedDSTExlFiles}
+    Comment    EXLs
+    ${modifiedExlFilesDic}    Create Dictionary
+    Set Suite Variable    ${modifiedExlFilesDic}
 
-Load EXL and check stat
-    [Arguments]    ${exlFile}    ${service}    ${identifierName}    ${statIdentifier}    ${statField}    ${statValue}
-    [Documentation]    Note that all input port stats blocks (that have ${identifierName} set to ${statIdentifier}) will be checked here.
-    Load Single EXL File    ${exlFile}    ${service}    ${CHE_IP}
-    Check input port stats    ${identifierName}    ${statIdentifier}    ${statField}    ${statValue}
-
-Set datetimes for IN state
-    [Arguments]    ${year}    ${month}    ${day}    ${hour}    ${min}    ${sec}
-    ...    ${ms}=00
-    [Documentation]    For start datetime, subtracts 3 days from given: ${year}-${month}-${day}T${hour}:${min}:${sec}.${ms}
+Scheduling Mapping
+    [Documentation]    1. Getting Feed Time and Trade Time related information
     ...
-    ...    For end datetime, adds 3 days from given: ${year}, ${month}, ${day}, ${hour}, ${min}, ${sec}
+    ...    2. Create Dictionary for Feed Time Rics and Trade Time Rics
     ...
-    ...    Note that the above is needed to cover max possible GMT offset cases.
-    ${startDateTime}    subtract time from date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day    exclude_millis=yes
-    ${endDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day    exclude_millis=yes
-    [Return]    ${startDatetime}    ${endDatetime}
+    ...    3. Structure of dictionary for Feed Time and Trade Time
+    ...    3.1 Key = Feed Time Ric name or Trade Time Ric name
+    ...    3.2 Value = a List item with [0] = EXL file path , [1] DST Ric Name, [2] Holiday Ric Name
+    ...
+    ...    4. Structure of dictionary for Holiday Ric
+    ...    4.1 Key =Holiday Ric name
+    ...    4.2 Value = a List item with [0] = EXL file path , [1] DST Ric Name
+    ${mteConfigFile}=    Get MTE Config File
+    ${allHolidayEXLs}    Create List
+    Set Suite Variable    ${allHolidayEXLs}
+    Comment    Feed Time
+    ${feedTimeRics}    Get ConnectTimesIdentifier    ${mteConfigFile}
+    Set Suite Variable    ${feedTimeRics}
+    ${feedTimeRicsDict}    Create Dictionary
+    ${feedHolidayRicsDict}    Create Dictionary
+    Set Suite Variable    ${feedTimeRicsDict}
+    Set Suite Variable    ${feedHolidayRicsDict}
+    : FOR    ${feedTimeRic}    IN    @{feedTimeRics}
+    \    ${feedTimeEXL}    get state EXL file    ${feedTimeRic}    ${statRicDomain}    ${serviceName}    Feed Time
+    \    ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRic}
+    \    ${feedHolidayEXL}    get state EXL file    ${feedHolidayRic}    ${statRicDomain}    ${serviceName}    Holiday
+    \    ${infoList}    Create List    ${feedTimeEXL}    ${feedDstRic}    ${feedHolidayRic}
+    \    Set To Dictionary    ${feedTimeRicsDict}    ${feedTimeRic}    ${infoList}
+    \    ${infoList}    Create List    ${feedHolidayEXL}    ${feedDstRic}
+    \    Set To Dictionary    ${feedHolidayRicsDict}    ${feedHolidayRic}    ${infoList}
+    \    Append To List    ${allHolidayEXLs}    ${feedHolidayEXL}
+    Comment    Trade Time
+    ${tradeTimeRics}    Get HighActivityTimesIdentifier    ${mteConfigFile}
+    Set Suite Variable    ${tradeTimeRics}
+    ${tradeTimeRicsDict}    Create Dictionary
+    ${tradeHolidayRicsDict}    Create Dictionary
+    Set Suite Variable    ${tradeTimeRicsDict}
+    Set Suite Variable    ${tradeHolidayRicsDict}
+    : FOR    ${tradeTimeRic}    IN    @{tradeTimeRics}
+    \    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRic}    ${statRicDomain}    ${serviceName}    Trade Time
+    \    ${tradeDstRic}    ${tradeHolidayRic}    Get DST And Holiday RICs From EXL    ${tradeTimeEXL}    ${tradeTimeRic}
+    \    ${tradeHolidayEXL}    get state EXL file    ${tradeHolidayRic}    ${statRicDomain}    ${serviceName}    Holiday
+    \    ${infoList}    Create List    ${tradeTimeEXL}    ${tradeDstRic}    ${tradeHolidayRic}
+    \    Set To Dictionary    ${tradeTimeRicsDict}    ${tradeTimeRic}    ${infoList}
+    \    ${infoList}    Create List    ${tradeHolidayEXL}    ${tradeDstRic}
+    \    Set To Dictionary    ${tradeHolidayRicsDict}    ${tradeHolidayRic}    ${infoList}
+    \    Append To List    ${allHolidayEXLs}    ${tradeHolidayEXL}
+    ${allHolidayEXLs}    Remove Duplicates    ${allHolidayEXLs}
 
-Set datetimes for OUT state
-    [Arguments]    ${year}    ${month}    ${day}    ${hour}    ${min}    ${sec}
-    ...    ${ms}=00
-    [Documentation]    For start datetime, adds 3 days from given: ${year}-${month}-${day}T${hour}:${min}:${sec}.${ms}
-    ...
-    ...    For end datetime, adds 4 days from given: ${year}, ${month}, ${day}, ${hour}, ${min}, ${sec}
-    ...
-    ...    Note that the above is needed to cover max possible GMT offset cases.
-    ${startDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day    exclude_millis=yes
-    ${endDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    4 day    exclude_millis=yes
-    [Return]    ${startDatetime}    ${endDatetime}
-
-Set times for IN state
-    [Arguments]    ${hour}    ${min}    ${sec}
-    [Documentation]    For start time, uses values passed in.
-    ...
-    ...    For end time, sets it to 23:59:59.
-    ${startTime}    set variable    ${hour}:${min}:${sec}
-    ${endTime}    set variable    23:59:59
-    [Return]    ${startTime}    ${endTime}
-
-Set times for OUT state
-    [Arguments]    ${hour}    ${min}    ${sec}
-    [Documentation]    For start time, sets it to 00:00:00.
-    ...
-    ...    For end time, uses values passed in.
-    ${startTime}    set variable    00:00:00
-    ${endTime}    set variable    ${hour}:${min}:${sec}
-    [Return]    ${startTime}    ${endTime}
-
-Calculate DST start date and check stat
+Calculate DST Start Date And Check Stat
     [Arguments]    ${dstRicName}    ${dstStartDatetime}
     ${normalGMTOffset}    get stat block field    ${MTE}    ${dstRicName}    normalGMTOffset
     ${startDatetime}    subtract time from date    ${dstStartDatetime}    ${normalGMTOffset} second    result_format=%Y-%m-%dT%H:%M:%S.0
     ${expectedStartDatetime}    convert EXL datetime to statblock format    ${startDatetime}
     wait for statBlock    ${MTE}    ${dstRicName}    ${dstStartDateStatField}    ${expectedStartDatetime}    waittime=2    timeout=120
 
-Calculate DST end date and check stat
+Calculate DST End Date And Check Stat
     [Arguments]    ${dstRicName}    ${dstEndDatetime}
     ${dstGMTOffset}    get stat block field    ${MTE}    ${dstRicName}    dstGMTOffset
     ${endDatetime}    subtract time from date    ${dstEndDatetime}    ${dstGMTOffset} second    result_format=%Y-%m-%dT%H:%M:%S.0
     ${expectedEndDatetime}    convert EXL datetime to statblock format    ${endDatetime}
     wait for statBlock    ${MTE}    ${dstRicName}    ${dstEndDateStatField}    ${expectedEndDatetime}    waittime=2    timeout=120
 
-Go into DST and check stats
-    [Arguments]    ${dstExlFile}    ${dstRicName}    ${domainName}    ${gmtDateTime}
-    [Documentation]    Sets the box so it goes into DST and verifies ${dstStartDateField} and ${dstEndDateField} are set appropriately.
-    ${feedDstEXLFile}    Fetch From Right    ${dstExlFile}    \\
-    ${dstExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${feedDstEXLFile}_modified.exl
-    ${dstStartDatetime}    ${dstEndDatetime}    Set datetimes for IN state    ${gmtDateTime[0]}    ${gmtDateTime[1]}    ${gmtDateTime[2]}    ${gmtDateTime[3]}
-    ...    ${gmtDateTime[4]}    ${gmtDateTime[5]}
-    ${startDatetime}    convert date    ${dstStartDatetime}    result_format=%Y-%m-%dT%H:%M:%S.0
-    ${endDatetime}    convert date    ${dstEndDatetime}    result_format=%Y-%m-%dT%H:%M:%S.0
-    Set DST Datetime In EXL    ${dstExlFile}    ${dstExlFileModified}    ${dstRicName}    ${domainName}    ${startDatetime}    ${endDatetime}
-    Load Single EXL File    ${dstExlFileModified}    ${serviceName}    ${CHE_IP}
-    remove files    ${dstExlFileModified}
-    Calculate DST start date and check stat    ${dstRicName}    ${dstStartDatetime}
-    Calculate DST end date and check stat    ${dstRicName}    ${dstEndDatetime}
-    ${expectedDstGMTOffset}    get stat block field    ${MTE}    ${dstRicName}    dstGMTOffset
-    wait for statBlock    ${MTE}    ${dstRicName}    currentGMTOffset    ${expectedDstGMTOffset}    waittime=2    timeout=120
+Load EXL and Check Stat For DST
+    [Arguments]    ${exlFile}    ${ricName}    ${statField}    ${startDatetime}    ${endDatetime}
+    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
+    Calculate DST start date and check stat    ${ricName}    ${startDatetime}
+    Calculate DST end date and check stat    ${ricName}    ${endDatetime}
+    ${expectedDstGMTOffset}    get stat block field    ${MTE}    ${ricName}    ${statField}
+    wait for statBlock    ${MTE}    ${ricName}    currentGMTOffset    ${expectedDstGMTOffset}    waittime=2    timeout=120
 
-Go outside DST and check stats
-    [Arguments]    ${dstExlFile}    ${dstRicName}    ${domainName}    ${gmtDateTime}
-    [Documentation]    Sets the box so it goes outside of DST and verifies ${dstStartDateField} and ${dstEndDateField} are set appropriately.
-    ${feedDstEXLFile}    Fetch From Right    ${dstExlFile}    \\
-    ${dstExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${feedDstEXLFile}_modified.exl
-    ${dstStartDatetime}    ${dstEndDatetime}    Set datetimes for OUT state    ${gmtDateTime[0]}    ${gmtDateTime[1]}    ${gmtDateTime[2]}    ${gmtDateTime[3]}
-    ...    ${gmtDateTime[4]}    ${gmtDateTime[5]}
-    ${startDatetime}    convert date    ${dstStartDatetime}    result_format=%Y-%m-%dT%H:%M:%S.0
-    ${endDatetime}    convert date    ${dstEndDatetime}    result_format=%Y-%m-%dT%H:%M:%S.0
-    Set DST Datetime In EXL    ${dstExlFile}    ${dstExlFileModified}    ${dstRicName}    ${domainName}    ${startDatetime}    ${endDatetime}
-    Load Single EXL File    ${dstExlFileModified}    ${serviceName}    ${CHE_IP}
-    remove files    ${dstExlFileModified}
-    Calculate DST start date and check stat    ${dstRicName}    ${dstStartDatetime}
-    Calculate DST end date and check stat    ${dstRicName}    ${dstEndDatetime}
-    ${expectedDstGMTOffset}    get stat block field    ${MTE}    ${dstRicName}    normalGMTOffset
-    wait for statBlock    ${MTE}    ${dstRicName}    currentGMTOffset    ${expectedDstGMTOffset}    waittime=2    timeout=120
+Run DST Test
+    [Documentation]    Remark : If there are multiples feed time/trade time rics, we only pick one of them and test on its corresponding DST ric
+    Comment    Feed Time DST
+    ${feedTimeRic}    Set Variable    ${feedTimeRics[0]}
+    ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
+    ${feedDstRic}    Set Variable    ${contents[1]}
+    ${feedDstEXL}    get state EXL file    ${feedDstRic}    ${statRicDomain}    ${serviceName}    DST
+    Append To List    ${processedDSTExlFiles}    ${feedDstEXL}
+    Go Into Datetime    DST    ${EMPTY}    ${feedDstEXL}    ${feedDstRic}    ${EMPTY}    ${EMPTY}
+    Go outside Datetime    DST    ${EMPTY}    ${feedDstEXL}    ${feedDstRic}    ${EMPTY}    ${EMPTY}
+    Go Into Datetime    DST    ${EMPTY}    ${feedDstEXL}    ${feedDstRic}    ${EMPTY}    ${EMPTY}
+    Comment    Trade Time DST
+    ${tradeTimeRic}    Set Variable    ${tradeTimeRics[0]}
+    ${contents}    Set Variable    ${tradeTimeRicsDict['${tradeTimeRic}']}
+    ${tradeDstRic}    Set Variable    ${contents[1]}
+    ${tradeDstEXL}    get state EXL file    ${tradeDstRic}    ${statRicDomain}    ${serviceName}    DST
+    Append To List    ${processedDSTExlFiles}    ${tradeDstEXL}
+    Go Into Datetime    DST    ${EMPTY}    ${tradeDstEXL}    ${tradeDstRic}    ${EMPTY}    ${EMPTY}
+    Go outside Datetime    DST    ${EMPTY}    ${tradeDstEXL}    ${tradeDstRic}    ${EMPTY}    ${EMPTY}
+    Go Into Datetime    DST    ${EMPTY}    ${tradeDstEXL}    ${tradeDstRic}    ${EMPTY}    ${EMPTY}
 
-Run Feed Time test
-    : FOR    ${feedTimeRicName}    IN    @{feedTimeRicList}
-    \    Append to list    ${processedFeedTimeRics}    ${feedTimeRicName}
-    \    ${feedTimeExlFile}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
-    \    Append to list    ${processedFeedTimeExlFiles}    ${feedTimeExlFile}
-    \    ${dstRicName}    ${holidayRicName}    get DST and holiday RICs from EXL    ${feedTimeExlFile}    ${feedTimeRicName}
-    \    ${currentDateTime}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName}
-    \    Go into feed time and check stat    ${feedTimeExlFile}    ${feedTimeRicName}    ${domain}    ${localVenueDateTime}
-    \    Go outside feed time and check stat    ${feedTimeExlFile}    ${feedTimeRicName}    ${domain}    ${localVenueDateTime}
-    \    Go into feed time and check stat    ${feedTimeExlFile}    ${feedTimeRicName}    ${domain}    ${localVenueDateTime}
+DST Cleanup
+    Comment    DST Cleanup
+    : FOR    ${processedDSTExlFile}    IN    @{processedDSTExlFiles}
+    \    Load Single EXL File    ${processedDSTExlFile}    ${serviceName}    ${CHE_IP}
 
-Go into feed time and check stat
-    [Arguments]    ${feedTimeExlFile}    ${feedTimeRicName}    ${feedTimeDomainName}    ${localVenueDateTime}
-    [Documentation]    Sets the box so it goes into feed time and verifies ${feedTimeStatField} is set to 1.
-    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    ${feedTimeExlFileOnly}    Fetch From Right    ${feedTimeExlFile}    \\
-    ${feedTimeExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${feedTimeExlFileOnly}_modified.exl
-    ${feedTimeStartTime}    ${feedTimeEndTime}    Set times for IN state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
-    Set Feed Time In EXL    ${feedTimeExlFile}    ${feedTimeExlFileModified}    ${feedTimeRicName}    ${feedTimeDomainName}    ${feedTimeStartTime}    ${feedTimeEndTime}
-    ...    ${weekDay}
-    Load EXL and check stat    ${feedTimeExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName}    ${feedTimeStatField}    1
-    remove files    ${feedTimeExlFileModified}
-
-Go outside feed time and check stat
-    [Arguments]    ${feedTimeExlFile}    ${feedTimeRicName}    ${feedTimeDomainName}    ${localVenueDateTime}
-    [Documentation]    Sets the box so it goes outside of feed time and verifies ${feedTimeStatField} is set to 0.
-    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    ${feedTimeExlFileOnly}    Fetch From Right    ${feedTimeExlFile}    \\
-    ${feedTimeExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${feedTimeExlFileOnly}_modified.exl
-    ${feedTimeStartTime}    ${feedTimeEndTime}    Set times for OUT state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
-    Set Feed Time In EXL    ${feedTimeExlFile}    ${feedTimeExlFileModified}    ${feedTimeRicName}    ${feedTimeDomainName}    ${feedTimeStartTime}    ${feedTimeEndTime}
-    ...    ${weekDay}
-    Load EXL and check stat    ${feedTimeExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName}    ${feedTimeStatField}    0
-    remove files    ${feedTimeExlFileModified}
-
-Go into feed time for all feed time RICs
-    [Documentation]    Sets the box so it goes into feed time for all @{feedTimeRicList} and verifies ${feedTimeStatField} is set to 1.
-    : FOR    ${feedTimeRicName}    IN    @{feedTimeRicList}
-    \    ${feedTimeExlFile}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
-    \    Append to list    ${processedFeedTimeExlFiles}    ${feedTimeExlFile}
-    \    ${dstRicName}    ${holidayRicName}    get DST and holiday RICs from EXL    ${feedTimeExlFile}    ${feedTimeRicName}
-    \    ${currentDateTime}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName}
-    \    Go into feed time and check stat    ${feedTimeExlFile}    ${feedTimeRicName}    ${domain}    ${localVenueDateTime}
-
-Go outside feed time for all feed time RICs
-    [Documentation]    Sets the box so it goes outside of feed time for all @{feedTimeRicList} and verifies ${feedTimeStatField} is set to 0.
-    : FOR    ${feedTimeRicName}    IN    @{feedTimeRicList}
-    \    ${feedTimeExlFile}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
-    \    Append to list    ${processedFeedTimeExlFiles}    ${feedTimeExlFile}
-    \    ${dstRicName}    ${holidayRicName}    get DST and holiday RICs from EXL    ${feedTimeExlFile}    ${feedTimeRicName}
-    \    ${currentDateTime}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName}
-    \    Go outside feed time and check stat    ${feedTimeExlFile}    ${feedTimeRicName}    ${domain}    ${localVenueDateTime}
-
-Go into holiday and check stat
-    [Arguments]    ${holidayExlFile}    ${holidayRicName}    ${holidayDomainName}    ${gmtDateTime}
-    [Documentation]    Sets the box so it goes into a holiday and verifies ${holidayStatField} is set to 1.
-    ${holidayExlFileOnly}    Fetch From Right    ${holidayExlFile}    \\
-    ${holidayExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${holidayExlFileOnly}_modified.exl
-    ${holidayStartDatetime}    ${holidayEndDatetime}    Set datetimes for IN state    ${gmtDateTime[0]}    ${gmtDateTime[1]}    ${gmtDateTime[2]}    ${gmtDateTime[3]}
-    ...    ${gmtDateTime[4]}    ${gmtDateTime[5]}
-    ${startDatetime}    set variable    ${holidayStartDatetime[0]}-${holidayStartDatetime[1]}-${holidayStartDatetime[2]}T${holidayStartDatetime[3]}:${holidayStartDatetime[4]}:${holidayStartDatetime[5]}.0
-    ${endDatetime}    set variable    ${holidayEndDatetime[0]}-${holidayEndDatetime[1]}-${holidayEndDatetime[2]}T${holidayEndDatetime[3]}:${holidayEndDatetime[4]}:${holidayEndDatetime[5]}.0
-    Set Holiday Datetime In EXL    ${holidayExlFile}    ${holidayExlFileModified}    ${holidayRicName}    ${holidayDomainName}    ${startDatetime}    ${endDatetime}
-    Load EXL and check stat    ${holidayExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName}    ${holidayStatField}    1
-    remove files    ${holidayExlFileModified}
-
-Go outside holiday and check stat
-    [Arguments]    ${holidayExlFile}    ${holidayRicName}    ${holidayDomainName}    ${gmtDateTime}
-    [Documentation]    Sets the box so it goes outside of a holiday and verifies ${holidayStatField} is set to 0.
-    ${holidayExlFileOnly}    Fetch From Right    ${holidayExlFile}    \\
-    ${holidayExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${holidayExlFileOnly}_modified.exl
-    ${holidayStartDatetime}    ${holidayEndDatetime}    Set datetimes for OUT state    ${gmtDateTime[0]}    ${gmtDateTime[1]}    ${gmtDateTime[2]}    ${gmtDateTime[3]}
-    ...    ${gmtDateTime[4]}    ${gmtDateTime[5]}
-    ${startDatetime}    set variable    ${holidayStartDatetime[0]}-${holidayStartDatetime[1]}-${holidayStartDatetime[2]}T${holidayStartDatetime[3]}:${holidayStartDatetime[4]}:${holidayStartDatetime[5]}.0
-    ${endDatetime}    set variable    ${holidayEndDatetime[0]}-${holidayEndDatetime[1]}-${holidayEndDatetime[2]}T${holidayEndDatetime[3]}:${holidayEndDatetime[4]}:${holidayEndDatetime[5]}.0
-    Set Holiday Datetime In EXL    ${holidayExlFile}    ${holidayExlFileModified}    ${holidayRicName}    ${holidayDomainName}    ${startDatetime}    ${endDatetime}
-    Load EXL and check stat    ${holidayExlFileModified}    ${serviceName}    ${connectTimesIdentifier}    ${feedTimeRicName}    ${holidayStatField}    0
-    remove files    ${holidayExlFileModified}
-
-Run Trade Time test
-    : FOR    ${tradeTimeRicName}    IN    @{tradeTimeRicList}
-    \    Append to list    ${processedTradeTimeRics}    ${tradeTimeRicName}
-    \    ${tradeTimeExlFile}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    Trade Time
-    \    Append to list    ${processedTradeTimeExlFiles}    ${tradeTimeExlFile}
-    \    ${dstRicName}    ${holidayRicName}    get DST and holiday RICs from EXL    ${tradeTimeExlFile}    ${tradeTimeRicName}
-    \    ${currentDateTime}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName}
-    \    Go into trade time and check stat    ${tradeTimeExlFile}    ${tradeTimeRicName}    ${domain}    ${localVenueDateTime}
-    \    Go outside trade time and check stat    ${tradeTimeExlFile}    ${tradeTimeRicName}    ${domain}    ${localVenueDateTime}
-    \    Go into trade time and check stat    ${tradeTimeExlFile}    ${tradeTimeRicName}    ${domain}    ${localVenueDateTime}
-
-Go into trade time and check stat
-    [Arguments]    ${tradeTimeExlFile}    ${tradeTimeRicName}    ${tradeTimeDomainName}    ${localVenueDateTime}
-    [Documentation]    Sets the box so it goes into trade time and verifies ${tradeTimeStatField} is set to 1.
-    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    ${tradeTimeExlFileOnly}    Fetch From Right    ${tradeTimeExlFile}    \\
-    ${tradeTimeExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${tradeTimeExlFileOnly}_modified.exl
-    ${tradeTimeStartTime}    ${tradeTimeEndTime}    Set times for IN state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
-    Set Trade Time In EXL    ${tradeTimeExlFile}    ${tradeTimeExlFileModified}    ${tradeTimeRicName}    ${tradeTimeDomainName}    ${tradeTimeStartTime}    ${tradeTimeEndTime}
-    ...    ${weekDay}
-    Load EXL and check stat    ${tradeTimeExlFileModified}    ${serviceName}    ${highactTimesIdentifier}    ${tradeTimeRicName}    ${tradeTimeStatField}    1
-    remove files    ${tradeTimeExlFileModified}
-
-Go outside trade time and check stat
-    [Arguments]    ${tradeTimeExlFile}    ${tradeTimeRicName}    ${tradeTimeDomainName}    ${localVenueDateTime}
-    [Documentation]    Sets the box so it goes outside of trade time and verifies ${tradeTimeStatField} is set to 0.
-    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    ${tradeTimeExlFileOnly}    Fetch From Right    ${tradeTimeExlFile}    \\
-    ${tradeTimeExlFileModified} =    set variable    ${LOCAL_TMP_DIR}/${tradeTimeExlFileOnly}_modified.exl
-    ${tradeTimeStartTime}    ${tradeTimeEndTime}    Set times for OUT state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
-    Set Trade Time In EXL    ${tradeTimeExlFile}    ${tradeTimeExlFileModified}    ${tradeTimeRicName}    ${tradeTimeDomainName}    ${tradeTimeStartTime}    ${tradeTimeEndTime}
-    ...    ${weekDay}
-    Load EXL and check stat    ${tradeTimeExlFileModified}    ${serviceName}    ${highactTimesIdentifier}    ${tradeTimeRicName}    ${tradeTimeStatField}    0
-    remove files    ${tradeTimeExlFileModified}
-
-Go into trade time for all trade time RICs
-    [Documentation]    Sets the box so it goes into trade time for all @{tradeTimeRicList} and verifies ${tradeTimeStatField} is set to 1.
-    : FOR    ${tradeTimeRicName}    IN    @{tradeTimeRicList}
-    \    Append to list    ${processedTradeTimeRics}    ${tradeTimeRicName}
-    \    ${tradeTimeExlFile}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    Trade Time
-    \    Append to list    ${processedTradeTimeExlFiles}    ${tradeTimeExlFile}
-    \    ${dstRicName}    ${holidayRicName}    get DST and holiday RICs from EXL    ${tradeTimeExlFile}    ${tradeTimeRicName}
-    \    ${currentDateTime}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName}
-    \    Go into trade time and check stat    ${tradeTimeExlFile}    ${tradeTimeRicName}    ${domain}    ${localVenueDateTime}
-
-Verify trade time stats updated
-    [Arguments]    ${expectedTradeTimeStatValue}
-    [Documentation]    Verifies ${tradeTimeStatField} is set to ${expectedTradeTimeStatValue}.
-    : FOR    ${tradeTimeRicName}    IN    @{tradeTimeRicList}
-    \    Check input port stats    ${highactTimesIdentifier}    ${tradeTimeRicName}    ${tradeTimeStatField}    ${expectedTradeTimeStatValue}
-
-Scheduling Suite Setup
-    suite setup
-    ${serviceName}    Get FMS Service Name
-    Set Suite Variable    ${serviceName}
-
-DST Initialize Variables
-    ${dstStartDateStatField} =    set variable    dstStartDate
-    Set Suite Variable    ${dstStartDateStatField}
-    ${dstEndDateStatField} =    set variable    dstEndDate
-    Set Suite Variable    ${dstEndDateStatField}
-
-DST Setup
-    [Documentation]    Setup for DST test. Gets initial DST datetimes from statblock to make sure it reverts after test is complete.
-    DST Initialize Variables
-    ${currentDateTime}    get date and time
-    Set Suite Variable    ${currentDateTime}
-    ${mteConfigFile}=    Get MTE Config File
-    ${feedTimeRicName}    Get ConnectTimesIdentifier    ${mteConfigFile}
-    Set Suite Variable    ${feedTimeRicName}
-    ${tradeTimeRicName}    Get HighActivityTimesIdentifier    ${mteConfigFile}
-    Set Suite Variable    ${tradeTimeRicName}
-    ${domain}    Get Preferred Domain    MARKET_PRICE
-    Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
-    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    Trade Time
-    ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
-    Set Suite Variable    ${feedDstRic}
-    ${tradeDstRic}    ${tradeHolidayRic}    Get DST And Holiday RICs From EXL    ${tradeTimeEXL}    ${tradeTimeRicName}
-    Set Suite Variable    ${tradeDstRic}
-    ${feedDstEXL}    get state EXL file    ${feedDstRic}    ${domain}    ${serviceName}    DST
-    Set Suite Variable    ${feedDstEXL}
-    ${tradeDstEXL}    get state EXL file    ${tradeDstRic}    ${domain}    ${serviceName}    DST
-    Set Suite Variable    ${tradeDstEXL}
-
-DST Teardown
-    [Documentation]    Reverts orginal EXL and verifies DST start and end datetime stats also get reverted to original state.
-    Load Single EXL File    ${feedDstEXL}    ${serviceName}    ${CHE_IP}
-    Load Single EXL File    ${tradeDstEXL}    ${serviceName}    ${CHE_IP}
-
-Feed Time Initialize Variables
-    ${connectTimesIdentifier} =    set variable    connectTimesIdentifier
-    Set Suite Variable    ${connectTimesIdentifier}
-    ${feedTimeStatField} =    set variable    shouldBeOpen
-    Set Suite Variable    ${feedTimeStatField}
-    @{processedFeedTimeExlFiles} =    create list
-    Set Suite Variable    @{processedFeedTimeExlFiles}
-    @{processedFeedTimeRics} =    create list
-    Set Suite Variable    @{processedFeedTimeRics}
-    @{feedTimeRicList}    Get RIC List From StatBlock    Feed Time
-    Sort List    ${feedTimeRicList}
-    Set Suite Variable    @{feedTimeRicList}
-
-Feed Time Setup
-    [Documentation]    Setup for Feed Time test. Puts box in non-holiday mode to ensure feed times can happen. Gets initial feed and holiday stats from statblock to make sure they revert after test is complete.
-    Feed Time Initialize Variables
-    Holiday Initialize Variables
-    ${currentDateTime}    get date and time
-    Set Suite Variable    ${currentDateTime}
-    ${mteConfigFile}=    Get MTE Config File
-    ${feedTimeRicName}    Get ConnectTimesIdentifier    ${mteConfigFile}
-    Set Suite Variable    ${feedTimeRicName}
-    ${tradeTimeRicName}    Get HighActivityTimesIdentifier    ${mteConfigFile}
-    Set Suite Variable    ${tradeTimeRicName}
-    ${domain}    Get Preferred Domain    MARKET_PRICE
-    Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
-    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    Trade Time
-    ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
-    Set Suite Variable    ${feedHolidayRic}
-    ${tradeDstRic}    ${tradeHolidayRic}    Get DST And Holiday RICs From EXL    ${tradeTimeEXL}    ${tradeTimeRicName}
-    Set Suite Variable    ${tradeHolidayRic}
-    ${feedHolidayEXL}    get state EXL file    ${feedHolidayRic}    ${domain}    ${serviceName}    Holiday
-    Set Suite Variable    ${feedHolidayEXL}
-    ${tradeHolidayEXL}    get state EXL file    ${tradeHolidayRic}    ${domain}    ${serviceName}    Holiday
-    Set Suite Variable    ${tradeHolidayEXL}
-    Go outside holiday and check stat    ${feedHolidayEXL}    ${feedHolidayRic}    ${domain}    ${currentDateTime}
-    Go outside holiday and check stat    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${domain}    ${currentDateTime}
+Run Feed Time Test
+    [Documentation]    Remark : We test all Feed Time Rics that we found in MTE
+    Blank Out All Holiday EXLs
+    Go Outside All Times    Feed Time    ${feedTimeStatField}    ${connectTimesIdentifier}    ${feedTimeRicsDict}    ${feedTimeRics}
+    Comment    Feed Time Test
+    ${type}    Set Variable    Feed Time
+    : FOR    ${feedTimeRic}    IN    @{feedTimeRics}
+    \    ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
+    \    ${feedTimeExlFile}    Set Variable    ${contents[0]}
+    \    ${dstRicName}    Set Variable    ${contents[1]}
+    \    ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${dstRicName}
+    \    Go Into Time    ${type}    ${feedTimeExlFile}    ${feedTimeRic}    ${feedTimeStatField}    ${connectTimesIdentifier}
+    \    ...    ${feedTimeRic}    ${localVenueDateTime}
+    \    Go Outside Time    ${type}    ${feedTimeExlFile}    ${feedTimeRic}    ${feedTimeStatField}    ${connectTimesIdentifier}
+    \    ...    ${feedTimeRic}    ${localVenueDateTime}
+    \    Go Into Time    ${type}    ${feedTimeExlFile}    ${feedTimeRic}    ${feedTimeStatField}    ${connectTimesIdentifier}
+    \    ...    ${feedTimeRic}    ${localVenueDateTime}
 
 Feed Time Cleanup
-    [Documentation]    Reverts orginal EXL and verifies feed and holiday stats also get reverted to original state.
-    : FOR    ${feedTimeExlFile}    IN    @{processedFeedTimeExlFiles}
+    Comment    Restore all feed time
+    : FOR    ${feedTimeRic}    IN    @{feedTimeRics}
+    \    ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
+    \    ${feedTimeExlFile}    Set Variable    ${contents[0]}
     \    Load Single EXL File    ${feedTimeExlFile}    ${serviceName}    ${CHE_IP}
-
-Feed Time Teardown
-    [Documentation]    Reverts orginal EXL and verifies feed and holiday stats also get reverted to original state.
-    Feed Time Cleanup
+    Comment    Restore all holiday
     Holiday Cleanup
+    Comment    Remove all modified EXLs
+    ${modifiedEXLFiles}    Get Dictionary Values    ${modifiedExlFilesDic}
+    ${count}    Get Length    ${modifiedEXLFiles}
+    Run Keyword If    ${count} > 0    remove files    @{modifiedEXLFiles}
+    ${modifiedExlFilesDic}    Create Dictionary
+    Set Suite Variable    ${modifiedExlFilesDic}
 
-Holiday Initialize Variables
-    ${holidayStatField} =    set variable    holidayStatus
-    Set Suite Variable    ${holidayStatField}
-    ${connectTimesIdentifier} =    set variable    connectTimesIdentifier
-    Set Suite Variable    ${connectTimesIdentifier}
-
-Holiday Setup
-    [Documentation]    Setup for Holiday test. Gets initial holiday and feed stats from statblock to make sure they revert after test is complete.
-    Holiday Initialize Variables
-    ${currentDateTime}    get date and time
-    Set Suite Variable    ${currentDateTime}
-    ${mteConfigFile}=    Get MTE Config File
-    ${feedTimeRicName}    Get ConnectTimesIdentifier    ${mteConfigFile}
-    Set Suite Variable    ${feedTimeRicName}
-    ${tradeTimeRicName}    Get HighActivityTimesIdentifier    ${mteConfigFile}
-    Set Suite Variable    ${tradeTimeRicName}
-    ${domain}    Get Preferred Domain    MARKET_PRICE
-    Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
-    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    Trade Time
-    ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
-    Set Suite Variable    ${feedHolidayRic}
-    ${tradeDstRic}    ${tradeHolidayRic}    Get DST And Holiday RICs From EXL    ${tradeTimeEXL}    ${tradeTimeRicName}
-    Set Suite Variable    ${tradeHolidayRic}
-    ${feedHolidayEXL}    get state EXL file    ${feedHolidayRic}    ${domain}    ${serviceName}    Holiday
-    Set Suite Variable    ${feedHolidayEXL}
-    ${tradeHolidayEXL}    get state EXL file    ${tradeHolidayRic}    ${domain}    ${serviceName}    Holiday
-    Set Suite Variable    ${tradeHolidayEXL}
-
-Holiday Cleanup
-    [Documentation]    Reverts orginal EXL and verifies holiday and feed stats also get reverted to original state.
-    Load Single EXL File    ${feedHolidayEXL}    ${serviceName}    ${CHE_IP}
-    Load Single EXL File    ${tradeHolidayEXL}    ${serviceName}    ${CHE_IP}
-
-Holiday Teardown
-    [Documentation]    Reverts orginal EXL and verifies holiday and feed stats also get reverted to original state.
-    Holiday Cleanup
-
-Trade Time Initialize Variables
-    ${highactTimesIdentifier} =    set variable    highactTimesIdentifier
-    Set Suite Variable    ${highactTimesIdentifier}
-    ${tradeTimeStatField} =    set variable    inHighActivity
-    Set Suite Variable    ${tradeTimeStatField}
-    @{processedTradeTimeExlFiles} =    create list
-    Set Suite Variable    @{processedTradeTimeExlFiles}
-    @{processedTradeTimeRics} =    create list
-    Set Suite Variable    @{processedTradeTimeRics}
-    @{tradeTimeRicList}    Get RIC List From StatBlock    Trade Time
-    Sort List    ${tradeTimeRicList}
-    Set Suite Variable    @{tradeTimeRicList}
-
-Trade Time Setup
-    [Documentation]    Setup for Trade Time test. Puts box in non-holiday mode and during feed time to ensure trade times can happen. Gets initial stats from statblock to make sure they revert after test is complete.
-    Feed Time Initialize Variables
-    Trade Time Initialize Variables
-    Holiday Initialize Variables
-    ${currentDateTime}    get date and time
-    Set Suite Variable    ${currentDateTime}
-    ${mteConfigFile}=    Get MTE Config File
-    ${feedTimeRicName}    Get ConnectTimesIdentifier    ${mteConfigFile}
-    Set Suite Variable    ${feedTimeRicName}
-    ${tradeTimeRicName}    Get HighActivityTimesIdentifier    ${mteConfigFile}
-    Set Suite Variable    ${tradeTimeRicName}
-    ${domain}    Get Preferred Domain    MARKET_PRICE
-    Set Suite Variable    ${domain}
-    ${feedTimeEXL}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
-    ${tradeTimeEXL}    get state EXL file    ${tradeTimeRicName}    ${domain}    ${serviceName}    Trade Time
-    ${feedDstRic}    ${feedHolidayRic}    Get DST And Holiday RICs From EXL    ${feedTimeEXL}    ${feedTimeRicName}
-    Set Suite Variable    ${feedHolidayRic}
-    ${tradeDstRic}    ${tradeHolidayRic}    Get DST And Holiday RICs From EXL    ${tradeTimeEXL}    ${tradeTimeRicName}
-    Set Suite Variable    ${tradeHolidayRic}
-    ${feedHolidayEXL}    get state EXL file    ${feedHolidayRic}    ${domain}    ${serviceName}    Holiday
-    Set Suite Variable    ${feedHolidayEXL}
-    ${tradeHolidayEXL}    get state EXL file    ${tradeHolidayRic}    ${domain}    ${serviceName}    Holiday
-    Set Suite Variable    ${tradeHolidayEXL}
-    Go outside holiday and check stat    ${feedHolidayEXL}    ${feedHolidayRic}    ${domain}    ${currentDateTime}
-    Go outside holiday and check stat    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${domain}    ${currentDateTime}
-    : FOR    ${feedTimeRicName}    IN    @{feedTimeRicList}
-    \    ${feedTimeExlFile}    get state EXL file    ${feedTimeRicName}    ${domain}    ${serviceName}    Feed Time
-    \    Append to list    ${processedFeedTimeExlFiles}    ${feedTimeExlFile}
-    \    ${dstRicName}    ${holidayRicName}    get DST and holiday RICs from EXL    ${feedTimeExlFile}    ${feedTimeRicName}
-    \    ${currentDateTime}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName}
-    \    Go into feed time and check stat    ${feedTimeExlFile}    ${feedTimeRicName}    ${domain}    ${localVenueDateTime}
+Run Trade Time Test
+    [Documentation]    Remark : If there are multiples trade time rics, we only pick one of them for testing
+    Blank Out All Holiday EXLs
+    Comment    Go Into feed time
+    ${type}    Set Variable    Feed Time
+    ${feedTimeRic}    Set Variable    ${feedTimeRics[0]}
+    ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
+    ${feedTimeExlFile}    Set Variable    ${contents[0]}
+    ${dstRicName}    Set Variable    ${contents[1]}
+    ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${dstRicName}
+    Go Into Time    ${type}    ${feedTimeExlFile}    ${feedTimeRic}    ${feedTimeStatField}    ${connectTimesIdentifier}    ${feedTimeRic}
+    ...    ${localVenueDateTime}
+    Go Outside All Times    Trade Time    ${tradeTimeStatField}    ${highactTimesIdentifier}    ${tradeTimeRicsDict}    ${tradeTimeRics}
+    Comment    Trade Time Test
+    ${type}    Set Variable    Trade Time
+    ${tradeTimeRic}    Set Variable    ${tradeTimeRics[0]}
+    ${contents}    Set Variable    ${tradeTimeRicsDict['${tradeTimeRic}']}
+    ${tradeTimeExlFile}    Set Variable    ${contents[0]}
+    ${dstRicName}    Set Variable    ${contents[1]}
+    ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${dstRicName}
+    Go Into Time    ${type}    ${tradeTimeExlFile}    ${tradeTimeRic}    ${tradeTimeStatField}    ${highactTimesIdentifier}    ${tradeTimeRic}
+    ...    ${localVenueDateTime}
+    Check ConfigurationStatsBlock    ${tradeTimeStatField}    1
+    Go Outside Time    ${type}    ${tradeTimeExlFile}    ${tradeTimeRic}    ${tradeTimeStatField}    ${highactTimesIdentifier}    ${tradeTimeRic}
+    ...    ${localVenueDateTime}
+    Check ConfigurationStatsBlock    ${tradeTimeStatField}    0
+    Go Into Time    ${type}    ${tradeTimeExlFile}    ${tradeTimeRic}    ${tradeTimeStatField}    ${highactTimesIdentifier}    ${tradeTimeRic}
+    ...    ${localVenueDateTime}
+    Check ConfigurationStatsBlock    ${tradeTimeStatField}    1
 
 Trade Time Cleanup
-    [Documentation]    Reverts orginal EXLs and verifies stats also gets reverted to original state.
-    : FOR    ${tradeTimeExlFile}    IN    @{processedTradeTimeExlFiles}
+    Comment    Restore all feed time
+    ${feedTimeRic}    Set Variable    ${feedTimeRics[0]}
+    ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
+    ${feedTimeExlFile}    Set Variable    ${contents[0]}
+    Load Single EXL File    ${feedTimeExlFile}    ${serviceName}    ${CHE_IP}
+    Comment    Restore all trade time
+    : FOR    ${tradeTimeRic}    IN    @{tradeTimeRics}
+    \    ${contents}    Set Variable    ${tradeTimeRicsDict['${tradeTimeRic}']}
+    \    ${tradeTimeExlFile}    Set Variable    ${contents[0]}
     \    Load Single EXL File    ${tradeTimeExlFile}    ${serviceName}    ${CHE_IP}
-
-Trade Time Teardown
-    [Documentation]    Reverts orginal EXLs and verifies stats also gets reverted to original state.
-    Trade Time Cleanup
+    Comment    Restore all holiday
     Holiday Cleanup
-    Feed Time Cleanup
+    Comment    Remove all modified EXLs
+    ${modifiedEXLFiles}    Get Dictionary Values    ${modifiedExlFilesDic}
+    ${count}    Get Length    ${modifiedEXLFiles}
+    Run Keyword If    ${count} > 0    remove files    @{modifiedEXLFiles}
+    ${modifiedExlFilesDic}    Create Dictionary
+    Set Suite Variable    ${modifiedExlFilesDic}
 
-Go Into Closing Run Time For All Closing Run RICs
-    [Arguments]    @{closingrunRicList}
-    @{processedClosingrunRicName}    create list
+Run Holiday Test
+    [Documentation]    Remark : If there are multiples feed time/trade time rics, we only pick one of them and test on its corresponding Holiday ric
+    Blank Out All Holiday EXLs
+    Comment    Feed Time Holiday
+    ${feedTimeRic}    Set Variable    ${feedTimeRics[0]}
+    ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
+    ${feedHolidayRic}    Set Variable    ${contents[2]}
+    ${contents}    Set Variable    ${feedHolidayRicsDict['${feedHolidayRic}']}
+    ${feedHolidayEXL}    Set Variable    ${contents[0]}
+    Go Into Datetime    HOL    ${holidayStatField}    ${feedHolidayEXL}    ${feedHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
+    Go Outside Datetime    HOL    ${holidayStatField}    ${feedHolidayEXL}    ${feedHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
+    Go Into Datetime    HOL    ${holidayStatField}    ${feedHolidayEXL}    ${feedHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
+    Comment    Trade Time Holiday
+    ${tradeTimeRic}    Set Variable    ${tradeTimeRics[0]}
+    ${contents}    Set Variable    ${tradeTimeRicsDict['${tradeTimeRic}']}
+    ${tradeHolidayRic}    Set Variable    ${contents[2]}
+    ${contents}    Set Variable    ${tradeHolidayRicsDict['${tradeHolidayRic}']}
+    ${tradeHolidayEXL}    Set Variable    ${contents[0]}
+    Go Into Datetime    HOL    ${holidayStatField}    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
+    Go Outside Datetime    HOL    ${holidayStatField}    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
+    Go Into Datetime    HOL    ${holidayStatField}    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
+
+Holiday Cleanup
+    : FOR    ${holidayEXL}    IN    @{allHolidayEXLs}
+    \    Load Single EXL File    ${holidayEXL}    ${serviceName}    ${CHE_IP}
+
+ClosingRun Setup
+    @{closingRunRics}    Get RIC List From StatBlock    Closing Run
+    Sort List    ${closingRunRics}
+    set suite variable    @{closingRunRics}
     @{closingRunExlFiles}    create list
-    set suite variable    @{closingRunExlFiles}
-    : FOR    ${closingrunRicName}    IN    @{closingrunRicList}
-    \    ${closingRunExlFile}    get state EXL file    ${closingrunRicName}    ${domain}    ${serviceName}    Closing Run
-    \    ${dstRicName}    get ric fields from EXL    ${closingRunExlFile}    ${closingrunRicName}    DST_REF
-    \    Append to list    ${processedClosingrunRicName}    ${closingrunRicName}
-    \    ${dt}    ${localVenueDateTime}    Get venue local datetime from MTE    ${dstRicName[0]}
-    \    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    \    ${closingRunTimeStartTime}    add time to date    ${localVenueDateTime[0]}-${localVenueDateTime[1]}-${localVenueDateTime[2]} ${localVenueDateTime[3]}:${localVenueDateTime[4]}:${localVenueDateTime[5]}    120 second    result_format=%H:%M:%S
-    \    ${closingRunExlFileOnly}    Fetch From Right    ${closingRunExlFile}    \\
-    \    ${closingRunExlfileModified}=    set variable    ${LOCAL_TMP_DIR}/${closingRunExlFileOnly}_modified.exl
-    \    modify EXL    ${closingRunExlFile}    ${closingRunExlfileModified}    ${closingrunRicName}    ${domain}    <it:SCHEDULE_${weekDay}>\n<it:TIME>${closingRunTimeStartTime}</it:TIME>\n</it:SCHEDULE_${weekDay}>
-    \    Append to list    @{closingRunExlFiles}    ${closingRunExlFile}
-    \    Load Single EXL File    ${closingRunExlfileModified}    ${serviceName}    ${CHE_IP}
-    \    remove files    ${closingRunExlfileModified}
-    \    sleep    1 minutes 20 seconds
-    \    wait smf log message after time    ClosingRunEventHandler for [0-9]*.*?TRIGGERING    ${dt}    5    120
-    [Return]    @{processedClosingrunRicName}
+    Set Suite Variable    @{closingRunExlFiles}
 
-Initialize for Closing Run
-    @{closingrunRicList}    Get RIC List From StatBlock    Closing Run
-    Sort List    ${closingrunRicList}
-    set suite variable    @{closingrunRicList}
-    ${mteconfigfile}    Get MTE Config File
-    ${domain}    Get Preferred Domain
-    set suite variable    ${domain}
-    ${serviceName}    Get FMS Service Name
-    set suite variable    ${serviceName}
-    ${closingRunExlFile}    get state EXL file    ${closingrunRicList[0]}    ${domain}    ${serviceName}    Closing Run
-    ${closingRunDstRic}    ${closingRunHolidayRic}    Get DST And Holiday RICs From EXL    ${closingRunExlFile}    ${closingrunRicList[0]}
-    ${currentDateTime}    get date and time
-    ${closingRunHolidayEXL}    get state EXL file    ${closingRunHolidayRic}    ${domain}    ${serviceName}    Holiday
-    set suite variable    ${closingRunHolidayEXL}
-    Holiday Initialize Variables
-    ${feedTimeRicName}    Get ConnectTimesIdentifier    ${mteconfigfile}
-    set suite variable    ${feedTimeRicName}
-    Go outside holiday and check stat    ${closingRunHolidayEXL}    ${closingRunHolidayRic}    ${domain}    ${currentDateTime}
+Run Re-schedule ClosingRun Test
+    [Documentation]    Remark : If there are multiples closingRun rics, we only pick one of them and test on it
+    Blank Out All Holiday EXLs
+    ${closingRunRic}    Set Variable    ${closingRunRics[0]}
+    ${closingRunExlFile}    get state EXL file    ${closingRunRic}    ${statRicDomain}    ${serviceName}    Closing Run
+    ${closingRunDstRic}    ${closingRunHolidayRic}    Get DST And Holiday RICs From EXL    ${closingRunExlFile}    ${closingRunRic}
+    ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${closingRunDstRic}
+    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
+    ${closingRunTimeStartTime}    add time to date    ${localVenueDateTime[0]}-${localVenueDateTime[1]}-${localVenueDateTime[2]} ${localVenueDateTime[3]}:${localVenueDateTime[4]}:${localVenueDateTime[5]}    120 second    result_format=%H:%M:%S
+    ${closingRunExlFileOnly}    Fetch From Right    ${closingRunExlFile}    \\
+    ${closingRunExlfileModified}=    set variable    ${LOCAL_TMP_DIR}/${closingRunExlFileOnly}_modified.exl
+    modify EXL    ${closingRunExlFile}    ${closingRunExlfileModified}    ${closingrunRic}    ${statRicDomain}    <it:SCHEDULE_${weekDay}>\n<it:TIME>${closingRunTimeStartTime}</it:TIME>\n</it:SCHEDULE_${weekDay}>
+    Append to list    ${closingRunExlFiles}    ${closingRunExlFile}
+    Load Single EXL File    ${closingRunExlfileModified}    ${serviceName}    ${CHE_IP}
+    remove files    ${closingRunExlfileModified}
+    sleep    1 minutes 20 seconds
+    wait smf log message after time    ClosingRunEventHandler for [0-9]*.*?TRIGGERING    ${tdBoxDateTime}    5    120
 
-Re-schedule Closing Run teardown
-    Load Single EXL File    ${closingRunHolidayEXL}    ${serviceName}    ${CHE_IP}
+Re-schedule ClosingRun Cleanup
+    Comment    Restore all closing run
+    Remove Duplicates    ${closingRunExlFiles}
     : FOR    ${closingRunExlFile}    IN    @{closingRunExlFiles}
     \    Load Single EXL File    ${closingRunExlFile}    ${serviceName}    ${CHE_IP}
+    Comment    Restore all holiday
+    Holiday Cleanup
 
 Manual ClosingRun for the EXL File including target Ric
     [Arguments]    ${sampleRic}    ${publishKey}    ${domain}
@@ -584,3 +356,204 @@ Manual ClosingRun for the EXL File including target Ric
     Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${publishKey}
     remove files    ${localcapture}
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
+
+Get Venue Local Datetime From MTE
+    [Arguments]    ${ricName}
+    ${currentDateTime}    get date and time
+    ${localVenueDateTime}    Get GMT Offset And Apply To Datetime    ${ricName}    ${currentDateTime[0]}    ${currentDateTime[1]}    ${currentDateTime[2]}    ${currentDateTime[3]}
+    ...    ${currentDateTime[4]}    ${currentDateTime[5]}
+    [Return]    ${currentDateTime}    ${localVenueDateTime}
+
+Load EXL and Check Stat
+    [Arguments]    ${exlFile}    ${service}    ${identifierName}    ${identifierValue}    ${statFieldName}    ${statValue}
+    ...    ${isCheckStat}=True
+    [Documentation]    Note that all input port stats blocks (that have ${identifierName} set to ${statIdentifier}) will be checked here.
+    Load Single EXL File    ${exlFile}    ${service}    ${CHE_IP}
+    Run Keyword If    '${isCheckStat}'=='True'    Check InputPortStatsBlock    ${identifierName}    ${identifierValue}    ${statFieldName}    ${statValue}
+
+Blank Out All Holiday EXLs
+    [Documentation]    Remove all Holiday Entriese from EXLs i.e. enforce NO Holiday for the MTE
+    : FOR    ${holidayEXL}    IN    @{allHolidayEXLs}
+    \    ${exlFilename}    Fetch From Right    ${holidayEXL}    \\
+    \    ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${eXLFilename}_modified.exl
+    \    blank out holidays    ${holidayEXL}    ${exlFileModified}
+    \    remove files    ${exlFileModified}
+
+Check InputPortStatsBlock
+    [Arguments]    ${identifierFieldName}    ${identifierValue}    ${statFieldName}    ${statValue}
+    [Documentation]    Loop through all MTE's InputPortStatsBlock
+    ...
+    ...    1. Checking if ${identifierValue} == InputPortStatsBlock's ${identifierFieldName} value
+    ...    (This actually indicate if the time Ric e.g. feed time ric or trade time ric has influence on this InputPortStatsBlock_x)
+    ...
+    ...    2. If 1.) is True, verify InputPortStatsBlock's ${statFieldName} == ${statValue}
+    ...
+    ...    Remark:
+    ...    Break out from the loop if \ InputPortStatsBlock's ${identifierFieldName} return empty content
+    : FOR    ${index}    IN RANGE    0    255
+    \    ${fieldValue}    get stat block field    ${MTE}    InputPortStatsBlock_${index}    ${identifierFieldName}
+    \    ${fieldValueList}    Split String    ${fieldValue}    ,
+    \    return from keyword if    '${fieldValue}' == ''
+    \    ${count}    Count Values In List    ${fieldValueList}    ${identifierValue}
+    \    run keyword if    ${count} > 0    wait for statBlock    ${MTE}    InputPortStatsBlock_${index}    ${statFieldName}
+    \    ...    ${statValue}    waittime=2    timeout=300
+
+Check ConfigurationStatsBlock
+    [Arguments]    ${statFieldName}    ${statValue}
+    [Documentation]    Checking ConfigurationStatsBlock field value
+    wait for statBlock    ${MTE}    ConfigurationStatsBlock    ${statFieldName}    ${statValue}    waittime=2    timeout=300
+
+Set Times For IN State
+    [Arguments]    ${hour}    ${min}    ${sec}
+    [Documentation]    For start time, uses values passed in.
+    ...
+    ...    For end time, sets it to 23:59:59.
+    ${startTime}    set variable    ${hour}:${min}:${sec}
+    ${endTime}    set variable    23:59:59
+    [Return]    ${startTime}    ${endTime}
+
+Go Into All Times
+    [Arguments]    ${type}    ${statFieldName}    ${identifierFieldName}    ${dict}    ${rics}
+    [Documentation]    Go into all feed times or trade times
+    : FOR    ${ric}    IN    @{rics}
+    \    ${contents}    Set Variable    ${dict['${ric}']}
+    \    ${exlFile}    Set Variable    ${contents[0]}
+    \    ${dstRicName}    Set Variable    ${contents[1]}
+    \    ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${dstRicName}
+    \    ${exlFileModified}    Go Into Time    ${type}    ${exlFile}    ${ric}    ${statFieldName}
+    \    ...    ${identifierFieldName}    ${ric}    ${localVenueDateTime}    ${False}
+    \    ${processedExls}    Get Dictionary Keys    ${modifiedExlFilesDic}
+    \    ${count}    Count Values In List    ${processedExls}    ${exlFile}
+    \    Run Keyword If    ${count} == 0    Set To Dictionary    ${modifiedExlFilesDic}    ${exlFile}    ${exlFileModified}
+    : FOR    ${ric}    IN    @{rics}
+    \    Check InputPortStatsBlock    ${identifierFieldName}    ${ric}    ${statFieldName}    1
+
+Go Into Time
+    [Arguments]    ${type}    ${exlFile}    ${ricName}    ${statFieldName}    ${identifierFieldName}    ${identifierValue}
+    ...    ${localVenueDateTime}    ${isCheckStat}=True
+    [Documentation]    Go into specific feed time or trade time
+    Comment    Check if EXLs has been modified before, we would keep using same modified file within one test case
+    ${processedExls}    Get Dictionary Keys    ${modifiedExlFilesDic}
+    ${count}    Count Values In List    ${processedExls}    ${exlFile}
+    ${exlFilename}    Fetch From Right    ${exlFile}    \\
+    ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}\\${exlFilename}_modified.exl
+    ${exlFileUse}    Set Variable If    ${count} > 0    ${exlFileModified}    ${exlFile}
+    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
+    ${startTime}    ${endTime}    Set times for IN state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
+    Run Keyword If    '${type}' == 'Feed Time'    Set Feed Time In EXL    ${exlFileUse}    ${exlFileModified}    ${ricName}    ${statRicDomain}
+    ...    ${startTime}    ${endTime}    ${weekDay}
+    Run Keyword If    '${type}' == 'Trade Time'    Set Trade Time In EXL    ${exlFileUse}    ${exlFileModified}    ${ricName}    ${statRicDomain}
+    ...    ${startTime}    ${endTime}    ${weekDay}
+    Load EXL and Check Stat    ${exlFileModified}    ${serviceName}    ${identifierFieldName}    ${identifierValue}    ${statFieldName}    1
+    ...    ${isCheckStat}
+    [Return]    ${exlFileModified}
+
+Set Times For OUT State
+    [Arguments]    ${hour}    ${min}    ${sec}
+    [Documentation]    For start time, sets it to 00:00:00.
+    ...
+    ...    For end time, uses values passed in.
+    ${startTime}    set variable    00:00:00
+    ${endTime}    set variable    ${hour}:${min}:${sec}
+    [Return]    ${startTime}    ${endTime}
+
+Go Outside All Times
+    [Arguments]    ${type}    ${statFieldName}    ${identifierFieldName}    ${dict}    ${rics}
+    [Documentation]    Go outside all feed times or trade times
+    : FOR    ${ric}    IN    @{rics}
+    \    ${contents}    Set Variable    ${dict['${ric}']}
+    \    ${exlFile}    Set Variable    ${contents[0]}
+    \    ${dstRicName}    Set Variable    ${contents[1]}
+    \    ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${dstRicName}
+    \    ${exlFileModified}    Go Outside Time    ${type}    ${exlFile}    ${ric}    ${statFieldName}
+    \    ...    ${identifierFieldName}    ${ric}    ${localVenueDateTime}    ${False}
+    \    ${processedExls}    Get Dictionary Keys    ${modifiedExlFilesDic}
+    \    ${count}    Count Values In List    ${processedExls}    ${exlFile}
+    \    Run Keyword If    ${count} == 0    Set To Dictionary    ${modifiedExlFilesDic}    ${exlFile}    ${exlFileModified}
+    Comment    Checking status only when we go outside all
+    : FOR    ${ric}    IN    @{rics}
+    \    Check InputPortStatsBlock    ${identifierFieldName}    ${ric}    ${statFieldName}    0
+
+Go Outside Time
+    [Arguments]    ${type}    ${exlFile}    ${ricName}    ${statFieldName}    ${identifierFieldName}    ${identifierValue}
+    ...    ${localVenueDateTime}    ${isCheckStat}=True
+    [Documentation]    Go outside specific feed time or trade time
+    Comment    Check if EXLs has been modified before, we would keep using same modified file within one test case
+    ${processedExls}    Get Dictionary Keys    ${modifiedExlFilesDic}
+    ${count}    Count Values In List    ${processedExls}    ${exlFile}
+    ${exlFilename}    Fetch From Right    ${exlFile}    \\
+    ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}\\${exlFilename}_modified.exl
+    ${exlFileUse}    Set Variable If    ${count} > 0    ${exlFileModified}    ${exlFile}
+    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
+    ${startTime}    ${endTime}    Set times for OUT state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
+    Run Keyword If    '${type}' == 'Feed Time'    Set Feed Time In EXL    ${exlFileUse}    ${exlFileModified}    ${ricName}    ${statRicDomain}
+    ...    ${startTime}    ${endTime}    ${weekDay}
+    Run Keyword If    '${type}' == 'Trade Time'    Set Trade Time In EXL    ${exlFileUse}    ${exlFileModified}    ${ricName}    ${statRicDomain}
+    ...    ${startTime}    ${endTime}    ${weekDay}
+    Load EXL and Check Stat    ${exlFileModified}    ${serviceName}    ${identifierFieldName}    ${identifierValue}    ${statFieldName}    0
+    ...    ${isCheckStat}
+    [Return]    ${exlFileModified}
+
+Set Datetimes For IN State
+    [Arguments]    ${year}    ${month}    ${day}    ${hour}    ${min}    ${sec}
+    ...    ${ms}=00
+    [Documentation]    For start datetime, subtracts 3 days from given: ${year}-${month}-${day}T${hour}:${min}:${sec}.${ms}
+    ...
+    ...    For end datetime, adds 3 days from given: ${year}, ${month}, ${day}, ${hour}, ${min}, ${sec}
+    ...
+    ...    Note that the above is needed to cover max possible GMT offset cases.
+    ${startDateTime}    subtract time from date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day    exclude_millis=yes
+    ${endDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day    exclude_millis=yes
+    [Return]    ${startDatetime}    ${endDatetime}
+
+Go Into Datetime
+    [Arguments]    ${type}    ${statField}    ${exlFile}    ${ricName}    ${identifier}    ${identifierValue}
+    [Documentation]    Go into holiday or DST dateime
+    ${exlFilename}    Fetch From Right    ${exlFile}    \\
+    ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${exlFilename}_modified.exl
+    ${tdBoxDateTime}    get date and time
+    ${startDatetime}    ${endDatetime}    Set Datetimes For IN State    ${tdBoxDateTime[0]}    ${tdBoxDateTime[1]}    ${tdBoxDateTime[2]}    ${tdBoxDateTime[3]}
+    ...    ${tdBoxDateTime[4]}    ${tdBoxDateTime[5]}
+    ${startDateTimeT}    Replace String    ${startDatetime}    ${SPACE}    T
+    ${endDatetimeT}    Replace String    ${endDatetime}    ${SPACE}    T
+    Run Keyword If    '${type}' == 'HOL'    Run Keywords    Set Holiday Datetime In EXL    ${exlFile}    ${exlFileModified}    ${ricName}
+    ...    ${statRicDomain}    ${startDateTimeT}.00    ${endDatetimeT}.00
+    ...    AND    Load EXL and Check Stat    ${exlFileModified}    ${serviceName}    ${identifier}    ${identifierValue}
+    ...    ${statField}    1
+    Run Keyword If    '${type}' == 'DST'    Run Keywords    Set DST Datetime In EXL    ${exlFile}    ${exlFileModified}    ${ricName}
+    ...    ${statRicDomain}    ${startDateTimeT}.00    ${endDatetimeT}.00
+    ...    AND    Load EXL and Check Stat For DST    ${exlFileModified}    ${ricName}    dstGMTOffset    ${startDateTimeT}.00
+    ...    ${endDatetimeT}.00
+    remove files    ${exlFileModified}
+
+Set Datetimes For OUT State
+    [Arguments]    ${year}    ${month}    ${day}    ${hour}    ${min}    ${sec}
+    ...    ${ms}=00
+    [Documentation]    For start datetime, adds 3 days from given: ${year}-${month}-${day}T${hour}:${min}:${sec}.${ms}
+    ...
+    ...    For end datetime, adds 4 days from given: ${year}, ${month}, ${day}, ${hour}, ${min}, ${sec}
+    ...
+    ...    Note that the above is needed to cover max possible GMT offset cases.
+    ${startDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    3 day    exclude_millis=yes
+    ${endDateTime}    add time to date    ${year}-${month}-${day} ${hour}:${min}:${sec}    4 day    exclude_millis=yes
+    [Return]    ${startDatetime}    ${endDatetime}
+
+Go Outside Datetime
+    [Arguments]    ${type}    ${statField}    ${exlFile}    ${ricName}    ${identifier}    ${identifierValue}
+    [Documentation]    Go outside holiday or DST datetime
+    ${exlFilename}    Fetch From Right    ${exlFile}    \\
+    ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${exlFilename}_modified.exl
+    ${tdBoxDateTime}    get date and time
+    ${startDatetime}    ${endDatetime}    Set Datetimes For OUT State    ${tdBoxDateTime[0]}    ${tdBoxDateTime[1]}    ${tdBoxDateTime[2]}    ${tdBoxDateTime[3]}
+    ...    ${tdBoxDateTime[4]}    ${tdBoxDateTime[5]}
+    ${startDateTimeT}    Replace String    ${startDatetime}    ${SPACE}    T
+    ${endDatetimeT}    Replace String    ${endDatetime}    ${SPACE}    T
+    Run Keyword If    '${type}' == 'HOL'    Run Keywords    Set Holiday Datetime In EXL    ${exlFile}    ${exlFileModified}    ${ricName}
+    ...    ${statRicDomain}    ${startDateTimeT}.00    ${endDatetimeT}.00
+    ...    AND    Load EXL and Check Stat    ${exlFileModified}    ${serviceName}    ${identifier}    ${identifierValue}
+    ...    ${statField}    0
+    Run Keyword If    '${type}' == 'DST'    Run Keywords    Set DST Datetime In EXL    ${exlFile}    ${exlFileModified}    ${ricName}
+    ...    ${statRicDomain}    ${startDateTimeT}.00    ${endDatetimeT}.00
+    ...    AND    Load EXL and Check Stat For DST    ${exlFileModified}    ${ricName}    normalGMTOffset    ${startDateTimeT}.00
+    ...    ${endDatetimeT}.00
+    remove files    ${exlFileModified}
