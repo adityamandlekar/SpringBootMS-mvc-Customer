@@ -192,6 +192,7 @@ Get ConnectTimesIdentifier
     ${len}    Get Length    ${fhName}
     ${connectTimesIdentifier}=    Run Keyword If    ${len} > 0    get MTE config value    ${mteConfigFile}    Inputs    ${fhName}
     ...    FHRealtimeLine    ConnectTimesIdentifier
+    ...    ELSE    set variable    None
     Comment    Currently 'get MTE config value' will only return a string value. To align all return from 'Get ConnectTimesIdentifier' is a list, adding return value into a list
     @{retList}=    Split String    ${connectTimesIdentifier}    ,
     return from keyword if    '${connectTimesIdentifier}' != 'NOT FOUND' and '${connectTimesIdentifier}' != 'None'    ${retList}
