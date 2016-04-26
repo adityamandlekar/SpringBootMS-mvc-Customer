@@ -82,9 +82,9 @@ def run_dataview(dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC,
             DataView -TRWF2 -IM 232.2.19.229 -IH 10.91.57.71  -PM 7777 -L 4096 -R .[SPSCB1L2_I -D SERVICE_PROVIDER_STATUS -EXITDELAY 5
     """
                         
-    # use pathfail to detect failure of a command within a pipeline
+    # use pipefail to detect failure of a command within a pipeline
     # remove non-printable chars; dataview COMP_NAME output contains binary characters that can cause utf-8 decode problems
-    cmd = 'set -o pathfail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (utilpath.DATAVIEW, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
+    cmd = 'set -o pipefail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (utilpath.DATAVIEW, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
     cmd = cmd + ' ' + ' '.join( map(str, optArgs))
     cmd = cmd + ' | tr -dc \'[:print:],[:blank:],\\n\''
     print '*INFO* ' + cmd
@@ -112,9 +112,9 @@ def run_dataview_noblanks(dataType, multicastIP, interfaceIP, multicastPort, Lin
             DataView -TRWF2 -IM 232.2.19.229 -IH 10.91.57.71  -PM 7777 -L 4096 -R .[SPSCB1L2_I -D SERVICE_PROVIDER_STATUS -EXITDELAY 5
     """
                         
-    # use pathfail to detect failure of a command within a pipeline
+    # use pipefail to detect failure of a command within a pipeline
     # remove non-printable chars; dataview COMP_NAME output contains binary characters that can cause utf-8 decode problems
-    cmd = 'set -o pathfail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (utilpath.DATAVIEW, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
+    cmd = 'set -o pipefail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (utilpath.DATAVIEW, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
     cmd = cmd + ' ' + ' '.join( map(str, optArgs))
     cmd = cmd + ' | tr -dc \'[:print:],[:blank:],\\n\''
     cmd = cmd + ' | grep -v \'<blank>\''
