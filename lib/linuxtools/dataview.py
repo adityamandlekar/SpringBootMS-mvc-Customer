@@ -42,17 +42,22 @@ def convert_dataView_response_to_multiRIC_dictionary(dataview_response,ignoreBla
         |convert dataView response to multiRIC dictionary |  response |
     """        
     
-    ric = ''
+    currRic = ''
     retDict = {}
     fidsAndValuesDict = {}
     lines = dataview_response.split('\n')
     for line in lines:
         if (line.startswith('Msg Key:')):
-            if (ric):
-                retDict[ric] = fidsAndValuesDict
-            ric = line.split(':')[1].strip()
+            NewRic = line.split(':')[1].strip()
+            # Save FID values for current RIC before starting new RIC
+            if (currRic):
+                if retDict.has_key(currRic):
+                    retDict[currRic].update(fidsAndValuesDict)
+                else:
+                    retDict[currRic] = fidsAndValuesDict
+            currRic = NewRic
             fidsAndValuesDict = {}
-        if (line.find('->') != -1):
+        elif (line.find('->') != -1):
             fidAndValue = line.split(',')                
             if (len(fidAndValue) >= 2):
                 fidIdAndfidName = fidAndValue[0].split()
@@ -62,7 +67,12 @@ def convert_dataView_response_to_multiRIC_dictionary(dataview_response,ignoreBla
                     raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)' %line) 
             else:
                 raise AssertionError('*ERROR* Unexpected FID/value format found in dataview response (%s), expected format (FIDNUM -> FIDNAME, FIDVALUE)' %line)
-    
+    # Save FID values for last RIC
+    if (currRic):
+        if retDict.has_key(currRic):
+            retDict[currRic].update(fidsAndValuesDict)
+        else:
+            retDict[currRic] = fidsAndValuesDict
     return retDict
 
 def run_dataview(dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain, *optArgs):
