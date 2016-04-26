@@ -45,6 +45,19 @@ Suite Setup Two TD Boxes
     ${ret}    suite setup    ${CHE_B_IP}
     Set Suite Variable    ${CHE_B_Session}    ${ret}
 
+Suite Setup Two TD Boxes With Playback
+    [Documentation]    Setup 3 Sessions, 2 Peer Thunderdome Boxes, 1 Playback Box
+    Should Not be Empty    ${CHE_A_IP}
+    Should Not be Empty    ${CHE_B_IP}
+    Should Not be Empty    ${PLAYBACK_MACHINE_IP}
+    ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
+    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
+    Set Suite Variable    ${Playback_Session}    ${plyblk}
+    ${ret}    suite setup    ${CHE_B_IP}
+    Set Suite Variable    ${CHE_B_Session}    ${ret}
+    ${ret}    suite setup    ${CHE_A_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${ret}
+
 Suite Setup
     [Arguments]    ${ip}=${CHE_IP}
     [Documentation]    Do test suite level setup, e.g. things that take time and do not need to be repeated for each test case.
@@ -350,30 +363,37 @@ Inject PCAP File
     Run Keyword And Return If    '${PROTOCOL}' == 'TCP'    Inject PCAP File on TCP    @{pcapFileList}
     FAIL    PROTOCOL in VenueVariables must be UDP or TCP.
 
+Inject PCAP File and Wait For Output
+    [Arguments]    ${injectFile}
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    Start Capture MTE Output    ${remoteCapture}
+    Inject PCAP File    ${injectFile}
+    Stop Capture MTE Output
+    [Return]    ${remoteCapture}
+
 Inject PCAP File on TCP
     [Arguments]    @{pcapFileList}
-    [Documentation]    Use PcapPlybk to inject TCP Pcap
-    ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
+    [Documentation]    Switch to playback box and start injection of the specified PCAP files on TCP transport. \ Switch back to original box in KW teardown.
+    ...    Do not wait for injection to complete.
+    ...    If multiple files are specified, they will run in parallel.
     ${host}=    get current connection index
     Switch Connection    ${Playback_Session}
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
-    \    ${stdout}    ${rc}    execute_command    PCapPlybk -ifile ${pcapFile} -intf ${PLAYBACK_BIND_IP_A} -port ${TCP_PORT} -pps ${PLAYBACK_PPS} -sendmode tcp -tcptimeout 10    return_rc=True
-    \    Should Be Equal As Integers    ${rc}    0
+    \    Start Command    PCapPlybk -ifile ${pcapFile} -intf ${PLAYBACK_BIND_IP_A} -port ${TCP_PORT} -pps ${PLAYBACK_PPS} -sendmode tcp -tcptimeout 10
     [Teardown]    Switch Connection    ${host}
 
 Inject PCAP File on UDP
     [Arguments]    @{pcapFileList}
-    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-72
-    ...
-    ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
+    [Documentation]    Switch to playback box and start injection of the specified PCAP files on TCP transport. \ Switch back to original box in KW teardown.
+    ...    Do not wait for injection to complete.
+    ...    If multiple files are specified, they will run in parallel.
     ${host}=    get current connection index
     Switch Connection    ${Playback_Session}
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
     \    ${intfName}    Get Playback NIC For PCAP File    ${pcapFile}
-    \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'    return_rc=True
-    \    Should Be Equal As Integers    ${rc}    0
+    \    Start Command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'
     [Teardown]    Switch Connection    ${host}
 
 Insert ICF
