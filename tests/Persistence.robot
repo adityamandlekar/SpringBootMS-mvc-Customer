@@ -163,7 +163,7 @@ Go Into Feed Time And Set End Feed Time
     ...    ${exlBackupFiles} : list of exlFiles that renamed by this KW and reserve the original value of the EXL files
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
     ${mteConfigFile}=    Get MTE Config File
-    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${Empty}
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
     @{exlBackupFiles}=    Create List
     @{exlFiles}=    Create List
     : FOR    ${connectTimesIdentifier}    IN    @{connectTimesIdentifierList}

@@ -166,8 +166,7 @@ Get ConnectTimesIdentifier
     [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
     [Documentation]    get the ConnectTimesIdentifier (feed times RIC) from venue config file.
     ...    returns
-    ...    1. either single ConnectTimesIdentifier if fhName is specified Or
-    ...    2. list with ConnectTimesIdentifier(s) if fhName = ${Empty}
+    ...    1. list with ConnectTimesIdentifier(s)
     ...
     ...    Note that there are currently 2 different config file formats - MFDS and HKFE. MFDS may be the "old" way so will check that format if the initial search attempt fails.
     ...
@@ -193,7 +192,10 @@ Get ConnectTimesIdentifier
     ${len}    Get Length    ${fhName}
     ${connectTimesIdentifier}=    Run Keyword If    ${len} > 0    get MTE config value    ${mteConfigFile}    Inputs    ${fhName}
     ...    FHRealtimeLine    ConnectTimesIdentifier
-    return from keyword if    '${connectTimesIdentifier}' != 'NOT FOUND' and '${connectTimesIdentifier}' != 'None'    ${connectTimesIdentifier}
+    ...    ELSE    set variable    None
+    Comment    Currently 'get MTE config value' will only return a string value. To align all return from 'Get ConnectTimesIdentifier' is a list, adding return value into a list
+    @{retList}=    Split String    ${connectTimesIdentifier}    ,
+    return from keyword if    '${connectTimesIdentifier}' != 'NOT FOUND' and '${connectTimesIdentifier}' != 'None'    ${retList}
     ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    FHRealtimeLine    ConnectTimesIdentifier
     @{retList}=    Remove Duplicates    ${connectTimesIdentifier}
     return from keyword if    len(${retList}) > 0    ${retList}
@@ -205,7 +207,7 @@ Get ConnectTimesIdentifier
 Get HighActivityTimesIdentifier
     [Arguments]    ${mteConfigFile}
     [Documentation]    get the HighActivityTimesIdentifier (trade times RIC) from venue config file.
-    ...    returns HighActivityTimesIdentifier.
+    ...    returns a list of HighActivityTimesIdentifier.
     ...
     ...    Note that there are currently 2 different config file formats - MFDS and HKFE. MFDS may be the "old" way so will check that format if the initial search attempt fails.
     ...
@@ -229,11 +231,13 @@ Get HighActivityTimesIdentifier
     ...    <HighActivityTimesRIC>MUT%TRD01</HighActivityTimesRIC>
     ...    <Inputs>
     ${highActivityTimesIdentifier}=    get MTE config value    ${mteConfigFile}    Inputs    ${FH}    FHRealtimeLine    HighActivityTimesIdentifier
-    return from keyword if    '${highActivityTimesIdentifier}' != 'NOT FOUND'    ${highActivityTimesIdentifier}
+    @{retList}=    Split String    ${highActivityTimesIdentifier}    ,
+    return from keyword if    '${highActivityTimesIdentifier}' != 'NOT FOUND'    @{retList}
     ${highActivityTimesIdentifier}=    get MTE config value    ${mteConfigFile}    HighActivityTimesRIC
-    return from keyword if    '${highActivityTimesIdentifier}' != 'NOT FOUND'    ${highActivityTimesIdentifier}
+    @{retList}=    Split String    ${highActivityTimesIdentifier}    ,
+    return from keyword if    '${highActivityTimesIdentifier}' != 'NOT FOUND'    @{retList}
     FAIL    No HighActivityTimesIdentifier found in venue config file: ${mteConfigFile}
-    [Return]    ${highActivityTimesIdentifier}
+    [Return]    @{retList}
 
 Get Domain Names
     [Arguments]    ${mteConfigFile}
