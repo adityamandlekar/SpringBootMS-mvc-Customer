@@ -630,7 +630,7 @@ Start Process
     [Documentation]    Start process, argument is the process name
     run commander    process    start ${process}
     wait for process to exist    ${process}
-    wait for StatBlock    CritProcMon    ${process}    m_IsAvailable    1
+    wait for StatBlock    CritProcMon    ${process}    m_IsAvailable    1    10    180
 
 Stop Capture MTE Output
     [Arguments]    ${waittime}=5    ${timeout}=300
