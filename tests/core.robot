@@ -253,6 +253,15 @@ Get Domain Names
     ${domainList}    get MTE config list by path    ${mteConfigFile}    FMS    ${serviceName}    Domain    Z
     [Return]    @{domainList}
 
+Get FID Values
+    [Arguments]    ${ricList}    ${domain}
+    [Documentation]    Get the value for all non-blank FIDs for the RICs listed in the specfied file on the remote machine.
+    ...
+    ...    Returns a dictionary with key=RIC, value = {sub-dictionary with key=FID NAME and value=FID value}
+    ${result}=    Send TRWF2 Refresh Request No Blank FIDs    ${ricList}    ${domain}    -RL 1
+    ${ricDict}=    Convert DataView Response to MultiRIC Dictionary    ${result}
+    [Return]    ${ricDict}
+
 Get FMS Service Name
     [Documentation]    get the Service name from statBlock
     ${categories}=    get stat blocks for category    ${MTE}    FMS
@@ -330,6 +339,21 @@ Get RIC From MTE Cache
     ${publish_key}=    set variable    ${result[0]['PUBLISH_KEY']}
     [Teardown]
     [Return]    ${ric}    ${publish_key}
+
+Get RIC List From Remote PCAP
+    [Arguments]    ${remoteCapture}    ${domain}
+    [Documentation]    Extract the list of RICs from a remote capture and write them to a temp file on the remote machine.
+    ...    This is generally used to create the RIC list for the 'Get FID List' keyword.
+    ...
+    ...    Returns the name of the remote file containing the RIC list.
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    @{ricList}=    Get RICs From PCAP    ${localCapture}    ${domain}
+    Should Not Be Empty    ${ricList}    Injected file produced no published RICs
+    Remove Files    ${localCapture}
+    ${ricFile}=    Set Variable    ${REMOTE_TMP_DIR}/ricList.txt
+    Create Remote File Content    ${ricFile}    ${ricList}
+    [Return]    ${ricFile}
 
 Get RIC List From StatBlock
     [Arguments]    ${ricType}
