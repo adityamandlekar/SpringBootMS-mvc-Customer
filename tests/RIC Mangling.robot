@@ -114,6 +114,21 @@ Verify Mangling by Context ID
     Verify Mangling Rule On All Context IDs    ${contextIDs}    ${specialContextId}
     [Teardown]    Verify Mangling by Context ID Case Teardown    ${dstdumpfile}
 
+Verify UP_SOURCE_RIC Mangling in Shell RIC
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-2067
+    ...
+    ...    Verify Shell RIC C0 Respose UP_SOURCE_RIC mangling value is same as source ric
+    ${contextIds}    Get ContextIDs for Shell RIC
+    Pass Execution If    len(${contextIds}) == 0    MTE does not support Shell RIC
+    Set Mangling Rule    SOU
+    : FOR    ${contextId}    IN    @{contextIds}
+    \    ${ricFiledList}    Get Ric Fields From Cache    1    ${EMPTY}    ${contextId}
+    \    ${pubRic}    Set Variable    ${ricFiledList[0]['PUBLISH_KEY']}
+    \    ${domain}    Set Variable    ${ricFiledList[0]['DOMAIN']}
+    \    ${output}    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
+    \    Verify Mangling For UP SOURCE RIC FID From DataView Response    ${output}    ![
+    [Teardown]    Run Keyword If    len(${contextIds}) != 0    Load Mangling Settings
+
 *** Keywords ***
 Change Phase
     [Arguments]    ${PrePhase}    ${NewPhase}
@@ -125,6 +140,23 @@ Change Phase
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
     [Return]    ${localcapture}
+
+Get ContextIDs for Shell RIC
+    ${mteConfigFile}    Get MTE Config File
+    ${serviceName}    Get FMS Service Name
+    ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
+    ${contextIdsSupported}    Get Context Ids From Fms Filter String    ${fmsFilterString}
+    ${contextIdsSupportedLen}    Get Length    ${contextIdsSupported}
+    ${fidfilterDict}    Get ContextId Fids Constit From Fidfiltertxt
+    ${contextIds}    Get Dictionary Keys    ${fidfilterDict}
+    ${contextIdsForShellRic}    Create List
+    ${contextIdsUse}    Run Keyword If    ${contextIdsSupportedLen} == 0    Set Variable    ${contextIds}
+    ...    ELSE    Set Variable    ${contextIdsSupported}
+    : FOR    ${contextId}    IN    @{contextIdsUse}
+    \    ${fids}    Get Dictionary Keys    ${fidfilterDict['${contextId}']['0']}
+    \    ${isFIDExist}    Get Count    ${fids}    6632
+    \    Run Keyword If    '${isFIDExist}' == '1'    Append To List    ${contextIdsForShellRic}    ${contextId}
+    [Return]    ${contextIdsForShellRic}
 
 Set Mangling Rule For Specific Context ID
     [Arguments]    ${contextid}    ${rule}    ${remoteConfigFile}

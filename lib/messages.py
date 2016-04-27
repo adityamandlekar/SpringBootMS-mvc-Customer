@@ -1017,7 +1017,6 @@ def _and_DAS_filter_string(filterString1, filterStirng2):
         else:
             return ''
     
-
 def _build_DAS_filter_string(msgClass = '*', ric = '*', constitNum = '*'):
     """ Build the DAS filter string by specified condition
     
