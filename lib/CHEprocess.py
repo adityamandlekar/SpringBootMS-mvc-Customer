@@ -55,6 +55,7 @@ def rollover_MTE_start_date(GMTStartTime):
 
     LinuxCoreUtilities().set_date_and_time(newDateTime.year, newDateTime.month, newDateTime.day, newDateTime.hour, newDateTime.minute, newDateTime.second)
     currTimeArray = newDateTime.strftime('%Y,%m,%d,%H,%M,%S').split(',')
+    logfiles.wait_smf_log_message_after_time('%s.*StartOfDay time occurred' %MTE, currTimeArray)
     logfiles.wait_smf_log_does_not_contain('dropped due to expiration' , 5, 300)
     logfiles.wait_smf_log_message_after_time('%s.*handleStartOfDayInstrumentUpdate.*Ending' %MTE, currTimeArray)
 

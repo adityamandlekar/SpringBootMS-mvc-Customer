@@ -42,19 +42,19 @@ Persistence File Creation
 
 Persistence File Loading
     [Documentation]    Verify that the MTE correctly loads the existing persist file on startup to initialize its cache.
-    Comment    The initial start MTE, wait for FMS reorg, wait for persist file update, and stop MTE KWs are a workaround of a MTE defect (ERTCADVAMT-827). They may be removed when the defect is fixed.    When the MTE is started and the PERSIST file does not exist (full Reorg), the CHE%FMSREORGTIMESTAMP RIC has MANGLING_RULE = Unmangled (Default).    When the MTE is restarted without removing the PERSIST file (partial Reorg), the CHE%FMSREORGTIMESTAMP RIC has MANGLING_RULE = CATF Specified Mangle Settings
+    Stop MTE
+    Delete Persist Files
     Start MTE
-    Wait For FMS Reorg
     Wait For Persist File Update
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_before.csv
     Stop MTE
     Start MTE
-    Wait For FMS Reorg
-    Wait For Persist File Update
-    Dumpcache And Copyback Result    ${LOCAL_TMP_DIR}/cache_before.csv
-    Stop MTE
-    Start MTE
-    Dumpcache And Copyback Result    ${LOCAL_TMP_DIR}/cache_after.csv
-    verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_after.csv
+    Comment    As a workaround of MTE defect (ERTCADVAMT-827), remove the CHE%FMSREORGTIMESTAMP line from the cache dump files before comparing them    When the MTE is started and the PERSIST file does not exist (full Reorg), the CHE%FMSREORGTIMESTAMP RIC has MANGLING_RULE = Unmangled (Default).    When the MTE is restarted without removing the PERSIST file (partial Reorg), the CHE%FMSREORGTIMESTAMP RIC has MANGLING_RULE = CATF Specified Mangle Settings
+    ${removeFMSREORGTIMESTAMP}    Create Dictionary    .*CHE%FMSREORGTIMESTAMP.*=${EMPTY}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_before.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_after.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
 Verify FMS filter string
@@ -64,7 +64,7 @@ Verify FMS filter string
     Start MTE
     Wait For FMS Reorg
     ${dstdumpfile}=    set variable    ${LOCAL_TMP_DIR}/cachedump.csv
-    Dumpcache And Copyback Result    ${dstdumpfile}
+    Get Sorted Cache Dump    ${dstdumpfile}
     ${mteConfigFile}=    Get MTE Config File
     ${serviceName}    Get FMS Service Name
     ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
@@ -163,7 +163,7 @@ Go Into Feed Time And Set End Feed Time
     ...    ${exlBackupFiles} : list of exlFiles that renamed by this KW and reserve the original value of the EXL files
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
     ${mteConfigFile}=    Get MTE Config File
-    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${Empty}
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
     @{exlBackupFiles}=    Create List
     @{exlFiles}=    Create List
     : FOR    ${connectTimesIdentifier}    IN    @{connectTimesIdentifierList}
