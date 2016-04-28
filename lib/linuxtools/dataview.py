@@ -153,3 +153,19 @@ def verify_mangling_from_dataview_response(dataview_response,expected_pe,expecte
             raise AssertionError('*ERROR* Missing FID (PROD_PERM) from dataview response ')
     else:
         raise AssertionError('*ERROR* Cannt retrieve Ric (%s) from MTE' %expected_ricname)
+
+def verify_mangling_for_UP_SOURCE_RIC_FID_from_dataview_response(dataview_response,expected_manglingPrefix):
+
+    lines = dataview_response.split('\n')
+    for line in lines:
+        if (line.find("UP_SOURCE_RIC") != -1):
+            splitContents = line.split(" ")
+            if (len(splitContents[-1]) >= len(expected_manglingPrefix)):
+                if (expected_manglingPrefix != (splitContents[-1])[0:len(expected_manglingPrefix)]):
+                    raise AssertionError('*ERROR* UP_SOURCE_RIC (%s) mangling does not matched with expected value (%s)'%(splitContents[-1],expected_manglingPrefix))
+                else:
+                    return
+            else:
+                raise AssertionError('*ERROR* UP_SOURCE_RIC (%s) string length is smaller than mangling prefix (%s)'%(splitContents[-1],expected_manglingPrefix))
+
+    raise AssertionError('*ERROR* UP_SOURCE_RIC is not found in dataview response')
