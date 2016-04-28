@@ -22,35 +22,14 @@ def convert_EXL_datetime_to_statblock_format(exlDatetime):
     exlDatetimeObject = datetime.strptime(exlDatetimeParts[0], '%Y-%m-%dT%H:%M:%S')
     return exlDatetimeObject.strftime('%Y-%b-%d %H:%M:%S')
 
-def get_bytes_received_from_stat_block(instanceName,statBlock):
-    """Get byte receive data from stat block
-    Argument : instanceName , name of MTE or FH instance
-               statBlock, name of block in StatBlock
-    Returns : integer of byte received
+def get_count_from_stat_block(instanceName,statBlock,fieldName):
+    """Returns count from stat block
 
     Examples:
-    | get message sent from stat block| MFDS1F | InputPortStatsBlock_0 |  
+    | get count from stat block | HKF02M | InputPortStatsBlock_0 | bytesReceivedCount |
     """          
     
-    msgCount = get_stat_block_field(instanceName, statBlock, 'bytesReceivedCount')
-    
-    #Non integer detected > make a zero
-    if (msgCount.isdigit() == False):
-        msgCount = '0'
-    
-    return int(msgCount)  
-
-def get_message_sent_from_stat_block(instanceName,statBlock):
-    """Get byte receive data from stat block
-    Argument : instanceName , name of MTE or FH instance
-               statBlock, name of block in StatBlock
-    Returns : integer of byte received
-
-    Examples:
-    | get message sent from stat block| MFDS1F | output1 |  
-    """          
-    
-    msgCount = get_stat_block_field(instanceName, statBlock, 'numberMessagesSent')
+    msgCount = get_stat_block_field(instanceName, statBlock, fieldName)
     
     #Non integer detected > make a zero
     if (msgCount.isdigit() == False):
@@ -95,39 +74,34 @@ def get_stat_block_field(writerName, blockName, fieldName):
     else:
         raise AssertionError('*ERROR* No field found for %s, %s, %s' %(writerName, blockName, fieldName))
 
-def get_statBlockList_for_fh_output():
+def get_statBlockList_for_fh_output(instanceName):
     """get all the stat block name for FH output
 
-    Argument NIL
+    Argument
+    instanceName : instance of FH
     Returns list of stat block name
 
     Examples:
-    | get statBlockList for fh output |
+    | get statBlockList for fh output | HKF01F |
      """
     
-    statBlockList = ['output1']
-             
+    statBlockList = get_stat_blocks_for_category(instanceName, 'OutputStats')
+
     return statBlockList    
 
-def get_statBlockList_for_mte_input(instanceName):
-    """get all the stat block name for MTE input
+def get_statBlockList_for_mte_output():
+    """get all the stat block name for MTE output
 
     Argument NIL
     Returns list of stat block name
 
     Examples:
-    | get statBlockList for mte input | ${mte} |
+    | get statBlockList for mte output |
      """
     
-    statBlockList = []
-    for i in range(0, 255):
-        blockName = 'InputPortStatsBlock_' + str(i)
-        connectTimeIdentifier = get_stat_block_field(instanceName, blockName, 'connectTimesIdentifier')
-        if len(connectTimeIdentifier) != 0:
-            statBlockList.append(blockName)
-        else:
-            break
-    return statBlockList      
+    statBlockList = ['OutputStatsBlock']
+   
+    return statBlockList     
 
 def get_stat_blocks_for_category(writerName, categoryName):
     """Returns a list of Stat Blocks for the specified category.

@@ -1486,28 +1486,27 @@ def stop_capture_packets():
     else:   
         print '*INFO* tcpdump process stop successfully'
 
-def wait_for_capture_to_complete(instanceName,waittime=5,timeout=30):
+def wait_for_capture_to_complete(instanceName,statBlockList,field,waittime=5,timeout=30):
     """wait for capture finish by checking the stat block information
 
     Argument 
     instanceName : either instance of MTE of FH e.g. MFDS1M or MFDS1F
     statBlockList : [list] of stat block name that want to monitor during capture
+    field : field name that want to monitor during capture e.g. outputMessageCount
     waittime : how long we wait for each cycle during checking (second)
     timeout : how long we monitor before we timeout (second)
 
     Returns NIL.
 
     Examples:
-    | wait for capture to complete | HKF1A | 2 | 300 |
+    | wait for capture to complete | HKF02M | ['OutputStatsBlock'] | outputMessageCount |
      """
-    
-    statBlockList = statblock.get_statBlockList_for_mte_input(instanceName)
     
     #initialize the msgCount for each stat block found in statBlock list 
     msgCountPrev = {}
     msgCountDiff = {}
     for statBlock in statBlockList:
-        msgCountPrev[statBlock] =  statblock.get_bytes_received_from_stat_block(instanceName,statBlock)
+        msgCountPrev[statBlock] =  statblock.get_count_from_stat_block(instanceName,statBlock,field)
         msgCountDiff[statBlock] = 0
 
     # convert  unicode to int (it is unicode if it came from the Robot test)
@@ -1521,11 +1520,11 @@ def wait_for_capture_to_complete(instanceName,waittime=5,timeout=30):
         
         #Check if msg count difference
         for statBlock in statBlockList:
-            msgCountCurr = statblock.get_bytes_received_from_stat_block(instanceName,statBlock)
+            msgCountCurr = statblock.get_count_from_stat_block(instanceName,statBlock,field)
             msgCountDiff[statBlock] = msgCountCurr - msgCountPrev[statBlock]
             
             if (msgCountDiff[statBlock] < 0):
-                raise AssertionError('*ERROR* stat block %s - Current bytes received %d < previous bytes received %d' %(statBlock,msgCountCurr,msgCountPrev[statBlock]))
+                raise AssertionError('*ERROR* stat block %s - Current count %d < previous count %d' %(statBlock,msgCountCurr,msgCountPrev[statBlock]))
         
             msgCountPrev[statBlock] = msgCountCurr
             
@@ -1540,3 +1539,37 @@ def wait_for_capture_to_complete(instanceName,waittime=5,timeout=30):
     
     #Timeout                    
     raise AssertionError('*ERROR* Timeout %ds : Playback has not ended yet for some channel (suggest to adjust timeout)' %(timeout))
+
+def wait_for_fh_capture_to_complete(instanceName,waittime=5,timeout=30):
+    """wait for FH capture finish by checking the stat block information
+
+    Argument 
+    instanceName : instance of FH e.g. HKF01F
+    waittime : how long we wait for each cycle during checking (second)
+    timeout : how long we monitor before we timeout (second)
+
+    Returns NIL.
+
+    Examples:
+    | wait for fh capture to complete | HKF01F | 2 | 300 |
+     """
+
+    statBlockList = statblock.get_statBlockList_for_fh_output(instanceName)
+    wait_for_capture_to_complete(instanceName,statBlockList,'numberMessagesSent',waittime,timeout)
+
+def wait_for_mte_capture_to_complete(instanceName,waittime=5,timeout=30):
+    """wait for MTE capture finish by checking the stat block information
+
+    Argument 
+    instanceName : instance of MTE e.g. HKF02M
+    waittime : how long we wait for each cycle during checking (second)
+    timeout : how long we monitor before we timeout (second)
+
+    Returns NIL.
+
+    Examples:
+    | wait for mte capture to complete | HKF02M | 2 | 300 |
+     """
+    
+    statBlockList = statblock.get_statBlockList_for_mte_output()
+    wait_for_capture_to_complete(instanceName,statBlockList,'outputMessageCount',waittime,timeout)
