@@ -14,10 +14,8 @@ Persistence File Backup
     Start MTE
     Delete Persist Backup
     ${serviceName}=    Get FMS Service Name
-    ${offsetInSecond}=    set variable    120
     ${currDateTime}=    get date and time
-    ${exlFiles}    ${exlBackupFiles}    Go Into Feed Time And Set End Feed Time    ${serviceName}    ${offsetInSecond}
-    sleep    ${offsetInSecond}
+    ${exlFiles}    ${exlBackupFiles}    Go Into End Feed Time    ${serviceName}
     Wait SMF Log Message After Time    ${MTE}.*Creating Snapshot of Persister Database    ${currDateTime}    10    120
     @{existingPersistBackupFiles}=    wait for search file    ${VENUE_DIR}    PERSIST_${MTE}_*.DAT    2    180
     Delete Persist Backup
@@ -83,12 +81,8 @@ Verify New Item Added to Persist File via FMS
     ${localRicEXLFile}    set variable    ${LOCAL_TMP_DIR}/${RicEXLfile}
     ${newRic}    Create Unique RIC Name    newric
     add ric to exl file    ${EXLfullpath}    ${localRicEXLFile}    ${newRic}    ${None}    ${domain}
-    ${currDateTime}=    get date and time
-    ${offsetInSecond}=    set variable    120
-    ${feedEXLFiles}    ${feedEXLBackupFiles}    Go Into Feed Time And Set End Feed Time    ${serviceName}    ${offsetInSecond}
     Load Single EXL File    ${localRicEXLFile}    ${serviceName}    ${CHE_IP}
-    sleep    ${offsetInSecond}
-    Wait SMF Log Message After Time    ${MTE}.*Persist cycle completed    ${currDateTime}    10    120
+    ${feedEXLFiles}    ${feedEXLBackupFiles}    Force Persist File Write    ${serviceName}
     Verfiy RIC Persisted    ${newRic}    ${domain}
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}    ${feedEXLBackupFiles}
     ...    AND    Case Teardown    ${localRicEXLFile}
@@ -100,11 +94,7 @@ Persistence file FIDs existence check
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${offsetInSecond}=    set variable    120
-    ${currDateTime}=    get date and time
-    ${feedEXLFiles}    ${feedEXLBackupFiles}    Go Into Feed Time And Set End Feed Time    ${serviceName}    ${offsetInSecond}
-    sleep    ${offsetInSecond}
-    Wait SMF Log Message After Time    ${MTE}.*Persist cycle completed    ${currDateTime}    10    120
+    ${feedEXLFiles}    ${feedEXLBackupFiles}    Force Persist File Write    ${serviceName}
     ${cacheDomainName}=    Remove String    ${domain}    _
     ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
     ${pmatDumpfile}=    Dump Persist File To XML    --ric ${ric}    --domain ${pmatDomain}
@@ -153,52 +143,4 @@ Go Into EndOfDay time
     Comment    Revert changes in local venue config file
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
     ${configFileLocal}=    Get MTE Config File
-    [Teardown]
-
-Go Into Feed Time And Set End Feed Time
-    [Arguments]    ${serviceName}    ${offsetInSecond}
-    [Documentation]    For all feeds, set start of feed time to current time and end of feed time in 2 minutes.
-    ...    Return:
-    ...    ${exlFiles} : list of exlFiles that is modified by this KW
-    ...    ${exlBackupFiles} : list of exlFiles that renamed by this KW and reserve the original value of the EXL files
-    ${connectTimeRicDomain}=    set variable    MARKET_PRICE
-    ${mteConfigFile}=    Get MTE Config File
-    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
-    @{exlBackupFiles}=    Create List
-    @{exlFiles}=    Create List
-    : FOR    ${connectTimesIdentifier}    IN    @{connectTimesIdentifierList}
-    \    ${exlFile}=    get state EXL file    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${serviceName}    Feed Time
-    \    ${count}=    Get Count    ${exlFiles}    ${exlFile}
-    \    ${exlBackupFile}    set variable    ${exlFile}.backup
-    \    Run Keyword if    ${count} == 0    append to list    ${exlFiles}    ${exlFile}
-    \    Run Keyword if    ${count} == 0    append to list    ${exlBackupFiles}    ${exlBackupFile}
-    \    Run Keyword if    ${count} == 0    Copy File    ${exlFile}    ${exlBackupFile}
-    \    @{dstRic}=    get ric fields from EXL    ${exlFile}    ${connectTimesIdentifier}    DST_REF
-    \    @{tdBoxDateTime}=    get date and time
-    \    @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]
-    \    ...    @{tdBoxDateTime}[3]    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
-    \    ${startWeekDay}=    get day of week from date    @{localDateTime}[0]    @{localDateTime}[1]    @{localDateTime}[2]
-    \    ${startTime}=    set variable    @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]
-    \    ${endDateTime}    add time to date    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] ${startTime}    ${offsetInSecond} second
-    \    ${endDateTime}    get Time    year month day hour min sec    ${endDateTime}
-    \    ${endWeekDay}=    get day of week from date    @{endDateTime}[0]    @{endDateTime}[1]    @{endDateTime}[2]
-    \    ${endTime}=    set variable    @{endDateTime}[3]:@{endDateTime}[4]:@{endDateTime}[5]
-    \    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
-    \    ...    ${endTime}    ${startWeekDay}
-    \    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}
-    \    ...    ${connectTimeRicDomain}    ${startTime}    ${endTime}    ${endWeekDay}
-    : FOR    ${exlFile}    IN    @{exlFiles}
-    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
-    [Teardown]
-    [Return]    ${exlFiles}    ${exlBackupFiles}
-
-Restore EXL Changes
-    [Arguments]    ${serviceName}    ${exlFiles}    ${exlBackupFiles}
-    ${index}=    set variable    0
-    : FOR    ${exlBackupFile}    IN    @{exlBackupFiles}
-    \    Copy File    ${exlBackupFile}    ${exlFiles[${index}]}
-    \    ${index}=    Evaluate    ${index} + 1
-    \    Remove Files    ${exlBackupFile}
-    : FOR    ${exlFile}    IN    @{exlFiles}
-    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
     [Teardown]
