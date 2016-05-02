@@ -115,7 +115,7 @@ Verify Realtime MARKET_PRICE Persistence
     \    ${after}=    Get Matches    ${allFIDValuesAfter}    regexp=^${unmangledRic}\\|
     \    Sort List    ${before}
     \    Sort List    ${after}
-    \    Run Keyword And Expect Error    *    Lists Should Be Equal    ${before}    ${after}
+    \    Run Keyword And Expect Error    Lists are different*    Lists Should Be Equal    ${before}    ${after}
     [Teardown]    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}    ${feedEXLBackupFiles}
 
 Persistence file FIDs existence check
