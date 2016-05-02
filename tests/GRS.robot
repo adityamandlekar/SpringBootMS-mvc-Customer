@@ -61,16 +61,18 @@ MTE Start of Day Recovery
     ${domain}=    Get Preferred Domain
     Reset Sequence Numbers
     ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}
-    ${ricFile}=    Get RIC List From Remote PCAP    ${remoteCapture}    ${domain}
+    ${ricList}=    Get RIC List From Remote PCAP    ${remoteCapture}    ${domain}
+    ${remoteRicFile}=    Set Variable    ${REMOTE_TMP_DIR}/ricList.txt
+    Create Remote File Content    ${remoteRicFile}    ${ricList}
     Reset Sequence Numbers
-    ${startupFIDs}=    Get FID values    ${ricFile}    ${domain}
+    ${startupFIDs}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
     ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}
-    ${afterInjectionFIDs}=    Get FID values    ${ricFile}    ${domain}
+    ${afterInjectionFIDs}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
     Run Keyword and Expect Error    Following keys*    Dictionary of Dictionaries Should Be Equal    ${startupFIDs}    ${afterInjectionFIDs}
     Restart MTE With GRS Recovery
-    ${afterRecoveryFIDs}=    Get FID values    ${ricFile}    ${domain}
+    ${afterRecoveryFIDs}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
     Dictionary of Dictionaries Should Be Equal    ${afterInjectionFIDs}    ${afterRecoveryFIDs}
-    [Teardown]    Run Keyword If Test Passed    Delete Remote Files    ${remoteCapture}    ${ricFile}
+    [Teardown]    Run Keyword If Test Passed    Delete Remote Files    ${remoteCapture}    ${remoteRicFile}
 
 Verify GRS stream creation
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1996
