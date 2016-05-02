@@ -378,10 +378,9 @@ Get RIC From MTE Cache
 
 Get RIC List From Remote PCAP
     [Arguments]    ${remoteCapture}    ${domain}
-    [Documentation]    Extract the list of RICs from a remote capture and write them to a temp file on the remote machine.
-    ...    This is generally used to create the RIC list for the 'Get FID List' keyword.
+    [Documentation]    Extract the unique set of non-system RICs that exist in a remote capture.
     ...
-    ...    Returns the name of the remote file containing the RIC list.
+    ...    Returns: The list of RICs.
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
     ${ricList}=    Get RICs From PCAP    ${localCapture}    ${domain}
@@ -458,12 +457,16 @@ Go Into End Feed Time
 Inject PCAP File
     [Arguments]    @{pcapFileList}
     [Documentation]    Inject a list of PCAP files on either UDP or TCP transport based on VenueVariables PROTOCOL value.
+    ...    Start the injection, but do not wait for it to complete.
+    ...    If multiple files are specified, they will run in parallel.
     Run Keyword And Return If    '${PROTOCOL}' == 'UDP'    Inject PCAP File on UDP    @{pcapFileList}
     Run Keyword And Return If    '${PROTOCOL}' == 'TCP'    Inject PCAP File on TCP    @{pcapFileList}
     FAIL    PROTOCOL in VenueVariables must be UDP or TCP.
 
 Inject PCAP File and Wait For Output
     [Arguments]    ${injectFile}
+    [Documentation]    Inject a list of PCAP files on either UDP or TCP transport based on VenueVariables PROTOCOL value and wait for the resulting message publication to complete.
+    ...    If multiple files are specified, they will run in parallel.
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     Start Capture MTE Output    ${remoteCapture}
     Inject PCAP File    ${injectFile}
@@ -569,6 +572,8 @@ Reset Sequence Numbers
 
 Restore EXL Changes
     [Arguments]    ${serviceName}    ${exlFiles}    ${exlBackupFiles}
+    [Documentation]    Restore the original (backup) version of the EXL files and load them using Fmscmd.
+    ...    This Keyword is used in conjunction with Keywords that create the backup files, e.g. 'Go Into End Feed Time'.
     Return From Keyword If    len(${exlBackupFiles}) == 0
     ${index}=    set variable    0
     : FOR    ${exlBackupFile}    IN    @{exlBackupFiles}

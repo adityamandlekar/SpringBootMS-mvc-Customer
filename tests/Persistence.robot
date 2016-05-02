@@ -88,6 +88,7 @@ Verify New Item Added to Persist File via FMS
     ...    AND    Case Teardown    ${localRicEXLFile}
 
 Verify Realtime MARKET_PRICE Persistence
+    [Documentation]    Verify that realtime MARKET_PRICE messages are written to the Persist file at end of feed time.
     ${serviceName}=    Get FMS Service Name
     Comment    Get content of Persist file before injection
     ${feedEXLFiles}    ${feedEXLBackupFiles}    Force Persist File Write    ${serviceName}
