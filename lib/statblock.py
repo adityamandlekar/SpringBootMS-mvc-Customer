@@ -74,18 +74,17 @@ def get_stat_block_field(writerName, blockName, fieldName):
     else:
         raise AssertionError('*ERROR* No field found for %s, %s, %s' %(writerName, blockName, fieldName))
 
-def get_statBlockList_for_fh_output(instanceName):
+def get_statBlockList_for_fh_output():
     """get all the stat block name for FH output
 
-    Argument
-    instanceName : instance of FH
+    Argument NIL
     Returns list of stat block name
 
     Examples:
-    | get statBlockList for fh output | HKF01F |
+    | get statBlockList for fh output | 
      """
     
-    statBlockList = get_stat_blocks_for_category(instanceName, 'OutputStats')
+    statBlockList = get_stat_blocks_for_category(FH, 'OutputStats')
 
     return statBlockList    
 

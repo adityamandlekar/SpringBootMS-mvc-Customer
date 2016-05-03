@@ -11,6 +11,7 @@ import fidfilterfile
 import statblock
 from utils.ssh import _exec_command, _check_process, _start_command
 import xmlutilities
+from VenueVariables import *
 
 FID_CONTEXTID = '5357'
 
@@ -1540,36 +1541,33 @@ def wait_for_capture_to_complete(instanceName,statBlockList,field,waittime=5,tim
     #Timeout                    
     raise AssertionError('*ERROR* Timeout %ds : Playback has not ended yet for some channel (suggest to adjust timeout)' %(timeout))
 
-def wait_for_fh_capture_to_complete(instanceName,waittime=5,timeout=30):
+def wait_for_fh_capture_to_complete(waittime=5,timeout=30):
     """wait for FH capture finish by checking the stat block information
 
     Argument 
-    instanceName : instance of FH e.g. HKF01F
     waittime : how long we wait for each cycle during checking (second)
     timeout : how long we monitor before we timeout (second)
 
     Returns NIL.
 
     Examples:
-    | wait for fh capture to complete | HKF01F | 2 | 300 |
+    | wait for fh capture to complete | 2 | 300 |
      """
+    statBlockList = statblock.get_statBlockList_for_fh_output()
+    wait_for_capture_to_complete(FH,statBlockList,'numberMessagesSent',waittime,timeout)
 
-    statBlockList = statblock.get_statBlockList_for_fh_output(instanceName)
-    wait_for_capture_to_complete(instanceName,statBlockList,'numberMessagesSent',waittime,timeout)
-
-def wait_for_mte_capture_to_complete(instanceName,waittime=5,timeout=30):
+def wait_for_mte_capture_to_complete(waittime=5,timeout=30):
     """wait for MTE capture finish by checking the stat block information
 
     Argument 
-    instanceName : instance of MTE e.g. HKF02M
     waittime : how long we wait for each cycle during checking (second)
     timeout : how long we monitor before we timeout (second)
 
     Returns NIL.
 
     Examples:
-    | wait for mte capture to complete | HKF02M | 2 | 300 |
+    | wait for mte capture to complete | 2 | 300 |
      """
     
     statBlockList = statblock.get_statBlockList_for_mte_output()
-    wait_for_capture_to_complete(instanceName,statBlockList,'outputMessageCount',waittime,timeout)
+    wait_for_capture_to_complete(MTE,statBlockList,'outputMessageCount',waittime,timeout)

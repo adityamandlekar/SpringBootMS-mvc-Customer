@@ -446,7 +446,7 @@ Reset Sequence Numbers
     Start MTE
     Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
     Comment    We don't capture the output file, but this waits for publishing to complete
-    Wait For MTE Capture To Complete    ${MTE}
+    Wait For MTE Capture To Complete
 
 Send TRWF2 Refresh Request
     [Arguments]    ${ric}    ${domain}    @{optargs}
@@ -615,7 +615,7 @@ Start Process
 Stop Capture MTE Output
     [Arguments]    ${waittime}=5    ${timeout}=300
     [Documentation]    Stop catpure MTE output
-    wait for MTE capture to complete    ${MTE}    ${waittime}    ${timeout}
+    wait for MTE capture to complete    ${waittime}    ${timeout}
     stop capture packets
 
 Stop MTE
