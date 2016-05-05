@@ -94,7 +94,6 @@ Verify Realtime MARKET_PRICE Persistence
     ${feedEXLFiles}    ${feedEXLBackupFiles}    Force Persist File Write    ${serviceName}
     ${persistDump}=    Dump Persist File to Text
     Restore EXL Changes    ${serviceName}    ${feedEXLFiles}    ${feedEXLBackupFiles}
-    ${feedEXLBackupFiles}=    Create List
     Reset Sequence Numbers
     ${injectFile}=    Generate PCAP File Name    ${serviceName}    General RIC Update
     ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}

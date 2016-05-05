@@ -574,14 +574,13 @@ Restore EXL Changes
     [Arguments]    ${serviceName}    ${exlFiles}    ${exlBackupFiles}
     [Documentation]    Restore the original (backup) version of the EXL files and load them using Fmscmd.
     ...    This Keyword is used in conjunction with Keywords that create the backup files, e.g. 'Go Into End Feed Time'.
-    Return From Keyword If    len(${exlBackupFiles}) == 0
-    ${index}=    set variable    0
-    : FOR    ${exlBackupFile}    IN    @{exlBackupFiles}
-    \    Copy File    ${exlBackupFile}    ${exlFiles[${index}]}
-    \    ${index}=    Evaluate    ${index} + 1
-    \    Remove Files    ${exlBackupFile}
-    : FOR    ${exlFile}    IN    @{exlFiles}
-    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
+    ${length}=    Get Length    ${exlBackupFiles}
+    : FOR    ${i}    IN RANGE    ${length}
+    \    ${fileExists}=    Run Keyword And Return Status    File Should Exist    ${exlBackupFiles[${i}]}
+    \    Continue For Loop If    ${fileExists} == ${False}
+    \    Copy File    ${exlBackupFiles[${i}]}    ${exlFiles[${i}]}
+    \    Load Single EXL File    ${exlFiles[${i}]}    ${serviceName}    ${CHE_IP}
+    \    Remove Files    ${exlBackupFiles[${i}]}
     [Teardown]
 
 Send TRWF2 Refresh Request
