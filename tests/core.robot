@@ -454,48 +454,56 @@ Go Into End Feed Time
     [Teardown]
     [Return]    ${exlFiles}    ${exlBackupFiles}
 
-Inject PCAP File
+Inject PCAP File In Background
     [Arguments]    @{pcapFileList}
-    [Documentation]    Inject a list of PCAP files on either UDP or TCP transport based on VenueVariables PROTOCOL value.
+    [Documentation]    Inject a list of PCAP files in the background on either UDP or TCP transport based on VenueVariables PROTOCOL value.
     ...    Start the injection, but do not wait for it to complete.
     ...    If multiple files are specified, they will run in parallel.
-    Run Keyword And Return If    '${PROTOCOL}' == 'UDP'    Inject PCAP File on UDP    @{pcapFileList}
-    Run Keyword And Return If    '${PROTOCOL}' == 'TCP'    Inject PCAP File on TCP    @{pcapFileList}
-    FAIL    PROTOCOL in VenueVariables must be UDP or TCP.
+    Run Keyword If    '${PROTOCOL}' == 'UDP'    Inject PCAP File on UDP    no wait    @{pcapFileList}
+    ...    ELSE IF    '${PROTOCOL}' == 'TCP'    Inject PCAP File on TCP    no wait    @{pcapFileList}
+    ...    ELSE    FAIL    PROTOCOL in VenueVariables must be UDP or TCP.
 
 Inject PCAP File and Wait For Output
-    [Arguments]    ${injectFile}
+    [Arguments]    @{pcapFileList}
     [Documentation]    Inject a list of PCAP files on either UDP or TCP transport based on VenueVariables PROTOCOL value and wait for the resulting message publication to complete.
     ...    If multiple files are specified, they will run in parallel.
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     Start Capture MTE Output    ${remoteCapture}
-    Inject PCAP File    ${injectFile}
+    Run Keyword If    '${PROTOCOL}' == 'UDP'    Inject PCAP File on UDP    wait    @{pcapFileList}
+    ...    ELSE IF    '${PROTOCOL}' == 'TCP'    Inject PCAP File on TCP    wait    @{pcapFileList}
+    ...    ELSE    FAIL    PROTOCOL in VenueVariables must be UDP or TCP.
     Stop Capture MTE Output
     [Return]    ${remoteCapture}
 
 Inject PCAP File on TCP
-    [Arguments]    @{pcapFileList}
+    [Arguments]    ${waitOrNot}    @{pcapFileList}
     [Documentation]    Switch to playback box and start injection of the specified PCAP files on TCP transport. \ Switch back to original box in KW teardown.
-    ...    Do not wait for injection to complete.
-    ...    If multiple files are specified, they will run in parallel.
+    ...    If waitOrNot=='wait', inject the files in sequence, and return after all playback is complete.
+    ...    Otherwise start the playback for each file in parallel and return without waiting for the playback to complete.
+    ...
+    ...    Tests should not call this Keyword directly, they should call 'Inject PCAP File In Background' or 'Inject PCAP File and Wait For Output'.
     ${host}=    get current connection index
     Switch Connection    ${Playback_Session}
+    ${cmd}=    Set Variable If    '${waitOrNot}' == 'wait'    Execute Command    Start Command
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
-    \    Start Command    PCapPlybk -ifile ${pcapFile} -intf ${PLAYBACK_BIND_IP_A} -port ${TCP_PORT} -pps ${PLAYBACK_PPS} -sendmode tcp -tcptimeout 10
+    \    Run Keyword    ${cmd}    PCapPlybk -ifile ${pcapFile} -intf ${PLAYBACK_BIND_IP_A} -port ${TCP_PORT} -pps ${PLAYBACK_PPS} -sendmode tcp -tcptimeout 10
     [Teardown]    Switch Connection    ${host}
 
 Inject PCAP File on UDP
-    [Arguments]    @{pcapFileList}
-    [Documentation]    Switch to playback box and start injection of the specified PCAP files on TCP transport. \ Switch back to original box in KW teardown.
-    ...    Do not wait for injection to complete.
-    ...    If multiple files are specified, they will run in parallel.
+    [Arguments]    ${waitOrNot}    @{pcapFileList}
+    [Documentation]    Switch to playback box and start injection of the specified PCAP files on UDP transport. \ Switch back to original box in KW teardown.
+    ...    If waitOrNot=='wait', inject the files in sequence, and return after all playback is complete.
+    ...    Otherwise start the playback for each file in parallel and return without waiting for the playback to complete.
+    ...
+    ...    Tests should not call this Keyword directly, they should call 'Inject PCAP File In Background' or 'Inject PCAP File and Wait For Output'.
     ${host}=    get current connection index
     Switch Connection    ${Playback_Session}
+    ${cmd}=    Set Variable If    '${waitOrNot}' == 'wait'    Execute Command    Start Command
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
     \    ${intfName}    Get Playback NIC For PCAP File    ${pcapFile}
-    \    Start Command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'
+    \    Run Keyword    ${cmd}    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'
     [Teardown]    Switch Connection    ${host}
 
 Insert ICF
@@ -568,7 +576,7 @@ Reset Sequence Numbers
     Start MTE
     Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
     Comment    We don't capture the output file, but this waits for publishing to complete
-    Wait For Capture To Complete    ${MTE}
+    Wait For MTE Capture To Complete
 
 Restore EXL Changes
     [Arguments]    ${serviceName}    ${exlFiles}    ${exlBackupFiles}
@@ -750,7 +758,7 @@ Start Process
 Stop Capture MTE Output
     [Arguments]    ${waittime}=5    ${timeout}=300
     [Documentation]    Stop catpure MTE output
-    wait for capture to complete    ${MTE}    ${waittime}    ${timeout}
+    wait for MTE capture to complete    ${waittime}    ${timeout}
     stop capture packets
 
 Stop MTE

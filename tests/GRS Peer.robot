@@ -13,11 +13,8 @@ GRS Peer Recovery SMF Restart
     [Tags]    Peer
     ${service}=    Get FMS Service Name
     ${injectFile}=    Generate PCAP File Name    ${service}    General RIC Update
-    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     Recovery Setup With SMF Standby Stop
-    Start Capture MTE Output    ${remoteCapture}
-    Inject PCAP File    ${injectFile}
-    Stop Capture MTE Output
+    ${remoteCapture}=    Inject PCAP File And Wait For Output    ${injectFile}
     Switch To TD Box    ${CHE_B_IP}
     ${currDateTime}    get date and time
     Start smf
