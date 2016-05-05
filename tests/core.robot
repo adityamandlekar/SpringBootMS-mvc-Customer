@@ -141,6 +141,24 @@ Extract ICF
     ...    --Domain ${domain}    --ExcludeNullFields true    --HandlerName ${MTE}    --OutputFile ${extractFile}    --Services ${serviceName}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
+Force Persist File Write
+    [Arguments]    ${serviceName}
+    [Documentation]    Force the MTE to write all updates to the Persist file.
+    ...    This is done by putting all feeds into end of feed time; the MTE writes the Persist file as part of end of feed time processing.
+    ...
+    ...    There is currently no Commander command to force a Persist file write. \ If one exists in the future, this KW should be updated to use it instead of end of feed time.
+    ...
+    ...    The returned EXL file lists should be used to call Restore EXL Changes at the end of the test.
+    ...
+    ...    Return:
+    ...    ${exlFiles} : list of exlFiles that is modified by this KW
+    ...    ${exlBackupFiles} : list of exlFiles that renamed by this KW and reserve the original value of the EXL files
+    ${currDateTime}=    get date and time
+    ${exlFiles}    ${exlBackupFiles}    Go Into End Feed Time    ${serviceName}
+    Wait SMF Log Message After Time    ${MTE}.*Persist cycle completed    ${currDateTime}    10    120
+    [Teardown]
+    [Return]    ${exlFiles}    ${exlBackupFiles}
+
 Generate PCAP File Name
     [Arguments]    ${service}    ${testCase}    ${playbackBindSide}=A    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
@@ -380,6 +398,47 @@ Get Sorted Cache Dump
     get remote file    ${sortedfile}    ${destfile}
     delete remote files    ${remotedumpfile}    ${sortedfile}
 
+Go Into End Feed Time
+    [Arguments]    ${serviceName}
+    [Documentation]    For all feeds, set start of feed time to current time and end of feed time in 2 minutes. Wait for end of feed time to occur.
+    ...    The returned EXL file lists should be used to call Restore EXL Changes at the end of the test.
+    ...
+    ...    Return:
+    ...    ${exlFiles} : list of exlFiles that is modified by this KW
+    ...    ${exlBackupFiles} : list of exlFiles that renamed by this KW and reserve the original value of the EXL files
+    ${secondsBeforeFeedEnd}=    set variable    120
+    ${connectTimeRicDomain}=    set variable    MARKET_PRICE
+    ${mteConfigFile}=    Get MTE Config File
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
+    @{exlBackupFiles}=    Create List
+    @{exlFiles}=    Create List
+    : FOR    ${connectTimesIdentifier}    IN    @{connectTimesIdentifierList}
+    \    ${exlFile}=    get state EXL file    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${serviceName}    Feed Time
+    \    ${count}=    Get Count    ${exlFiles}    ${exlFile}
+    \    ${exlBackupFile}    set variable    ${exlFile}.backup
+    \    Run Keyword if    ${count} == 0    append to list    ${exlFiles}    ${exlFile}
+    \    Run Keyword if    ${count} == 0    append to list    ${exlBackupFiles}    ${exlBackupFile}
+    \    Run Keyword if    ${count} == 0    Copy File    ${exlFile}    ${exlBackupFile}
+    \    @{dstRic}=    get ric fields from EXL    ${exlFile}    ${connectTimesIdentifier}    DST_REF
+    \    @{tdBoxDateTime}=    get date and time
+    \    @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]
+    \    ...    @{tdBoxDateTime}[3]    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
+    \    ${startWeekDay}=    get day of week from date    @{localDateTime}[0]    @{localDateTime}[1]    @{localDateTime}[2]
+    \    ${startTime}=    set variable    @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]
+    \    ${endDateTime}    add time to date    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] ${startTime}    ${secondsBeforeFeedEnd} second
+    \    ${endDateTime}    get Time    year month day hour min sec    ${endDateTime}
+    \    ${endWeekDay}=    get day of week from date    @{endDateTime}[0]    @{endDateTime}[1]    @{endDateTime}[2]
+    \    ${endTime}=    set variable    @{endDateTime}[3]:@{endDateTime}[4]:@{endDateTime}[5]
+    \    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
+    \    ...    ${endTime}    ${startWeekDay}
+    \    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}
+    \    ...    ${connectTimeRicDomain}    ${startTime}    ${endTime}    ${endWeekDay}
+    : FOR    ${exlFile}    IN    @{exlFiles}
+    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
+    sleep    ${secondsBeforeFeedEnd}
+    [Teardown]
+    [Return]    ${exlFiles}    ${exlBackupFiles}
+
 Inject PCAP File In Background
     [Arguments]    @{pcapFileList}
     [Documentation]    Inject a list of PCAP files in the background on either UDP or TCP transport based on VenueVariables PROTOCOL value.
@@ -500,6 +559,17 @@ Reset Sequence Numbers
     Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
     Comment    We don't capture the output file, but this waits for publishing to complete
     Wait For MTE Capture To Complete
+
+Restore EXL Changes
+    [Arguments]    ${serviceName}    ${exlFiles}    ${exlBackupFiles}
+    ${index}=    set variable    0
+    : FOR    ${exlBackupFile}    IN    @{exlBackupFiles}
+    \    Copy File    ${exlBackupFile}    ${exlFiles[${index}]}
+    \    ${index}=    Evaluate    ${index} + 1
+    \    Remove Files    ${exlBackupFile}
+    : FOR    ${exlFile}    IN    @{exlFiles}
+    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
+    [Teardown]
 
 Send TRWF2 Refresh Request
     [Arguments]    ${ric}    ${domain}    @{optargs}
