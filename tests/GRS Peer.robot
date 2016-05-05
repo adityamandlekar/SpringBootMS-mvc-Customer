@@ -53,21 +53,19 @@ Verify Peers Match
     ${master_ip}    get master box ip    ${ip_list}
     ${domain}=    Get Preferred Domain
     Switch To TD Box    ${CHE_A_IP}
-    ${ricFilePath}=    Get RIC List From Remote PCAP    ${remoteCapture}    ${domain}
-    ${ricFileName}=    Fetch From Right    ${ricFilePath}    /
-    ${localRicFile}=    Set Variable    ${LOCAL_TMP_DIR}/${ricFileName}
+    ${ricList}=    Get RIC List From Remote PCAP    ${remoteCapture}    ${domain}
+    ${remoteRicFile}=    Set Variable    ${REMOTE_TMP_DIR}/ricList.txt
+    Create Remote File Content    ${remoteRicFile}    ${ricList}
     Comment    Make sure A is LIVE before running Dataview on A.
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     verify MTE state    LIVE
-    ${A_FIDs}=    Get FID values    ${ricFilePath}    ${domain}
-    Get Remote File    ${ricFilePath}    ${localRicFile}
-    Delete Remote Files    ${remoteCapture}    ${ricFilePath}
+    ${A_FIDs}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
+    Delete Remote Files    ${remoteCapture}    ${remoteRicFile}
     Comment    Make B LIVE before running Dataview on B.
     Switch To TD Box    ${CHE_B_IP}
-    Put Remote File    ${localRicFile}    ${ricFilePath}
+    Create Remote File Content    ${remoteRicFile}    ${ricList}
     switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
     verify MTE state    LIVE
-    ${B_FIDs}=    Get FID values    ${ricFilePath}    ${domain}
+    ${B_FIDs}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
     Dictionary of Dictionaries Should Be Equal    ${A_FIDs}    ${B_FIDs}
-    Delete Remote Files    ${ricFilePath}
-    Remove Files    ${localRicFile}
+    Delete Remote Files    ${remoteRicFile}

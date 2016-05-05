@@ -1,6 +1,6 @@
 *** Settings ***
 Documentation     Verify MTE functionality related to the PERSIST file creation, updating, loading.
-Suite Setup       Suite Setup
+Suite Setup       Suite Setup With Playback
 Suite Teardown    Suite Teardown
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
@@ -86,6 +86,36 @@ Verify New Item Added to Persist File via FMS
     Verfiy RIC Persisted    ${newRic}    ${domain}
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}    ${feedEXLBackupFiles}
     ...    AND    Case Teardown    ${localRicEXLFile}
+
+Verify Realtime MARKET_PRICE Persistence
+    [Documentation]    Verify that realtime MARKET_PRICE messages are written to the Persist file at end of feed time.
+    ${serviceName}=    Get FMS Service Name
+    Comment    Get content of Persist file before injection
+    ${feedEXLFiles}    ${feedEXLBackupFiles}    Force Persist File Write    ${serviceName}
+    ${persistDump}=    Dump Persist File to Text
+    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}    ${feedEXLBackupFiles}
+    Reset Sequence Numbers
+    ${injectFile}=    Generate PCAP File Name    ${serviceName}    General RIC Update
+    ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}
+    ${domain}=    Set Variable    MARKET_PRICE
+    @{ricList}=    Get RIC List From Remote PCAP    ${remoteCapture}    ${domain}
+    Comment    Get FID values for published RICs from Persist file before injection.    Search pattern matches unmangled RIC name at start of line and followed by '|'
+    ${re}=    Catenate    SEPARATOR=\\||^    @{ricList}
+    ${re}=    Set Variable    ^${re}\\|
+    ${re}=    Remove String Using Regexp    ${re}    !\\[|!!
+    @{allFidValuesBefore}=    Grep Local File    ${persistDump}    ${re}
+    Comment    Get FID values for published RICs from Persist file after injection
+    ${feedEXLFiles}    ${feedEXLBackupFiles}    Force Persist File Write    ${serviceName}
+    ${persistDump}=    Dump Persist File to Text
+    @{allFidValuesAfter}=    Grep Local File    ${persistDump}    ${re}
+    : FOR    ${ric}    IN    @{ricList}
+    \    ${unmangledRic}=    Remove String Using Regexp    ${ric}    !\\[|!!
+    \    ${before}=    Get Matches    ${allFIDValuesBefore}    regexp=^${unmangledRic}\\|
+    \    ${after}=    Get Matches    ${allFIDValuesAfter}    regexp=^${unmangledRic}\\|
+    \    Sort List    ${before}
+    \    Sort List    ${after}
+    \    Run Keyword And Expect Error    Lists are different*    Lists Should Be Equal    ${before}    ${after}
+    [Teardown]    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}    ${feedEXLBackupFiles}
 
 Persistence file FIDs existence check
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845

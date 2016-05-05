@@ -117,6 +117,24 @@ Dictionary of Dictionaries Should Be Equal
     : FOR    ${key}    IN    @{keys1}
     \    Dictionaries Should Be Equal    ${dict1['${key}']}    ${dict2['${key}']}
 
+Dump Persist File To Text
+    [Arguments]    @{optargs}
+    [Documentation]    Run PMAT on control PC and return the \ persist text dump file.
+    ...    optarg could be ---ric <ric> | --sic <sic> | --domain <domain> |--fids <comma-delimited-fid-list> | --meta <meta> | --encode <0|1. \ Default to 0 > | --ffile <path to XQuery-syntax-FilterFile>
+    ...
+    ...    Note: <domain> = 0 for MarketByOrder, 1 for MarketByPrice, 2 for MarketMaker, 3 for MarketPrice, 4 for symbolList.
+    ...    \ \ \ \ <ric> = a single ric or a wide-card
+    ...
+    ...    PMAT Guide: https://thehub.thomsonreuters.com/docs/DOC-110727
+    ${localPersistFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_persist.dat
+    ${remotePersist}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    ${True}
+    Should Be True    len(${remotePersist}) ==1
+    get remote file    ${remotePersist[0]}    ${localPersistFile}
+    ${pmatDumpfile}=    set variable    ${LOCAL_TMP_DIR}${/}pmatDumpfile.txt
+    Run PMAT    dump    --dll Schema_v6.dll    --db ${localPersistFile}    --oformat text    --outf ${pmatDumpfile}    @{optargs}
+    Remove Files    ${localPersistFile}
+    [Return]    ${pmatDumpfile}
+
 Dump Persist File To XML
     [Arguments]    @{optargs}
     [Documentation]    Run PMAT on control PC and return the \ persist xml dump file.
@@ -126,11 +144,11 @@ Dump Persist File To XML
     ...    \ \ \ \ <ric> = a single ric or a wide-card
     ...
     ...    PMAT Guide: https://thehub.thomsonreuters.com/docs/DOC-110727
-    ${localPersistFile}=    set variable    ${LOCAL_TMP_DIR}/local_persist.dat
+    ${localPersistFile}=    set variable    ${LOCAL_TMP_DIR}${/}ocal_persist.dat
     ${remotePersist}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    ${True}
     Should Be True    len(${remotePersist}) ==1
     get remote file    ${remotePersist[0]}    ${localPersistFile}
-    ${pmatXmlDumpfile}=    set variable    ${LOCAL_TMP_DIR}/pmatDumpfile.xml
+    ${pmatXmlDumpfile}=    set variable    ${LOCAL_TMP_DIR}${/}pmatDumpfile.xml
     Run PMAT    dump    --dll Schema_v6.dll    --db ${localPersistFile}    --outf ${pmatXmlDumpfile}    @{optargs}
     Remove Files    ${localPersistFile}
     [Return]    ${pmatXmlDumpfile}
@@ -271,7 +289,7 @@ Get Domain Names
     ${domainList}    get MTE config list by path    ${mteConfigFile}    FMS    ${serviceName}    Domain    Z
     [Return]    @{domainList}
 
-Get FID Values
+Get FID Values From Refresh Request
     [Arguments]    ${ricList}    ${domain}
     [Documentation]    Get the value for all non-blank FIDs for the RICs listed in the specfied file on the remote machine.
     ...
@@ -360,18 +378,15 @@ Get RIC From MTE Cache
 
 Get RIC List From Remote PCAP
     [Arguments]    ${remoteCapture}    ${domain}
-    [Documentation]    Extract the list of RICs from a remote capture and write them to a temp file on the remote machine.
-    ...    This is generally used to create the RIC list for the 'Get FID List' keyword.
+    [Documentation]    Extract the unique set of non-system RICs that exist in a remote capture.
     ...
-    ...    Returns the name of the remote file containing the RIC list.
+    ...    Returns: The list of RICs.
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
-    @{ricList}=    Get RICs From PCAP    ${localCapture}    ${domain}
+    ${ricList}=    Get RICs From PCAP    ${localCapture}    ${domain}
     Should Not Be Empty    ${ricList}    Injected file produced no published RICs
     Remove Files    ${localCapture}
-    ${ricFile}=    Set Variable    ${REMOTE_TMP_DIR}/ricList.txt
-    Create Remote File Content    ${ricFile}    ${ricList}
-    [Return]    ${ricFile}
+    [Return]    ${ricList}
 
 Get RIC List From StatBlock
     [Arguments]    ${ricType}
@@ -442,13 +457,16 @@ Go Into End Feed Time
 Inject PCAP File In Background
     [Arguments]    @{pcapFileList}
     [Documentation]    Inject a list of PCAP files in the background on either UDP or TCP transport based on VenueVariables PROTOCOL value.
-    ...    Return without waiting for the playback to complete.
+    ...    Start the injection, but do not wait for it to complete.
+    ...    If multiple files are specified, they will run in parallel.
     Run Keyword If    '${PROTOCOL}' == 'UDP'    Inject PCAP File on UDP    no wait    @{pcapFileList}
     ...    ELSE IF    '${PROTOCOL}' == 'TCP'    Inject PCAP File on TCP    no wait    @{pcapFileList}
     ...    ELSE    FAIL    PROTOCOL in VenueVariables must be UDP or TCP.
 
 Inject PCAP File and Wait For Output
     [Arguments]    @{pcapFileList}
+    [Documentation]    Inject a list of PCAP files on either UDP or TCP transport based on VenueVariables PROTOCOL value and wait for the resulting message publication to complete.
+    ...    If multiple files are specified, they will run in parallel.
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     Start Capture MTE Output    ${remoteCapture}
     Run Keyword If    '${PROTOCOL}' == 'UDP'    Inject PCAP File on UDP    wait    @{pcapFileList}
@@ -562,13 +580,15 @@ Reset Sequence Numbers
 
 Restore EXL Changes
     [Arguments]    ${serviceName}    ${exlFiles}    ${exlBackupFiles}
-    ${index}=    set variable    0
-    : FOR    ${exlBackupFile}    IN    @{exlBackupFiles}
-    \    Copy File    ${exlBackupFile}    ${exlFiles[${index}]}
-    \    ${index}=    Evaluate    ${index} + 1
-    \    Remove Files    ${exlBackupFile}
-    : FOR    ${exlFile}    IN    @{exlFiles}
-    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
+    [Documentation]    Restore the original (backup) version of the EXL files and load them using Fmscmd.
+    ...    This Keyword is used in conjunction with Keywords that create the backup files, e.g. 'Go Into End Feed Time'.
+    ${length}=    Get Length    ${exlBackupFiles}
+    : FOR    ${i}    IN RANGE    ${length}
+    \    ${fileExists}=    Run Keyword And Return Status    File Should Exist    ${exlBackupFiles[${i}]}
+    \    Continue For Loop If    ${fileExists} == ${False}
+    \    Copy File    ${exlBackupFiles[${i}]}    ${exlFiles[${i}]}
+    \    Load Single EXL File    ${exlFiles[${i}]}    ${serviceName}    ${CHE_IP}
+    \    Remove Files    ${exlBackupFiles[${i}]}
     [Teardown]
 
 Send TRWF2 Refresh Request
