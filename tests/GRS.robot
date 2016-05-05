@@ -1,5 +1,5 @@
 *** Settings ***
-Documentation     Verify GRS functionality
+Documentation     Verify GRS functionality on single machine
 Suite Setup       Suite Setup With Playback
 Suite Teardown    Suite Teardown
 Resource          core.robot
@@ -20,9 +20,9 @@ Check GRS StatBlocks
     \    Append To List    ${lastPacketSNBeforePlayback}    ${value}
     ${serviceName}=    Get FMS Service Name
     ${pcapFile}=    Generate PCAP File Name    ${serviceName}    General RIC Update
-    Inject File and Wait For Output    ${pcapFile}
+    Inject PCAP File and Wait For Output    ${pcapFile}
     ${lastPacketSNAfterPlayback}    Create List
-    :FOR    ${grsStreamName}    IN    @{grsStreamNames}
+    : FOR    ${grsStreamName}    IN    @{grsStreamNames}
     \    ${value}    get stat block field    GRS    ${grsStreamName}    lastPacketSN
     \    Append To List    ${lastPacketSNAfterPlayback}    ${value}
     Should Not Be Equal    ${lastPacketSNBeforePlayback}    ${lastPacketSNAfterPlayback}    GRS last Packet Sequence Number has not increased after playback
@@ -60,11 +60,11 @@ MTE Start of Day Recovery
     ${injectFile}=    Generate PCAP File Name    ${service}    General RIC Update
     ${domain}=    Get Preferred Domain
     Reset Sequence Numbers
-    ${remoteCapture}=    Inject File and Wait for Output    ${injectFile}
-    ${ricFile}=    Create Remote RIC List    ${remoteCapture}    ${domain}
+    ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}
+    ${ricFile}=    Get RIC List From Remote PCAP    ${remoteCapture}    ${domain}
     Reset Sequence Numbers
     ${startupFIDs}=    Get FID values    ${ricFile}    ${domain}
-    ${remoteCapture}=    Inject File and Wait for Output    ${injectFile}
+    ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}
     ${afterInjectionFIDs}=    Get FID values    ${ricFile}    ${domain}
     Run Keyword and Expect Error    Following keys*    Dictionary of Dictionaries Should Be Equal    ${startupFIDs}    ${afterInjectionFIDs}
     Restart MTE With GRS Recovery
@@ -89,35 +89,6 @@ Verify GRS stream creation
     [Teardown]    case teardown    ${localFile}
 
 *** Keywords ***
-Create Remote RIC List
-    [Arguments]    ${remoteCapture}    ${domain}
-    @{ricList}=    Get RIC List From Remote PCAP    ${remoteCapture}    ${domain}
-    ${ricFile}=    Set Variable    ${REMOTE_TMP_DIR}/ricList.txt
-    Create Remote File Content    ${ricFile}    ${ricList}
-    [Return]    ${ricFile}
-
-Get FID Values
-    [Arguments]    ${ricList}    ${domain}
-    ${result}=    Send TRWF2 Refresh Request No Blank FIDs    ${ricList}    ${domain}    -RL 1
-    ${ricDict}=    Convert DataView Response to MultiRIC Dictionary    ${result}
-    [Return]    ${ricDict}
-
-Get RIC List From Remote PCAP
-    [Arguments]    ${remoteCapture}    ${domain}
-    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
-    get remote file    ${remoteCapture}    ${localCapture}
-    @{ricList}=    Get RICs From PCAP    ${localCapture}    ${domain}
-    Should Not Be Empty    ${ricList}    Injected file produced no published RICs
-    [Return]    ${ricList}
-
-Inject File and Wait For Output
-    [Arguments]    ${injectFile}
-    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
-    Start Capture MTE Output    ${remoteCapture}
-    Inject PCAP File    ${injectFile}
-    Stop Capture MTE Output
-    [Return]    ${remoteCapture}
-
 Restart MTE With GRS Recovery
     ${currDateTime}    get date and time
     Stop MTE

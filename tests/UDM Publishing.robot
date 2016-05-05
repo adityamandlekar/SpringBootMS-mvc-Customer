@@ -430,10 +430,8 @@ Verify Realtime Update
     [Arguments]    @{pcap_file_list}
     ${mteConfigFile} =    Get MTE Config File
     @{domainList} =    Get Domain Names    ${mteConfigFile}
-    Start Capture MTE Output
-    Inject PCAP File    @{pcap_file_list}
-    Stop Capture MTE Output
-    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    ${remoteCapture}=    Inject PCAP File and Wait For Output    @{pcap_file_list}
+    get remote file    ${remoteCapture}    ${LOCAL_TMP_DIR}/capture_local.pcap
     : FOR    ${domain}    IN    @{domainList}
     \    verify realtime update type in capture    ${LOCAL_TMP_DIR}/capture_local.pcap    ${domain}
     remove file    ${LOCAL_TMP_DIR}/capture_local.pcap
@@ -442,10 +440,8 @@ Verify No Realtime Update
     [Arguments]    @{pcap_file_list}
     ${mteConfigFile} =    Get MTE Config File
     @{domainList} =    Get Domain Names    ${mteConfigFile}
-    Start Capture MTE Output
-    Inject PCAP File    @{pcap_file_list}
-    Stop Capture MTE Output
-    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    ${remoteCapture}=    Inject PCAP File And Wait For Output    @{pcap_file_list}
+    get remote file    ${remoteCapture}    ${LOCAL_TMP_DIR}/capture_local.pcap
     : FOR    ${domain}    IN    @{domainList}
     \    verify no realtime update type in capture    ${LOCAL_TMP_DIR}/capture_local.pcap    ${domain}
     remove file    ${LOCAL_TMP_DIR}/capture_local.pcap

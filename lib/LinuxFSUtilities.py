@@ -28,12 +28,16 @@ class LinuxFSUtilities():
         return G_SSHInstance.put_file(source, destination, mode, newline)
     
     def create_remote_file_content(self, destination, content):
+        G_SSHInstance.write_bare('cat > %s <<END_OF_DATA\n' %destination)
         if type(content) == list:
-            contentAsString = '\n'.join(content)
+            for i in content:
+                G_SSHInstance.write_bare('%s\n' %i)
+        elif str(type(content)).find('dict') != -1:
+            for key,value in content.items():
+                G_SSHInstance.write_bare('%s=%s\n' %(key,value))
         else:
-            contentAsString = str(content)
-        cmd = 'cat > %s <<END_OF_DATA\n%s\nEND_OF_DATA' %(destination, contentAsString)
-        return _run_command(cmd)
+            G_SSHInstance.write_bare('%s\n' %content)
+        G_SSHInstance.write_bare('END_OF_DATA\n')
     
     def remote_file_should_exist(self, path):
         G_SSHInstance.file_should_exist(path)

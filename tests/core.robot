@@ -45,6 +45,19 @@ Suite Setup Two TD Boxes
     ${ret}    suite setup    ${CHE_B_IP}
     Set Suite Variable    ${CHE_B_Session}    ${ret}
 
+Suite Setup Two TD Boxes With Playback
+    [Documentation]    Setup 3 Sessions, 2 Peer Thunderdome Boxes, 1 Playback Box
+    Should Not be Empty    ${CHE_A_IP}
+    Should Not be Empty    ${CHE_B_IP}
+    Should Not be Empty    ${PLAYBACK_MACHINE_IP}
+    ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
+    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
+    Set Suite Variable    ${Playback_Session}    ${plyblk}
+    ${ret}    suite setup    ${CHE_B_IP}
+    Set Suite Variable    ${CHE_B_Session}    ${ret}
+    ${ret}    suite setup    ${CHE_A_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${ret}
+
 Suite Setup
     [Arguments]    ${ip}=${CHE_IP}
     [Documentation]    Do test suite level setup, e.g. things that take time and do not need to be repeated for each test case.
@@ -240,6 +253,15 @@ Get Domain Names
     ${domainList}    get MTE config list by path    ${mteConfigFile}    FMS    ${serviceName}    Domain    Z
     [Return]    @{domainList}
 
+Get FID Values
+    [Arguments]    ${ricList}    ${domain}
+    [Documentation]    Get the value for all non-blank FIDs for the RICs listed in the specfied file on the remote machine.
+    ...
+    ...    Returns a dictionary with key=RIC, value = {sub-dictionary with key=FID NAME and value=FID value}
+    ${result}=    Send TRWF2 Refresh Request No Blank FIDs    ${ricList}    ${domain}    -RL 1
+    ${ricDict}=    Convert DataView Response to MultiRIC Dictionary    ${result}
+    [Return]    ${ricDict}
+
 Get FMS Service Name
     [Documentation]    get the Service name from statBlock
     ${categories}=    get stat blocks for category    ${MTE}    FMS
@@ -318,6 +340,21 @@ Get RIC From MTE Cache
     [Teardown]
     [Return]    ${ric}    ${publish_key}
 
+Get RIC List From Remote PCAP
+    [Arguments]    ${remoteCapture}    ${domain}
+    [Documentation]    Extract the list of RICs from a remote capture and write them to a temp file on the remote machine.
+    ...    This is generally used to create the RIC list for the 'Get FID List' keyword.
+    ...
+    ...    Returns the name of the remote file containing the RIC list.
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    @{ricList}=    Get RICs From PCAP    ${localCapture}    ${domain}
+    Should Not Be Empty    ${ricList}    Injected file produced no published RICs
+    Remove Files    ${localCapture}
+    ${ricFile}=    Set Variable    ${REMOTE_TMP_DIR}/ricList.txt
+    Create Remote File Content    ${ricFile}    ${ricList}
+    [Return]    ${ricFile}
+
 Get RIC List From StatBlock
     [Arguments]    ${ricType}
     [Documentation]    Get RIC name from statBlock.
@@ -343,37 +380,53 @@ Get Sorted Cache Dump
     get remote file    ${sortedfile}    ${destfile}
     delete remote files    ${remotedumpfile}    ${sortedfile}
 
-Inject PCAP File
+Inject PCAP File In Background
     [Arguments]    @{pcapFileList}
-    [Documentation]    Inject a list of PCAP files on either UDP or TCP transport based on VenueVariables PROTOCOL value.
-    Run Keyword And Return If    '${PROTOCOL}' == 'UDP'    Inject PCAP File on UDP    @{pcapFileList}
-    Run Keyword And Return If    '${PROTOCOL}' == 'TCP'    Inject PCAP File on TCP    @{pcapFileList}
-    FAIL    PROTOCOL in VenueVariables must be UDP or TCP.
+    [Documentation]    Inject a list of PCAP files in the background on either UDP or TCP transport based on VenueVariables PROTOCOL value.
+    ...    Return without waiting for the playback to complete.
+    Run Keyword If    '${PROTOCOL}' == 'UDP'    Inject PCAP File on UDP    no wait    @{pcapFileList}
+    ...    ELSE IF    '${PROTOCOL}' == 'TCP'    Inject PCAP File on TCP    no wait    @{pcapFileList}
+    ...    ELSE    FAIL    PROTOCOL in VenueVariables must be UDP or TCP.
+
+Inject PCAP File and Wait For Output
+    [Arguments]    @{pcapFileList}
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    Start Capture MTE Output    ${remoteCapture}
+    Run Keyword If    '${PROTOCOL}' == 'UDP'    Inject PCAP File on UDP    wait    @{pcapFileList}
+    ...    ELSE IF    '${PROTOCOL}' == 'TCP'    Inject PCAP File on TCP    wait    @{pcapFileList}
+    ...    ELSE    FAIL    PROTOCOL in VenueVariables must be UDP or TCP.
+    Stop Capture MTE Output
+    [Return]    ${remoteCapture}
 
 Inject PCAP File on TCP
-    [Arguments]    @{pcapFileList}
-    [Documentation]    Use PcapPlybk to inject TCP Pcap
-    ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
+    [Arguments]    ${waitOrNot}    @{pcapFileList}
+    [Documentation]    Switch to playback box and start injection of the specified PCAP files on TCP transport. \ Switch back to original box in KW teardown.
+    ...    If waitOrNot=='wait', inject the files in sequence, and return after all playback is complete.
+    ...    Otherwise start the playback for each file in parallel and return without waiting for the playback to complete.
+    ...
+    ...    Tests should not call this Keyword directly, they should call 'Inject PCAP File In Background' or 'Inject PCAP File and Wait For Output'.
     ${host}=    get current connection index
     Switch Connection    ${Playback_Session}
+    ${cmd}=    Set Variable If    '${waitOrNot}' == 'wait'    Execute Command    Start Command
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
-    \    ${stdout}    ${rc}    execute_command    PCapPlybk -ifile ${pcapFile} -intf ${PLAYBACK_BIND_IP_A} -port ${TCP_PORT} -pps ${PLAYBACK_PPS} -sendmode tcp -tcptimeout 10    return_rc=True
-    \    Should Be Equal As Integers    ${rc}    0
+    \    Run Keyword    ${cmd}    PCapPlybk -ifile ${pcapFile} -intf ${PLAYBACK_BIND_IP_A} -port ${TCP_PORT} -pps ${PLAYBACK_PPS} -sendmode tcp -tcptimeout 10
     [Teardown]    Switch Connection    ${host}
 
 Inject PCAP File on UDP
-    [Arguments]    @{pcapFileList}
-    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-72
+    [Arguments]    ${waitOrNot}    @{pcapFileList}
+    [Documentation]    Switch to playback box and start injection of the specified PCAP files on UDP transport. \ Switch back to original box in KW teardown.
+    ...    If waitOrNot=='wait', inject the files in sequence, and return after all playback is complete.
+    ...    Otherwise start the playback for each file in parallel and return without waiting for the playback to complete.
     ...
-    ...    Switch to playback box and inject the specified PCAP files. Then switch back to original box
+    ...    Tests should not call this Keyword directly, they should call 'Inject PCAP File In Background' or 'Inject PCAP File and Wait For Output'.
     ${host}=    get current connection index
     Switch Connection    ${Playback_Session}
+    ${cmd}=    Set Variable If    '${waitOrNot}' == 'wait'    Execute Command    Start Command
     : FOR    ${pcapFile}    IN    @{pcapFileList}
     \    remote file should exist    ${pcapFile}
     \    ${intfName}    Get Playback NIC For PCAP File    ${pcapFile}
-    \    ${stdout}    ${rc}    execute_command    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'    return_rc=True
-    \    Should Be Equal As Integers    ${rc}    0
+    \    Run Keyword    ${cmd}    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'
     [Teardown]    Switch Connection    ${host}
 
 Insert ICF
