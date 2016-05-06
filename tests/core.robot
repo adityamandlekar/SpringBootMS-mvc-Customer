@@ -787,6 +787,13 @@ Validate MTE Capture Within FID Range For Constituent
     delete remote files    ${pcapfile}
     Remove Files    ${LOCAL_TMP_DIR}/capture_local.pcap
 
+Verify MTE State In Specific Box
+    [Arguments]    ${che_ip}    ${state}    ${waittime}=5    ${timeout}=150
+    ${host}=    get current connection index
+    Switch To TD Box    ${che_ip}
+    verify MTE state    ${state}    ${waittime}    ${timeout}
+    Switch Connection    ${host}
+
 Verify RIC In MTE Cache
     [Arguments]    ${ric}
     ${ricFields}=    Get All Fields For RIC From Cache    ${ric}
