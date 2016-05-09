@@ -317,6 +317,14 @@ Get GMT Offset And Apply To Datetime
     ...    year month day hour min sec    ${newdate}
     [Return]    ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}
 
+Get Label IDs
+    [Documentation]    Get the list of labelIDs from MTE config file on current machine.
+    ...    The LabelID may be different across machines, so use config files from current machine.
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
+    ${localVenueConfig}=    get MTE config file
+    @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
+    [Return]    @{labelIDs}
+
 Get Mangling Config File
     [Documentation]    Get the manglingConfiguration.xml from TD Box
     ...    1. The file would be saved at Control PC and only removed at Suite Teardown
@@ -596,16 +604,13 @@ Send TRWF2 Refresh Request
     [Documentation]    Call DataView to send TRWF2 Refresh Request to MTE.
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
-    Comment    LabelID may be different across machines, so make sure we have config file for this machine.
-    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
-    ${localVenueConfig}=    get MTE config file
     ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
     ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
     get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
     ${updatedlabelfile}=    set variable    ${LOCAL_TMP_DIR}/updated_reqLabel.xml
     remove_xinclude_from_labelfile    ${labelfile}    ${updatedlabelfile}
-    @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
+    @{labelIDs}=    Get Label IDs
     : FOR    ${labelID}    IN    @{labelIDs}
     \    ${reqMsgMultcastAddres}=    get multicast address from label file    ${updatedlabelfile}    ${labelID}
     \    ${lineID}=    get_stat_block_field    ${MTE}    multicast-${labelID}    publishedLineId
@@ -629,16 +634,13 @@ Send TRWF2 Refresh Request No Blank FIDs
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    FIDs with blank value will be excluded
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
-    Comment    LabelID may be different across machines, so make sure we have config file for this machine.
-    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
-    ${localVenueConfig}=    get MTE config file
     ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
     ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
     get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
     ${updatedlabelfile}=    set variable    ${LOCAL_TMP_DIR}/updated_reqLabel.xml
     remove_xinclude_from_labelfile    ${labelfile}    ${updatedlabelfile}
-    @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
+    @{labelIDs}=    Get Label IDs
     : FOR    ${labelID}    IN    @{labelIDs}
     \    ${reqMsgMultcastAddres}=    get multicast address from label file    ${updatedlabelfile}    ${labelID}
     \    ${lineID}=    get_stat_block_field    ${MTE}    multicast-${labelID}    publishedLineId

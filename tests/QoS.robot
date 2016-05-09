@@ -21,7 +21,7 @@ Verify Sync Pulse Missed QoS
     Verify MTE State IN Specific Box    ${CHE_B_IP}    STANDBY
     Comment    Blocking Standby Side INPUT
     Switch to TD Box    ${CHE_B_IP}
-    @{labelIDs}=    Get labelIDs
+    @{labelIDs}=    Get Label IDs
     get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
     : FOR    ${labelID}    IN    @{labelIDs}
@@ -34,7 +34,7 @@ Verify Sync Pulse Missed QoS
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     Comment    Blocking Live Side OUTPUT
     Switch to TD Box    ${CHE_A_IP}
-    @{labelIDs}=    Get labelIDs
+    @{labelIDs}=    Get Label IDs
     get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
     : FOR    ${labelID}    IN    @{labelIDs}
@@ -217,14 +217,6 @@ Enable NIC
     ${interfaceName}    Get From Dictionary    ${AliasAndInterfaceName}    ${NICName}
     Enable Disable Interface    ${interfaceName}    Enable
     Remove Values From List    ${disabledInterfaceName}    ${interfaceName}
-
-Get labelIDs
-    [Documentation]    Get the labelID from MTE config file on current machine.
-    ...    The LabelID may be different across machines, so use config files from current machine.
-    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
-    ${localVenueConfig}=    get MTE config file
-    @{labelIDs}=    get MTE config list by section    ${localVenueConfig}    Publishing    LabelID
-    [Return]    @{labelIDs}
 
 QoS Case Setup
     [Documentation]    Create suite dictionary variable, it saves the NIC Alias and Interface Name, like {'EXCHIPA':'eth0'}, and make sure all interfaces are enabled before the test
