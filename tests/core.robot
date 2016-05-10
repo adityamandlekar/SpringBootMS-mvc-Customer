@@ -169,13 +169,13 @@ Force Persist File Write
     ...    The returned EXL file lists should be used to call Restore EXL Changes at the end of the test.
     ...
     ...    Return:
-    ...    ${exlFiles} : list of exlFiles that is modified by this KW
-    ...    ${exlBackupFiles} : list of exlFiles that renamed by this KW and reserve the original value of the EXL files
+    ...    ${exlFiles} : list of exlFiles that were modified by this KW
+    ...    ${modifiedExlFiles} : list of the modified exlFiles
     ${currDateTime}=    get date and time
-    ${exlFiles}    ${exlBackupFiles}    Go Into End Feed Time    ${serviceName}
+    ${exlFiles}    ${modifiedExlFiles}    Go Into End Feed Time    ${serviceName}
     Wait SMF Log Message After Time    ${MTE}.*Persist cycle completed    ${currDateTime}    10    120
     [Teardown]
-    [Return]    ${exlFiles}    ${exlBackupFiles}
+    [Return]    ${exlFiles}    ${modifiedExlFiles}
 
 Generate PCAP File Name
     [Arguments]    ${service}    ${testCase}    ${playbackBindSide}=A    @{keyValuePairs}
@@ -427,21 +427,23 @@ Go Into End Feed Time
     ...    The returned EXL file lists should be used to call Restore EXL Changes at the end of the test.
     ...
     ...    Return:
-    ...    ${exlFiles} : list of exlFiles that is modified by this KW
-    ...    ${exlBackupFiles} : list of exlFiles that renamed by this KW and reserve the original value of the EXL files
+    ...    ${exlFiles} : list of the exlFiles that were modified by this KW
+    ...    ${modifiedExlFiles} : list of the modified exlFiles
     ${secondsBeforeFeedEnd}=    set variable    120
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
     ${mteConfigFile}=    Get MTE Config File
     @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
-    @{exlBackupFiles}=    Create List
+    @{modifiedExlFiles}=    Create List
     @{exlFiles}=    Create List
     : FOR    ${connectTimesIdentifier}    IN    @{connectTimesIdentifierList}
     \    ${exlFile}=    get state EXL file    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${serviceName}    Feed Time
+    \    ${exlBasename}=    Fetch From Right    ${exlPath}    ${/}
+    \    ${modifiedExlFile}=    set variable    ${LOCAL_TMP_DIR}${/}${exlBasename}
     \    ${count}=    Get Count    ${exlFiles}    ${exlFile}
-    \    ${exlBackupFile}    set variable    ${exlFile}.backup
     \    Run Keyword if    ${count} == 0    append to list    ${exlFiles}    ${exlFile}
-    \    Run Keyword if    ${count} == 0    append to list    ${exlBackupFiles}    ${exlBackupFile}
-    \    Run Keyword if    ${count} == 0    Copy File    ${exlFile}    ${exlBackupFile}
+    \    Run Keyword if    ${count} == 0    append to list    ${modifiedExlFiles}    ${modifiedExlFile}
+    \    Comment    If the file was already modified (multiple RICs in same file), update the modified file.
+    \    ${useFile}=    Set Variable If    ${count} == 0    ${exlFile}    ${modifiedExlFile}
     \    @{dstRic}=    get ric fields from EXL    ${exlFile}    ${connectTimesIdentifier}    DST_REF
     \    @{tdBoxDateTime}=    get date and time
     \    @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]
@@ -452,15 +454,15 @@ Go Into End Feed Time
     \    ${endDateTime}    get Time    year month day hour min sec    ${endDateTime}
     \    ${endWeekDay}=    get day of week from date    @{endDateTime}[0]    @{endDateTime}[1]    @{endDateTime}[2]
     \    ${endTime}=    set variable    @{endDateTime}[3]:@{endDateTime}[4]:@{endDateTime}[5]
-    \    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
+    \    Set Feed Time In EXL    ${useFile}    ${modifiedExlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
     \    ...    ${endTime}    ${startWeekDay}
     \    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}
     \    ...    ${connectTimeRicDomain}    ${startTime}    ${endTime}    ${endWeekDay}
-    : FOR    ${exlFile}    IN    @{exlFiles}
-    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
+    : FOR    ${modifiedExlFile}    IN    @{modifiedExlFiles}
+    \    Load Single EXL File    ${modifiedExlFile}    ${serviceName}    ${CHE_IP}
     sleep    ${secondsBeforeFeedEnd}
     [Teardown]
-    [Return]    ${exlFiles}    ${exlBackupFiles}
+    [Return]    ${exlFiles}    ${modifiedExlFiles}
 
 Inject PCAP File In Background
     [Arguments]    @{pcapFileList}
@@ -587,16 +589,10 @@ Reset Sequence Numbers
     Wait For MTE Capture To Complete
 
 Restore EXL Changes
-    [Arguments]    ${serviceName}    ${exlFiles}    ${exlBackupFiles}
-    [Documentation]    Restore the original (backup) version of the EXL files and load them using Fmscmd.
-    ...    This Keyword is used in conjunction with Keywords that create the backup files, e.g. 'Go Into End Feed Time'.
-    ${length}=    Get Length    ${exlBackupFiles}
-    : FOR    ${i}    IN RANGE    ${length}
-    \    ${fileExists}=    Run Keyword And Return Status    File Should Exist    ${exlBackupFiles[${i}]}
-    \    Continue For Loop If    ${fileExists} == ${False}
-    \    Copy File    ${exlBackupFiles[${i}]}    ${exlFiles[${i}]}
-    \    Load Single EXL File    ${exlFiles[${i}]}    ${serviceName}    ${CHE_IP}
-    \    Remove Files    ${exlBackupFiles[${i}]}
+    [Arguments]    ${serviceName}    ${exlFiles}
+    [Documentation]    Reload the original version of the EXL files using Fmscmd.
+    : FOR    ${file}    IN    @{exlFiles}
+    \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
 
 Send TRWF2 Refresh Request
