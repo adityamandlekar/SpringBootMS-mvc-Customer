@@ -6,35 +6,137 @@ Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
 *** Test Cases ***
-Watchdog QOS - MTE Egress NIC
-    [Documentation]    Test the QOS value when disable MTE Egress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1966
+Verify Sync Pulse Missed QoS
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
     ...
-    ...    Test Steps
-    ...    1. Verify EgressNIC:100, Total QOS:100
-    ...    2. Disable DDNA, EgressNIC:50, Total QOS:0
-    ...    3. Enable DDNA, EgressNIC:100, Total QOS:100
-    ...    4. Disable DDNB, EgressNIC:50, Total QOS:0
-    ...    5. Enable DDNB, EgressNIC:100, Total QOS:100
-    ...    6. Disable both DDNA and DDNB, EgressNIC:0, Total QOS:0
-    ...    7. Enable both DDNA and DDNB, EgressNIC:100, Total QOS:100
+    ...    Test Case - Verify Sync Pulse Missed QoS by blocking sync pulse publiscation port and check the missing statistic by SCWCli
+    [Tags]    Peer
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    ${ddnpublishersLabelfilepath}=    Get CHE Config Filepath    ddnPublishers.xml
+    ${labelfile_local}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishers.xml
+    ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Verify MTE State IN Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State IN Specific Box    ${CHE_B_IP}    STANDBY
+    Comment    Blocking Standby Side INPUT
+    Switch to TD Box    ${CHE_B_IP}
+    @{labelIDs}=    Get Label IDs
+    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
+    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
+    : FOR    ${labelID}    IN    @{labelIDs}
+    \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
+    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
+    \    block dataflow by port protocol    INPUT    UDP    @{multicastIPandPort}[1]
+    \    sleep    5
+    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
+    \    unblock_dataflow
+    \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
+    Comment    Blocking Live Side OUTPUT
+    Switch to TD Box    ${CHE_A_IP}
+    @{labelIDs}=    Get Label IDs
+    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
+    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
+    : FOR    ${labelID}    IN    @{labelIDs}
+    \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
+    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
+    \    block dataflow by port protocol    OUTPUT    UDP    @{multicastIPandPort}[1]
+    \    sleep    5
+    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
+    \    unblock_dataflow
+    \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
+    [Teardown]    Run Keywords    Unblock Dataflow
+    ...    AND    Case Teardown    ${modifyLabelFile}    ${labelfile_local}
+
+Verify QoS Failover for Critical Process Failure
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1762 to verify QOS CritProcessFail will increase and failover happen if critical process is shutdown.
+    ...
+    ...    1. Stop each of the following critical processes: \ GRS, FMSClient, NetConStat, EventScheduler, StatsGen, GapStatGen, LatencyHandler, StatRicGen.
+    ...    2. Verify LIVE MTE failover after first Critical Process failure.
+    ...    3. Verify CritProcessFail count indicates the number of critical processes that are down.
+    ...    4. Restart the components.
+    ...    5. Verify CritProcessFail count goes back to zero and Total QoS goes back to 100.
+    [Tags]    Peer
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Switch To TD Box    ${CHE_A_IP}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Stop Process    GRS
+    Comment    Use 'continue on failure' so the processes are restarted even if a validation fails.
+    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    ${master_ip}    1    0
+    Stop Process    FMSClient
+    Stop Process    NetConStat
+    Stop Process    EventScheduler
+    Stop Process    StatsGen
+    Stop Process    GapStatGen
+    Stop Process    LatencyHandler
+    Stop Process    DudtGen
+    Stop Process    StatRicGen
+    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    ${master_ip}    9    0
+    Comment    Restart process in same order that SMF starts them
+    Run Keyword and Continue on Failure    Start Process    StatRicGen
+    Run Keyword and Continue on Failure    Start Process    DudtGen
+    Run Keyword and Continue on Failure    Start Process    LatencyHandler
+    Run Keyword and Continue on Failure    Start Process    GapStatGen
+    Run Keyword and Continue on Failure    Start Process    StatsGen
+    Run Keyword and Continue on Failure    Start Process    EventScheduler
+    Run Keyword and Continue on Failure    Start Process    NetConStat
+    Run Keyword and Continue on Failure    Start Process    FMSClient
+    Run Keyword and Continue on Failure    Start Process    GRS
+    Verify QoS for CritProcessFail    A    ${master_ip}    0    100
+    [Teardown]
+
+Watchdog QOS - MTE Egress NIC
+    [Documentation]    Test the QOS value and MTE failover when disabling MTE Egress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1966
+    ...
+    ...    1. Disable DDNA NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNA NIC. \ Verify QOS returns to 100 and MTE recovers to STANDBY.
+    ...    2. Disable DDNB NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNB NIC. \ Verify QOS returns to 100 and MTE recovers to STANDBY.
+    ...    3. Disable DDNA NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNA NIC. \ Verify QOS returns to 100.
+    ...    4. Disable DDNB NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNB NIC. \ Verify QOS returns to 100.
+    ...    5. Disable both DDNA and DDNB on STANDBY MTE box. \ VerifyQOS EgressNIC:0, Total QOS:0. \ Enable both DDNA and DDNB. \ Verify QOS returns to 100.
     [Tags]    Peer
     [Setup]    QoS Case Setup
-    Switch to TD Box    ${CHE_A_IP}
-    Verify QOS for Egress NIC    100    100
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    Comment    Disable DDNA on LIVE box, MTE should failover
+    Switch To TD Box    ${CHE_A_IP}
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
+    Verify QOS for Egress NIC    100    100    A    ${master_ip}
     Disable NIC    DDNA
-    Verify QOS for Egress NIC    50    0
+    Verify QOS for Egress NIC    50    0    A    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
     Enable NIC    DDNA
-    Verify QOS for Egress NIC    100    100
+    Verify QOS for Egress NIC    100    100    A    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    Comment    Disable DDNB on LIVE box, MTE should failover
+    Switch To TD Box    ${CHE_B_IP}
+    Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Disable NIC    DDNB
-    Verify QOS for Egress NIC    50    0
+    Verify QOS for Egress NIC    50    0    B    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Enable NIC    DDNB
-    Verify QOS for Egress NIC    100    100
+    Verify QOS for Egress NIC    100    100    B    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
+    Comment    Disable NICs on STANDBY
+    Disable NIC    DDNA
+    Verify QOS for Egress NIC    50    0    B    ${master_ip}
+    Enable NIC    DDNA
+    Verify QOS for Egress NIC    100    100    B    ${master_ip}
+    Disable NIC    DDNB
+    Verify QOS for Egress NIC    50    0    B    ${master_ip}
+    Enable NIC    DDNB
+    Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Disable NIC    DDNA
     Disable NIC    DDNB
-    Verify QOS for Egress NIC    0    0
+    Verify QOS for Egress NIC    0    0    B    ${master_ip}
     Enable NIC    DDNA
     Enable NIC    DDNB
-    Verify QOS for Egress NIC    100    100
+    Verify QOS for Egress NIC    100    100    B    ${master_ip}
     [Teardown]    QoS Case Teardown
 
 Watchdog QOS - SFH Ingress NIC
@@ -50,22 +152,26 @@ Watchdog QOS - SFH Ingress NIC
     ...    7. Enable both EXCHIPA and EXCHIPB, IngressNIC:100, Total QOS:100
     [Tags]    Peer
     [Setup]    QoS Case Setup
-    Switch to TD Box    ${CHE_A_IP}
-    Verify QOS for Ingress NIC    100    100
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Switch To TD Box    ${CHE_A_IP}
+    Verify QOS for Ingress NIC    100    100    A    ${master_ip}
     Disable NIC    EXCHIPA
-    Verify QOS for Ingress NIC    50    0
+    Verify QOS for Ingress NIC    50    0    A    ${master_ip}
     Enable NIC    EXCHIPA
-    Verify QOS for Ingress NIC    100    100
+    Verify QOS for Ingress NIC    100    100    A    ${master_ip}
     Disable NIC    EXCHIPB
-    Verify QOS for Ingress NIC    50    0
+    Verify QOS for Ingress NIC    50    0    A    ${master_ip}
     Enable NIC    EXCHIPB
-    Verify QOS for Ingress NIC    100    100
+    Verify QOS for Ingress NIC    100    100    A    ${master_ip}
     Disable NIC    EXCHIPA
     Disable NIC    EXCHIPB
-    Verify QOS for Ingress NIC    0    0
+    Verify QOS for Ingress NIC    0    0    A    ${master_ip}
     Enable NIC    EXCHIPA
     Enable NIC    EXCHIPB
-    Verify QOS for Ingress NIC    100    100
+    Verify QOS for Ingress NIC    100    100    A    ${master_ip}
     [Teardown]    QoS Case Teardown
 
 Watchdog QOS - FMS NIC
@@ -80,15 +186,19 @@ Watchdog QOS - FMS NIC
     ...    6. Verify FMS NIC:100, Total QOS:100
     [Tags]    Peer
     [Setup]    QoS Case Setup
-    Switch to TD Box    ${CHE_A_IP}
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Switch To TD Box    ${CHE_A_IP}
     ${interfaceFM}    Get Interface Name By Alias    DB_P_FM
     ${interfaceMGMT}    Get Interface Name By Alias    MGMT
     Should Not Be Equal    ${interfaceFM}    ${interfaceMGMT}    The FMS NIC is equal to MGMT NIC
-    Verify QOS for FMS NIC    100    100
+    Verify QOS for FMS NIC    100    100    A    ${master_ip}
     Disable NIC    DB_P_FM
-    Verify QOS for FMS NIC    0    0
+    Verify QOS for FMS NIC    0    0    A    ${master_ip}
     Enable NIC    DB_P_FM
-    Verify QOS for FMS NIC    100    100
+    Verify QOS for FMS NIC    100    100    A    ${master_ip}
     [Teardown]    QoS Case Teardown
 
 *** Keywords ***
@@ -130,20 +240,27 @@ QoS Case Teardown
     : FOR    ${interfaceName}    IN    @{disabledInterfaceName}
     \    Enable Disable Interface    ${interfaceName}    Enable
 
+Verify QoS for CritProcessFail
+    [Arguments]    ${node}    ${master_ip}    ${CritProcessFailValue}    ${totalQoSValue}=${EMPTY}
+    [Documentation]    Verify the QOS of CritProcessFail on specified node, &{node} should be A, B, C or D.
+    ...    If TotalQOS value is specified, also verify it.
+    wait for QOS    ${node}    CritProcessFail    ${CritProcessFailValue}    ${master_ip}
+    Run Keyword If    '${totalQoSValue}'    verify QOS equal to specific value    ${node}    Total QOS    ${totalQoSValue}    ${master_ip}
+
 Verify QOS for Egress NIC
-    [Arguments]    ${EgressQOS}    ${TotalQOS}    ${node}=A
+    [Arguments]    ${EgressQOS}    ${TotalQOS}    ${node}    ${master_ip}
     [Documentation]    Check whether the Egress QOS and Total QOS are equal to the given value
-    Wait For QOS    ${node}    EgressNIC    ${EgressQOS}    ${CHE_IP}
-    Verify QOS Equal To Specific Value    ${node}    Total QOS    ${TotalQOS}    ${CHE_IP}
+    Wait For QOS    ${node}    EgressNIC    ${EgressQOS}    ${master_ip}
+    Verify QOS Equal To Specific Value    ${node}    Total QOS    ${TotalQOS}    ${master_ip}
 
 Verify QOS for Ingress NIC
-    [Arguments]    ${IngressQOS}    ${TotalQOS}    ${node}=A
+    [Arguments]    ${IngressQOS}    ${TotalQOS}    ${node}    ${master_ip}
     [Documentation]    Check whether the Ingress QOS and Total QOS are equal to the given value
-    Wait For QOS    ${node}    IngressNIC    ${IngressQOS}    ${CHE_IP}
-    Verify QOS Equal To Specific Value    ${node}    Total QOS    ${TotalQOS}    ${CHE_IP}
+    Wait For QOS    ${node}    IngressNIC    ${IngressQOS}    ${master_ip}
+    Verify QOS Equal To Specific Value    ${node}    Total QOS    ${TotalQOS}    ${master_ip}
 
 Verify QOS for FMS NIC
-    [Arguments]    ${FMSQOS}    ${TotalQOS}    ${node}=A
+    [Arguments]    ${FMSQOS}    ${TotalQOS}    ${node}    ${master_ip}
     [Documentation]    Check whether the FMS QOS and Total QOS are equal to the given value
-    Wait For QOS    ${node}    FMSNIC    ${FMSQOS}    ${CHE_IP}
-    Verify QOS Equal To Specific Value    ${node}    Total QOS    ${TotalQOS}    ${CHE_IP}
+    Wait For QOS    ${node}    FMSNIC    ${FMSQOS}    ${master_ip}
+    Verify QOS Equal To Specific Value    ${node}    Total QOS    ${TotalQOS}    ${master_ip}
