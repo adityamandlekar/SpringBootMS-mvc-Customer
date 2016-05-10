@@ -437,7 +437,7 @@ Go Into End Feed Time
     @{exlFiles}=    Create List
     : FOR    ${connectTimesIdentifier}    IN    @{connectTimesIdentifierList}
     \    ${exlFile}=    get state EXL file    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${serviceName}    Feed Time
-    \    ${exlBasename}=    Fetch From Right    ${exlPath}    ${/}
+    \    ${exlBasename}=    Fetch From Right    ${exlFile}    ${/}
     \    ${modifiedExlFile}=    set variable    ${LOCAL_TMP_DIR}${/}${exlBasename}
     \    ${count}=    Get Count    ${exlFiles}    ${exlFile}
     \    Run Keyword if    ${count} == 0    append to list    ${exlFiles}    ${exlFile}
