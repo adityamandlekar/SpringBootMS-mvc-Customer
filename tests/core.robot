@@ -452,6 +452,7 @@ Go Into End Feed Time
     \    ${endDateTime}    get Time    year month day hour min sec    ${endDateTime}
     \    ${endWeekDay}=    get day of week from date    @{endDateTime}[0]    @{endDateTime}[1]    @{endDateTime}[2]
     \    ${endTime}=    set variable    @{endDateTime}[3]:@{endDateTime}[4]:@{endDateTime}[5]
+    \    Blank Out Feedtime    ${connectTimesIdentifier}    ${exlFile}    ${exlFile}
     \    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
     \    ...    ${endTime}    ${startWeekDay}
     \    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}
