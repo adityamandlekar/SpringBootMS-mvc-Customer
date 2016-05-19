@@ -90,6 +90,24 @@ Verify GRS stream creation
     \    get stat block field    GRS    ${streamName}    InputPacket
     [Teardown]    case teardown    ${localFile}
 
+MTE Startup with No GRS Messages for Feed
+    [Documentation]    Verify that the MTE can handle negative response from GRS.
+    ...    1. Stop the MTE
+    ...    2. Stop the GRS
+    ...    3. Delete the GRS pcap files
+    ...    4. Start the GRS
+    ...    5. Start the MTE
+    ...    6. Verify the GRS rejects the 'Start of Day' request from the MTE by SMF log
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1992
+    Stop MTE
+    Stop Process    GRS
+    Delete GRS PCAP Files
+    Start Process    GRS
+    ${currDateTime}    Get Date and Time
+    Start MTE
+    Wait SMF Log Message After Time    Start of Day request rejected\|SOD request rejected    ${currDateTime}    2    120
+
 *** Keywords ***
 Restart MTE With GRS Recovery
     ${currDateTime}    get date and time
