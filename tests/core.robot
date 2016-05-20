@@ -100,6 +100,9 @@ Create Unique RIC Name
     ${ric}=    set variable    TEST${text}${dt[0]}${dt[1]}${dt[2]}${dt[3]}${dt[4]}${dt[5]}
     [Return]    ${ric}
 
+Delete GRS PCAP Files
+    Delete Remote Files Matching Pattern    ${BASE_DIR}    *.pcap    ${True}
+
 Delete Persist Files
     delete remote files matching pattern    ${VENUE_DIR}    PERSIST_${MTE}.DAT*    recurse=${True}
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}

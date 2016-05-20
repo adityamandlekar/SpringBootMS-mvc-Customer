@@ -26,9 +26,6 @@ GRS Peer Recovery SMF Restart
     [Teardown]    Peer Recovery Teardown
 
 *** Keywords ***
-Delete GRS PCAP Files
-    Delete Remote Files Matching Pattern    ${BASE_DIR}    *.pcap    ${True}
-
 Peer Recovery Teardown
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
