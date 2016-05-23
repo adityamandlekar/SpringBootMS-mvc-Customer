@@ -288,6 +288,19 @@ Perform DVT Validation - Closing Run for all RICs
     validate messages against DVT rules    ${localCapture}    ${ruleFilePath}
     [Teardown]    case teardown    ${localCapture}
 
+Perform DVT Validation - Playback
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-2090
+    ...    Verify DVT rule after playback of pcap file
+    ${serviceName}    Get FMS Service Name
+    ${pcapFileName} =    Generate PCAP File Name    ${serviceName}    General RIC Update
+    Reset Sequence Numbers
+    ${remoteCapture}=    Inject PCAP File And Wait For Output    ${pcapFileName}
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    ${ruleFilePath}    get DVT rule file
+    validate messages against DVT rules    ${localCapture}    ${ruleFilePath}
+    [Teardown]    case teardown    ${localCapture}
+
 Verify TRWF Update Type
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1970
     ...
