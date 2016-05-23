@@ -84,7 +84,7 @@ Verify New Item Added to Persist File via FMS
     add ric to exl file    ${EXLfullpath}    ${localRicEXLFile}    ${newRic}    ${None}    ${domain}
     Load Single EXL File    ${localRicEXLFile}    ${serviceName}    ${CHE_IP}
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
-    Verfiy RIC Persisted    ${newRic}    ${domain}
+    Verfiy Item Persisted    ${newRic}    ${EMPTY}    ${domain}
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    ${localRicEXLFile}    @{modifiedFeedEXLFiles}
 

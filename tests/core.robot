@@ -147,7 +147,7 @@ Dump Persist File To XML
     ...    \ \ \ \ <ric> = a single ric or a wide-card
     ...
     ...    PMAT Guide: https://thehub.thomsonreuters.com/docs/DOC-110727
-    ${localPersistFile}=    set variable    ${LOCAL_TMP_DIR}${/}ocal_persist.dat
+    ${localPersistFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_persist.dat
     ${remotePersist}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    ${True}
     Should Be True    len(${remotePersist}) ==1
     get remote file    ${remotePersist[0]}    ${localPersistFile}
@@ -816,13 +816,14 @@ Verify RIC Is Dropped In MTE Cache
     Should Be Equal    ${allricFields['PUBLISHABLE']}    FALSE
     Should Be True    ${allricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
 
-Verfiy RIC Persisted
-    [Arguments]    ${ric}    ${domain}
-    [Documentation]    Dump persist file to XML and check if ric and domain exist in MTE persist file.
+Verfiy Item Persisted
+    [Arguments]    ${ric}=${EMPTY}    ${sic}=${EMPTY}    ${domain}=${EMPTY}
+    [Documentation]    Dump persist file to XML and check if ric, sic and/or domain items exist in MTE persist file.
     ${cacheDomainName}=    Remove String    ${domain}    _
-    ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
-    ${pmatDumpfile}=    Dump Persist File To XML    --ric ${ric}    --domain ${pmatDomain}
-    Verify RIC in Persist Dump File    ${pmatDumpfile}    ${ric}    ${cacheDomainName}
+    ${pmatDomain}=    Run Keyword If    '${cacheDomainName}'!='${EMPTY}'    Map to PMAT Numeric Domain    ${cacheDomainName}
+    @{pmatOptargs}=    Gen Pmat Cmd Args    ${ric}    ${sic}    ${pmatDomain}
+    ${pmatDumpfile}=    Dump Persist File To XML    @{pmatOptargs}
+    Verify Item in Persist Dump File    ${pmatDumpfile}    ${ric}    ${sic}    ${cacheDomainName}
     Remove Files    ${pmatDumpfile}
 
 Wait For FMS Reorg
