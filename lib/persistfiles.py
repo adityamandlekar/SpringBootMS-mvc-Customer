@@ -29,33 +29,6 @@ def get_all_fids_from_PersistXml(xmlfile):
     
     return fidsSet
 
-def gen_Pmat_cmd_args(ric, sic, domain):
-    ''' Generate an array of optional arguments for Run PMAT. The optional arguments could be ---ric <ric> | --sic <sic> | --domain <domain>. If either of the input argument is empty, the return array will not include that argument.
-        Arguments:
-            ric:       ric name for the PMAT optional argument
-            sic:       sic name for the PMAT optional argument
-            domain:    PMAT numeric domain for the optional argument
-                
-        Returns an array optional arguments for Run PMAT.
-        E.g. [ --ric 1HCEIK6 | --sic HF1HHI0516 | --domain 1 ]
-
-        Example:
-        | gen_Pmat_cmd_args  | 1HCEIK6 | HF1HHI0516 | MARKETBYPRICE |
-        | gen_Pmat_cmd_args  | 1HCEIK6 | ${EMPTY} | MARKETBYPRICE |
-        | gen_Pmat_cmd_args  | ${EMPTY} | HF1HHI0516 | MARKETBYPRICE |
-        | gen_Pmat_cmd_args  | 1HCEIK6 | ${EMPTY} | ${EMPTY}  |
-    '''    
-
-    args = []
-    if ric != '' and ric != None:
-        args.append('--ric %s' % ric)
-    if sic != '' and sic != None:
-        args.append('--sic %s' % sic)
-    if domain != '' and domain != None:
-        args.append('--domain %s' % domain)
-   
-    return args
-
 def verify_item_in_persist_dump_file(persist_dump_file, ric, sic, domain):
     ''' Check if ric, sic and/or domain appeared in the persist_dump_file. 
         persist_dump_file usually contains RIC, SIC and/or Domain if user applies RIC, SIC and/or Domain filter in running PMAT dump.
