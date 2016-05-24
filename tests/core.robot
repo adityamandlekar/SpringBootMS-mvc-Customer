@@ -572,7 +572,7 @@ Persist File Should Exist
 
 Reset Sequence Numbers
     [Documentation]    Reset the FH, GRS, and MTE sequence numbers.
-    ...    Currently this is done by stopping and starting the components and deleting the PERSIST files.
+    ...    Currently this is done by stopping and starting the components and deleting the GRS PCAP and MTE PERSIST files.
     ...    If/when a hook is provided to reset the sequence numbers without restarting the component, it should be used.
     ...
     ...    This KW also waits for any publishing due to the MTE restart/reorg to complete.
@@ -583,13 +583,14 @@ Reset Sequence Numbers
     Stop MTE
     Stop Process    GRS
     Stop Process    FHController
+    Delete GRS PCAP Files
     Delete Persist Files
     Start Process    GRS
     Start Process    FHController
     Start MTE
     Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
     Comment    We don't capture the output file, but this waits for publishing to complete
-    Wait For MTE Capture To Complete
+    Wait For MTE Capture To Complete    5    600
 
 Restore EXL Changes
     [Arguments]    ${serviceName}    ${exlFiles}
