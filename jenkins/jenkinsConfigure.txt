@@ -6,6 +6,27 @@ md %WORKSPACE%\docs\tests
 
 set PYTHONPATH=C:\Python27;%WORKSPACE%\lib
 
+cd %WORKSPACE%\lib\localtools
+
+for /F %%x in ('dir /B/D *.py') do (
+    echo %%x
+    C:\Python27\python.exe d:\tools\automation\robot\libdoc.py %%x %%~nx.html
+    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+)
+
+move *.html %WORKSPACE%\docs\lib
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+cd %WORKSPACE%\lib\linuxtools
+
+for /F %%x in ('dir /B/D *.py') do (
+    echo %%x
+    C:\Python27\python.exe d:\tools\automation\robot\libdoc.py %%x %%~nx.html
+    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+)
+
+move *.html %WORKSPACE%\docs\lib
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 cd %WORKSPACE%\lib
 
 for /F %%x in ('dir /B/D *.py') do (
@@ -21,28 +42,6 @@ C:\Python27\python.exe d:\tools\automation\robot\libdoc.py %WORKSPACE%\lib\SSHLi
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 
 move SSHLibrary.html %WORKSPACE%\docs\lib
-if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
-
-cd %WORKSPACE%\lib\linuxtools
-
-for /F %%x in ('dir /B/D *.py') do (
-    echo %%x
-    C:\Python27\python.exe d:\tools\automation\robot\libdoc.py %%x %%~nx.html
-    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
-)
-
-move *.html %WORKSPACE%\docs\lib
-if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
-
-cd %WORKSPACE%\lib\localtools
-
-for /F %%x in ('dir /B/D *.py') do (
-    echo %%x
-    C:\Python27\python.exe d:\tools\automation\robot\libdoc.py %%x %%~nx.html
-    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
-)
-
-move *.html %WORKSPACE%\docs\lib
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 
 cd %WORKSPACE%\tests

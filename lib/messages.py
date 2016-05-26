@@ -6,7 +6,7 @@ import os.path
 import string
 import time
 
-import das
+from localtools import das
 import fidfilterfile
 import statblock
 from utils.ssh import _exec_command, _check_process, _start_command
