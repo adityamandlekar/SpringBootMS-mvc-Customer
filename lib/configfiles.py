@@ -206,6 +206,41 @@ def get_MTE_config_list_by_section(venueConfigFile, section, tag):
     
     return LabelIdList
 
+def get_MTE_config_tag_list(venueConfigFile, *xmlPath):
+    """ Get tag from venue config file
+
+    Argument : venueConfigFile : local path of venue config file
+               xmlPath : one or more node names that identify the XML path
+
+    Return : list of tag
+    """
+
+    foundConfigTags = []
+
+    xmlPathLength = len(xmlPath)
+    if xmlPathLength < 1:
+        raise AssertionError('*ERROR*  Need to provide xmlPath to look up.')
+    elif xmlPathLength > 1:
+        xmlPathString = '/'.join(map(str, xmlPath))
+    else:
+        xmlPathString = str(xmlPath[0])
+        
+    if not os.path.exists(venueConfigFile):
+        raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
+    
+    with open (venueConfigFile, "r") as myfile:
+        linesRead = myfile.readlines()
+
+    # Note that the following workaround is needed to make the venue config file a valid XML file.
+    linesRead = "<GATS>" + ''.join(linesRead) + "</GATS>"
+    
+    root = ET.fromstring(linesRead)
+    
+    for foundNode in root.iterfind(".//" + xmlPathString + '/*'):
+            foundConfigTags.append(foundNode.tag)
+        
+    return foundConfigTags
+
 def get_MTE_config_value(venueConfigFile,*xmlPath):
     """ Gets value from venue config file
         http://www.iajira.amers.ime.reuters.com/browse/CATF-1736
@@ -242,41 +277,6 @@ def get_MTE_config_value(venueConfigFile,*xmlPath):
         raise AssertionError('*ERROR*  Found more than 1 value [%s] in venue config file: %s' %(', '.join(foundConfigValues), venueConfigFile))
     else:
         return foundConfigValues[0]
-
-def get_MTE_config_tag_list(venueConfigFile, *xmlPath):
-    """ Get tag from venue config file
-
-    Argument : venueConfigFile : local path of venue config file
-               xmlPath : one or more node names that identify the XML path
-
-    Return : list of tag
-    """
-
-    foundConfigTags = []
-
-    xmlPathLength = len(xmlPath)
-    if xmlPathLength < 1:
-        raise AssertionError('*ERROR*  Need to provide xmlPath to look up.')
-    elif xmlPathLength > 1:
-        xmlPathString = '/'.join(map(str, xmlPath))
-    else:
-        xmlPathString = str(xmlPath[0])
-        
-    if not os.path.exists(venueConfigFile):
-        raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
-    
-    with open (venueConfigFile, "r") as myfile:
-        linesRead = myfile.readlines()
-
-    # Note that the following workaround is needed to make the venue config file a valid XML file.
-    linesRead = "<GATS>" + ''.join(linesRead) + "</GATS>"
-    
-    root = ET.fromstring(linesRead)
-    
-    for foundNode in root.iterfind(".//" + xmlPathString + '/*'):
-            foundConfigTags.append(foundNode.tag)
-        
-    return foundConfigTags
 
 def get_multicast_address_from_label_file(ddnLabels_file, labelID, mteName=""):
     ''' Extract multicast IP and port from label file based on the labelID
