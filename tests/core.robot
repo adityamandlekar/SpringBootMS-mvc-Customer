@@ -452,7 +452,10 @@ Go Into End Feed Time
     \    ${endDateTime}    get Time    year month day hour min sec    ${endDateTime}
     \    ${endWeekDay}=    get day of week from date    @{endDateTime}[0]    @{endDateTime}[1]    @{endDateTime}[2]
     \    ${endTime}=    set variable    @{endDateTime}[3]:@{endDateTime}[4]:@{endDateTime}[5]
-    \    Blank Out Feedtime    ${connectTimesIdentifier}    ${exlFile}    ${exlFile}
+    \    @{edits}    Create List    <it:SUN_FD_OPEN>BLANK</it:SUN_FD_OPEN>    <it:SUN_FD_CLOSE>BLANK</it:SUN_FD_CLOSE>    <it:MON_FD_OPEN>BLANK</it:MON_FD_OPEN>    <it:MON_FD_CLOSE>BLANK</it:MON_FD_CLOSE>
+    \    ...    <it:TUE_FD_OPEN>BLANK</it:TUE_FD_OPEN>    <it:TUE_FD_CLOSE>BLANK</it:TUE_FD_CLOSE>    <it:WED_FD_OPEN>BLANK</it:WED_FD_OPEN>    <it:WED_FD_CLOSE>BLANK</it:WED_FD_CLOSE>    <it:THU_FD_OPEN>BLANK</it:THU_FD_OPEN>
+    \    ...    <it:THU_FD_CLOSE>BLANK</it:THU_FD_CLOSE>    <it:FRI_FD_OPEN>BLANK</it:FRI_FD_OPEN>    <it:FRI_FD_CLOSE>BLANK</it:FRI_FD_CLOSE>    <it:SAT_FD_OPEN>BLANK</it:SAT_FD_OPEN>    <it:SAT_FD_CLOSE>BLANK</it:SAT_FD_CLOSE>
+    \    Modify EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    @{edits}
     \    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
     \    ...    ${endTime}    ${startWeekDay}
     \    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}

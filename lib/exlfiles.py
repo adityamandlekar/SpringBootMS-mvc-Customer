@@ -105,62 +105,6 @@ def add_ric_to_exl_file(exlFileSource, exlFileTarget, ric, symbol=None, domain="
 
     return 
 
-def blank_out_feedtime(ric,srcExlFile, destExlFile):
-    """ removes all <it:XXX_FD_OPEN></it:XXX_FD_OPEN> and <it:XXX_FD_CLOSE></it:XXX_FD_CLOSE> for specific feedtime ric.
-
-        return : 0 for success, non-zero for failure
-        Assertion : When file open fails
-    """                
-
-    # Inner function to handle file opening
-    def open_file(filename, mode):
-        try:
-            fileHandle = open(filename, mode) 
-        except:
-            raise AssertionError('Failed to open file %s' %filename)
-            return 1, "NULL"
-        return (0, fileHandle)
-
-    # First open the exlFile for reading
-    (returnCode, exlFileHandle) = open_file(srcExlFile, 'r')
-    if returnCode != 0:
-        return returnCode
-
-    # Initialize some variables used for processing the file
-    newExlFileContents = ""
-    inExlObjectFields = bool(False)
-    ricFound = bool(False)
-
-    # Loop through each line of the file, examining the line
-    for currentLine in exlFileHandle:
-        # Here we track if we're in the <exlObjectFields> section
-        if re.match('<exlObjectFields>', currentLine):
-            inExlObjectFields = True
-        elif re.match('</exlObjectFields>', currentLine):
-            inExlObjectFields = False
-            ricFound = False
-        elif re.match('<it:RIC>'+ ric, currentLine):
-            ricFound = True
-
-        if inExlObjectFields and ricFound:
-            #Skip all connection time fields
-            if not (re.match('.*_FD_OPEN.*', currentLine) or re.match('.*_FD_CLOSE.*', currentLine)):
-                newExlFileContents += currentLine
-        else:
-            newExlFileContents += currentLine
-
-    # Close the EXL file we opened for reading
-    exlFileHandle.close()
-
-    # Overwrite the EXL file with the new contents
-    (returnCode, exlFileHandle) = open_file(destExlFile, 'w')
-    if returnCode != 0:
-        return returnCode
-    exlFileHandle.write(newExlFileContents)
-    exlFileHandle.close()
-
-    return 0
-
 def blank_out_holidays(srcExlFile, destExlFile):
     """ removes any defined holidays in the given srcExlFile and saves it to destExlFile
         srcExlFile : The full path and filename of the EXL file to remove blank out holidays in
