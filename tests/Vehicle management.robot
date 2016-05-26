@@ -97,7 +97,8 @@ Verify RIC rename handled correctly
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${RIC_Before_Rename}    ${Published_RIC_Before_Rename}    Get RIC From MTE Cache    ${domain}
-    ${RIC_After_Rename}=    Create Unique RIC Name    ${RIC_Before_Rename}
+    ${RIC_Before_Rename_Trunc}=    Get Substring    ${RIC_Before_Rename}    0    14
+    ${RIC_After_Rename}=    Create Unique RIC Name    ${RIC_Before_Rename_Trunc}
     ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${RIC_Before_Rename}
     ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
     ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
