@@ -65,8 +65,6 @@ Verify Cache Contains Only Configured Context IDs
     ${dstdumpfile}=    set variable    ${LOCAL_TMP_DIR}/cachedump.csv
     Get Sorted Cache Dump    ${dstdumpfile}
     ${mteConfigFile}=    Get MTE Config File
-    ${serviceName}    Get FMS Service Name
-    ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
     verify cache contains only configured context ids    ${dstdumpfile}    ${mteConfigFile}
     [Teardown]    case teardown    ${dstdumpfile}
 

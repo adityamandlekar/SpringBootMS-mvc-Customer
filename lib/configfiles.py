@@ -213,6 +213,9 @@ def get_MTE_config_tag_list(venueConfigFile, *xmlPath):
                xmlPath : one or more node names that identify the XML path
 
     Return : list of tag
+
+    Examples :
+    | ${tagList}= | get MTE config tag list | venue_config_file | Transforms |
     """
 
     foundConfigTags = []
