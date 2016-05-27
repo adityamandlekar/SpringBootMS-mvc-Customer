@@ -32,30 +32,35 @@ Verify FHController open and close timing
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-2089
     ...
     ...    FHController listens to EventScheduler. Once it receives open, close, holiday event, it will start or turn down the FH.
-    ...
-    ...    This test case does not apply to MFDS due to outdated MFDS fhc configuration files.
     ${fhcConfigFile}=    Get CHE Config Filepath    *_fhc.json
-    ${locaConfiglFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_config.json
-    get remote file    ${fhcConfigFile}    ${locaConfiglFile}
-    ${configInfo}=    Get FH Info From FHC Config    ${locaConfiglFile}    ${FH}
-    Comment    ${configInfo} list contains FMS service, domain, RIC, command argument
-    ${serviceName}=    Set variable    ${configInfo[0]}
-    ${ricDomain}=    Set variable    ${configInfo[1]}
-    ${timeRic}=    Set variable    ${configInfo[2]}
-    ${cmdArg}=    Set variable    ${configInfo[3]}
-    ${processCmdPattern}=    Set Variable    ${cmdArg}
-    Remove Files    ${locaConfiglFile}
+    ${localConfigFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_config.json
+    get remote file    ${fhcConfigFile}    ${localConfigFile}
+    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC Config    ${localConfigFile}
+    Remove Files    ${localConfigFile}
     ${exlFile}=    get EXL for RIC    ${ricDomain}    ${serviceName}    ${timeRic}
     ${dstHolRics}=    get DST and holiday RICs from EXL    ${exlFile}    ${timeRic}
-    ${holidayExllFile}=    get EXL for RIC    ${ricDomain}    ${serviceName}    ${dstHolRics[1]}
+    ${holidayExlFile}=    get EXL for RIC    ${ricDomain}    ${serviceName}    ${dstHolRics[1]}
     ${modifiedHolExl}=    Set variable    ${LOCAL_TMP_DIR}${/}modifiedHolExl.exl
-    Blank Out Holidays    ${holidayExllFile}    ${modifiedHolExl}
+    Comment    check FH state at feed close or open time when not in holiday time
+    Blank Out Holidays    ${holidayExlFile}    ${modifiedHolExl}
     Load Single EXL File    ${modifiedHolExl}    ${serviceName}    ${CHE_IP}
-    Check FH Close    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${processCmdPattern}
-    Check FH Open    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${processCmdPattern}
+    Check FH Close    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
+    Check FH Open    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
+    Check FH Close    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
     remove files    ${modifiedHolExl}
-    Check FH Holiday    ${holidayExllFile}    ${dstHolRics[1]}    ${processCmdPattern}
-    [Teardown]    Load All EXl Files    ${serviceName}    ${CHE_IP}    ${EMPTY}
+    Comment    In open or close time and check FH states when it is also holiday time
+    Check FH Open    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
+    Check FH Holiday    ${holidayExlFile}    ${dstHolRics[1]}    ${cmdArg}
+    Check FH Close    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
+    Check FH Holiday    ${holidayExlFile}    ${dstHolRics[1]}    ${cmdArg}
+    Comment    In holiday time and check FH states when feed open and close
+    Check FH Holiday    ${holidayExlFile}    ${dstHolRics[1]}    ${cmdArg}
+    Check FH Close    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
+    Check FH Holiday    ${holidayExlFile}    ${dstHolRics[1]}    ${cmdArg}
+    Set Feed Open Time    ${exlFile}    ${dstHolRics[0]}    ${timeRic}
+    wait for process to not exist    ${cmdArg}
+    ${exlFileList}=    Create List    ${exlFile}    ${holidayExlFile}
+    [Teardown]    Load List of EXl Files    ${exlFileList}    ${serviceName}    ${CHE_IP}    ${EMPTY}
 
 Verify Holiday RIC processing
     [Documentation]    Verify Holiday RIC processing:
@@ -198,40 +203,24 @@ Calculate DST End Date And Check Stat
 
 Check FH Open
     [Arguments]    ${exlFile}    ${dstRic}    ${timeRic}    ${cmdPattern}
-    ${exlFilename}    Fetch From Right    ${exlFile}    \\
-    ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${exlFilename}_modified.exl
-    ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${dstRic}
-    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    ${startTime}    ${endTime}    Set times for IN state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
-    Set Feed Time In EXL    ${exlFile}    ${exlFileModified}    ${timeRic}    ${ricDomain}    ${startTime}    ${endTime}
-    ...    ${weekDay}
-    Load Single EXL File    ${exlFileModified}    ${serviceName}    ${CHE_IP}
+    Set Feed Open Time    ${exlFile}    ${dstRic}    ${timeRic}
     wait for process to exist    ${cmdPattern}
-    remove files    ${exlFileModified}
 
 Check FH Close
     [Arguments]    ${exlFile}    ${dstRic}    ${timeRic}    ${cmdPattern}
-    ${exlFilename}    Fetch From Right    ${exlFile}    \\
-    ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${exlFilename}_modified.exl
-    ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${dstRic}
-    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    ${startTime}    ${endTime}    Set times for OUT state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
-    Set Feed Time In EXL    ${exlFile}    ${exlFileModified}    ${timeRic}    ${ricDomain}    ${startTime}    ${endTime}
-    ...    ${weekDay}
-    Load Single EXL File    ${exlFileModified}    ${serviceName}    ${CHE_IP}
+    Set Feed Close Time    ${exlFile}    ${dstRic}    ${timeRic}
     wait for process to not exist    ${cmdPattern}
-    remove files    ${exlFileModified}
 
 Check FH Holiday
-    [Arguments]    ${holidayExllFile}    ${holRicName}    ${cmdPattern}
-    ${exlFilename}    Fetch From Right    ${holidayExllFile}    \\
+    [Arguments]    ${holidayExlFile}    ${holRicName}    ${cmdPattern}
+    ${exlFilename}    Fetch From Right    ${holidayExlFile}    ${/}
     ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${exlFilename}_modified.exl
     ${tdBoxDateTime}    get date and time
     ${startDatetime}    ${endDatetime}    Set Datetimes For IN State    ${tdBoxDateTime[0]}    ${tdBoxDateTime[1]}    ${tdBoxDateTime[2]}    ${tdBoxDateTime[3]}
     ...    ${tdBoxDateTime[4]}    ${tdBoxDateTime[5]}
     ${startDateTimeT}    Replace String    ${startDatetime}    ${SPACE}    T
     ${endDatetimeT}    Replace String    ${endDatetime}    ${SPACE}    T
-    Set Holiday Datetime In EXL    ${holidayExllFile}    ${exlFileModified}    ${holRicName}    ${statRicDomain}    ${startDateTimeT}.00    ${endDatetimeT}.00
+    Set Holiday Datetime In EXL    ${holidayExlFile}    ${exlFileModified}    ${holRicName}    ${statRicDomain}    ${startDateTimeT}.00    ${endDatetimeT}.00
     Load Single EXL File    ${exlFileModified}    ${serviceName}    ${CHE_IP}
     wait for process to not exist    ${cmdPattern}
     remove files    ${exlFileModified}
@@ -626,4 +615,28 @@ Go Outside Datetime
     ...    ${statRicDomain}    ${startDateTimeT}.00    ${endDatetimeT}.00
     ...    AND    Load EXL and Check Stat For DST    ${exlFileModified}    ${ricName}    normalGMTOffset    ${startDateTimeT}.00
     ...    ${endDatetimeT}.00
+    remove files    ${exlFileModified}
+
+Set Feed Close Time
+    [Arguments]    ${exlFile}    ${dstRic}    ${timeRic}
+    ${exlFilename}    Fetch From Right    ${exlFile}    ${/}
+    ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${exlFilename}_modified.exl
+    ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${dstRic}
+    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
+    ${startTime}    ${endTime}    Set times for OUT state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
+    Set Feed Time In EXL    ${exlFile}    ${exlFileModified}    ${timeRic}    ${ricDomain}    ${startTime}    ${endTime}
+    ...    ${weekDay}
+    Load Single EXL File    ${exlFileModified}    ${serviceName}    ${CHE_IP}
+    remove files    ${exlFileModified}
+
+Set Feed Open Time
+    [Arguments]    ${exlFile}    ${dstRic}    ${timeRic}
+    ${exlFilename}    Fetch From Right    ${exlFile}    ${/}
+    ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${exlFilename}_modified.exl
+    ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${dstRic}
+    ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
+    ${startTime}    ${endTime}    Set times for IN state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
+    Set Feed Time In EXL    ${exlFile}    ${exlFileModified}    ${timeRic}    ${ricDomain}    ${startTime}    ${endTime}
+    ...    ${weekDay}
+    Load Single EXL File    ${exlFileModified}    ${serviceName}    ${CHE_IP}
     remove files    ${exlFileModified}
