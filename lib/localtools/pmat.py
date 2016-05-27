@@ -1,8 +1,35 @@
-import string
+﻿import string
 
 from utils.local import _run_local_command
 from VenueVariables import *
     
+def gen_Pmat_cmd_args(ric, sic, domain):
+    ''' Generate an array of optional arguments for Run PMAT. The optional arguments could be ---ric <ric> | --sic <sic> | --domain <domain>. If either of the input argument is empty, the return array will not include that argument.
+        Arguments:
+            ric:       ric name for the PMAT optional argument
+            sic:       sic name for the PMAT optional argument
+            domain:    PMAT numeric domain for the optional argument
+                
+        Returns an array optional arguments for Run PMAT.
+        E.g. [ --ric 1HCEIK6 | --sic HF1HHI0516 | --domain 1 ]
+
+        Example:
+        | gen_Pmat_cmd_args  | 1HCEIK6 | HF1HHI0516 | MARKETBYPRICE |
+        | gen_Pmat_cmd_args  | 1HCEIK6 | ${EMPTY} | MARKETBYPRICE |
+        | gen_Pmat_cmd_args  | ${EMPTY} | HF1HHI0516 | MARKETBYPRICE |
+        | gen_Pmat_cmd_args  | 1HCEIK6 | ${EMPTY} | ${EMPTY}  |
+    '''    
+
+    args = []
+    if ric != '' and ric != None:
+        args.append('--ric %s' % ric)
+    if sic != '' and sic != None:
+        args.append('--sic %s' % sic)
+    if domain != '' and domain != None:
+        args.append('--domain %s' % domain)
+   
+    return args
+
 def map_to_PMAT_numeric_domain(domain):
     ''' Map string domain to PMAT numeric domain
         Argument : domain : Data domain in following format

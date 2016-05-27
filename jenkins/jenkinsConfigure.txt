@@ -1,0 +1,93 @@
+@echo off 
+
+md %WORKSPACE%\docs
+md %WORKSPACE%\docs\lib
+md %WORKSPACE%\docs\tests
+
+set PYTHONPATH=C:\Python27;%WORKSPACE%\lib
+
+cd %WORKSPACE%\lib\localtools
+
+for /F %%x in ('dir /B/D *.py') do (
+    echo %%x
+    C:\Python27\python.exe d:\tools\automation\robot\libdoc.py %%x %%~nx.html
+    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+)
+
+move *.html %WORKSPACE%\docs\lib
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+cd %WORKSPACE%\lib\linuxtools
+
+for /F %%x in ('dir /B/D *.py') do (
+    echo %%x
+    C:\Python27\python.exe d:\tools\automation\robot\libdoc.py %%x %%~nx.html
+    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+)
+
+move *.html %WORKSPACE%\docs\lib
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+cd %WORKSPACE%\lib
+
+for /F %%x in ('dir /B/D *.py') do (
+    echo %%x
+    C:\Python27\python.exe d:\tools\automation\robot\libdoc.py %%x %%~nx.html
+    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+)
+
+move *.html %WORKSPACE%\docs\lib
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+C:\Python27\python.exe d:\tools\automation\robot\libdoc.py %WORKSPACE%\lib\SSHLibrary SSHLibrary.html
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+move SSHLibrary.html %WORKSPACE%\docs\lib
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+cd %WORKSPACE%\tests
+
+for /F "tokens=*" %%x in ('dir /B/D *.robot') do (
+    echo "%%x"
+    C:\Python27\python.exe d:\tools\automation\robot\testdoc.py "%%x" "%%~nx.html"
+)
+
+move *.html %WORKSPACE%\docs\tests
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+C:\Python27\python.exe d:\tools\automation\robot\libdoc.py core.robot core.html
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+move core.html %WORKSPACE%\docs\lib
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+cd %WORKSPACE%\tests
+
+C:\Python27\python.exe ..\scripts\gen_testdoc.py > HiLevelTestDoc.html
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+move HiLevelTestDoc.html %WORKSPACE%\docs\tests
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+set ServerFTP=ftp-stl-coll.stldevnet.reuters.com
+set FTPPath=Release/Automation/Thunderdome/docs
+
+cd %WORKSPACE%\docs\lib
+
+echo open %ServerFTP%>~tmpFTPscript.txt
+echo anonymous>>~tmpFTPscript.txt
+echo BuildScript@localhost>>~tmpFTPscript.txt
+echo prompt>>~tmpFTPscript.txt
+echo bin>>~tmpFTPscript.txt
+echo cd %FTPPath%/lib>>~tmpFTPscript.txt
+echo mdelete *.html>>~tmpFTPscript.txt
+echo mput *.html>>~tmpFTPscript.txt
+echo lcd ..\tests>>~tmpFTPscript.txt
+echo cd ../tests>>~tmpFTPscript.txt
+echo mdelete *.html>>~tmpFTPscript.txt
+echo mput *.html>>~tmpFTPscript.txt
+echo bye>>~tmpFTPscript.txt
+
+ftp -s:~tmpFTPscript.txt
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+del ~tmpFTPscript.txt

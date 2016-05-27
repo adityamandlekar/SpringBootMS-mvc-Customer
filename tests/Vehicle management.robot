@@ -27,7 +27,7 @@ Verify Long RIC handled correctly
     Stop Capture MTE Output    1    5
     ${newRic}    ${newPubRic}    Run Keyword And Continue On Failure    Verify RIC In MTE Cache    ${long_ric}
     Run Keyword And Continue On Failure    Verify RIC Published    ${remoteCapture}    ${localEXLfile}    ${newPubRic}    ${domain}
-    Run Keyword And Continue On Failure    Verfiy RIC Persisted    ${long_ric}    ${domain}
+    Run Keyword And Continue On Failure    Verfiy Item Persisted    ${long_ric}    ${EMPTY}    ${domain}
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
     Wait For Persist File Update
     [Teardown]    case teardown    ${localEXLfile}
@@ -91,13 +91,14 @@ Partial REORG on EXL Change
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify RIC rename handled correctly
-    [Documentation]    Verify RIC rename appeared in the cache dump file
+    [Documentation]    Verify RIC rename appeared in the cache dump file and updated persist file
     start MTE
     Comment    //Setup variables for test
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${RIC_Before_Rename}    ${Published_RIC_Before_Rename}    Get RIC From MTE Cache    ${domain}
-    ${RIC_After_Rename}=    Create Unique RIC Name    ${RIC_Before_Rename}
+    ${RIC_Before_Rename_Trunc}=    Get Substring    ${RIC_Before_Rename}    0    14
+    ${RIC_After_Rename}=    Create Unique RIC Name    ${RIC_Before_Rename_Trunc}
     ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${RIC_Before_Rename}
     ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
     ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
@@ -121,6 +122,7 @@ Verify RIC rename handled correctly
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_2.pcap
     verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${Published_RIC_After_Rename}    ${domain}    ${constituent_list}
+    Verfiy Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
     Comment    //Start test. Test 3: Check that the new RIC can be renamed back to the original name.
     Comment    //This also reverts the state back to as the begining of the test
     Start Capture MTE Output
@@ -133,6 +135,7 @@ Verify RIC rename handled correctly
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
     Verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${Published_RIC_Before_Rename}    ${domain}    ${constituent_list}
+    Verfiy Item Persisted    ${RIC_Before_Rename}    ${EMPTY}    ${domain}
     [Teardown]    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 Verify FMS Rebuild
@@ -218,7 +221,7 @@ Verify Reconcile of Cache
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/${exlFileName}
 
 Verify SIC rename handled correctly
-    [Documentation]    Verify SIC rename appeared in the cache dump file
+    [Documentation]    Verify SIC rename appeared in the cache dump file and updated persist file
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1893
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
@@ -237,11 +240,15 @@ Verify SIC rename handled correctly
     ${ricFields}=    Get All Fields For RIC From Cache    ${RIC}
     ${SIC_1}=    set variable    ${ricFields['SIC']}
     Should Be Equal    ${SIC_1}    ${SIC_After_Rename}
+    Wait For Persist File Update    5    60
+    Verfiy Item Persisted    ${EMPTY}    ${SIC_After_Rename}    ${domain}
     Comment    //fallback
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowSICChange true
     ${ricFields}=    Get All Fields For RIC From Cache    ${RIC}
     ${SIC_2}=    set variable    ${ricFields['SIC']}
     Should Be Equal    ${SIC_2}    ${SIC_Before_Rename}
+    Wait For Persist File Update    5    60
+    Verfiy Item Persisted    ${EMPTY}    ${SIC_Before_Rename}    ${domain}
     [Teardown]    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowSICChange true
 
 Verify FMS Extract and Insert
