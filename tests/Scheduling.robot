@@ -78,7 +78,7 @@ Verify FHController open and close timing
     Wait For Process To Not Exist    ${cmdArg}
     Comment    already in holiday and in open time and end of holiday occurs
     Set Outside Holiday    ${holidayExlFile}
-    Check FH Open    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
+    Wait For Process To Exist    ${cmdArg}
     Comment    In holiday and in close time and end of holiday occurs
     Check FH Holiday    ${holidayExlFile}    ${dstHolRics[1]}    ${cmdArg}
     Check FH Close    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
