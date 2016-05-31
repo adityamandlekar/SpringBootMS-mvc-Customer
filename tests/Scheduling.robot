@@ -32,6 +32,22 @@ Verify FHController open and close timing
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-2089
     ...
     ...    FHController listens to EventScheduler. Once it receives open, close, holiday event, it will start or turn down the FH.
+    ...
+    ...    Not in holiday:
+    ...    (1) outside feed time, FH is down.
+    ...    (2) in feed time, FH stays up.
+    ...    (3) outside feed time, FH stays down.
+    ...
+    ...    In feed time, holiday occurs, FH stays down.
+    ...    In feed close time, holiday occours, FH stays down.
+    ...
+    ...    In holiday:
+    ...    (1) outside feed time, FH stays down.
+    ...    (2) feed open occurs, FH stays down.
+    ...    (3) in feed open time and end of holiday occurs, FH starts up
+    ...    (4) outside feed time and end of holiday occurs, FH stays down
+    ...
+    ...    30 second is used for sleep. It is the waiting time that event scheduler reacts and time used for the process to be created. It is for case like FH doesn't exist to doesn't exist.
     ${fhcConfigFile}=    Get CHE Config Filepath    *_fhc.json
     ${localConfigFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_config.json
     get remote file    ${fhcConfigFile}    ${localConfigFile}
@@ -42,23 +58,33 @@ Verify FHController open and close timing
     ${holidayExlFile}=    get EXL for RIC    ${ricDomain}    ${serviceName}    ${dstHolRics[1]}
     ${modifiedHolExl}=    Set variable    ${LOCAL_TMP_DIR}${/}modifiedHolExl.exl
     Comment    check FH state at feed close or open time when not in holiday time
-    Blank Out Holidays    ${holidayExlFile}    ${modifiedHolExl}
-    Load Single EXL File    ${modifiedHolExl}    ${serviceName}    ${CHE_IP}
+    Set Outside Holiday    ${holidayExlFile}
     Check FH Close    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
     Check FH Open    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
     Check FH Close    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
-    remove files    ${modifiedHolExl}
-    Comment    In open or close time and check FH states when it is also holiday time
+    Comment    In open or close time and check FH states when holiday time occurs
     Check FH Open    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
     Check FH Holiday    ${holidayExlFile}    ${dstHolRics[1]}    ${cmdArg}
     Check FH Close    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
-    Check FH Holiday    ${holidayExlFile}    ${dstHolRics[1]}    ${cmdArg}
+    Set Holiday Time    ${holidayExlFile}    ${dstHolRics[1]}
+    Sleep    30s
+    Wait For Process To Not Exist    ${cmdArg}
     Comment    In holiday time and check FH states when feed open and close
+    Set Feed Close Time    ${exlFile}    ${dstHolRics[0]}    ${timeRic}
+    Sleep    30s
+    Wait For Process To Not Exist    ${cmdArg}
+    Set Feed Open Time    ${exlFile}    ${dstHolRics[0]}    ${timeRic}
+    Sleep    30s
+    Wait For Process To Not Exist    ${cmdArg}
+    Comment    already in holiday and in open time and end of holiday occurs
+    Set Outside Holiday    ${holidayExlFile}
+    Check FH Open    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
+    Comment    In holiday and in close time and end of holiday occurs
     Check FH Holiday    ${holidayExlFile}    ${dstHolRics[1]}    ${cmdArg}
     Check FH Close    ${exlFile}    ${dstHolRics[0]}    ${timeRic}    ${cmdArg}
-    Check FH Holiday    ${holidayExlFile}    ${dstHolRics[1]}    ${cmdArg}
-    Set Feed Open Time    ${exlFile}    ${dstHolRics[0]}    ${timeRic}
-    wait for process to not exist    ${cmdArg}
+    Set Outside Holiday    ${holidayExlFile}
+    Sleep    30s
+    Wait For Process To Not Exist    ${cmdArg}
     ${exlFileList}=    Create List    ${exlFile}    ${holidayExlFile}
     [Teardown]    Load List of EXl Files    ${exlFileList}    ${serviceName}    ${CHE_IP}    ${EMPTY}
 
@@ -213,17 +239,8 @@ Check FH Close
 
 Check FH Holiday
     [Arguments]    ${holidayExlFile}    ${holRicName}    ${cmdPattern}
-    ${exlFilename}    Fetch From Right    ${holidayExlFile}    ${/}
-    ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${exlFilename}_modified.exl
-    ${tdBoxDateTime}    get date and time
-    ${startDatetime}    ${endDatetime}    Set Datetimes For IN State    ${tdBoxDateTime[0]}    ${tdBoxDateTime[1]}    ${tdBoxDateTime[2]}    ${tdBoxDateTime[3]}
-    ...    ${tdBoxDateTime[4]}    ${tdBoxDateTime[5]}
-    ${startDateTimeT}    Replace String    ${startDatetime}    ${SPACE}    T
-    ${endDatetimeT}    Replace String    ${endDatetime}    ${SPACE}    T
-    Set Holiday Datetime In EXL    ${holidayExlFile}    ${exlFileModified}    ${holRicName}    ${statRicDomain}    ${startDateTimeT}.00    ${endDatetimeT}.00
-    Load Single EXL File    ${exlFileModified}    ${serviceName}    ${CHE_IP}
+    Set Holiday Time    ${holidayExlFile}    ${holRicName}
     wait for process to not exist    ${cmdPattern}
-    remove files    ${exlFileModified}
 
 Load EXL and Check Stat For DST
     [Arguments]    ${exlFile}    ${ricName}    ${statField}    ${startDatetime}    ${endDatetime}
@@ -638,5 +655,25 @@ Set Feed Open Time
     ${startTime}    ${endTime}    Set times for IN state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
     Set Feed Time In EXL    ${exlFile}    ${exlFileModified}    ${timeRic}    ${ricDomain}    ${startTime}    ${endTime}
     ...    ${weekDay}
+    Load Single EXL File    ${exlFileModified}    ${serviceName}    ${CHE_IP}
+    remove files    ${exlFileModified}
+
+Set Outside Holiday
+    [Arguments]    ${holidayExlFile}
+    ${modifiedHolExl}=    Set variable    ${LOCAL_TMP_DIR}${/}modifiedHolExl.exl
+    Blank Out Holidays    ${holidayExlFile}    ${modifiedHolExl}
+    Load Single EXL File    ${modifiedHolExl}    ${serviceName}    ${CHE_IP}
+    remove files    ${modifiedHolExl}
+
+Set Holiday Time
+    [Arguments]    ${holidayExlFile}    ${holRicName}
+    ${exlFilename}    Fetch From Right    ${holidayExlFile}    ${/}
+    ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${exlFilename}_modified.exl
+    ${tdBoxDateTime}    get date and time
+    ${startDatetime}    ${endDatetime}    Set Datetimes For IN State    ${tdBoxDateTime[0]}    ${tdBoxDateTime[1]}    ${tdBoxDateTime[2]}    ${tdBoxDateTime[3]}
+    ...    ${tdBoxDateTime[4]}    ${tdBoxDateTime[5]}
+    ${startDateTimeT}    Replace String    ${startDatetime}    ${SPACE}    T
+    ${endDatetimeT}    Replace String    ${endDatetime}    ${SPACE}    T
+    Set Holiday Datetime In EXL    ${holidayExlFile}    ${exlFileModified}    ${holRicName}    ${statRicDomain}    ${startDateTimeT}.00    ${endDatetimeT}.00
     Load Single EXL File    ${exlFileModified}    ${serviceName}    ${CHE_IP}
     remove files    ${exlFileModified}

@@ -119,13 +119,12 @@ def get_fh_info_from_fhc_config(fhc_config_file):
     """
     get the FMS service, domain, open/close RIC,and command arguments from file like matba_fhc.json, tdds_fhc.json under fhc directory
     Argument : 
-    fhc_config_file : full path of local fhc configuration file
-    fh_name : feed handler name 
+    fhc_config_file : full path of local fhc configuration file 
         
     Returns : a list of contains FMS service, domain, RIC, command argument.
 
     Examples:
-    | get fh info from fhc config | c:/temp/matba_fhc.json | MATBA01F|  
+    | get fh info from fhc config | c:/temp/matba_fhc.json | 
     return list contains AR_MAT, MARKET_PRICE, BCC%FD01,/ThomsonReuters/Venues/MATBA/config/matba-esf.json
     """  
     returnList = []
