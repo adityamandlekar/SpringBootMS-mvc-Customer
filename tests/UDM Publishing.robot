@@ -50,9 +50,7 @@ Validate Downstream FID publication
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     ${mteConfigFile}    Get MTE Config File
-    ${serviceName}    Get FMS Service Name
-    ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
-    ${contextIds}    get context ids from fms filter string    ${fmsFilterString}
+    ${contextIds}    get context ids from config file    ${mteConfigFile}
     : FOR    ${contextId}    IN    @{contextIds}
     \    ${ricFiledList}    get ric fields from cache    1    ${EMPTY}    ${contextId}
     \    ${pubRic}=    set variable    ${ricFiledList[0]['PUBLISH_KEY']}

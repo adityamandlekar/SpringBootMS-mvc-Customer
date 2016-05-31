@@ -56,8 +56,8 @@ Persistence File Loading
     verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
-Verify FMS filter string
-    [Documentation]    Verify that all context ids in the MTE cache are listed in FilterString in the MTE xml configuration file.
+Verify Cache Contains Only Configured Context IDs
+    [Documentation]    Verify that all context ids in the MTE cache are listed in <Transforms> section \ in the MTE xml configuration file.
     Stop MTE
     Delete Persist Files
     Start MTE
@@ -65,9 +65,7 @@ Verify FMS filter string
     ${dstdumpfile}=    set variable    ${LOCAL_TMP_DIR}/cachedump.csv
     Get Sorted Cache Dump    ${dstdumpfile}
     ${mteConfigFile}=    Get MTE Config File
-    ${serviceName}    Get FMS Service Name
-    ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
-    verify cache contains only configured context ids    ${dstdumpfile}    ${fmsFilterString}
+    verify cache contains only configured context ids    ${dstdumpfile}    ${mteConfigFile}
     [Teardown]    case teardown    ${dstdumpfile}
 
 Verify New Item Added to Persist File via FMS
