@@ -66,6 +66,29 @@ def verify_cache_contains_only_configured_context_ids(cachedump_file_name_full_p
     else:
         raise AssertionError('*ERROR* dumpcache context ids %s are not all in configured context ids %s' %(dumpcache_context_ids_set, filterstring_context_id_set))
 
+def verify_filterString_contains_configured_context_ids(filter_string,venueConfigFile):
+    """Get set of context ID from FilterString and venue xml_config file
+    and verify the context id set defined in Transforms section is subset of context id set from fms FilterString
+    Argument : fms FilterString, venue configuration file
+    Returns : true if venueConfig_context_id_set <= filterString_context_id_set
+    
+    Examples:
+    | verify filterString contains configured context ids | <FilterString>CONTEXT_ID = 1052 OR CONTEXT_ID = 1053</FilterString> | venue configuration file | 
+    """  
+
+    venueConfig_context_id_set = configfiles.get_context_ids_from_config_file(venueConfigFile)
+    if len(venueConfig_context_id_set) == 0:
+        raise AssertionError('*ERROR* cannot find venue config context ids define in Transforms section %s' %venueConfigFile)
+
+    filterString_context_id_set = configfiles.get_context_ids_from_fms_filter_string(filter_string)
+    if len(filterString_context_id_set) == 0:
+        raise AssertionError('*ERROR* cannot find venue config context ids from fms filter string %s' %filter_string)
+
+    if venueConfig_context_id_set <= filterString_context_id_set:
+        return True
+    else:
+        raise AssertionError('*ERROR* venue context ids define in Transforms section %s are not all in fms FilterString context ids %s' %(venueConfig_context_id_set, filterString_context_id_set))
+
 def verify_csv_files_match(file1, file2, ignorefids):
     """Verify two .csv files match.
 

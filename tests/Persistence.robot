@@ -70,6 +70,14 @@ Verify FMS filter string
     verify cache contains only configured context ids    ${dstdumpfile}    ${fmsFilterString}
     [Teardown]    case teardown    ${dstdumpfile}
 
+Verify FilterString Contains Configured IDs
+    [Documentation]    Verify that all context ids listed in the <Transforms> section should be present in FilterString
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2113
+    ${mteConfigFile}=    Get MTE Config File
+    ${serviceName}=    Get FMS Service Name
+    ${fmsFilterString}=    Get MTE Config Value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
+    Verify FilterString Contains Configured Context IDs    ${fmsFilterString}    ${mteConfigFile}
+
 Verify New Item Added to Persist File via FMS
     [Documentation]    Add new RIC to EXL, load the EXL file, use PMT to dump persist file and check if new RIC exists in the dump file.
     ...
