@@ -136,6 +136,38 @@ def get_GRS_stream_names_from_config_file(grs_config_file):
 
     return streamNames
 
+
+def get_fh_info_from_fhc_config(fhc_config_file):
+    """
+    get the FMS service, domain, open/close RIC,and command arguments from file like matba_fhc.json, tdds_fhc.json under fhc directory
+    Argument : 
+    fhc_config_file : full path of local fhc configuration file 
+        
+    Returns : a list of contains FMS service, domain, RIC, command argument.
+
+    Examples:
+    | get fh info from fhc config | c:/temp/matba_fhc.json | 
+    return list contains AR_MAT, MARKET_PRICE, BCC%FD01,/ThomsonReuters/Venues/MATBA/config/matba-esf.json
+    """  
+    returnList = []
+    fh_name = FH
+    with open(fhc_config_file) as data_file:   
+        data = json.load(data_file)
+        if (data.has_key("controllees")):  
+            fms = data["controllees"][fh_name]["fms"]
+            fmsKey = fms.keys()[0]
+            if(fmsKey):
+                returnList.append(fmsKey)
+                returnList.append(fms[fmsKey]["domains"][0])
+            
+            returnList.append(data["controllees"][fh_name]["events"].keys()[0])  
+            returnList.append(data["controllees"][fh_name]["arguments"]) 
+            
+        if len(returnList) < 4:  
+            raise AssertionError('*ERROR*  Cannot find service, domain, RIC, command argument from fhc config file: %s' %findFileName)
+    return returnList
+
+
 def get_MTE_config_list_by_path(venueConfigFile,*xmlPath):
     """ Gets value(s) from venue config file
         http://www.iajira.amers.ime.reuters.com/browse/CATF-1798

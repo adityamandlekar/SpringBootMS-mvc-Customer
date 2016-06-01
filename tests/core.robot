@@ -536,6 +536,11 @@ Load All EXL Files
     ...    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS files \ ${returnedStdOut}
 
+Load List of EXL Files
+    [Arguments]    ${exlFiles}    ${serviceName}    ${headendIP}    @{optargs}
+    : FOR    ${exlFiles}    IN    @{exlFiles}
+    \    Load Single EXL File    ${exlFiles}    ${serviceName}    ${CHE_IP}    @{optargs}
+
 Load Mangling Settings
     Run Commander    linehandler    lhcommand ${MTE} mangling:refresh_settings
     wait SMF log does not contain    Drop message sent for    10    600
