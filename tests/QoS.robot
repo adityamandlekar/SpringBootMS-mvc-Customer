@@ -92,7 +92,7 @@ Verify QoS Failover for Critical Process Failure
 Verify QoS Failover for Feed Line Down
     [Documentation]    Verify that the LIVE MTE fails over to the STANDBY MTE when the feed line is down longer than HiActTimeLimit/LoActTimeLimit configuration value.
     ...
-    ...    Set HiActTimeLimit/LoActTimeLimit to a small value (60) for MTE A and stop/start SMF.
+    ...    Set feed line down timeout interval (HiActTimeLimit/LoActTimeLimit) for MTE A to a small value, which still gives the MTE time to start up (currently using 150 seconds) and stop/start SMF.
     ...    Promote MTE A to LIVE.
     ...    Wait for feed line down timeout interval.
     ...    Verify that failover occurred and MTE B is now LIVE.
