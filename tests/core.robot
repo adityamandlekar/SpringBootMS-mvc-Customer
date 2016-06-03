@@ -580,26 +580,38 @@ Persist File Should Exist
     Comment    Currently, GATS does not provide the Venue name, so the pattern matching Keywords must be used. If GATS provides the Venue name, then "remote file should not exist" Keywords could be used here.
 
 Reset Sequence Numbers
-    [Documentation]    Reset the FH, GRS, and MTE sequence numbers.
+    [Arguments]    @{mach_ip_list}
+    [Documentation]    Reset the FH, GRS, and MTE sequence numbers on each specified machine (default is current machine).
     ...    Currently this is done by stopping and starting the components and deleting the GRS PCAP and MTE PERSIST files.
     ...    If/when a hook is provided to reset the sequence numbers without restarting the component, it should be used.
+    ...    For peer testing, stop processes and delete files on all machines before restarting processes to avoid GRS peer recovery of sequence numbers.
     ...
     ...    This KW also waits for any publishing due to the MTE restart/reorg to complete.
     ...
     ...    Note: several test cases need to stop and restart MTE to load new configuration file, for example 'Empty Payload Detection with Blank FIDFilter'
     ...    'Empty Payload Detection with Blank TCONF'. Stopping MTE, deleting persist file, and starting MTE need to be added to those test cases when the new 'reset sequence numbers' is implemented.
-    ${currDateTime}    get date and time
-    Stop MTE
-    Stop Process    GRS
-    Stop Process    FHController
-    Delete GRS PCAP Files
-    Delete Persist Files
-    Start Process    GRS
-    Start Process    FHController
-    Start MTE
-    Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
-    Comment    We don't capture the output file, but this waits for publishing to complete
-    Wait For MTE Capture To Complete    5    600
+    ${host}=    get current connection index
+    @{new_list}    Run Keyword If    len(${mach_ip_list}) == 0    Create List    ${host}
+    ...    ELSE    Create List    @{mach_ip_list}
+    Comment    First, stop everything
+    : FOR    ${mach}    IN    @{new_list}
+    \    Run Keyword If    '${mach}' != '${host}'    Switch To TD Box    ${mach}
+    \    Stop MTE
+    \    Stop Process    GRS
+    \    Stop Process    FHController
+    \    Delete GRS PCAP Files
+    \    Delete Persist Files
+    Comment    Then, restart everything
+    : FOR    ${mach}    IN    @{new_list}
+    \    Run Keyword If    '${mach}' != '${host}'    Switch To TD Box    ${mach}
+    \    ${currDateTime}    get date and time
+    \    Start Process    GRS
+    \    Start Process    FHController
+    \    Start MTE
+    \    Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
+    \    Comment    We don't capture the output file, but this waits for any publishing to complete
+    \    Wait For MTE Capture To Complete    5    600
+    [Teardown]    Switch Connection    ${host}
 
 Restore EXL Changes
     [Arguments]    ${serviceName}    ${exlFiles}

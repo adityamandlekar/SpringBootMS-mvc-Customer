@@ -19,6 +19,34 @@ FID_CONTEXTID = '5357'
 # Keywords that use local copy of MTE output message capture file
 #############################################################################
 
+def count_messages_in_capture(pcapfile, domain):
+    """ Return the number of messages that exixst in the pcap file for the specified domain
+        Argument : pcapfile : MTE output pcap file fullpath
+                   domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER, MARKET_MAKER
+        return : count of messages
+    """  
+    if (os.path.exists(pcapfile) == False):
+        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+    
+    filterDomain = 'TRWF_TRDM_DMT_' + domain
+    outputfileprefix = 'count_pcap'
+    filterstring = 'All_msgBase_msgKey_domainType = &quot;%s&quot;'%filterDomain
+
+    try:    
+        outputxmlfilelist = get_xml_from_pcap(pcapfile, filterstring, outputfileprefix)
+    except AssertionError:
+        print 'DEBUG no messages found'
+        return 0
+
+    parentName  = 'Message'
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0],parentName)
+
+    for delFile in outputxmlfilelist:
+        os.remove(delFile)
+    os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
+    
+    return len(messages)
+   
 def get_FidValue_in_message(pcapfile,ricname, msgClass):
     """ To verify the insert icf file can update the changed fid and value correct
     
@@ -673,6 +701,16 @@ def verify_MTE_heartbeat_in_message(pcapfile,intervalInSec):
     for delFile in outputtxtfilelist:
         os.remove(delFile)          
     os.remove(os.path.dirname(outputtxtfilelist[0]) + "/mteHeartbeattxtfromDAS.log")
+
+def verify_no_messages_in_capture(pcapfile, domain):
+    """ Verify there are no messages in the pcap file for the specified domain
+        Argument : pcapfile : MTE output pcap file fullpath
+                   domain : in format like MARKET_PRICE, MARKET_BY_PRICE, MARKET_BY_ORDER, MARKET_MAKER
+        return : nil
+    """  
+    count = count_messages_in_capture(pcapfile, domain)
+    if (count != 0):
+        raise AssertionError('*ERROR* Found %d messages for domain %s' %(count,domain))
 
 def verify_no_realtime_update_type_in_capture( pcapfile, domain):
     """ Verify update message does not exist for MARKET PRICE, or MARKET_BY_ORDER or MARKET_BY_PRICE or MARKET_MAKER domain.
