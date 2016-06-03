@@ -13,7 +13,6 @@ from utils.ssh import _exec_command, _search_file
 import xmlutilities
 
 from VenueVariables import *
-import configfiles
 
 MANGLINGRULE = {'SOU': '3', 'BETA': '2', 'RRG': '1', 'UNMANGLED' : '0'};
 
@@ -472,11 +471,11 @@ def verify_filterString_contains_configured_context_ids(filter_string,venueConfi
     | verify filterString contains configured context ids | <FilterString>CONTEXT_ID = 1052 OR CONTEXT_ID = 1053</FilterString> | venue configuration file | 
     """  
 
-    venueConfig_context_id_set = configfiles.get_context_ids_from_config_file(venueConfigFile)
+    venueConfig_context_id_set = get_context_ids_from_config_file(venueConfigFile)
     if len(venueConfig_context_id_set) == 0:
         raise AssertionError('*ERROR* cannot find venue config context ids define in Transforms section %s' %venueConfigFile)
 
-    filterString_context_id_set = configfiles.get_context_ids_from_fms_filter_string(filter_string)
+    filterString_context_id_set = get_context_ids_from_fms_filter_string(filter_string)
     if len(filterString_context_id_set) == 0:
         raise AssertionError('*ERROR* cannot find venue config context ids from fms FilterString %s' %filter_string)
 
