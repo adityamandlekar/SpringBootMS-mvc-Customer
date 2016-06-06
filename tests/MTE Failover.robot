@@ -131,6 +131,7 @@ Verify STANDBY Handles Sync Pulse
     [Documentation]    Verify the STANDBY MTE clears its message buffer based on the Sync Pulse it receives from the LIVE MTE. \ Inject messages, then failover to the STANDBY and verify that STANDBY does not re-publish the messages when it goes LIVE.
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1759
+    [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     ${service}=    Get FMS Service Name
