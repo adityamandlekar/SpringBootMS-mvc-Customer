@@ -493,6 +493,29 @@ def set_MTE_config_tag_value(xmlFileLocalFullPath,value,*xPath):
                     
     xmlutilities.set_xml_tag_value(xmlFileLocalFullPath,value,True,xPath)
 
+def verify_filterString_contains_configured_context_ids(filter_string,venueConfigFile):
+    """Get set of context id from FilterString and venue xml_config file
+    and verify the context id set defined in Transforms section is equal to the context id set from fms FilterString
+    Argument : fms FilterString, venue configuration file
+    Returns : true if venueConfig_context_id_set == filterString_context_id_set
+    
+    Examples:
+    | verify filterString contains configured context ids | <FilterString>CONTEXT_ID = 1052 OR CONTEXT_ID = 1053</FilterString> | venue configuration file | 
+    """  
+
+    venueConfig_context_id_set = get_context_ids_from_config_file(venueConfigFile)
+    if len(venueConfig_context_id_set) == 0:
+        raise AssertionError('*ERROR* cannot find venue config context ids define in Transforms section %s' %venueConfigFile)
+
+    filterString_context_id_set = get_context_ids_from_fms_filter_string(filter_string)
+    if len(filterString_context_id_set) == 0:
+        raise AssertionError('*ERROR* cannot find venue config context ids from fms FilterString %s' %filter_string)
+
+    if venueConfig_context_id_set == filterString_context_id_set:
+        return True
+    else:
+        raise AssertionError('*ERROR* venue context ids define in Transforms section %s is not equal to the context ids from fms FilterString %s' %(venueConfig_context_id_set, filterString_context_id_set))
+
 def _search_MTE_config_file(venueConfigFile,*xmlPath):
     foundConfigValues = []
     
