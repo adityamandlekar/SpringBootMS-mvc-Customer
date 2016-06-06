@@ -89,6 +89,27 @@ Verify QoS Failover for Critical Process Failure
     Verify QoS for CritProcessFail    A    ${master_ip}    0    100
     [Teardown]
 
+Verify QoS Failover for Feed Line Down
+    [Documentation]    Verify that the LIVE MTE fails over to the STANDBY MTE when the feed line is down longer than HiActTimeLimit/LoActTimeLimit configuration value.
+    ...
+    ...    Set feed line down timeout interval (HiActTimeLimit/LoActTimeLimit) for MTE A to a small value, which still gives the MTE time to start up (currently using 150 seconds) and stop/start SMF.
+    ...    Promote MTE A to LIVE.
+    ...    Wait for feed line down timeout interval.
+    ...    Verify that failover occurred and MTE B is now LIVE.
+    [Tags]    Peer
+    Switch To TD Box    ${CHE_A_IP}
+    ${timeoutLimit}=    Set Variable    150
+    ${orgCfgFile}    ${backupCfgFile}    Set Feed Line Timeout    ${timeoutLimit}
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Verify MTE State IN Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State IN Specific Box    ${CHE_B_IP}    STANDBY
+    Comment    Failover should occur when feed line timeout on A is reached
+    Verify MTE State IN Specific Box    ${CHE_A_IP}    STANDBY    10    ${timeoutLimit}
+    Verify MTE State IN Specific Box    ${CHE_B_IP}    LIVE
+    [Teardown]    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
+
 Watchdog QOS - MTE Egress NIC
     [Documentation]    Test the QOS value and MTE failover when disabling MTE Egress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1966
     ...
@@ -239,6 +260,25 @@ QoS Case Teardown
     [Documentation]    Make sure all interfaces are enabled after the test
     : FOR    ${interfaceName}    IN    @{disabledInterfaceName}
     \    Enable Disable Interface    ${interfaceName}    Enable
+
+Restore Feed Line Timeout
+    [Arguments]    ${orgCfgFile}    ${backupCfgFile}
+    [Documentation]    Restore the orginal feed line timeout values (HiActTimeLimit and LoActTimeLimit) in MTE config file and restart dependent components.
+    restore remote cfg file    ${orgCfgFile}    ${backupCfgFile}
+    stop MTE
+    start MTE
+
+Set Feed Line Timeout
+    [Arguments]    ${timeoutLimit}
+    [Documentation]    Set the feed line timeout values (HiActTimeLimit and LoActTimeLimit) in MTE config file and restart dependent components.
+    ${mtecfgfile}=    Convert To Lowercase    ${MTE}.xml
+    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${VENUE_DIR}    ${mtecfgfile}
+    set value in MTE cfg    ${orgCfgFile}    HiActTimeLimit    ${timeoutLimit}
+    set value in MTE cfg    ${orgCfgFile}    LoActTimeLimit    ${timeoutLimit}
+    Stop SMF
+    Start SMF
+    Start MTE
+    [Return]    ${orgCfgFile}    ${backupCfgFile}
 
 Verify QoS for CritProcessFail
     [Arguments]    ${node}    ${master_ip}    ${CritProcessFailValue}    ${totalQoSValue}=${EMPTY}
