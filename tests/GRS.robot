@@ -90,6 +90,25 @@ Verify GRS stream creation
     \    get stat block field    GRS    ${streamName}    InputPacket
     [Teardown]    case teardown    ${localFile}
 
+MTE Startup with GRS Not Running
+    [Documentation]    Verify that the MTE properly handles a failure to connect to GRS.
+    ...    1. Stop the MTE
+    ...    2. Stop the GRS
+    ...    3. Start the MTE
+    ...    4. Verify the MTE is unable to connect to the GRS by SMF log
+    ...    5. Start GRS
+    ...    6. Verify the MTE is connected to the GRS by SMF log
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1991
+    Stop MTE
+    Stop Process    GRS
+    ${currDateTime}    Get Date and Time
+    Start MTE
+    Wait SMF Log Message After Time    Unable to connect to the GRS\|Failed to connect to GRS    ${currDateTime}    2    120
+    ${currDateTime}    Get Date and Time
+    Start Process    GRS
+    Wait SMF Log Message After Time    ${MTE}..Connected to IP:127.0.0.1-TCP    ${currDateTime}    2    120
+
 MTE Startup with No GRS Messages for Feed
     [Documentation]    Verify that the MTE can handle negative response from GRS.
     ...    1. Stop the MTE

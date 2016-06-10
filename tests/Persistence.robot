@@ -56,8 +56,8 @@ Persistence File Loading
     verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
-Verify FMS filter string
-    [Documentation]    Verify that all context ids in the MTE cache are listed in FilterString in the MTE xml configuration file.
+Verify Cache Contains Only Configured Context IDs
+    [Documentation]    Verify that all context ids in the MTE cache are listed in <Transforms> section \ in the MTE xml configuration file.
     Stop MTE
     Delete Persist Files
     Start MTE
@@ -65,10 +65,16 @@ Verify FMS filter string
     ${dstdumpfile}=    set variable    ${LOCAL_TMP_DIR}/cachedump.csv
     Get Sorted Cache Dump    ${dstdumpfile}
     ${mteConfigFile}=    Get MTE Config File
-    ${serviceName}    Get FMS Service Name
-    ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
-    verify cache contains only configured context ids    ${dstdumpfile}    ${fmsFilterString}
+    verify cache contains only configured context ids    ${dstdumpfile}    ${mteConfigFile}
     [Teardown]    case teardown    ${dstdumpfile}
+
+Verify FilterString Contains Configured IDs
+    [Documentation]    Verify that all context ids listed in the <Transforms> section should be present in FilterString
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2113
+    ${mteConfigFile}=    Get MTE Config File
+    ${serviceName}=    Get FMS Service Name
+    ${fmsFilterString}=    Get MTE Config Value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
+    Verify FilterString Contains Configured Context IDs    ${fmsFilterString}    ${mteConfigFile}
 
 Verify New Item Added to Persist File via FMS
     [Documentation]    Add new RIC to EXL, load the EXL file, use PMT to dump persist file and check if new RIC exists in the dump file.
@@ -84,7 +90,7 @@ Verify New Item Added to Persist File via FMS
     add ric to exl file    ${EXLfullpath}    ${localRicEXLFile}    ${newRic}    ${None}    ${domain}
     Load Single EXL File    ${localRicEXLFile}    ${serviceName}    ${CHE_IP}
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
-    Verfiy RIC Persisted    ${newRic}    ${domain}
+    Verfiy Item Persisted    ${newRic}    ${EMPTY}    ${domain}
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    ${localRicEXLFile}    @{modifiedFeedEXLFiles}
 

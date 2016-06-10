@@ -100,6 +100,9 @@ Create Unique RIC Name
     ${ric}=    set variable    TEST${text}${dt[0]}${dt[1]}${dt[2]}${dt[3]}${dt[4]}${dt[5]}
     [Return]    ${ric}
 
+Delete GRS PCAP Files
+    Delete Remote Files Matching Pattern    ${BASE_DIR}    *.pcap    ${True}
+
 Delete Persist Files
     delete remote files matching pattern    ${VENUE_DIR}    PERSIST_${MTE}.DAT*    recurse=${True}
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
@@ -144,7 +147,7 @@ Dump Persist File To XML
     ...    \ \ \ \ <ric> = a single ric or a wide-card
     ...
     ...    PMAT Guide: https://thehub.thomsonreuters.com/docs/DOC-110727
-    ${localPersistFile}=    set variable    ${LOCAL_TMP_DIR}${/}ocal_persist.dat
+    ${localPersistFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_persist.dat
     ${remotePersist}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    ${True}
     Should Be True    len(${remotePersist}) ==1
     get remote file    ${remotePersist[0]}    ${localPersistFile}
@@ -454,7 +457,11 @@ Go Into End Feed Time
     \    ${endDateTime}    get Time    year month day hour min sec    ${endDateTime}
     \    ${endWeekDay}=    get day of week from date    @{endDateTime}[0]    @{endDateTime}[1]    @{endDateTime}[2]
     \    ${endTime}=    set variable    @{endDateTime}[3]:@{endDateTime}[4]:@{endDateTime}[5]
-    \    Set Feed Time In EXL    ${useFile}    ${modifiedExlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
+    \    @{edits}    Create List    <it:SUN_FD_OPEN>BLANK</it:SUN_FD_OPEN>    <it:SUN_FD_CLOSE>BLANK</it:SUN_FD_CLOSE>    <it:MON_FD_OPEN>BLANK</it:MON_FD_OPEN>    <it:MON_FD_CLOSE>BLANK</it:MON_FD_CLOSE>
+    \    ...    <it:TUE_FD_OPEN>BLANK</it:TUE_FD_OPEN>    <it:TUE_FD_CLOSE>BLANK</it:TUE_FD_CLOSE>    <it:WED_FD_OPEN>BLANK</it:WED_FD_OPEN>    <it:WED_FD_CLOSE>BLANK</it:WED_FD_CLOSE>    <it:THU_FD_OPEN>BLANK</it:THU_FD_OPEN>
+    \    ...    <it:THU_FD_CLOSE>BLANK</it:THU_FD_CLOSE>    <it:FRI_FD_OPEN>BLANK</it:FRI_FD_OPEN>    <it:FRI_FD_CLOSE>BLANK</it:FRI_FD_CLOSE>    <it:SAT_FD_OPEN>BLANK</it:SAT_FD_OPEN>    <it:SAT_FD_CLOSE>BLANK</it:SAT_FD_CLOSE>
+    \    Modify EXL    ${useFile}    ${modifiedExlFile}     ${connectTimesIdentifier}    ${connectTimeRicDomain}    @{edits}
+    \    Set Feed Time In EXL    ${modifiedExlFile}     ${modifiedExlFile}     ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
     \    ...    ${endTime}    ${startWeekDay}
     \    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}
     \    ...    ${connectTimeRicDomain}    ${startTime}    ${endTime}    ${endWeekDay}
@@ -529,6 +536,11 @@ Load All EXL Files
     ...    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS files \ ${returnedStdOut}
 
+Load List of EXL Files
+    [Arguments]    ${exlFiles}    ${serviceName}    ${headendIP}    @{optargs}
+    : FOR    ${exlFiles}    IN    @{exlFiles}
+    \    Load Single EXL File    ${exlFiles}    ${serviceName}    ${CHE_IP}    @{optargs}
+
 Load Mangling Settings
     Run Commander    linehandler    lhcommand ${MTE} mangling:refresh_settings
     wait SMF log does not contain    Drop message sent for    10    600
@@ -568,25 +580,38 @@ Persist File Should Exist
     Comment    Currently, GATS does not provide the Venue name, so the pattern matching Keywords must be used. If GATS provides the Venue name, then "remote file should not exist" Keywords could be used here.
 
 Reset Sequence Numbers
-    [Documentation]    Reset the FH, GRS, and MTE sequence numbers.
-    ...    Currently this is done by stopping and starting the components and deleting the PERSIST files.
+    [Arguments]    @{mach_ip_list}
+    [Documentation]    Reset the FH, GRS, and MTE sequence numbers on each specified machine (default is current machine).
+    ...    Currently this is done by stopping and starting the components and deleting the GRS PCAP and MTE PERSIST files.
     ...    If/when a hook is provided to reset the sequence numbers without restarting the component, it should be used.
+    ...    For peer testing, stop processes and delete files on all machines before restarting processes to avoid GRS peer recovery of sequence numbers.
     ...
     ...    This KW also waits for any publishing due to the MTE restart/reorg to complete.
     ...
     ...    Note: several test cases need to stop and restart MTE to load new configuration file, for example 'Empty Payload Detection with Blank FIDFilter'
     ...    'Empty Payload Detection with Blank TCONF'. Stopping MTE, deleting persist file, and starting MTE need to be added to those test cases when the new 'reset sequence numbers' is implemented.
-    ${currDateTime}    get date and time
-    Stop MTE
-    Stop Process    GRS
-    Stop Process    FHController
-    Delete Persist Files
-    Start Process    GRS
-    Start Process    FHController
-    Start MTE
-    Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
-    Comment    We don't capture the output file, but this waits for publishing to complete
-    Wait For MTE Capture To Complete
+    ${host}=    get current connection index
+    @{new_list}    Run Keyword If    len(${mach_ip_list}) == 0    Create List    ${host}
+    ...    ELSE    Create List    @{mach_ip_list}
+    Comment    First, stop everything
+    : FOR    ${mach}    IN    @{new_list}
+    \    Run Keyword If    '${mach}' != '${host}'    Switch To TD Box    ${mach}
+    \    Stop MTE
+    \    Stop Process    GRS
+    \    Stop Process    FHController
+    \    Delete GRS PCAP Files
+    \    Delete Persist Files
+    Comment    Then, restart everything
+    : FOR    ${mach}    IN    @{new_list}
+    \    Run Keyword If    '${mach}' != '${host}'    Switch To TD Box    ${mach}
+    \    ${currDateTime}    get date and time
+    \    Start Process    GRS
+    \    Start Process    FHController
+    \    Start MTE
+    \    Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
+    \    Comment    We don't capture the output file, but this waits for any publishing to complete
+    \    Wait For MTE Capture To Complete    5    600
+    [Teardown]    Switch Connection    ${host}
 
 Restore EXL Changes
     [Arguments]    ${serviceName}    ${exlFiles}
@@ -813,13 +838,14 @@ Verify RIC Is Dropped In MTE Cache
     Should Be Equal    ${allricFields['PUBLISHABLE']}    FALSE
     Should Be True    ${allricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
 
-Verfiy RIC Persisted
-    [Arguments]    ${ric}    ${domain}
-    [Documentation]    Dump persist file to XML and check if ric and domain exist in MTE persist file.
+Verfiy Item Persisted
+    [Arguments]    ${ric}=${EMPTY}    ${sic}=${EMPTY}    ${domain}=${EMPTY}
+    [Documentation]    Dump persist file to XML and check if ric, sic and/or domain items exist in MTE persist file.
     ${cacheDomainName}=    Remove String    ${domain}    _
-    ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
-    ${pmatDumpfile}=    Dump Persist File To XML    --ric ${ric}    --domain ${pmatDomain}
-    Verify RIC in Persist Dump File    ${pmatDumpfile}    ${ric}    ${cacheDomainName}
+    ${pmatDomain}=    Run Keyword If    '${cacheDomainName}'!='${EMPTY}'    Map to PMAT Numeric Domain    ${cacheDomainName}
+    @{pmatOptargs}=    Gen Pmat Cmd Args    ${ric}    ${sic}    ${pmatDomain}
+    ${pmatDumpfile}=    Dump Persist File To XML    @{pmatOptargs}
+    Verify Item in Persist Dump File    ${pmatDumpfile}    ${ric}    ${sic}    ${cacheDomainName}
     Remove Files    ${pmatDumpfile}
 
 Wait For FMS Reorg

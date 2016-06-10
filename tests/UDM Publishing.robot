@@ -50,9 +50,7 @@ Validate Downstream FID publication
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     ${mteConfigFile}    Get MTE Config File
-    ${serviceName}    Get FMS Service Name
-    ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
-    ${contextIds}    get context ids from fms filter string    ${fmsFilterString}
+    ${contextIds}    get context ids from config file    ${mteConfigFile}
     : FOR    ${contextId}    IN    @{contextIds}
     \    ${ricFiledList}    get ric fields from cache    1    ${EMPTY}    ${contextId}
     \    ${pubRic}=    set variable    ${ricFiledList[0]['PUBLISH_KEY']}
@@ -282,6 +280,19 @@ Perform DVT Validation - Closing Run for all RICs
     ${serviceName}=    Get FMS Service Name
     Manual ClosingRun for ClosingRun Rics    ${serviceName}
     Stop Capture MTE Output
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    ${ruleFilePath}    get DVT rule file
+    validate messages against DVT rules    ${localCapture}    ${ruleFilePath}
+    [Teardown]    case teardown    ${localCapture}
+
+Perform DVT Validation - Playback
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-2090
+    ...    Verify DVT rule after playback of pcap file
+    ${serviceName}    Get FMS Service Name
+    ${pcapFileName} =    Generate PCAP File Name    ${serviceName}    General RIC Update
+    Reset Sequence Numbers
+    ${remoteCapture}=    Inject PCAP File And Wait For Output    ${pcapFileName}
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
     ${ruleFilePath}    get DVT rule file

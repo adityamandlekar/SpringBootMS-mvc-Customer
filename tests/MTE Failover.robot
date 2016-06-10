@@ -1,5 +1,5 @@
 *** Settings ***
-Suite Setup       Suite Setup Two TD Boxes
+Suite Setup       Suite Setup Two TD Boxes With Playback
 Suite Teardown    Suite Teardown
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
@@ -126,6 +126,36 @@ Critical Message Logging - MTE State change
     wait GMI message after time    CRITICAL.*Normal Processing.*MTE.*ReportSituation    ${currDateTime}    2    100
     wait GMI message after time    WARNING.*LIVE switch has occurred.*Entity: ${MTE}.*EVENT:WDG_ERROR_ENTITY_LIVE_SWITCH : Investigate the cause of the entity switch    ${currDateTime}    2    100
     [Teardown]    MTE Failover Case Teardown    ${master_ip}
+
+Verify STANDBY Handles Sync Pulse
+    [Documentation]    Verify the STANDBY MTE clears its message buffer based on the Sync Pulse it receives from the LIVE MTE. \ Inject messages, then failover to the STANDBY and verify that STANDBY does not re-publish the messages when it goes LIVE.
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1759
+    [Tags]    Peer
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    ${service}=    Get FMS Service Name
+    ${injectFile}=    Generate PCAP File Name    ${service}    General RIC Update
+    ${domain}=    Get Preferred Domain
+    Reset Sequence Numbers    ${CHE_A_IP}    ${CHE_B_IP}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
+    Switch To TD Box    ${CHE_A_IP}
+    Inject PCAP File and Wait For Output    ${injectFile}
+    Switch To TD Box    ${CHE_B_IP}
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/afterfailover.pcap
+    ${currDateTime}    get date and time
+    Start Capture MTE Output    ${remoteCapture}
+    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Wait SMF Log Message After Time    No messages in buffer to publish    ${currDateTime}
+    Wait SMF Log Message After Time    Finished Publishing Buffer    ${currDateTime}
+    Stop Capture Packets
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}${/}afterfailover.pcap
+    Get Remote File    ${remoteCapture}    ${localCapture}
+    Verify No Messages In Capture    ${localCapture}    ${domain}
+    [Teardown]    MTE Failover Case Teardown    ${master_ip}    ${localCapture}
 
 *** Keywords ***
 MTE Failover Case Teardown
