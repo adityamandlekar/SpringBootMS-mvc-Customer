@@ -43,28 +43,28 @@ def get_context_ids_from_cachedump(cachedump_file_name):
                 
     return context_id_val_set   #Set(['3470', '3471', '2452', '1933', '1246', '1405'])
 
-def verify_cache_contains_only_configured_context_ids(cachedump_file_name_full_path, filter_string): 
+def verify_cache_contains_only_configured_context_ids(cachedump_file_name_full_path,venueConfigFile): 
     """Get set of context ID from cache dump file and venue xml_config file
-    and verify the context id set from cache dump is subset of context id set defined in fms filter string
+    and verify the context id set from cache dump is subset of context id set defined in Transforms section
     Argument : cachedump file, venue configuration file
-    Returns : true if dumpcache_context_ids_set <= filterstring_context_id_set
+    Returns : true if dumpcache_context_ids_set <= venueConfig_context_id_set
     
     Examples:
     | verify cache contains only configured context ids | cache dump file |venue configuration file   
     """       
-    
-    filterstring_context_id_set = configfiles.get_context_ids_from_fms_filter_string(filter_string)
-    if len(filterstring_context_id_set) == 0:
-        raise AssertionError('*ERROR* cannot find context ids from fms filter string %' %filter_string)
-    
+
+    venueConfig_context_id_set = configfiles.get_context_ids_from_config_file(venueConfigFile)
+    if len(venueConfig_context_id_set) == 0:
+        raise AssertionError('*ERROR* cannot find venue config context ids in %s' %venueConfigFile)
+
     dumpcache_context_ids_set = get_context_ids_from_cachedump(cachedump_file_name_full_path)
     if len(dumpcache_context_ids_set) == 0:
         raise AssertionError('*ERROR* cannot found dumpcache context ids in %s' %cachedump_file_name_full_path)
     
-    if dumpcache_context_ids_set <= filterstring_context_id_set:
+    if dumpcache_context_ids_set <= venueConfig_context_id_set:
         return True
     else:
-        raise AssertionError('*ERROR* dumpcache context ids %s are not all in configured context ids %s' %(dumpcache_context_ids_set, filterstring_context_id_set))
+        raise AssertionError('*ERROR* dumpcache context ids %s are not all in configured context ids %s' %(dumpcache_context_ids_set, venueConfig_context_id_set))
 
 def verify_csv_files_match(file1, file2, ignorefids):
     """Verify two .csv files match.

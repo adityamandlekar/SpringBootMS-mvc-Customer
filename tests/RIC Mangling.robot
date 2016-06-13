@@ -143,9 +143,7 @@ Change Phase
 
 Get ContextIDs for Shell RIC
     ${mteConfigFile}    Get MTE Config File
-    ${serviceName}    Get FMS Service Name
-    ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
-    ${contextIdsSupported}    Get Context Ids From Fms Filter String    ${fmsFilterString}
+    ${contextIdsSupported}    Get Context Ids From Config File    ${mteConfigFile}
     ${contextIdsSupportedLen}    Get Length    ${contextIdsSupported}
     ${fidfilterDict}    Get ContextId Fids Constit From Fidfiltertxt
     ${contextIds}    Get Dictionary Keys    ${fidfilterDict}

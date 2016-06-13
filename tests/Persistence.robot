@@ -15,11 +15,12 @@ Persistence File Backup
     Delete Persist Backup
     ${serviceName}=    Get FMS Service Name
     ${currDateTime}=    get date and time
-    ${exlFiles}    ${exlBackupFiles}    Go Into End Feed Time    ${serviceName}
+    ${exlFiles}    ${modifiedExlFiles}    Go Into End Feed Time    ${serviceName}
     Wait SMF Log Message After Time    ${MTE}.*Creating Snapshot of Persister Database    ${currDateTime}    10    120
     @{existingPersistBackupFiles}=    wait for search file    ${VENUE_DIR}    PERSIST_${MTE}_*.DAT    2    180
     Delete Persist Backup
-    [Teardown]    Restore EXL Changes    ${serviceName}    ${exlFiles}    ${exlBackupFiles}
+    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${exlFiles}
+    ...    AND    Case Teardown    @{modifiedExlFiles}
 
 Persistence File Cleanup
     Start MTE
@@ -55,8 +56,8 @@ Persistence File Loading
     verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
-Verify FMS filter string
-    [Documentation]    Verify that all context ids in the MTE cache are listed in FilterString in the MTE xml configuration file.
+Verify Cache Contains Only Configured Context IDs
+    [Documentation]    Verify that all context ids in the MTE cache are listed in <Transforms> section \ in the MTE xml configuration file.
     Stop MTE
     Delete Persist Files
     Start MTE
@@ -64,10 +65,16 @@ Verify FMS filter string
     ${dstdumpfile}=    set variable    ${LOCAL_TMP_DIR}/cachedump.csv
     Get Sorted Cache Dump    ${dstdumpfile}
     ${mteConfigFile}=    Get MTE Config File
-    ${serviceName}    Get FMS Service Name
-    ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
-    verify cache contains only configured context ids    ${dstdumpfile}    ${fmsFilterString}
+    verify cache contains only configured context ids    ${dstdumpfile}    ${mteConfigFile}
     [Teardown]    case teardown    ${dstdumpfile}
+
+Verify FilterString Contains Configured IDs
+    [Documentation]    Verify that all context ids listed in the <Transforms> section should be present in FilterString
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2113
+    ${mteConfigFile}=    Get MTE Config File
+    ${serviceName}=    Get FMS Service Name
+    ${fmsFilterString}=    Get MTE Config Value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
+    Verify FilterString Contains Configured Context IDs    ${fmsFilterString}    ${mteConfigFile}
 
 Verify New Item Added to Persist File via FMS
     [Documentation]    Add new RIC to EXL, load the EXL file, use PMT to dump persist file and check if new RIC exists in the dump file.
@@ -82,18 +89,18 @@ Verify New Item Added to Persist File via FMS
     ${newRic}    Create Unique RIC Name    newric
     add ric to exl file    ${EXLfullpath}    ${localRicEXLFile}    ${newRic}    ${None}    ${domain}
     Load Single EXL File    ${localRicEXLFile}    ${serviceName}    ${CHE_IP}
-    ${feedEXLFiles}    ${feedEXLBackupFiles}    Force Persist File Write    ${serviceName}
-    Verfiy RIC Persisted    ${newRic}    ${domain}
-    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}    ${feedEXLBackupFiles}
-    ...    AND    Case Teardown    ${localRicEXLFile}
+    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    Verfiy Item Persisted    ${newRic}    ${EMPTY}    ${domain}
+    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
+    ...    AND    Case Teardown    ${localRicEXLFile}    @{modifiedFeedEXLFiles}
 
 Verify Realtime MARKET_PRICE Persistence
     [Documentation]    Verify that realtime MARKET_PRICE messages are written to the Persist file at end of feed time.
     ${serviceName}=    Get FMS Service Name
     Comment    Get content of Persist file before injection
-    ${feedEXLFiles}    ${feedEXLBackupFiles}    Force Persist File Write    ${serviceName}
+    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
     ${persistDump}=    Dump Persist File to Text
-    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}    ${feedEXLBackupFiles}
+    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     Reset Sequence Numbers
     ${injectFile}=    Generate PCAP File Name    ${serviceName}    General RIC Update
     ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}
@@ -105,7 +112,7 @@ Verify Realtime MARKET_PRICE Persistence
     ${re}=    Remove String Using Regexp    ${re}    !\\[|!!
     @{allFidValuesBefore}=    Grep Local File    ${persistDump}    ${re}
     Comment    Get FID values for published RICs from Persist file after injection
-    ${feedEXLFiles}    ${feedEXLBackupFiles}    Force Persist File Write    ${serviceName}
+    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
     ${persistDump}=    Dump Persist File to Text
     @{allFidValuesAfter}=    Grep Local File    ${persistDump}    ${re}
     : FOR    ${ric}    IN    @{ricList}
@@ -115,7 +122,8 @@ Verify Realtime MARKET_PRICE Persistence
     \    Sort List    ${before}
     \    Sort List    ${after}
     \    Run Keyword And Expect Error    *are different*    Lists Should Be Equal    ${before}    ${after}
-    [Teardown]    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}    ${feedEXLBackupFiles}
+    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
+    ...    AND    Case Teardown    @{modifiedFeedEXLFiles}
 
 Persistence file FIDs existence check
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
@@ -124,7 +132,7 @@ Persistence file FIDs existence check
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${feedEXLFiles}    ${feedEXLBackupFiles}    Force Persist File Write    ${serviceName}
+    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
     ${cacheDomainName}=    Remove String    ${domain}    _
     ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
     ${pmatDumpfile}=    Dump Persist File To XML    --ric ${ric}    --domain ${pmatDomain}
@@ -135,8 +143,8 @@ Persistence file FIDs existence check
     List Should Contain Value    ${fidsSet}    1
     List Should Contain Value    ${fidsSet}    15
     List Should Contain Value    ${fidsSet}    5357
-    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}    ${feedEXLBackupFiles}
-    ...    AND    Case Teardown    ${pmatDumpfile}
+    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
+    ...    AND    Case Teardown    ${pmatDumpfile}    @{modifiedFeedEXLFiles}
 
 *** Keywords ***
 Delete Persist Backup

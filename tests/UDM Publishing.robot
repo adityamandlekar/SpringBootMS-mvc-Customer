@@ -50,9 +50,7 @@ Validate Downstream FID publication
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     ${mteConfigFile}    Get MTE Config File
-    ${serviceName}    Get FMS Service Name
-    ${fmsFilterString}    get MTE config value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
-    ${contextIds}    get context ids from fms filter string    ${fmsFilterString}
+    ${contextIds}    get context ids from config file    ${mteConfigFile}
     : FOR    ${contextId}    IN    @{contextIds}
     \    ${ricFiledList}    get ric fields from cache    1    ${EMPTY}    ${contextId}
     \    ${pubRic}=    set variable    ${ricFiledList[0]['PUBLISH_KEY']}
@@ -117,13 +115,12 @@ Verify Common Required FID output
     Stop Capture MTE Output
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
-    ${mteConfigFile}=    Get MTE Config File
     ${domain}=    Get Preferred Domain
     @{ric_contextid_list}    get ric fields from cache    1    ${domain}    ${EMPTY}
     ${publishKey}=    set variable    ${ric_contextid_list[0]['PUBLISH_KEY']}
     ${contextId}=    set variable    ${ric_contextid_list[0]['CONTEXT_ID']}
     Verify DDS_DSO_ID    ${localCapture}    ${publishKey}
-    @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
+    @{labelIDs}=    Get Label IDs
     Verify SPS_SP_RIC    ${localCapture}    ${publishKey}    ${labelIDs[0]}
     Verify CONTEXT_ID    ${localCapture}    ${publishKey}    ${contextId}
     Verify MC_LABEL    ${localCapture}    ${publishKey}    ${labelIDs[0]}
@@ -161,8 +158,7 @@ Verify SPS RIC is published
     ...    Since Recon creates the ddnLabels.xml file, we cannot verify that the SPS RIC name is defined using the correct rules in the production label files.
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1757
-    ${mteConfigFile}=    Get MTE Config File
-    @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
+    @{labelIDs}=    Get Label IDs
     ${SPSric}=    Get SPS RIC From Label File    @{labelIDs}[0]
     ${SPSric_input_stats}=    set variable    ${SPSric}_INS
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
@@ -206,9 +202,9 @@ Verify DDS RIC is published
     ...    4. Label ID
     ...    4 characters indicating the Label ID. Some feeds may use different Label IDs \ for different data (eg Level 1 and \ \ \ Level 2 data). \ Each DUDT instrument will use the same Label ID as used for the LH it tracks. If an LH generates \ \ \ data in more than one Multicast group there will be a separate DUDT instrument for each group.
     ...    For EDF/Feed Handler, fill these 4 characters as “0000”.
-    ${mteConfigFile}=    Get MTE Config File
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
-    @{labelIDs}=    get MTE config list by section    ${mteConfigFile}    Publishing    LabelID
+    @{labelIDs}=    Get Label IDs
+    ${mteConfigFile}=    Get MTE Config File
     ${instance}=    Get MTE Instance    ${mteConfigFile}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    ${published_DDS_ric}=    Get DDS RIC    ${labelID}    ${instance}
@@ -284,6 +280,19 @@ Perform DVT Validation - Closing Run for all RICs
     ${serviceName}=    Get FMS Service Name
     Manual ClosingRun for ClosingRun Rics    ${serviceName}
     Stop Capture MTE Output
+    ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    ${ruleFilePath}    get DVT rule file
+    validate messages against DVT rules    ${localCapture}    ${ruleFilePath}
+    [Teardown]    case teardown    ${localCapture}
+
+Perform DVT Validation - Playback
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-2090
+    ...    Verify DVT rule after playback of pcap file
+    ${serviceName}    Get FMS Service Name
+    ${pcapFileName} =    Generate PCAP File Name    ${serviceName}    General RIC Update
+    Reset Sequence Numbers
+    ${remoteCapture}=    Inject PCAP File And Wait For Output    ${pcapFileName}
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
     ${ruleFilePath}    get DVT rule file

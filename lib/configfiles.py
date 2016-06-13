@@ -1,4 +1,4 @@
-from __future__ import with_statement
+﻿from __future__ import with_statement
 import json
 import os
 import os.path
@@ -74,6 +74,28 @@ def delete_mangling_rule_partition_node(contextIDs, configFileLocalFullPath):
             partitions.remove(foundNode)
     xmlutilities.save_to_xml_file(root,configFileLocalFullPath,False)
 
+def get_context_ids_from_config_file(venueConfigFile):
+    """get the context ids from venue config file
+    Argument: 
+    venueConfigFile : local path of venue config file
+
+    Returns : a set of context ids
+
+    Examples:
+    | get_context_ids_from_config_file | E:\\temp\\hkf02m.xml |
+    """
+
+    context_id_set = Set()
+
+    match = []
+    match = get_MTE_config_tag_list(venueConfigFile,'Transforms')
+
+    for m in match:
+        if m[0].lower() == 'c':
+            context_id_set.add(m[1:])
+
+    return context_id_set
+
 def get_context_ids_from_fms_filter_string(fms_filter_string): 
     """Returns a set of context_ids appeared in the fms filter string.
      Argument : fms_filter_string like <FilterString>CONTEXT_ID = 1052 OR CONTEXT_ID = 1053</FilterString>    
@@ -113,6 +135,38 @@ def get_GRS_stream_names_from_config_file(grs_config_file):
                 streamNames += item['lines'].keys()
 
     return streamNames
+
+
+def get_fh_info_from_fhc_config(fhc_config_file):
+    """
+    get the FMS service, domain, open/close RIC,and command arguments from file like matba_fhc.json, tdds_fhc.json under fhc directory
+    Argument : 
+    fhc_config_file : full path of local fhc configuration file 
+        
+    Returns : a list of contains FMS service, domain, RIC, command argument.
+
+    Examples:
+    | get fh info from fhc config | c:/temp/matba_fhc.json | 
+    return list contains AR_MAT, MARKET_PRICE, BCC%FD01,/ThomsonReuters/Venues/MATBA/config/matba-esf.json
+    """  
+    returnList = []
+    fh_name = FH
+    with open(fhc_config_file) as data_file:   
+        data = json.load(data_file)
+        if (data.has_key("controllees")):  
+            fms = data["controllees"][fh_name]["fms"]
+            fmsKey = fms.keys()[0]
+            if(fmsKey):
+                returnList.append(fmsKey)
+                returnList.append(fms[fmsKey]["domains"][0])
+            
+            returnList.append(data["controllees"][fh_name]["events"].keys()[0])  
+            returnList.append(data["controllees"][fh_name]["arguments"]) 
+            
+        if len(returnList) < 4:  
+            raise AssertionError('*ERROR*  Cannot find service, domain, RIC, command argument from fhc config file: %s' %findFileName)
+    return returnList
+
 
 def get_MTE_config_list_by_path(venueConfigFile,*xmlPath):
     """ Gets value(s) from venue config file
@@ -183,6 +237,44 @@ def get_MTE_config_list_by_section(venueConfigFile, section, tag):
         raise AssertionError('*ERROR*  Missing %s element text from venue config file: %s' %(tag, venueConfigFile))
     
     return LabelIdList
+
+def get_MTE_config_tag_list(venueConfigFile, *xmlPath):
+    """ Get tag from venue config file
+
+    Argument : venueConfigFile : local path of venue config file
+               xmlPath : one or more node names that identify the XML path
+
+    Return : list of tag
+
+    Examples :
+    | ${tagList}= | get MTE config tag list | venue_config_file | Transforms |
+    """
+
+    foundConfigTags = []
+
+    xmlPathLength = len(xmlPath)
+    if xmlPathLength < 1:
+        raise AssertionError('*ERROR*  Need to provide xmlPath to look up.')
+    elif xmlPathLength > 1:
+        xmlPathString = '/'.join(map(str, xmlPath))
+    else:
+        xmlPathString = str(xmlPath[0])
+        
+    if not os.path.exists(venueConfigFile):
+        raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
+    
+    with open (venueConfigFile, "r") as myfile:
+        linesRead = myfile.readlines()
+
+    # Note that the following workaround is needed to make the venue config file a valid XML file.
+    linesRead = "<GATS>" + ''.join(linesRead) + "</GATS>"
+    
+    root = ET.fromstring(linesRead)
+    
+    for foundNode in root.iterfind(".//" + xmlPathString + '/*'):
+            foundConfigTags.append(foundNode.tag)
+        
+    return foundConfigTags
 
 def get_MTE_config_value(venueConfigFile,*xmlPath):
     """ Gets value from venue config file
@@ -400,6 +492,29 @@ def set_MTE_config_tag_value(xmlFileLocalFullPath,value,*xPath):
     """
                     
     xmlutilities.set_xml_tag_value(xmlFileLocalFullPath,value,True,xPath)
+
+def verify_filterString_contains_configured_context_ids(filter_string,venueConfigFile):
+    """Get set of context id from FilterString and venue xml_config file
+    and verify the context id set defined in Transforms section is equal to the context id set from fms FilterString
+    Argument : fms FilterString, venue configuration file
+    Returns : true if venueConfig_context_id_set == filterString_context_id_set
+    
+    Examples:
+    | verify filterString contains configured context ids | <FilterString>CONTEXT_ID = 1052 OR CONTEXT_ID = 1053</FilterString> | venue configuration file | 
+    """  
+
+    venueConfig_context_id_set = get_context_ids_from_config_file(venueConfigFile)
+    if len(venueConfig_context_id_set) == 0:
+        raise AssertionError('*ERROR* cannot find venue config context ids define in Transforms section %s' %venueConfigFile)
+
+    filterString_context_id_set = get_context_ids_from_fms_filter_string(filter_string)
+    if len(filterString_context_id_set) == 0:
+        raise AssertionError('*ERROR* cannot find venue config context ids from fms FilterString %s' %filter_string)
+
+    if venueConfig_context_id_set == filterString_context_id_set:
+        return True
+    else:
+        raise AssertionError('*ERROR* venue context ids define in Transforms section %s is not equal to the context ids from fms FilterString %s' %(venueConfig_context_id_set, filterString_context_id_set))
 
 def _search_MTE_config_file(venueConfigFile,*xmlPath):
     foundConfigValues = []
