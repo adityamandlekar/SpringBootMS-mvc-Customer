@@ -95,7 +95,7 @@ MTE Startup with GRS Not Running
     ...    1. Stop the MTE
     ...    2. Stop the GRS
     ...    3. Start the MTE
-    ...    4. Verify the MTE is unable to connect to the GRS by SMF log 
+    ...    4. Verify the MTE is unable to connect to the GRS by SMF log
     ...    5. Start GRS
     ...    6. Verify the MTE is connected to the GRS by SMF log
     ...
@@ -108,6 +108,36 @@ MTE Startup with GRS Not Running
     ${currDateTime}    Get Date and Time
     Start Process    GRS
     Wait SMF Log Message After Time    ${MTE}..Connected to IP:127.0.0.1-TCP    ${currDateTime}    2    120
+
+MTE Startup with No GRS Messages for Feed
+    [Documentation]    Verify that the MTE can handle negative response from GRS.
+    ...    1. Reset Sequence Number
+    ...    2. Stop the MTE
+    ...    3. Stop the GRS
+    ...    4. Start the GRS
+    ...    5. Start the MTE
+    ...    6. Verify the GRS rejects the 'Start of Day' request from the MTE by SMF log
+    ...    7. Inject pcap file
+    ...    8. Verify the MTE is publishing updated messages
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1992
+    ${service}=    Get FMS Service Name
+    ${injectFile}=    Generate PCAP File Name    ${service}    General RIC Update
+    ${domain}=    Get Preferred Domain
+    Reset Sequence Numbers
+    Stop MTE
+    Stop Process    GRS
+    Start Process    GRS
+    ${currDateTime}=    Get Date and Time
+    Start MTE
+    Wait SMF Log Message After Time    Start of Day request rejected\|SOD request rejected    ${currDateTime}    2    120
+    Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
+    Comment    Verify MTE is publishing new messages
+    ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}
+    ${localCapture}=    Set Variable    ${LOCAL_TMP_DIR}/localcapture.pcap
+    get remote file    ${remoteCapture}    ${localCapture}
+    Verify Updated Message Exist In Capture    ${localCapture}    ${domain}
+    [Teardown]    Case Teardown    ${localCapture}
 
 *** Keywords ***
 Restart MTE With GRS Recovery
