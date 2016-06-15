@@ -22,9 +22,9 @@ def gen_Pmat_cmd_args(ric, sic, domain):
 
     args = []
     if ric != '' and ric != None:
-        args.append('--ric %s' % ric)
+        args.append('--ric \"%s\"' % ric)
     if sic != '' and sic != None:
-        args.append('--sic %s' % sic)
+        args.append('--sic \"%s\"' % sic)
     if domain != '' and domain != None:
         args.append('--domain %s' % domain)
    
