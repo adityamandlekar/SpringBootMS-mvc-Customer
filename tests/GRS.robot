@@ -167,4 +167,4 @@ Modify MTE config and Injection pcap Port Info
     ${portNumNew}=    Set Variable    ${portNum+ 1}
     ${modifiedPCAP}=    Rewrite PCAP File    ${pcapFile}    --portmap=${portNum}:${portNumNew}
     Set value in MTE cfg    ${orgCfgFile}    ServiceName    ${portNumNew}
-    [Return]    @{modifiedPCAP}
+    [Return]    ${modifiedPCAP}
