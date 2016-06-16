@@ -94,7 +94,7 @@ MTE Recovery by SN Range Request
     ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${VENUE_DIR}    ${configFile}
     ${service}    Get FMS Service Name
     ${domain}=    Get Preferred Domain
-    ${injectFile}=    Generate PCAP File Name    ${service}    General FH Output
+    ${injectFile}=    Generate FH PCAP File Name    ${service}    General FH Output
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${loopbackIntf}=    set variable    127.0.0.1
     Start Capture MTE Output    ${remoteCapture}
@@ -106,7 +106,7 @@ MTE Recovery by SN Range Request
     ${FIDsFromLargeFile}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
     Delete Remote Files    ${remoteCapture}
     Comment    Now we have none gapped injection refresh data.
-    ${pcapFile}=    Generate PCAP File Name    ${service}    General Gapped FH Output
+    ${pcapFile}=    Generate FH PCAP File Name    ${service}    General Gapped FH Output
     ${gappedPcap}=    Modify MTE config and Injection pcap Port Info    ${orgCfgFile}    ${pcapFile}
     Reset Sequence Numbers
     Inject PCAP File on UDP at MTE Box    ${loopbackIntf}    ${injectFile}
