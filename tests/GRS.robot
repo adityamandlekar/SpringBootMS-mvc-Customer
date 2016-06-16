@@ -77,52 +77,44 @@ MTE Start of Day Recovery
 MTE Recovery by SN Range Request
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1989
     ...
-    ...    Prepare one pcap from exchange (no gaps) and split it to two pcap file. pcap1 (frame 1 to N), pcap 2 (frame N+1 to end).
-    ...    With GRS and MTE running, playback whole pcap and request for all possible RICs response messages and save fid-value to dictionary1
+    ...    Prepare two pcaps from FH output. One without gaps and one with gaps.
+    ...    With GRS and MTE running, playback none gapped pcap and request for all possible RICs response messages and save fid-value to dictionary1.
     ...
-    ...    Stop FH, GRS, MTE. Delete GRS pcap, persist file.
-    ...    Check InputPortStatsBlock_0 and InputPortStatsBlock_1's segment count
-    ...    Start FH, GRS, Replay pcap1
-    ...    Start MTE, \ Replay pcap2
     ...
-    ...    Check InputPortStatsBlock_0 and InputPortStatsBlock_1's segment count
-    ...    request for all possible RICs response messages and \ save fid-value to dictionary2
+    ...    Modify the MTE config file and let MTE listens to port (original port + 1), also rewrite gapped pcap with the new port.
+    ...    Stop FH, GRS, MTE, delete GRS pcap, persist file and start FH, GRS, MTE.
+    ...
+    ...    On MTE box, using PCapPlybk tool to play pcap without gaps and play modified gapped pcap file.
+    ...
+    ...    request for all possible RICs response messages and save fid-value to dictionary2
     ...
     ...    fid-value dictionary1 and fid-value dictionary2 should be same.
-    ...    InputPortStatsBlock_0 and InputPortStatsBlock_1's segment received \ count increased
-    Stop Process    GRS
-    Delete Remote Files Matching Pattern    ${BASE_DIR}    *.pcap    ${True}
     Reset Sequence Numbers
+    ${configFile}=    Convert To Lowercase    ${MTE}.xml
+    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${VENUE_DIR}    ${configFile}
     ${service}    Get FMS Service Name
     ${domain}=    Get Preferred Domain
-    ${injectFile}=    Generate PCAP File Name    ${service}    General RIC Update
-    ${remoteCapture}=    Inject PCAP File And Wait For Output    ${injectFile}
+    ${injectFile}=    Generate PCAP File Name    ${service}    General FH Output
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    ${loopbackIntf}=    set variable    127.0.0.1
+    Start Capture MTE Output    ${remoteCapture}
+    Inject PCAP File on UDP at MTE Box    ${loopbackIntf}    ${injectFile}
+    Stop Capture MTE Output
     ${ricList}=    Get RIC List From Remote PCAP    ${remoteCapture}    ${domain}
     ${remoteRicFile}=    Set Variable    ${REMOTE_TMP_DIR}/ricList.txt
     Create Remote File Content    ${remoteRicFile}    ${ricList}
     ${FIDsFromLargeFile}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
     Delete Remote Files    ${remoteCapture}
-    Comment    run first pcap (frame: 1-n) without MTE, then second pcap (frame: n-end) with MTE running. Check stats and response messages fid value
-    Stop Process    GRS
-    Delete Remote Files Matching Pattern    ${BASE_DIR}    *.pcap    ${True}
+    Comment    Now we have none gapped injection refresh data.
+    ${pcapFile}=    Generate PCAP File Name    ${service}    General Gapped FH Output
+    ${gappedPcap}=    Modify MTE config and Injection pcap Port Info    ${orgCfgFile}    ${pcapFile}
     Reset Sequence Numbers
-    Stop MTE
-    ${port0Prev}=    get count from stat block    ${MTE}    InputPortStatsBlock_0    segmentsReceivedCount
-    ${port1Prev}=    get count from stat block    ${MTE}    InputPortStatsBlock_1    segmentsReceivedCount
-    ${injectFile1}=    Generate PCAP File Name    ${service}    General RIC Update1
-    ${injectFile2}=    Generate PCAP File Name    ${service}    General RIC Update2
-    ${remoteCapture}=    Inject PCAP File And Wait For Output    ${injectFile1}
-    Delete Remote Files    ${remoteCapture}
-    Start MTE
-    wait for StatBlock    ${MTE}    InputPortStatsBlock_0    lineOpenStatus    1
-    ${remoteCapture}=    Inject PCAP File And Wait For Output    ${injectFile2}
-    ${port0After}=    get count from stat block    ${MTE}    InputPortStatsBlock_0    segmentsReceivedCount
-    ${port1After}=    get count from stat block    ${MTE}    InputPortStatsBlock_1    segmentsReceivedCount
+    Inject PCAP File on UDP at MTE Box    ${loopbackIntf}    ${injectFile}
+    Inject PCAP File on UDP at MTE Box    ${loopbackIntf}    ${gappedPcap}
     ${FIDsFromFiles}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
-    Should Be True    ${port0After} > ${port0Prev}
-    Should Be True    ${port1After} > ${port1Prev}
+    Delete Remote Files    ${remoteRicFile}
     Dictionary of Dictionaries Should Be Equal    ${FIDsFromLargeFile}    ${FIDsFromFiles}
-    [Teardown]    Delete Remote Files    ${remoteCapture}    ${remoteRicFile}
+    [Teardown]    restore remote cfg file    ${orgCfgFile}    ${backupCfgFile}
 
 Verify GRS stream creation
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1996
@@ -145,7 +137,7 @@ MTE Startup with GRS Not Running
     ...    1. Stop the MTE
     ...    2. Stop the GRS
     ...    3. Start the MTE
-    ...    4. Verify the MTE is unable to connect to the GRS by SMF log 
+    ...    4. Verify the MTE is unable to connect to the GRS by SMF log
     ...    5. Start GRS
     ...    6. Verify the MTE is connected to the GRS by SMF log
     ...
@@ -166,3 +158,13 @@ Restart MTE With GRS Recovery
     Delete Persist Files
     Start MTE
     Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
+
+Modify MTE config and Injection pcap Port Info
+    [Arguments]    ${orgCfgFile}    ${pcapFile}
+    ${mteConfigFile}=    Get MTE Config File
+    ${portstr}=    get MTE config value    ${mteConfigFile}    Inputs    ${MTE}    FHRealtimeLine    ServiceName
+    ${portNum}=    Convert to Integer    ${portstr}
+    ${portNumNew}=    Set Variable    ${portNum+ 1}
+    ${modifiedPCAP}=    Rewrite PCAP File    ${pcapFile}    --portmap=${portNum}:${portNumNew}
+    Set value in MTE cfg    ${orgCfgFile}    ServiceName    ${portNumNew}
+    [Return]    @{modifiedPCAP}

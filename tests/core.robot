@@ -180,6 +180,21 @@ Force Persist File Write
     [Teardown]
     [Return]    ${exlFiles}    ${modifiedExlFiles}
 
+Generate FH PCAP File Name
+    [Arguments]    ${service}    ${testCase}    @{keyValuePairs}
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
+    ...
+    ...    Generate the file name based on service name, test case, input key/value pairs and playback side designation --- default to A side
+    ...
+    ...    Example:
+    ...    MFDS-Testcase.pcap
+    ...    TDDS_BDDS-MyTestName-FH=TDDS01F.pcap
+    ...    TDDS_BDDS-TransientGap-FH=TDDS01F.pcap
+    ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}
+    ${pcapFileName} =    Catenate    SEPARATOR=    ${REMOTE_TMP_DIR}/    ${pcapFileName}    .pcap
+    ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
+    [Return]    ${pcapFileName}
+
 Generate PCAP File Name
     [Arguments]    ${service}    ${testCase}    ${playbackBindSide}=A    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
@@ -460,8 +475,8 @@ Go Into End Feed Time
     \    @{edits}    Create List    <it:SUN_FD_OPEN>BLANK</it:SUN_FD_OPEN>    <it:SUN_FD_CLOSE>BLANK</it:SUN_FD_CLOSE>    <it:MON_FD_OPEN>BLANK</it:MON_FD_OPEN>    <it:MON_FD_CLOSE>BLANK</it:MON_FD_CLOSE>
     \    ...    <it:TUE_FD_OPEN>BLANK</it:TUE_FD_OPEN>    <it:TUE_FD_CLOSE>BLANK</it:TUE_FD_CLOSE>    <it:WED_FD_OPEN>BLANK</it:WED_FD_OPEN>    <it:WED_FD_CLOSE>BLANK</it:WED_FD_CLOSE>    <it:THU_FD_OPEN>BLANK</it:THU_FD_OPEN>
     \    ...    <it:THU_FD_CLOSE>BLANK</it:THU_FD_CLOSE>    <it:FRI_FD_OPEN>BLANK</it:FRI_FD_OPEN>    <it:FRI_FD_CLOSE>BLANK</it:FRI_FD_CLOSE>    <it:SAT_FD_OPEN>BLANK</it:SAT_FD_OPEN>    <it:SAT_FD_CLOSE>BLANK</it:SAT_FD_CLOSE>
-    \    Modify EXL    ${useFile}    ${modifiedExlFile}     ${connectTimesIdentifier}    ${connectTimeRicDomain}    @{edits}
-    \    Set Feed Time In EXL    ${modifiedExlFile}     ${modifiedExlFile}     ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
+    \    Modify EXL    ${useFile}    ${modifiedExlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    @{edits}
+    \    Set Feed Time In EXL    ${modifiedExlFile}    ${modifiedExlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
     \    ...    ${endTime}    ${startWeekDay}
     \    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}
     \    ...    ${connectTimeRicDomain}    ${startTime}    ${endTime}    ${endWeekDay}
@@ -522,6 +537,14 @@ Inject PCAP File on UDP
     \    ${intfName}    Get Playback NIC For PCAP File    ${pcapFile}
     \    Run Keyword    ${cmd}    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'
     [Teardown]    Switch Connection    ${host}
+
+Inject PCAP File on UDP at MTE Box
+    [Arguments]    ${intfName}    @{pcapFileList}
+    [Documentation]    Start injection of the specified PCAP files on UDP transport with PCapPlybk tool at MTE box
+    : FOR    ${pcapFile}    IN    @{pcapFileList}
+    \    remote file should exist    ${pcapFile}
+    \    ${stdout}    ${rc}    execute_command    PCapPlybk -ifile ${pcapFile} -intf ${intfName} -pps ${PLAYBACK_PPS}    return_rc=True
+    \    Should Be Equal As Integers    ${rc}    0
 
 Insert ICF
     [Arguments]    ${insertFile}    ${serviceName}
@@ -619,6 +642,15 @@ Restore EXL Changes
     : FOR    ${file}    IN    @{exlFiles}
     \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
+
+Rewrite PCAP File
+    [Arguments]    ${inputFile}    @{optargs}
+    remote file should exist    ${inputFile}
+    ${outputFile}=    set variable    ${REMOTE_TMP_DIR}/modified.pcap
+    ${optstr} =    Catenate    @{optargs}
+    ${stdout}    ${rc}    execute_command    tcprewrite --infile=${inputFile} --outfile=${outputFile} ${optstr}    return_rc=True
+    Should Be Equal As Integers    ${rc}    0
+    [Return]    ${outputFile}
 
 Send TRWF2 Refresh Request
     [Arguments]    ${ric}    ${domain}    @{optargs}
