@@ -77,24 +77,16 @@ MTE Start of Day Recovery
 MTE Recovery by SN Range Request
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1989
     ...
-    ...    Prepare two pcaps from FH output. One without gaps and one with gaps.
-    ...    With GRS and MTE running, playback none gapped pcap and request for all possible RICs response messages and save fid-value to dictionary1.
-    ...
-    ...
-    ...    Modify the MTE config file and let MTE listens to port (original port + 1), also rewrite gapped pcap with the new port.
-    ...    Stop FH, GRS, MTE, delete GRS pcap, persist file and start FH, GRS, MTE.
-    ...
-    ...    On MTE box, using PCapPlybk tool to play pcap without gaps and play modified gapped pcap file.
-    ...
-    ...    request for all possible RICs response messages and save fid-value to dictionary2
-    ...
-    ...    fid-value dictionary1 and fid-value dictionary2 should be same.
+    ...    Verify that the MTE recovers from gaps in the message sequence numbers by requesting the missed messages from GRS.
+    ...    - create baseline for FID values by injecting non-gapped pcap into both GRS and MTE.
+    ...    - inject the non-gap pcap file into GRS and gapped pcap file into MTE.
+    ...    - verify gap recovery occurred by verifying the FID values match the baseline FID values.
     Reset Sequence Numbers
     ${configFile}=    Convert To Lowercase    ${MTE}.xml
     ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${VENUE_DIR}    ${configFile}
     ${service}    Get FMS Service Name
     ${domain}=    Get Preferred Domain
-    ${injectFile}=    Generate FH PCAP File Name    ${service}    General FH Output
+    ${injectFile}=    Generate FH PCAP File Name    ${service}    General FH Output    FH={FH}
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${loopbackIntf}=    set variable    127.0.0.1
     Start Capture MTE Output    ${remoteCapture}
@@ -106,7 +98,7 @@ MTE Recovery by SN Range Request
     ${FIDsFromLargeFile}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
     Delete Remote Files    ${remoteCapture}
     Comment    Now we have none gapped injection refresh data.
-    ${pcapFile}=    Generate FH PCAP File Name    ${service}    General Gapped FH Output
+    ${pcapFile}=    Generate FH PCAP File Name    ${service}    General Gapped FH Output    FH={FH}
     ${gappedPcap}=    Modify MTE config and Injection pcap Port Info    ${orgCfgFile}    ${pcapFile}
     Reset Sequence Numbers
     Inject PCAP File on UDP at MTE Box    ${loopbackIntf}    ${injectFile}
@@ -162,7 +154,7 @@ Restart MTE With GRS Recovery
 Modify MTE config and Injection pcap Port Info
     [Arguments]    ${orgCfgFile}    ${pcapFile}
     ${mteConfigFile}=    Get MTE Config File
-    ${portstr}=    get MTE config value    ${mteConfigFile}    Inputs    ${MTE}    FHRealtimeLine    ServiceName
+    ${portstr}=    get MTE config value    ${mteConfigFile}    Inputs    ${FH}    FHRealtimeLine    ServiceName
     ${portNum}=    Convert to Integer    ${portstr}
     ${portNumNew}=    Set Variable    ${portNum+ 1}
     ${modifiedPCAP}=    Rewrite PCAP File    ${pcapFile}    --portmap=${portNum}:${portNumNew}

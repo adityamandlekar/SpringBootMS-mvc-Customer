@@ -184,7 +184,7 @@ Generate FH PCAP File Name
     [Arguments]    ${service}    ${testCase}    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
     ...
-    ...    Generate the file name based on service name, test case, input key/value pairs and playback side designation --- default to A side
+    ...    Generate the file name based on service name, test case and input key/value pairs
     ...
     ...    Example:
     ...    MFDS-Testcase.pcap
@@ -646,7 +646,8 @@ Restore EXL Changes
 Rewrite PCAP File
     [Arguments]    ${inputFile}    @{optargs}
     remote file should exist    ${inputFile}
-    ${outputFile}=    set variable    ${REMOTE_TMP_DIR}/modified.pcap
+    ${random}=    Generate Random String    4    [NUMBERS]
+    ${outputFile}=    set variable    ${REMOTE_TMP_DIR}/modified${random}.pcap
     ${optstr} =    Catenate    @{optargs}
     ${stdout}    ${rc}    execute_command    tcprewrite --infile=${inputFile} --outfile=${outputFile} ${optstr}    return_rc=True
     Should Be Equal As Integers    ${rc}    0
