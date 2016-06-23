@@ -116,15 +116,17 @@ Critical Message Logging - MTE State change
     [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
+    Switch To TD Box    ${master_ip}
+    ${currDateTime}    get date and time
     Switch To TD Box    ${CHE_A_IP}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
-    ${currDateTime}    get date and time
     switch MTE LIVE STANDBY status    A    STANDBY    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
-    wait GMI message after time    CRITICAL.*Watchdog event.*MTE.*ReportSituation    ${currDateTime}    2    100
-    wait GMI message after time    CRITICAL.*Normal Processing.*MTE.*ReportSituation    ${currDateTime}    2    100
+    Switch To TD Box    ${master_ip}
     wait GMI message after time    WARNING.*LIVE switch has occurred.*Entity: ${MTE}.*EVENT:WDG_ERROR_ENTITY_LIVE_SWITCH : Investigate the cause of the entity switch    ${currDateTime}    2    100
+    wait GMI message after time    CRITICAL.*Normal Processing.*MTE.*ReportSituation    ${currDateTime}    2    100
+    wait GMI message after time    CRITICAL.*Watchdog event.*MTE.*ReportSituation    ${currDateTime}    2    100
     [Teardown]    MTE Failover Case Teardown    ${master_ip}
 
 Verify STANDBY Handles Sync Pulse
