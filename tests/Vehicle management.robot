@@ -211,7 +211,7 @@ Verify Reconcile of Cache
     Set Symbol In EXL    ${exlFullFileName}    ${exlFullFileName}    ${ric}    ${domain}    ${newRICName}
     Set RIC In EXL    ${exlFullFileName}    ${exlFullFileName}    ${ric}    ${domain}    ${newRICName}
     ${currentDateTime}    get date and time
-    Run Keyword And Continue On Failure    Load All EXL Files    ${serviceName}    ${CHE_IP}    --UseReconcileLXL true
+    Run Keyword And Continue On Failure    Load All EXL Files    ${serviceName}    ${CHE_IP}
     copy File    ${LOCAL_TMP_DIR}/${exlFileName}    ${exlFullFileName}
     wait smf log message after time    FMS REORG DONE    ${currentDateTime}
     Verify RIC In MTE Cache    ${newRICName}
