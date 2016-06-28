@@ -1,4 +1,4 @@
-import re
+﻿import re
 
 from utils.ssh import _exec_command
 
@@ -60,7 +60,7 @@ def get_contextId_fids_constit_from_fidfiltertxt():
                     
             else:
                 content = line.split()
-                if (len(content) == 2):
+                if (len(content) >= 2):
                     fid = content[0]
                     constit = content[1]
                     if re.match(r'-?\d+$',fid) and re.match(r'-?\d+$',constit):
