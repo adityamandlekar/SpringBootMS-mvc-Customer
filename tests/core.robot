@@ -460,8 +460,8 @@ Go Into End Feed Time
     \    @{edits}    Create List    <it:SUN_FD_OPEN>BLANK</it:SUN_FD_OPEN>    <it:SUN_FD_CLOSE>BLANK</it:SUN_FD_CLOSE>    <it:MON_FD_OPEN>BLANK</it:MON_FD_OPEN>    <it:MON_FD_CLOSE>BLANK</it:MON_FD_CLOSE>
     \    ...    <it:TUE_FD_OPEN>BLANK</it:TUE_FD_OPEN>    <it:TUE_FD_CLOSE>BLANK</it:TUE_FD_CLOSE>    <it:WED_FD_OPEN>BLANK</it:WED_FD_OPEN>    <it:WED_FD_CLOSE>BLANK</it:WED_FD_CLOSE>    <it:THU_FD_OPEN>BLANK</it:THU_FD_OPEN>
     \    ...    <it:THU_FD_CLOSE>BLANK</it:THU_FD_CLOSE>    <it:FRI_FD_OPEN>BLANK</it:FRI_FD_OPEN>    <it:FRI_FD_CLOSE>BLANK</it:FRI_FD_CLOSE>    <it:SAT_FD_OPEN>BLANK</it:SAT_FD_OPEN>    <it:SAT_FD_CLOSE>BLANK</it:SAT_FD_CLOSE>
-    \    Modify EXL    ${useFile}    ${modifiedExlFile}     ${connectTimesIdentifier}    ${connectTimeRicDomain}    @{edits}
-    \    Set Feed Time In EXL    ${modifiedExlFile}     ${modifiedExlFile}     ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
+    \    Modify EXL    ${useFile}    ${modifiedExlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    @{edits}
+    \    Set Feed Time In EXL    ${modifiedExlFile}    ${modifiedExlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
     \    ...    ${endTime}    ${startWeekDay}
     \    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}
     \    ...    ${connectTimeRicDomain}    ${startTime}    ${endTime}    ${endWeekDay}
@@ -754,10 +754,10 @@ Set Trade Time In EXL
     modify EXL    ${dstFile}    ${dstFile}    ${ric}    ${domain}    <it:${tradeDay}_TR_CLOSE>${endTime}</it:${tradeDay}_TR_CLOSE>
 
 Start Capture MTE Output
-    [Arguments]    ${filename}=/tmp/capture.pcap    ${ddn}=DDNA
+    [Arguments]    ${filename}=/tmp/capture.pcap    ${ddn}=DDNA    ${labelID}=''
     [Documentation]    Start capture MTE output
     ${interfaceName}=    get interface name by alias    ${ddn}
-    @{IpAndPort}=    get outputAddress and port for mte
+    @{IpAndPort}=    get outputAddress and port for mte    multicast    ${labelID}
     start capture packets    ${filename}    ${interfaceName}    @{IpAndPort}
 
 Start MTE
