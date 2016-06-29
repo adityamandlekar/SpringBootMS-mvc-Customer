@@ -51,11 +51,11 @@ GRS Writes to PCAP When Buffer Full
     ...
     ...    Verify that GRS writes the messages to a pcap file when the buffer is full.
     ...    Compare GRS output frames with injection file frames and buffer size in grs configuration file.
-    ...    Requires injection pcap (FH output) file contains more than 30 frames
+    ...    Requires injection pcap (FH output) file contains more than 5 frames
     ${grsConfigFile}=    Get CHE Config Filepath    *_grs.json    config_grs.json    SCWatchdog
     ${locaConfiglFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_grs_config.json
     get remote file    ${grsConfigFile}    ${locaConfiglFile}
-    ${itemValue}=    Convert To Integer    30
+    ${itemValue}=    Convert To Integer    5
     ${modifiedConfigFile}=    Modify GRS config feed item value    ${locaConfiglFile}    maxstreambuffer    ${itemValue}
     put remote file    ${modifiedConfigFile}    ${grsConfigFile}
     Reset sequence numbers
@@ -63,13 +63,14 @@ GRS Writes to PCAP When Buffer Full
     ${injectFile}=    Generate FH PCAP File Name    ${service}    General FH Output    FH=${FH}
     ${loopbackIntf}=    set variable    127.0.0.1
     Inject PCAP File on UDP at MTE Box    ${loopbackIntf}    ${injectFile}
-    sleep    10s
-    Reset sequence numbers
+    wait for MTE capture to complete
+    Stop Process    GRS
     ${injectFileList}=    Create List    ${injectFile}
     ${grsOutputList}=    Get GRS output file list
     Compare pcap frames with configured size    ${grsOutputList}    ${itemValue}
     Compare GRS output frames with Injection file frames    ${grsOutputList}    ${injectFileList}
-    [Teardown]    put remote file    ${locaConfiglFile}    ${grsConfigFile}
+    [Teardown]    Run Keywords    put remote file    ${locaConfiglFile}    ${grsConfigFile}
+    ...    AND    Start Process    GRS
 
 MTE Start of Day Recovery
     [Documentation]    Verify that the MTE recovers lost messages by sending 'start of day' request to GRS.
@@ -206,8 +207,7 @@ Compare GRS output frames with Injection file frames
     Should be equal    ${fhFrames}    ${grsFrames}
 
 Get GRS output file list
-    Start Command    find ${BASE_DIR} -name "*.pcap"
-    ${stdout}    ${stderr}    Read Command Output    return_stderr=True
+    ${stdout}    ${stderr}=    Execute Command    find ${BASE_DIR} -name "*.pcap"    return_stderr=True
     Should Be Empty    ${stderr}
     Should Not Be Empty    ${stdout}
     ${grsfiles}=    Split To Lines    ${stdout}
