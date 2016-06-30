@@ -46,6 +46,32 @@ GRS Control by SMF
     wait for process to exist    GRS
     [Teardown]    start smf
 
+GRS Writes to PCAP When Buffer Full
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1997
+    ...
+    ...    Verify that GRS writes the messages to a pcap file when the buffer is full.
+    ...    Compare GRS output frames with injection file frames and buffer size in grs configuration file.
+    ...    Requires injection pcap (FH output) file contains more than 5 frames
+    ${grsConfigFile}=    Get CHE Config Filepath    *_grs.json    config_grs.json    SCWatchdog
+    ${locaConfiglFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_grs_config.json
+    get remote file    ${grsConfigFile}    ${locaConfiglFile}
+    ${itemValue}=    Convert To Integer    5
+    ${modifiedConfigFile}=    Modify GRS config feed item value    ${locaConfiglFile}    maxstreambuffer    ${itemValue}
+    put remote file    ${modifiedConfigFile}    ${grsConfigFile}
+    Reset sequence numbers
+    ${service}    Get FMS Service Name
+    ${injectFile}=    Generate FH PCAP File Name    ${service}    General FH Output    FH=${FH}
+    ${loopbackIntf}=    set variable    127.0.0.1
+    Inject PCAP File on UDP at MTE Box    ${loopbackIntf}    ${injectFile}
+    wait for MTE capture to complete
+    Stop Process    GRS
+    ${injectFileList}=    Create List    ${injectFile}
+    ${grsOutputList}=    Get GRS output file list
+    Compare pcap frames with configured size    ${grsOutputList}    ${itemValue}
+    Compare GRS output frames with Injection file frames    ${grsOutputList}    ${injectFileList}
+    [Teardown]    Run Keywords    put remote file    ${locaConfiglFile}    ${grsConfigFile}
+    ...    AND    Start Process    GRS
+
 MTE Start of Day Recovery
     [Documentation]    Verify that the MTE recovers lost messages by sending 'start of day' request to GRS.
     ...    1. Get the list of RICs that are changed by the PCAP file.
@@ -174,6 +200,19 @@ MTE Startup with No GRS Messages for Feed
     [Teardown]    Case Teardown    ${localCapture}
 
 *** Keywords ***
+Compare GRS output frames with Injection file frames
+    [Arguments]    ${grsFiles}    ${injectFileList}
+    ${grsFrames}=    Get pcap frames    ${grsFiles}
+    ${fhFrames}=    Get pcap frames    ${injectFileList}
+    Should be equal    ${fhFrames}    ${grsFrames}
+
+Get GRS output file list
+    ${stdout}    ${stderr}=    Execute Command    find ${BASE_DIR} -name "*.pcap"    return_stderr=True
+    Should Be Empty    ${stderr}
+    Should Not Be Empty    ${stdout}
+    ${grsfiles}=    Split To Lines    ${stdout}
+    [Return]    ${grsfiles}
+
 Restart MTE With GRS Recovery
     ${currDateTime}    get date and time
     Stop MTE
