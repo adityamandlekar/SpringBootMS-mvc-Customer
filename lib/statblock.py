@@ -57,8 +57,9 @@ def get_outputAddress_and_port_for_mte(field='multicast',labelID=''):
         ipAndPort = get_stat_block_field(MTE, statblockNames[-1], field + 'OutputAddress').strip().split(':')
     else:
         ipAndPort = ""
+        statblockNameCheck = "multicast-" + labelID
         for statblockName in statblockNames:
-            if (statblockName.find(labelID) != -1):
+            if (statblockName == statblockNameCheck):
                 ipAndPort = get_stat_block_field(MTE, statblockName, field + 'OutputAddress').strip().split(':')
         if (len(ipAndPort) == 0):
             raise AssertionError('*ERROR* Fail to obatin OutputAddress and port for label ID [%s]'%(labelID))
@@ -74,9 +75,10 @@ def get_stat_block_field(writerName, blockName, fieldName):
     Example:
     | ${field}= | get stat block field  | ${mte}  | FMS  |  lastReorgType  |
     """
-            
+        
     cmd = "%s -f %s %s %s | grep 'Value:' | sed -n -e '/^Value:/s/^Value:[\t ]*//p' " %(utilpath.STATBLOCKFIELDREADER, writerName, blockName, fieldName)
     stdout, stderr, rc = _exec_command(cmd)
+
 #         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
