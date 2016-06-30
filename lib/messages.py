@@ -64,10 +64,10 @@ def compare_pcap_frames_with_configured_size(pcapfilelist, maxStreamBuffer):
         frame = int(stdout)
         if(fileLen == n):  
             if frame > maxStreamBuffer:
-                raise AssertionError('*ERROR* frame in %s should not exceed %d ' % (fileitem, maxStreamBuffer))
+                raise AssertionError('*ERROR* frame count in %s should not exceed %d ' % (fileitem, maxStreamBuffer))
         else:
             if frame != maxStreamBuffer: 
-                raise AssertionError('*ERROR* frame in %s should be equal to %d ' % (fileitem, maxStreamBuffer))  
+                raise AssertionError('*ERROR* frame count in %s should be equal to %d ' % (fileitem, maxStreamBuffer))  
                                       
 def get_FidValue_in_message(pcapfile,ricname, msgClass):
     """ To verify the insert icf file can update the changed fid and value correct
