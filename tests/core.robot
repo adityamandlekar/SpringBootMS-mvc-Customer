@@ -28,21 +28,48 @@ Library           xmlutilities
 
 *** Keywords ***
 Switch To TD Box
-    [Arguments]    ${che_ip}
+    [Arguments]    ${ip}
     [Documentation]    To switch the current ssh session to specific CHE_X_IP
-    ${switchBox}    Run Keyword If    '${che_ip}' == '${CHE_A_IP}'    set variable    ${CHE_A_Session}
-    ...    ELSE IF    '${che_ip}' == '${CHE_B_IP}'    set variable    ${CHE_B_Session}
-    ...    ELSE IF    '${che_ip}' == '${PLAYBACK_MACHINE_IP}'    set variable    ${Playback_Session}
+    ${switchBox}    Run Keyword If    '${ip}' == '${CHE_A_IP}'    set variable    ${CHE_A_Session}
+    ...    ELSE IF    '${ip}' == '${CHE_B_IP}'    set variable    ${CHE_B_Session}
+    ...    ELSE IF    '${ip}' == '${PLAYBACK_MACHINE_IP}'    set variable    ${Playback_Session}
     ...    ELSE    Fail    Invaild IP
+    Set Suite Variable    ${CHE_IP}    ${ip}
     switch connection    ${switchBox}
+
+MTE Machine Setup
+    [Arguments]    ${ip}
+    [Documentation]    Create ssh connection to an MTE machine and start the components.
+    ${ret}    open connection    host=${ip}    port=${CHE_PORT}    timeout=6
+    login    ${USERNAME}    ${PASSWORD}
+    start smf
+    setUtilPath
+    Start MTE
+    [Return]    ${ret}
+
+Suite Setup
+    [Documentation]    Do test suite level setup, e.g. things that take time and do not need to be repeated for each test case.
+    ...    Make sure the CHE_IP machine has the LIVE MTE instance.
+    Should Not be Empty    ${CHE_IP}
+    ${ret}    MTE Machine Setup    ${CHE_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${ret}
+    ${ip_list}    Create List
+    Run Keyword If    '${CHE_A_IP}' != '' and '${CHE_A_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_A_IP}
+    Run Keyword If    '${CHE_B_IP}' != '' and '${CHE_B_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    Run Keyword If    '${CHE_IP}'=='${CHE_A_IP}'    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    ...    ELSE IF    '${CHE_IP}'=='${CHE_B_IP}'    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
+    ...    ELSE    Fail    CHE_IP does not equal CHE_A_IP or CHE_B_IP in VenueVariables
+    Verify MTE State In Specific Box    ${CHE_IP}    LIVE
+    [Return]    ${ret}
 
 Suite Setup Two TD Boxes
     [Documentation]    Setup 2 Sessions for 2 Peer Thunderdome Boxes
     Should Not be Empty    ${CHE_A_IP}
     Should Not be Empty    ${CHE_B_IP}
-    ${ret}    suite setup    ${CHE_A_IP}
+    ${ret}    MTE Machine Setup    ${CHE_A_IP}
     Set Suite Variable    ${CHE_A_Session}    ${ret}
-    ${ret}    suite setup    ${CHE_B_IP}
+    ${ret}    MTE Machine Setup    ${CHE_B_IP}
     Set Suite Variable    ${CHE_B_Session}    ${ret}
 
 Suite Setup Two TD Boxes With Playback
@@ -53,30 +80,18 @@ Suite Setup Two TD Boxes With Playback
     ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
     login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
     Set Suite Variable    ${Playback_Session}    ${plyblk}
-    ${ret}    suite setup    ${CHE_B_IP}
+    ${ret}    MTE Machine Setup    ${CHE_B_IP}
     Set Suite Variable    ${CHE_B_Session}    ${ret}
-    ${ret}    suite setup    ${CHE_A_IP}
+    ${ret}    MTE Machine Setup    ${CHE_A_IP}
     Set Suite Variable    ${CHE_A_Session}    ${ret}
-
-Suite Setup
-    [Arguments]    ${ip}=${CHE_IP}
-    [Documentation]    Do test suite level setup, e.g. things that take time and do not need to be repeated for each test case.
-    ${ret}    open connection    host=${ip}    port=${CHE_PORT}    timeout=6
-    login    ${USERNAME}    ${PASSWORD}
-    start smf
-    setUtilPath
-    Start MTE
-    [Return]    ${ret}
 
 Suite Setup with Playback
     [Documentation]    Setup Playback box and suit scope variable Playback_Session.
     Should Not be Empty    ${PLAYBACK_MACHINE_IP}
-    Should Not be Empty    ${CHE_A_IP}
     ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
     login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
     Set Suite Variable    ${Playback_Session}    ${plyblk}
-    ${ret}    suite setup    ${CHE_A_IP}
-    Set Suite Variable    ${CHE_A_Session}    ${ret}
+    ${ret}    Suite Setup
 
 Suite Teardown
     [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
@@ -101,7 +116,15 @@ Create Unique RIC Name
     [Return]    ${ric}
 
 Delete GRS PCAP Files
-    Delete Remote Files Matching Pattern    ${BASE_DIR}    *.pcap    ${True}
+    [Arguments]    @{mach_ip_list}
+    [Documentation]    Delete the PCAP files created by GRS on each of the specified machines. \ If no machine is specified, delete GRS PCAP files on the current machine.
+    ${host}=    get current connection index
+    @{new_list}    Run Keyword If    len(${mach_ip_list}) == 0    Create List    ${host}
+    ...    ELSE    Create List    @{mach_ip_list}
+    : FOR    ${mach}    IN    @{new_list}
+    \    Run Keyword If    '${mach}' != '${host}'    Switch To TD Box    ${mach}
+    \    Delete Remote Files Matching Pattern    ${BASE_DIR}    *.pcap    ${True}
+    [Teardown]    Switch Connection    ${host}
 
 Delete Persist Files
     delete remote files matching pattern    ${VENUE_DIR}    PERSIST_${MTE}.DAT*    recurse=${True}
@@ -133,7 +156,8 @@ Dump Persist File To Text
     ${remotePersist}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    ${True}
     Should Be True    len(${remotePersist}) ==1
     get remote file    ${remotePersist[0]}    ${localPersistFile}
-    ${pmatDumpfile}=    set variable    ${LOCAL_TMP_DIR}${/}pmatDumpfile.txt
+    ${random}=    Generate Random String    4    [NUMBERS]
+    ${pmatDumpfile}=    set variable    ${LOCAL_TMP_DIR}${/}pmatDump${random}.txt
     Run PMAT    dump    --dll Schema_v6.dll    --db ${localPersistFile}    --oformat text    --outf ${pmatDumpfile}    @{optargs}
     Remove Files    ${localPersistFile}
     [Return]    ${pmatDumpfile}
@@ -151,7 +175,8 @@ Dump Persist File To XML
     ${remotePersist}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    ${True}
     Should Be True    len(${remotePersist}) ==1
     get remote file    ${remotePersist[0]}    ${localPersistFile}
-    ${pmatXmlDumpfile}=    set variable    ${LOCAL_TMP_DIR}${/}pmatDumpfile.xml
+    ${random}=    Generate Random String    4    [NUMBERS]
+    ${pmatXmlDumpfile}=    set variable    ${LOCAL_TMP_DIR}${/}pmatDump${random}.xml
     Run PMAT    dump    --dll Schema_v6.dll    --db ${localPersistFile}    --outf ${pmatXmlDumpfile}    @{optargs}
     Remove Files    ${localPersistFile}
     [Return]    ${pmatXmlDumpfile}
