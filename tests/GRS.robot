@@ -46,6 +46,32 @@ GRS Control by SMF
     wait for process to exist    GRS
     [Teardown]    start smf
 
+GRS Writes to PCAP When Buffer Full
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1997
+    ...
+    ...    Verify that GRS writes the messages to a pcap file when the buffer is full.
+    ...    Compare GRS output frames with injection file frames and buffer size in grs configuration file.
+    ...    Requires injection pcap (FH output) file contains more than 5 frames
+    ${grsConfigFile}=    Get CHE Config Filepath    *_grs.json    config_grs.json    SCWatchdog
+    ${locaConfiglFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_grs_config.json
+    get remote file    ${grsConfigFile}    ${locaConfiglFile}
+    ${itemValue}=    Convert To Integer    5
+    ${modifiedConfigFile}=    Modify GRS config feed item value    ${locaConfiglFile}    maxstreambuffer    ${itemValue}
+    put remote file    ${modifiedConfigFile}    ${grsConfigFile}
+    Reset sequence numbers
+    ${service}    Get FMS Service Name
+    ${injectFile}=    Generate FH PCAP File Name    ${service}    General FH Output    FH=${FH}
+    ${loopbackIntf}=    set variable    127.0.0.1
+    Inject PCAP File on UDP at MTE Box    ${loopbackIntf}    ${injectFile}
+    wait for MTE capture to complete
+    Stop Process    GRS
+    ${injectFileList}=    Create List    ${injectFile}
+    ${grsOutputList}=    Get GRS output file list
+    Compare pcap frames with configured size    ${grsOutputList}    ${itemValue}
+    Compare GRS output frames with Injection file frames    ${grsOutputList}    ${injectFileList}
+    [Teardown]    Run Keywords    put remote file    ${locaConfiglFile}    ${grsConfigFile}
+    ...    AND    Start Process    GRS
+
 MTE Start of Day Recovery
     [Documentation]    Verify that the MTE recovers lost messages by sending 'start of day' request to GRS.
     ...    1. Get the list of RICs that are changed by the PCAP file.
@@ -73,6 +99,40 @@ MTE Start of Day Recovery
     ${afterRecoveryFIDs}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
     Dictionary of Dictionaries Should Be Equal    ${afterInjectionFIDs}    ${afterRecoveryFIDs}
     [Teardown]    Run Keyword If Test Passed    Delete Remote Files    ${remoteCapture}    ${remoteRicFile}
+
+MTE Recovery by SN Range Request
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1989
+    ...
+    ...    Verify that the MTE recovers from gaps in the message sequence numbers by requesting the missed messages from GRS.
+    ...    - create baseline for FID values by injecting non-gapped pcap into both GRS and MTE.
+    ...    - inject the non-gap pcap file into GRS and gapped pcap file into MTE.
+    ...    - verify gap recovery occurred by verifying the FID values match the baseline FID values.
+    Reset Sequence Numbers
+    ${configFile}=    Convert To Lowercase    ${MTE}.xml
+    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${VENUE_DIR}    ${configFile}
+    ${service}    Get FMS Service Name
+    ${domain}=    Get Preferred Domain
+    ${injectFile}=    Generate FH PCAP File Name    ${service}    General FH Output    FH=${FH}
+    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    ${loopbackIntf}=    set variable    127.0.0.1
+    Start Capture MTE Output    ${remoteCapture}
+    Inject PCAP File on UDP at MTE Box    ${loopbackIntf}    ${injectFile}
+    Stop Capture MTE Output
+    ${ricList}=    Get RIC List From Remote PCAP    ${remoteCapture}    ${domain}
+    ${remoteRicFile}=    Set Variable    ${REMOTE_TMP_DIR}/ricList.txt
+    Create Remote File Content    ${remoteRicFile}    ${ricList}
+    ${FIDsFromLargeFile}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
+    Delete Remote Files    ${remoteCapture}
+    Comment    Now we have none gapped injection refresh data.
+    ${pcapFile}=    Generate FH PCAP File Name    ${service}    General Gapped FH Output    FH=${FH}
+    ${gappedPcap}=    Modify MTE config and Injection pcap Port Info    ${orgCfgFile}    ${pcapFile}
+    Reset Sequence Numbers
+    Inject PCAP File on UDP at MTE Box    ${loopbackIntf}    ${injectFile}
+    Inject PCAP File on UDP at MTE Box    ${loopbackIntf}    ${gappedPcap}
+    ${FIDsFromFiles}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
+    Delete Remote Files    ${remoteRicFile}
+    Dictionary of Dictionaries Should Be Equal    ${FIDsFromLargeFile}    ${FIDsFromFiles}
+    [Teardown]    restore remote cfg file    ${orgCfgFile}    ${backupCfgFile}
 
 Verify GRS stream creation
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1996
@@ -140,9 +200,32 @@ MTE Startup with No GRS Messages for Feed
     [Teardown]    Case Teardown    ${localCapture}
 
 *** Keywords ***
+Compare GRS output frames with Injection file frames
+    [Arguments]    ${grsFiles}    ${injectFileList}
+    ${grsFrames}=    Get pcap frames    ${grsFiles}
+    ${fhFrames}=    Get pcap frames    ${injectFileList}
+    Should be equal    ${fhFrames}    ${grsFrames}
+
+Get GRS output file list
+    ${stdout}    ${stderr}=    Execute Command    find ${BASE_DIR} -name "*.pcap"    return_stderr=True
+    Should Be Empty    ${stderr}
+    Should Not Be Empty    ${stdout}
+    ${grsfiles}=    Split To Lines    ${stdout}
+    [Return]    ${grsfiles}
+
 Restart MTE With GRS Recovery
     ${currDateTime}    get date and time
     Stop MTE
     Delete Persist Files
     Start MTE
     Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
+
+Modify MTE config and Injection pcap Port Info
+    [Arguments]    ${orgCfgFile}    ${pcapFile}
+    ${mteConfigFile}=    Get MTE Config File
+    ${portstr}=    get MTE config value    ${mteConfigFile}    Inputs    ${FH}    FHRealtimeLine    ServiceName
+    ${portNum}=    Convert to Integer    ${portstr}
+    ${portNumNew}=    Set Variable    ${portNum+ 1}
+    ${modifiedPCAP}=    Rewrite PCAP File    ${pcapFile}    --portmap=${portNum}:${portNumNew}
+    Set value in MTE cfg    ${orgCfgFile}    ServiceName    ${portNumNew}
+    [Return]    ${modifiedPCAP}

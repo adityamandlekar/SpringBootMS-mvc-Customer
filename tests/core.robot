@@ -180,6 +180,21 @@ Force Persist File Write
     [Teardown]
     [Return]    ${exlFiles}    ${modifiedExlFiles}
 
+Generate FH PCAP File Name
+    [Arguments]    ${service}    ${testCase}    @{keyValuePairs}
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
+    ...
+    ...    Generate the file name based on service name, test case and input key/value pairs
+    ...
+    ...    Example:
+    ...    MFDS-Testcase.pcap
+    ...    TDDS_BDDS-MyTestName-FH=TDDS01F.pcap
+    ...    TDDS_BDDS-TransientGap-FH=TDDS01F.pcap
+    ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}
+    ${pcapFileName} =    Catenate    SEPARATOR=    ${REMOTE_TMP_DIR}/    ${pcapFileName}    .pcap
+    ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
+    [Return]    ${pcapFileName}
+
 Generate PCAP File Name
     [Arguments]    ${service}    ${testCase}    ${playbackBindSide}=A    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
@@ -523,6 +538,14 @@ Inject PCAP File on UDP
     \    Run Keyword    ${cmd}    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'
     [Teardown]    Switch Connection    ${host}
 
+Inject PCAP File on UDP at MTE Box
+    [Arguments]    ${intfName}    @{pcapFileList}
+    [Documentation]    Start injection of the specified PCAP files on UDP transport with PCapPlybk tool at MTE box
+    : FOR    ${pcapFile}    IN    @{pcapFileList}
+    \    remote file should exist    ${pcapFile}
+    \    ${stdout}    ${rc}    execute_command    PCapPlybk -ifile ${pcapFile} -intf ${intfName} -pps ${PLAYBACK_PPS}    return_rc=True
+    \    Should Be Equal As Integers    ${rc}    0
+
 Insert ICF
     [Arguments]    ${insertFile}    ${serviceName}
     ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    insert    --InputFile ${insertFile}
@@ -619,6 +642,16 @@ Restore EXL Changes
     : FOR    ${file}    IN    @{exlFiles}
     \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
+
+Rewrite PCAP File
+    [Arguments]    ${inputFile}    @{optargs}
+    remote file should exist    ${inputFile}
+    ${random}=    Generate Random String    4    [NUMBERS]
+    ${outputFile}=    set variable    ${REMOTE_TMP_DIR}/modified${random}.pcap
+    ${optstr} =    Catenate    @{optargs}
+    ${stdout}    ${rc}    execute_command    tcprewrite --infile=${inputFile} --outfile=${outputFile} ${optstr}    return_rc=True
+    Should Be Equal As Integers    ${rc}    0
+    [Return]    ${outputFile}
 
 Send TRWF2 Refresh Request
     [Arguments]    ${ric}    ${domain}    @{optargs}

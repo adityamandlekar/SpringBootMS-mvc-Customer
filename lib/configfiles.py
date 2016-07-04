@@ -112,6 +112,29 @@ def get_context_ids_from_fms_filter_string(fms_filter_string):
         
     return context_id_set
 
+def modify_GRS_config_feed_item_value(grs_config_file, itemName, newValue):
+    """update the item value from grs config files
+    Argument : 
+    grs_config_file  : local path of grs config file
+    itemName :  item name (key)
+    newValue : value for the item 
+
+    Examples:
+    | modify GRS feed item value from config file | E:\\temp\\hkf_grs.json|  maxstreambuffer | 100
+    """  
+    with open(grs_config_file) as data_file:   
+        data = json.load(data_file)
+        if (data.has_key('inputs')):
+            for item in (data['inputs']):
+                data['inputs'][item][itemName] = newValue
+                    
+    tmpFile =  grs_config_file + "_modified"
+    with open(tmpFile, 'w') as f:      
+        json.dump(data, f, sort_keys = True, indent = 2, ensure_ascii=True)
+               
+    return tmpFile        
+                
+                
 def get_GRS_stream_names_from_config_file(grs_config_file):
     """get the stream names from grs config files
     Argument : 
@@ -577,25 +600,38 @@ def backup_remote_cfg_file(searchdir,cfgfile,suffix='.backup'):
     
     return [foundfiles[0], backupfile]
 
-def Get_CHE_Config_Filepath(filename):
-    """Get file path for specific filename from TD Box, we would ignore certain folder e.g.SCWatchdog during search
-    
+
+def Get_CHE_Config_Filepath(filename, *ignorePathFile):
+    """Get file path for specific filename from TD Box.
+       We would ignore certain folder or file in list variable ignorePathFile
+       if ignorePathFile is empty, then SCWatchdog will be ignored during search
+     
     Argument: 
         filename : config filename
-                
+        ignorePathFile: config_grs.json | SCWatchdog
+                 
     Returns: 
-
+ 
     Examples:
     | Get CHE Config Filepath | ddnPublishers.xml 
+    | Get CHE Config Filepath | *_grs.json | config_grs.json | SCWatchdog
     """  
-            
-    cmd = "find " + BASE_DIR + " -type f -name \"" + filename + "\" | grep -v SCWatchdog"
+    ignoresLength = len(ignorePathFile)
+    
+    if ignoresLength > 0:
+        ignoreString = ' | grep -v '.join(map(str, ignorePathFile))
+        ignoreString = ' | grep -v ' + ignoreString
+    else:
+        ignoreString = " | grep -v SCWatchdog"
+                       
+    cmd = "find " + BASE_DIR + " -type f -name " + filename + "  " + ignoreString
     
     stdout, stderr, rc = _exec_command(cmd)
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
-    
+     
     return stdout.strip()
+
 
 def get_FID_ID_by_FIDName(fieldName):
     """get FID ID from TRWF2.DAT based on fidName
