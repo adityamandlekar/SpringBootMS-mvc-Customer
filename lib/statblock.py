@@ -37,33 +37,21 @@ def get_count_from_stat_block(instanceName,statBlock,fieldName):
     
     return int(msgCount)
 
-def get_outputAddress_and_port_for_mte(field='multicast',labelID=''):
+def get_outputAddress_and_port_for_mte(field='multicast'):
     """Get ip address (based on type) and port for TD MTE
     
     field      : 'multicast', 'primary', 'secondary'
-    lableID    : target label ID
     Returns    : list = [ip,port] 
 
     Examples:
     | get ip address and port for MTE |
     | get ip address and port for MTE | primary   |
     | get ip address and port for MTE | secondary |
-    | get ip address and port for MTE | multicast | 8070
     """                  
             
     statblockNames = get_stat_blocks_for_category(MTE, 'OutputStats')
-
-    if (len(labelID) == 0):
-        ipAndPort = get_stat_block_field(MTE, statblockNames[-1], field + 'OutputAddress').strip().split(':')
-    else:
-        ipAndPort = ""
-        statblockNameCheck = "multicast-" + labelID
-        for statblockName in statblockNames:
-            if (statblockName == statblockNameCheck):
-                ipAndPort = get_stat_block_field(MTE, statblockName, field + 'OutputAddress').strip().split(':')
-        if (len(ipAndPort) == 0):
-            raise AssertionError('*ERROR* Fail to obatin OutputAddress and port for label ID [%s]'%(labelID))
-
+                               
+    ipAndPort = get_stat_block_field(MTE, statblockNames[-1], field + 'OutputAddress').strip().split(':')
     if (len(ipAndPort) != 2):            
         raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port, got [%s]'%(field,':'.join(ipAndPort)))
     
@@ -75,10 +63,9 @@ def get_stat_block_field(writerName, blockName, fieldName):
     Example:
     | ${field}= | get stat block field  | ${mte}  | FMS  |  lastReorgType  |
     """
-        
+            
     cmd = "%s -f %s %s %s | grep 'Value:' | sed -n -e '/^Value:/s/^Value:[\t ]*//p' " %(utilpath.STATBLOCKFIELDREADER, writerName, blockName, fieldName)
     stdout, stderr, rc = _exec_command(cmd)
-
 #         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
