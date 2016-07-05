@@ -163,7 +163,7 @@ Verify SPS RIC is published
     ${SPSric_input_stats}=    set variable    ${SPSric}_INS
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
-    Start Capture MTE Output    ${remoteCapture}
+    Start Capture MTE Output    ${remoteCapture}    DDNA    @{labelIDs}[0]
     Stop Capture MTE Output    5    10
     get remote file    ${remoteCapture}    ${localCapture}
     Verify Unsolicited Response in Capture    ${localCapture}    ${SPSric}    SERVICE_PROVIDER_STATUS    0
