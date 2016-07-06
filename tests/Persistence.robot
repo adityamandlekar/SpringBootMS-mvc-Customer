@@ -94,8 +94,10 @@ Verify FilterString FID usage
     ${mteConfigFile}=    Get MTE Config File
     ${serviceName}=    Get FMS Service Name
     ${fmsFilterString}=    Get MTE Config Value    ${mteConfigFile}    FMS    ${serviceName}    FilterString
-    :FOR    ${fid}    IN    @{unexpectedFIDs}
-    \    Should Not Contain    ${fmsFilterString}    ${fid}
+    ${withoutPunctuation}=    Replace String Using Regexp    ${fmsFilterString}    \\W+    ${SPACE}
+    ${filterAsList}=    Split String    ${withoutPunctuation}
+    : FOR    ${fid}    IN    @{unexpectedFIDs}
+    \    Should Not Contain    ${filterAsList}    ${fid}
 
 Verify New Item Added to Persist File via FMS
     [Documentation]    Add new RIC to EXL, load the EXL file, use PMT to dump persist file and check if new RIC exists in the dump file.
