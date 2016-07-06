@@ -52,7 +52,7 @@ def get_outputAddress_and_port_for_mte(field='multicast',labelID=''):
     """                  
             
     statblockNames = get_stat_blocks_for_category(MTE, 'OutputStats')
-
+                               
     if (len(labelID) == 0):
         ipAndPort = get_stat_block_field(MTE, statblockNames[-1], field + 'OutputAddress').strip().split(':')
     else:
@@ -75,7 +75,7 @@ def get_stat_block_field(writerName, blockName, fieldName):
     Example:
     | ${field}= | get stat block field  | ${mte}  | FMS  |  lastReorgType  |
     """
-        
+            
     cmd = "%s -f %s %s %s | grep 'Value:' | sed -n -e '/^Value:/s/^Value:[\t ]*//p' " %(utilpath.STATBLOCKFIELDREADER, writerName, blockName, fieldName)
     stdout, stderr, rc = _exec_command(cmd)
 
