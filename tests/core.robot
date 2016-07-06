@@ -787,7 +787,7 @@ Set Trade Time In EXL
     modify EXL    ${dstFile}    ${dstFile}    ${ric}    ${domain}    <it:${tradeDay}_TR_CLOSE>${endTime}</it:${tradeDay}_TR_CLOSE>
 
 Start Capture MTE Output
-    [Arguments]    ${filename}=/tmp/capture.pcap    ${ddn}=DDNA    ${labelID}=''
+    [Arguments]    ${filename}=/tmp/capture.pcap    ${ddn}=DDNA    ${labelID}=${EMPTY}
     [Documentation]    Start capture MTE output
     ${interfaceName}=    get interface name by alias    ${ddn}
     @{IpAndPort}=    get outputAddress and port for mte    multicast    ${labelID}
