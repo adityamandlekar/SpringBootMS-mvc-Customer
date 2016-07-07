@@ -46,6 +46,24 @@ GRS Control by SMF
     wait for process to exist    GRS
     [Teardown]    start smf
 
+GRS Writes to PCAP on Exit
+    [Documentation]    Verify that the GRS writes messages from its buffer to a PCAP file upon exit.
+    ...    1. Delete GRS PCAP files
+    ...    2. Reset sequence numbers
+    ...    3. Inject generic PCAP file
+    ...    4. Stop GRS
+    ...    5. Verify GRS PCAP file is created
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2119
+    Reset Sequence Numbers
+    ${service}=    Get FMS Service Name
+    ${injectFile}=    Generate PCAP File Name    ${service}    General RIC Update
+    ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}
+    Stop Process    GRS
+    ${files}    Search Remote Files    ${BASE_DIR}    *.pcap    ${True}
+    Should Not Be Empty    ${files}
+    [Teardown]    Run Keyword    Start Process    GRS
+
 GRS Writes to PCAP When Buffer Full
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1997
     ...
