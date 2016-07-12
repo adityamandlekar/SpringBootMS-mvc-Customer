@@ -127,10 +127,17 @@ def run_dataview_noblanks(dataType, multicastIP, interfaceIP, multicastPort, Lin
     cmd = 'set -o pipefail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (utilpath.DATAVIEW, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
     cmd = cmd + ' ' + ' '.join( map(str, optArgs))
     cmd = cmd + ' | tr -dc \'[:print:],[:blank:],\\n\''
-    cmd = cmd + ' | grep -v \'<blank>\''
+    #cmd = cmd + ' | grep -v \'<blank>\''
     print '*INFO* ' + cmd
     stdout, stderr, rc = _exec_command(cmd)
-            
+    
+    #We only do grep if the return stdout is non-empty
+    #This is because DataView by default using stderr to show some statistic information i.e. len(stderr) always > 0
+    if (len(stdout) != 0):
+        cmd = cmd + ' | grep -v \'<blank>\''
+        print '*INFO* ' + cmd
+        stdout, stderr, rc = _exec_command(cmd)
+
     if rc != 0:
         raise AssertionError('*ERROR* %s' %stderr)    
     

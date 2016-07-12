@@ -704,6 +704,8 @@ Send TRWF2 Refresh Request
     \    ${res}=    Run Dataview    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]
     \    ...    ${lineID}    ${ric}    ${domain}    -REF    -IMSG ${reqMsgMultcastAddres[0]}
     \    ...    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10    @{optargs}
+    \    ${resLength} =    Get Length    ${res}
+    \    Exit For Loop If    ${resLength} > 0
     Remove Files    ${labelfile}    ${updatedlabelfile}
     [Return]    ${res}
 
@@ -734,6 +736,8 @@ Send TRWF2 Refresh Request No Blank FIDs
     \    ${res}=    Run Dataview Noblanks    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]
     \    ...    ${lineID}    ${ric}    ${domain}    -REF    -IMSG ${reqMsgMultcastAddres[0]}
     \    ...    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10    @{optargs}
+    \    ${resLength} =    Get Length    ${res}
+    \    Exit For Loop If    ${resLength} > 0
     Remove Files    ${labelfile}    ${updatedlabelfile}
     [Return]    ${res}
 
