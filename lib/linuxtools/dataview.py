@@ -1,4 +1,5 @@
 import string
+import re
 
 from utilpath import utilpath
 from utils.ssh import _exec_command
@@ -127,21 +128,17 @@ def run_dataview_noblanks(dataType, multicastIP, interfaceIP, multicastPort, Lin
     cmd = 'set -o pipefail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s ' % (utilpath.DATAVIEW, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain)
     cmd = cmd + ' ' + ' '.join( map(str, optArgs))
     cmd = cmd + ' | tr -dc \'[:print:],[:blank:],\\n\''
-    #cmd = cmd + ' | grep -v \'<blank>\''
     print '*INFO* ' + cmd
     stdout, stderr, rc = _exec_command(cmd)
     
     #We only do grep if the return stdout is non-empty
     #This is because DataView by default using stderr to show some statistic information i.e. len(stderr) always > 0
-    if (len(stdout) != 0):
-        cmd = cmd + ' | grep -v \'<blank>\''
-        print '*INFO* ' + cmd
-        stdout, stderr, rc = _exec_command(cmd)
-
     if rc != 0:
-        raise AssertionError('*ERROR* %s' %stderr)    
-    
-    return stdout
+        raise AssertionError('*ERROR* %s' %stderr)
+
+    noBlanks = re.sub('.*<blank>\n','',stdout)
+   
+    return noBlanks
 
 def verify_mangling_from_dataview_response(dataview_response,expected_pe,expected_ricname):
     """ Based on the DataView response to check if the expected Ric could be retrieved from MTE and having expected PE value
