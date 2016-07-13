@@ -209,7 +209,7 @@ Verify DDS RIC is published
     : FOR    ${labelID}    IN    @{labelIDs}
     \    ${published_DDS_ric}=    Get DDS RIC    ${labelID}    ${instance}
     \    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
-    \    Start Capture MTE Output    ${remoteCapture}
+    \    Start Capture MTE Output    ${remoteCapture}    DDNA    ${labelID}
     \    Stop Capture MTE Output    11    11
     \    get remote file    ${remoteCapture}    ${localCapture}
     \    Verify Unsolicited Response in Capture    ${localCapture}    ${published_DDS_ric}    TIMING_LOG    0
