@@ -1500,7 +1500,7 @@ def _verify_response_message_num_with_constnum(pcapfile,ricname,constnum):
 # Keywords that use remote MTE output message capture file
 #############################################################################
 
-def start_capture_packets(outputfile,interface,ipAndPorts='',protocol='UDP'):
+def start_capture_packets(outputfile,interface,ipAndPorts=None,protocol='UDP'):
     """start capture packets by using tcpdump
 
     Argument 
@@ -1530,7 +1530,7 @@ def start_capture_packets(outputfile,interface,ipAndPorts='',protocol='UDP'):
     stdout, stderr, rc = _exec_command(cmd)
   
     cmd = ''
-    if (len(ipAndPorts) > 0):
+    if (ipAndPorts != None):
         if (len(ipAndPorts) % 2 == 0):
             cmd = 'tcpdump -i ' + interface + ' -s0 \''
             for index in range(0,len(ipAndPorts),2):
@@ -1541,7 +1541,7 @@ def start_capture_packets(outputfile,interface,ipAndPorts='',protocol='UDP'):
         else:
             raise AssertionError('*ERROR* Expected format of ipAndPorts is a list with [ip,port,ip,port]. The size of list is not a even number (size = %d)' %len(ipAndPorts))
     else:     
-        cmd = 'tcpdump -i' + interface + '-s0 ' + protocol +  '-w ' + outputfile
+        cmd = 'tcpdump -i ' + interface + ' -s0 ' + protocol +  ' -w ' + outputfile
     
     print '*INFO* ' + cmd    
     _start_command(cmd)

@@ -37,7 +37,7 @@ def get_count_from_stat_block(instanceName,statBlock,fieldName):
     
     return int(msgCount)
 
-def get_outputAddress_and_port_for_mte(field='multicast',labelIDs=''):
+def get_outputAddress_and_port_for_mte(labelIDs,field='multicast'):
     """Get ip address (based on type) and port for TD MTE
     
     field      : 'multicast', 'primary', 'secondary'
@@ -54,7 +54,7 @@ def get_outputAddress_and_port_for_mte(field='multicast',labelIDs=''):
     statblockNames = get_stat_blocks_for_category(MTE, 'OutputStats')
                                    
     if (len(labelIDs) == 0):
-        ipAndPortList = get_stat_block_field(MTE, statblockNames[-1], field + 'OutputAddress').strip().split(':')
+        raise AssertionError('*ERROR* labelIDs list is empty [%s]'%(labelID))
     else:
         ipAndPortList = []
         for labelID in labelIDs:
@@ -63,8 +63,6 @@ def get_outputAddress_and_port_for_mte(field='multicast',labelIDs=''):
             for statblockName in statblockNames:
                 if (statblockName == statblockNameCheck):
                     ipAndPort = get_stat_block_field(MTE, statblockName, field + 'OutputAddress').strip().split(':')
-            if (len(ipAndPort) == 0):
-                raise AssertionError('*ERROR* Fail to obatin OutputAddress and port for label ID [%s]'%(labelID))
             if (len(ipAndPort) != 2):            
                 raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port, got [%s]'%(field,':'.join(ipAndPort)))
     
