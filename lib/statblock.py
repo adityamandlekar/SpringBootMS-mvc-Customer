@@ -37,20 +37,17 @@ def get_count_from_stat_block(instanceName,statBlock,fieldName):
     
     return int(msgCount)
 
-def get_outputAddress_and_port_for_mte(labelIDs,field='multicast'):
+def get_outputAddress_and_port_for_mte(labelIDs):
     """Get ip address (based on type) and port for TD MTE
     
-    field      : 'multicast', 'primary', 'secondary'
-    lableID    : target label IDs in a list
+    lableIDs    : target label IDs in a list
     Returns    : list = [ip1,port1,ip2,port2...] 
 
     Examples:
-    | get ip address and port for MTE |
-    | get ip address and port for MTE | primary   |
-    | get ip address and port for MTE | secondary |
-    | get ip address and port for MTE | multicast | [8070]
+    | get ip address and port for MTE | [8070]
     """                  
-            
+
+    field='multicast'            
     statblockNames = get_stat_blocks_for_category(MTE, 'OutputStats')
                                    
     if (len(labelIDs) == 0):
