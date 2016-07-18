@@ -1499,21 +1499,20 @@ def _verify_response_message_num_with_constnum(pcapfile,ricname,constnum):
 #############################################################################
 # Keywords that use remote MTE output message capture file
 #############################################################################
-                 
-def start_capture_packets(outputfile,interface,ip,port,protocol='UDP'):
+
+def start_capture_packets(outputfile,interface,ipAndPorts=None,protocol='UDP'):
     """start capture packets by using tcpdump
 
     Argument 
     outputfile : outputfilename fullpath
-    interface : the nic interface name e.g. eth1
-    ip : 'source' ip for data capture
-    port : port for data capture
-    protocol : protocol for data capture
+    interface  : the nic interface name e.g. eth1
+    ipAndPorts : list of ip and port , format is [ip,port,ip,port]
+    protocol   : protocol for data capture
 
     Returns NIL.
 
     Examples:
-    | start capture packets | mte.output.pcap | eth0 | 232.2.1.0 | 7777 |
+    | start capture packets | mte.output.pcap | eth0 | [232.2.1.0, 7777] |
      """
 
     #Pre Checking
@@ -1531,10 +1530,18 @@ def start_capture_packets(outputfile,interface,ip,port,protocol='UDP'):
     stdout, stderr, rc = _exec_command(cmd)
   
     cmd = ''
-    if (len(ip) > 0 and len(port) > 0):
-        cmd = 'tcpdump -i ' + interface + ' -s0 \'(host ' + ip +  ' and port ' + port  + ')\' -w ' + outputfile
+    if (ipAndPorts != None):
+        if (len(ipAndPorts) % 2 == 0):
+            cmd = 'tcpdump -i ' + interface + ' -s0 \''
+            for index in range(0,len(ipAndPorts),2):
+                if (index > 0):
+                    cmd = cmd + " or "
+                cmd = cmd + '(host ' + ipAndPorts[index] +  ' and port ' + ipAndPorts[index + 1]  + ')'
+            cmd = cmd + '\' -w ' + outputfile
+        else:
+            raise AssertionError('*ERROR* Expected format of ipAndPorts is a list with [ip,port,ip,port]. The size of list is not a even number (size = %d)' %len(ipAndPorts))
     else:     
-        cmd = 'tcpdump -i' + interface + '-s0 ' + protocol +  '-w ' + outputfile
+        cmd = 'tcpdump -i ' + interface + ' -s0 ' + protocol +  ' -w ' + outputfile
     
     print '*INFO* ' + cmd    
     _start_command(cmd)
@@ -1544,7 +1551,7 @@ def start_capture_packets(outputfile,interface,ip,port,protocol='UDP'):
     checkList = _check_process(['tcpdump'])
     if (len(checkList[1]) > 0):
         raise AssertionError('*ERROR* Fail to start cmd=%s ' %cmd)
-                
+                                
 def stop_capture_packets():
     """stop capture packets by using tcpdump
     Argument NIL

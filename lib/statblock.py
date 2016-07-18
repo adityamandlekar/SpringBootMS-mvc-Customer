@@ -37,37 +37,36 @@ def get_count_from_stat_block(instanceName,statBlock,fieldName):
     
     return int(msgCount)
 
-def get_outputAddress_and_port_for_mte(field='multicast',labelID=''):
+def get_outputAddress_and_port_for_mte(labelIDs):
     """Get ip address (based on type) and port for TD MTE
     
-    field      : 'multicast', 'primary', 'secondary'
-    lableID    : target label ID
-    Returns    : list = [ip,port] 
+    lableIDs    : target label IDs in a list
+    Returns    : list = [ip1,port1,ip2,port2...] 
 
     Examples:
-    | get ip address and port for MTE |
-    | get ip address and port for MTE | primary   |
-    | get ip address and port for MTE | secondary |
-    | get ip address and port for MTE | multicast | 8070
+    | get ip address and port for MTE | [8070]
     """                  
-            
-    statblockNames = get_stat_blocks_for_category(MTE, 'OutputStats')
-                               
-    if (len(labelID) == 0):
-        ipAndPort = get_stat_block_field(MTE, statblockNames[-1], field + 'OutputAddress').strip().split(':')
-    else:
-        ipAndPort = ""
-        statblockNameCheck = "multicast-" + labelID
-        for statblockName in statblockNames:
-            if (statblockName == statblockNameCheck):
-                ipAndPort = get_stat_block_field(MTE, statblockName, field + 'OutputAddress').strip().split(':')
-        if (len(ipAndPort) == 0):
-            raise AssertionError('*ERROR* Fail to obatin OutputAddress and port for label ID [%s]'%(labelID))
 
-    if (len(ipAndPort) != 2):            
-        raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port, got [%s]'%(field,':'.join(ipAndPort)))
+    field='multicast'            
+    statblockNames = get_stat_blocks_for_category(MTE, 'OutputStats')
+                                   
+    if (len(labelIDs) == 0):
+        raise AssertionError('*ERROR* labelIDs list is empty [%s]'%(labelID))
+    else:
+        ipAndPortList = []
+        for labelID in labelIDs:
+            ipAndPort = []
+            statblockNameCheck = "multicast-" + labelID
+            for statblockName in statblockNames:
+                if (statblockName == statblockNameCheck):
+                    ipAndPort = get_stat_block_field(MTE, statblockName, field + 'OutputAddress').strip().split(':')
+            if (len(ipAndPort) != 2):            
+                raise AssertionError('*ERROR* Fail to obatin %sOutputAddress and port, got [%s]'%(field,':'.join(ipAndPort)))
     
-    return ipAndPort
+            ipAndPortList.append(ipAndPort[0])
+            ipAndPortList.append(ipAndPort[1])
+
+    return ipAndPortList
 
 def get_stat_block_field(writerName, blockName, fieldName):
     """Returns the specified Stat Block field value.

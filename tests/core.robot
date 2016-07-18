@@ -816,11 +816,17 @@ Set Trade Time In EXL
     modify EXL    ${dstFile}    ${dstFile}    ${ric}    ${domain}    <it:${tradeDay}_TR_CLOSE>${endTime}</it:${tradeDay}_TR_CLOSE>
 
 Start Capture MTE Output
-    [Arguments]    ${filename}=/tmp/capture.pcap    ${ddn}=DDNA    ${labelID}=${EMPTY}
+    [Arguments]    ${filename}=/tmp/capture.pcap    ${ddn}=DDNA    @{labelID}
     [Documentation]    Start capture MTE output
+    ...
+    ...    Remark :
+    ...    1. If ${labelID} is empty , we assume to capture all multicast ips and ports for all label IDs that available
     ${interfaceName}=    get interface name by alias    ${ddn}
-    @{IpAndPort}=    get outputAddress and port for mte    multicast    ${labelID}
-    start capture packets    ${filename}    ${interfaceName}    @{IpAndPort}
+    ${labelIDLength}    Get Length    ${labelID}
+    ${labelIDsUse}    Run Keyword If    ${labelIDLength} == 0    Get Label IDs
+    ...    ELSE    Create List    @{labelID}
+    @{IpAndPort}=    get outputAddress and port for mte    ${labelIDsUse}
+    start capture packets    ${filename}    ${interfaceName}    ${IpAndPort}
 
 Start MTE
     [Documentation]    Start the MTE and wait for initialization to complete.
