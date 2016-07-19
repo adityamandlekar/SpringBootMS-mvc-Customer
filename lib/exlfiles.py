@@ -164,22 +164,33 @@ def blank_out_holidays(srcExlFile, destExlFile):
 
     return 0
 
-def build_LXL_file (exl_path_in_lxl, file_list):  
+def build_LXL_file (exlFileNeedToRemove):  
     '''
     Argument:    
-                exl_path_in_lxl : exl path get from by calling get_exl_file_path_for_lxl_file
-                file_list : the exl file name list (without full path).\n
+                exlFileNeedToRemove : exlFilename that need to exclude in LxL file
+
     return: 
                 string contain lxl file content with list of exl file path and name
     
     '''
+   
+    exlFilesFullPath = _get_EXL_files("All")
+
     file_content = ''
-    for item in file_list:
-        if exl_path_in_lxl:
-            file_content = file_content + exl_path_in_lxl + item + '\n'
-        else:
-            file_content = file_content + item + '\n'
-            
+    for exlFileFullPath in exlFilesFullPath:
+
+        #extract only the exl file path
+        exlFileFullPathSplit = exlFileFullPath.split("\\")
+        exlFile = exlFileFullPathSplit[-1]
+        exlFileFullPathSplit.remove(exlFile)
+        sep = "\\"
+        exlFilePath = sep.join(exlFileFullPathSplit)
+
+        #convert proper exl file path for LxL file
+        exlFilePathNew = _get_exl_file_path_for_lxl_file(exlFilePath)
+        if (exlFileNeedToRemove != exlFile):
+            file_content = file_content + exlFilePathNew + exlFile + '\n'
+
     return file_content
 
 def get_DST_and_holiday_RICs_from_EXL(exlFile,ricName):
@@ -191,7 +202,7 @@ def get_DST_and_holiday_RICs_from_EXL(exlFile,ricName):
     
     return get_ric_fields_from_EXL(exlFile,ricName,'DST_REF','HOLIDAYS_REF1')
 
-def get_exl_file_path_for_lxl_file(exl_path): 
+def _get_exl_file_path_for_lxl_file(exl_path): 
     """Deriving exl path for lxl file from exl full file path
              
     Argument:    
@@ -199,28 +210,49 @@ def get_exl_file_path_for_lxl_file(exl_path):
 
     return:
                 exl directory required by lxl file without file name
+
+                Remark: FMSCMD can only hanlde following struture of directory for path found in Lxl file
+
+                1. All EXL Files must be found within "EXL Files" folder
+
+                if exl_path D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\MUT\\ABC Files
+                return error
+
+                if exl_path D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\MUT\\
+                return error
+
+                2. There must be a subfolder under the service name folder e.g. \\MFDS\\MUT
+                D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\MUT\\EXL Files
+
+                if exl_path D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\EXL Files
+                return error
+
                 Example:
                 LOCAL_FMS_DIR  is D:\\tools\\FMSCMD\\config\\DataFiles\\Groups
-                if exl_path D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\EXL Files
-                return empty path 
                 if exl_file D:\\tools\\FMSCMD\\config\\DataFiles\\Groups\\RAM\\MFDS\\MUT\\EXL Files
                 return path RAM/MFDS/MUT/
     """  
+    
+    #Check #1
+    split_path = exl_path.split("\\")
+    if (split_path[-1] != "EXL Files"):
+        raise AssertionError('*ERROR* \'EXL Files\' folder not found in exl path [%s]. This does not fulfill FMSCMD requirements for reconcile by LXL file' %(exl_path))
         
     new_path = exl_path.replace(LOCAL_FMS_DIR + "\\",'').replace('EXL Files','')
     nodes = new_path.split("\\")   
     nodes = filter(None, nodes)
-     
+
+    #Check #2
     if len(nodes)<2:
         raise AssertionError('*ERROR* Cannot determine LXL path based on FMS dir [%s] and EXL path [%s]' %(LOCAL_FMS_DIR, exl_path))
      
     if len(nodes)==2:
-        return ''
+        raise AssertionError('*ERROR* Sub-folder not found under the service name [%s]. This does not fulfill FMSCMD requirements for reconcile by LXL file' %(new_path))
     else:
         new_path = new_path.replace('\\','/')
         
     return new_path
-
+    
 def get_EXL_for_RIC(domain, service, ric):
     """ Find the EXL file with the specified RIC, domain, and service
         
