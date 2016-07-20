@@ -180,11 +180,9 @@ def build_LXL_file (exlFileNeedToRemove):
     for exlFileFullPath in exlFilesFullPath:
 
         #extract only the exl file path
-        exlFileFullPathSplit = exlFileFullPath.split("\\")
-        exlFile = exlFileFullPathSplit[-1]
-        exlFileFullPathSplit.remove(exlFile)
-        sep = "\\"
-        exlFilePath = sep.join(exlFileFullPathSplit)
+        exlFileFullPathSplit = exlFileFullPath.rsplit("\\",1)
+        exlFilePath = exlFileFullPathSplit[0]
+        exlFile     = exlFileFullPathSplit[-1]
 
         #convert proper exl file path for LxL file
         exlFilePathNew = _get_exl_file_path_for_lxl_file(exlFilePath)
