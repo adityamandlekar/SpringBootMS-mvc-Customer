@@ -181,19 +181,16 @@ Drop a RIC by deleting EXL file from LXL file
     ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
     ${service_dir}    Fetch From Left    ${exlFilePath}    \\${service}\\
     ${recon_files_dir}=    set variable    ${service_dir}\\${service}\\System Files\\Reconcile Files
-    ${exl_path_in_lxl}=    Get exl file path for lxl file    ${exlFilePath}
     ${tmp_lxl}    set variable    ${recon_files_dir}\\tmp.lxl
-    ${exl_file_list} =    List Files In Directory    ${exlFilePath}    *.exl
-    Remove Values From List    ${exl_file_list}    ${exlFileName}
-    ${lxl_content}=    Build LXL File    ${exl_path_in_lxl}    ${exl_file_list}
+    ${lxl_content}=    Build LXL File    ${exlFileName}
     Create File    ${tmp_lxl}    ${lxl_content}
-    Run FmsCmd    ${CHE_IP}    Recon    --Services ${service}    --InputFile "${tmp_lxl}"    --HandlerName ${MTE}    UseReconcileLXL true
+    Run FmsCmd    ${CHE_IP}    Recon    --Services ${service}    --InputFile "${tmp_lxl}"    --HandlerName ${MTE}    --UseReconcileLXL true
     Wait For Persist File Update
     Run Keyword And Continue On Failure    Verify RIC is Dropped In MTE Cache    ${ric}
     Run FmsCmd    ${CHE_IP}    UnDrop    --Services ${service}    --InputFile "${exlFullFileName}"    --HandlerName ${MTE}
     Wait For Persist File Update
     Verify RIC In MTE Cache    ${ric}
-    [Teardown]    case teardown    ${tmp_lxl}
+    [Teardown]    Remove Files    ${tmp_lxl}
 
 Verify Reconcile of Cache
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1848
