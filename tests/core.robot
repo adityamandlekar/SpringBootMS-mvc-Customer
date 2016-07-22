@@ -585,6 +585,47 @@ Load All EXL Files
     ...    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS files \ ${returnedStdOut}
 
+Load All State EXL Files
+    [Arguments]    ${headendIP}
+    [Documentation]    Load the state EXL Files (Feed, Trade, and Holiday).
+    ...
+    ...    If Recon is changed to set ResendFM=0 in the MTE config file, this KW will no longer be needed, as Start MTE will need to load all the EXL files on startup, which will include the state EXL files.
+    ${statRicDomain}=    Set Variable    MARKET_PRICE
+    ${serviceName}=    get FMS service name
+    ${mteConfigFile}=    Get MTE Config File
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
+    @{highActivityIdentifierList}=    Get HighActivityTimesIdentifier    ${mteConfigFile}
+    @{feedEXLFiles}=    Create List
+    @{holidayEXLFiles}=    Create List
+    @{tradeEXLFiles}=    Create List
+    Comment    Feed Time
+    : FOR    ${ric}    IN    @{connectTimesIdentifierList}
+    \    ${exlFile}    get state EXL file    ${ric}    ${statRicDomain}    ${serviceName}    Feed Time
+    \    Modify EXL    ${exlFile}    ${exlFile}    ${ric}    ${statRicDomain}    @{edits}
+    \    Append To List    ${feedEXLFiles}    ${exlFile}
+    \    Comment    Get associated holiday EXL
+    \    ${unused}    ${holidayRic}    Get DST And Holiday RICs From EXL    ${exlFile}    ${ric}
+    \    ${holidayEXL}=    get state EXL file    ${holidayRic}    ${statRicDomain}    ${serviceName}    Holiday
+    \    Append To List    ${holidayEXLFiles}    ${holidayEXL}
+    Comment    Trade Time
+    : FOR    ${ric}    IN    @{highActivityIdentifierList}
+    \    ${exlFile}    get state EXL file    ${ric}    ${statRicDomain}    ${serviceName}    Trade Time
+    \    Append To List    ${tradeEXLFiles}    ${exlFile}
+    \    Comment    Get associated holiday EXL
+    \    ${unused}    ${holidayRic}    Get DST And Holiday RICs From EXL    ${exlFile}    ${ric}
+    \    ${holidayEXL}=    get state EXL file    ${holidayRic}    ${statRicDomain}    ${serviceName}    Holiday
+    \    Append To List    ${holidayEXLFiles}    ${holidayEXL}
+    ${feedEXLFiles}    Remove Duplicates    ${feedEXLFiles}
+    ${tradeEXLFiles}    Remove Duplicates    ${tradeEXLFiles}
+    ${holidayEXLFiles}    Remove Duplicates    ${holidayEXLFiles}
+    : FOR    ${exlFile}    IN    @{feedEXLFiles}
+    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${headendIP}
+    : FOR    ${exlFile}    IN    @{tradeEXLFiles}
+    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${headendIP}
+    : FOR    ${exlFile}    IN    @{holidayEXLFiles}
+    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${headendIP}
+    [Teardown]
+
 Load List of EXL Files
     [Arguments]    ${exlFiles}    ${serviceName}    ${headendIP}    @{optargs}
     : FOR    ${exlFiles}    IN    @{exlFiles}
