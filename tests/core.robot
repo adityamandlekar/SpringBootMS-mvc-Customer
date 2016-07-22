@@ -45,6 +45,7 @@ MTE Machine Setup
     Set Suite Variable    ${CHE_IP}    ${ip}
     start smf
     setUtilPath
+    Set 24x7 Feed And Trade Time And No Holidays
     Start MTE
     [Return]    ${ret}
 
