@@ -586,7 +586,7 @@ Load All EXL Files
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS files \ ${returnedStdOut}
 
 Load All State EXL Files
-    [Arguments]    ${headendIP}
+    [Arguments]    ${headendIP}=${CHE_IP}
     [Documentation]    Load the state EXL Files (Feed, Trade, and Holiday).
     ...
     ...    If Recon is changed to set ResendFM=0 in the MTE config file, this KW will no longer be needed, as Start MTE will need to load all the EXL files on startup, which will include the state EXL files.
@@ -601,7 +601,6 @@ Load All State EXL Files
     Comment    Feed Time
     : FOR    ${ric}    IN    @{connectTimesIdentifierList}
     \    ${exlFile}    get state EXL file    ${ric}    ${statRicDomain}    ${serviceName}    Feed Time
-    \    Modify EXL    ${exlFile}    ${exlFile}    ${ric}    ${statRicDomain}    @{edits}
     \    Append To List    ${feedEXLFiles}    ${exlFile}
     \    Comment    Get associated holiday EXL
     \    ${unused}    ${holidayRic}    Get DST And Holiday RICs From EXL    ${exlFile}    ${ric}
