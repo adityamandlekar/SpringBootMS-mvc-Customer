@@ -741,6 +741,50 @@ Send TRWF2 Refresh Request No Blank FIDs
     Remove Files    ${labelfile}    ${updatedlabelfile}
     [Return]    ${res}
 
+Set 24x7 Feed And Trade Time And No Holidays
+    [Documentation]    Udate EXL files to define feed time and trade time to always be open and no holidays. This KW does not load the EXL files, just modifies them. Start MTE KW loads the EXL files.
+    ...    For all trade time RICs:
+    ...    Set start of trade time to 00:00:00 and end of feed time to 23:59:59 for all days of the week.
+    ...    For all feed time RICs:
+    ...    Set start of feed time to 00:00:00 and end of feed time to 23:59:59 for all days of the week.
+    ...    For all holidays:
+    ...    Blank out all holidays.
+    ${statRicDomain}=    Set Variable    MARKET_PRICE
+    ${serviceName}=    get FMS service name
+    ${mteConfigFile}=    Get MTE Config File
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
+    @{highActivityIdentifierList}=    Get HighActivityTimesIdentifier    ${mteConfigFile}
+    @{holidayEXLFiles}=    Create List
+    ${start}=    Set Variable    00:00:00
+    ${end}=    Set Variable    23:59:59
+    @{edits}=    Create List    <it:SUN_FD_OPEN>${start}</it:SUN_FD_OPEN>    <it:SUN_FD_CLOSE>${end}</it:SUN_FD_CLOSE>    <it:MON_FD_OPEN>${start}</it:MON_FD_OPEN>    <it:MON_FD_CLOSE>${end}</it:MON_FD_CLOSE>    <it:TUE_FD_OPEN>${start}</it:TUE_FD_OPEN>
+    ...    <it:TUE_FD_CLOSE>${end}</it:TUE_FD_CLOSE>    <it:WED_FD_OPEN>${start}</it:WED_FD_OPEN>    <it:WED_FD_CLOSE>${end}</it:WED_FD_CLOSE>    <it:THU_FD_OPEN>${start}</it:THU_FD_OPEN>    <it:THU_FD_CLOSE>${end}</it:THU_FD_CLOSE>    <it:FRI_FD_OPEN>${start}</it:FRI_FD_OPEN>
+    ...    <it:FRI_FD_CLOSE>${end}</it:FRI_FD_CLOSE>    <it:SAT_FD_OPEN>${start}</it:SAT_FD_OPEN>    <it:SAT_FD_CLOSE>${end}</it:SAT_FD_CLOSE>
+    Comment    Feed Time
+    : FOR    ${ric}    IN    @{connectTimesIdentifierList}
+    \    ${exlFile}    get state EXL file    ${ric}    ${statRicDomain}    ${serviceName}    Feed Time
+    \    Modify EXL    ${exlFile}    ${exlFile}    ${ric}    ${statRicDomain}    @{edits}
+    \    Comment    Get associated holiday EXL
+    \    ${unused}    ${holidayRic}    Get DST And Holiday RICs From EXL    ${exlFile}    ${ric}
+    \    ${holidayEXL}=    get state EXL file    ${holidayRic}    ${statRicDomain}    ${serviceName}    Holiday
+    \    Append To List    ${holidayEXLFiles}    ${holidayEXL}
+    Comment    Trade Time
+    @{edits}=    Create List    <it:SUN_TR_OPEN>${start}</it:SUN_TR_OPEN>    <it:SUN_TR_CLOSE>${end}</it:SUN_TR_CLOSE>    <it:MON_TR_OPEN>${start}</it:MON_TR_OPEN>    <it:MON_TR_CLOSE>${end}</it:MON_TR_CLOSE>    <it:TUE_TR_OPEN>${start}</it:TUE_TR_OPEN>
+    ...    <it:TUE_TR_CLOSE>${end}</it:TUE_TR_CLOSE>    <it:WED_TR_OPEN>${start}</it:WED_TR_OPEN>    <it:WED_TR_CLOSE>${end}</it:WED_TR_CLOSE>    <it:THU_TR_OPEN>${start}</it:THU_TR_OPEN>    <it:THU_TR_CLOSE>${end}</it:THU_TR_CLOSE>    <it:FRI_TR_OPEN>${start}</it:FRI_TR_OPEN>
+    ...    <it:FRI_TR_CLOSE>${end}</it:FRI_TR_CLOSE>    <it:SAT_TR_OPEN>${start}</it:SAT_TR_OPEN>    <it:SAT_TR_CLOSE>${end}</it:SAT_TR_CLOSE>
+    : FOR    ${ric}    IN    @{highActivityIdentifierList}
+    \    ${exlFile}    get state EXL file    ${ric}    ${statRicDomain}    ${serviceName}    Trade Time
+    \    Modify EXL    ${exlFile}    ${exlFile}    ${ric}    ${statRicDomain}    @{edits}
+    \    Comment    Get associated holiday EXL
+    \    ${unused}    ${holidayRic}    Get DST And Holiday RICs From EXL    ${exlFile}    ${ric}
+    \    ${holidayEXL}=    get state EXL file    ${holidayRic}    ${statRicDomain}    ${serviceName}    Holiday
+    \    Append To List    ${holidayEXLFiles}    ${holidayEXL}
+    ${holidayEXLFiles}    Remove Duplicates    ${holidayEXLFiles}
+    Comment    Holidays
+    : FOR    ${exlFile}    IN    @{holidayEXLFiles}
+    \    Blank Out Holidays    ${exlFile}    ${exlFile}
+    [Teardown]
+
 Set DST Datetime In EXL
     [Arguments]    ${srcFile}    ${dstFile}    ${ric}    ${domain}    ${startDateTime}    ${endDateTime}
     [Documentation]    Set DST datetime in EXL:
