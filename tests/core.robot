@@ -42,6 +42,7 @@ MTE Machine Setup
     [Documentation]    Create ssh connection to an MTE machine and start the components.
     ${ret}    open connection    host=${ip}    port=${CHE_PORT}    timeout=6
     login    ${USERNAME}    ${PASSWORD}
+    Set Suite Variable    ${CHE_IP}    ${ip}
     start smf
     setUtilPath
     Start MTE
