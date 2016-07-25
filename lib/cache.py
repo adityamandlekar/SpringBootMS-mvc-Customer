@@ -146,11 +146,12 @@ def dump_cache(waittime=2, timeout=60):
     LinuxFSUtilities().wait_for_file_write(foundfiles[0],waittime,timeout)
     return foundfiles[0]
 
-def get_all_fields_for_ric_from_cache(ric):
+def get_all_fields_for_ric_from_cache(ric,domain=''):
     """Get the field values from the MTE cache for the specifed RIC.
 
     Arguments:
         ric:   RIC name
+        domain: domain of RIC
      
     Returns a dictionary containing all fields for the RIC.  Returns empty dictionary if RIC not found.
 
@@ -165,17 +166,31 @@ def get_all_fields_for_ric_from_cache(ric):
 #         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
-    ricCol = 0
+    ricCol      = 0
+    domainCol   = 0
     header = stdout.strip().split()
     for i in range(0, len(header)):
         if header[i] == 'RIC':
             ricCol = i+1 # for awk, col numbers start at 1, so add 1 to index
-            break
+            if (domain == ''):
+                break
+        if header[i] == 'DOMAIN':
+            domainCol = i+1 # for awk, col numbers start at 1, so add 1 to index
+            if (ricCol > 0):
+                break
+
     if not ricCol:
         raise AssertionError('*ERROR* Did not find required column name in cache file (RIC)')
+
+    if domain != '' and not domainCol:
+        raise AssertionError('*ERROR* Did not find required column name in cache file (DOMAIN)')
      
     # get all fields for the RIC
-    cmd = "awk -F',' '$%d == \"%s\" {print}' %s" %(ricCol, ric, cacheFile)
+    if (domain == ''):
+        cmd = "awk -F',' '$%d == \"%s\" {print}' %s" %(ricCol, ric, cacheFile)
+    else:
+        domainConverted = _convert_domain_to_cache_format(domain)
+        cmd = "awk -F',' '$%d == \"%s\" && $%d == \"%s\" {print}' %s" %(ricCol, ric, domainCol, domainConverted, cacheFile)
     print '*INFO* cmd=%s' %cmd
     stdout, stderr, rc = _exec_command(cmd)
 #         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
