@@ -57,7 +57,6 @@ Verify PE Change Behavior
 Verify New Item Creation via FMS
     [Documentation]    Verify that a new item can be created by adding it to an EXL file and loading it via FMS
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1711
-    Start MTE
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
@@ -92,7 +91,6 @@ Partial REORG on EXL Change
 
 Verify RIC rename handled correctly
     [Documentation]    Verify RIC rename appeared in the cache dump file and updated persist file
-    start MTE
     Comment    //Setup variables for test
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
@@ -142,7 +140,6 @@ Verify FMS Rebuild
     [Documentation]    Force a rebuild of RIC via FMS and verify that a rebuild message is published for the RIC
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1849
-    Start MTE
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
@@ -251,7 +248,6 @@ Verify SIC rename handled correctly
 Verify FMS Extract and Insert
     [Documentation]    Extract existing RIC fields and values \ into an .icf file using FmsCmd. Modify some of the values and re-load the .icf file using FmsCmd.Verify that the modified values are published.
     ...    Test Case - Verify FMS Extract and Insert : http://www.iajira.amers.ime.reuters.com/browse/CATF-1892
-    Start MTE
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
@@ -292,7 +288,6 @@ Verify Deletion Delay
     ...    Test Case - Verify Deletion Delay
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1891
     [Setup]    Disable MTE Clock Sync
-    start mte
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
@@ -324,7 +319,6 @@ Verify Drop and Undrop from FMSCmd
     ...
     ...    Test Case - Verify Drop/Undrop form FMSCmd
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2009
-    start mte
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
