@@ -41,7 +41,7 @@ Verify PE Change Behavior
     ${EXLfullpath}    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     @{pe}=    get ric fields from EXL    ${EXLfullpath}    ${ric}    PROD_PERM
     ${penew}=    Evaluate    @{pe}[0] - 1
-    Comment    ${penew}=    Convert To String    ${penew}
+    ${penew}=    Convert To String    ${penew}
     ${exlfile}=    Fetch From Right    ${EXLfullpath}    \\
     ${exlmodified} =    set variable    ${LOCAL_TMP_DIR}/${exlfile}_modified.exl
     Set PE in EXL    ${EXLfullpath}    ${exlmodified}    ${penew}
