@@ -43,7 +43,7 @@ Verify PE Change Behavior
     ${penew}=    set variable    @{pe}[0]1
     ${exlfile}=    Fetch From Right    ${EXLfullpath}    \\
     ${exlmodified} =    set variable    ${LOCAL_TMP_DIR}/${exlfile}_modified.exl
-    Set PE in EXL    ${EXLfullpath}    ${exlmodified}    ${penew}
+    Set PE in EXL    ${EXLfullpath}    ${exlmodified}    ${ric}    ${domain}    ${penew}
     Start Capture MTE Output
     Load Single EXL File    ${exlmodified}    ${serviceName}    ${CHE_IP}
     Stop Capture MTE Output    1    15
@@ -366,10 +366,10 @@ Calculate UpdateSince for REORG
     [Return]    ${UpdateSince}
 
 Set PE in EXL
-    [Arguments]    ${srcFile}    ${dstFile}    ${newPE}
+    [Arguments]    ${srcFile}    ${dstFile}    ${ric}    ${domain}    ${newPE}
     [Documentation]    Keyword - Modify PROD_PERM value in header of EXL file
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1718
-    modify exl header    ${srcFile}    ${dstFile}    <it:PROD_PERM>${newPE}</it:PROD_PERM>
+    modify_exl    ${srcFile}    ${dstFile}    ${ric}    ${domain}    <it:PROD_PERM>${newPE}</it:PROD_PERM>
 
 Trigger Partial REORG
     [Arguments]    ${startDateTime}    ${service}
