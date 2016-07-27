@@ -146,7 +146,7 @@ def dump_cache(waittime=2, timeout=60):
     LinuxFSUtilities().wait_for_file_write(foundfiles[0],waittime,timeout)
     return foundfiles[0]
 
-def get_all_fields_for_ric_from_cache(ric,domain=''):
+def get_all_fields_for_ric_from_cache(ric,domain):
     """Get the field values from the MTE cache for the specifed RIC.
 
     Arguments:
@@ -172,7 +172,7 @@ def get_all_fields_for_ric_from_cache(ric,domain=''):
     for i in range(0, len(header)):
         if header[i] == 'RIC':
             ricCol = i+1 # for awk, col numbers start at 1, so add 1 to index
-            if (domain == ''):
+            if (domainCol > 0):
                 break
         if header[i] == 'DOMAIN':
             domainCol = i+1 # for awk, col numbers start at 1, so add 1 to index
@@ -182,7 +182,7 @@ def get_all_fields_for_ric_from_cache(ric,domain=''):
     if not ricCol:
         raise AssertionError('*ERROR* Did not find required column name in cache file (RIC)')
 
-    if domain != '' and not domainCol:
+    if not domainCol:
         raise AssertionError('*ERROR* Did not find required column name in cache file (DOMAIN)')
      
     # get all fields for the RIC

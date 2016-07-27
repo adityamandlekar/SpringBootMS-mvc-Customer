@@ -35,14 +35,13 @@ Verify Long RIC handled correctly
 Verify PE Change Behavior
     [Documentation]    Test Case - Verify PE Change Behavior : http://www.iajira.amers.ime.reuters.com/browse/CATF-1715
     Set Mangling Rule    UNMANGLED
-    @{penewList}=    Create List    1234    5678
     ${domain}    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${EXLfullpath}    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     @{pe}=    get ric fields from EXL    ${EXLfullpath}    ${ric}    PROD_PERM
-    ${penew}=    Run Keyword If    '${pe[0]}' == '${penewList[0]}'    Set Variable    @{penewList}[1]
-    ...    ELSE    Set Variable    @{penewList}[0]
+    ${penew}=    Evaluate    @{pe}[0] - 1
+    Comment    ${penew}=    Convert To String    ${penew}
     ${exlfile}=    Fetch From Right    ${EXLfullpath}    \\
     ${exlmodified} =    set variable    ${LOCAL_TMP_DIR}/${exlfile}_modified.exl
     Set PE in EXL    ${EXLfullpath}    ${exlmodified}    ${penew}

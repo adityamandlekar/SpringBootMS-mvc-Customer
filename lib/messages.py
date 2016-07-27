@@ -423,7 +423,7 @@ def verify_DROP_message_in_itemstatus_messages(pcapfile,ricname,domain):
         3. C63 Item Status, ContainerType value is NoData
         
         Examples:
-        | verify DROP message in itemstatus messages  | C:\\temp\\capture_local.pcap  |  /ThomsonReuters/Venues/ | C:\\Program Files\\Reuters Test Tools\\DAS |   AAAAX.O | MARKET_PRICE           
+        | verify DROP message in itemstatus messages  | C:\\temp\\capture_local.pcap | AAAAX.O | MARKET_PRICE       
     """           
     #Check if pcap file exist
     if (os.path.exists(pcapfile) == False):
@@ -783,7 +783,7 @@ def verify_PE_change_in_message(pcapfile,ricname,oldPEs,newPE,domain):
         4. C63 Response, new PE in header, all payload FIDs included.
         
         Examples:
-        | verify PE change in message  | C:\\temp\\capture_local.pcap  |  /ThomsonReuters/Venues/ | C:\\Program Files\\Reuters Test Tools\\DAS |   AAAAX.O |  2600| 12341 | MARKET_PRICE          
+        | verify PE change in message  | C:\\temp\\capture_local.pcap | AAAAX.O | 2600 | 12341 | MARKET_PRICE     
     """           
     #Check if pcap file exist
     if (os.path.exists(pcapfile) == False):
