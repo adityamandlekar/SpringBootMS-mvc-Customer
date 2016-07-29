@@ -27,82 +27,6 @@ Library           utilpath
 Library           xmlutilities
 
 *** Keywords ***
-Switch To TD Box
-    [Arguments]    ${ip}
-    [Documentation]    To switch the current ssh session to specific CHE_X_IP
-    ${switchBox}    Run Keyword If    '${ip}' == '${CHE_A_IP}'    set variable    ${CHE_A_Session}
-    ...    ELSE IF    '${ip}' == '${CHE_B_IP}'    set variable    ${CHE_B_Session}
-    ...    ELSE IF    '${ip}' == '${PLAYBACK_MACHINE_IP}'    set variable    ${Playback_Session}
-    ...    ELSE    Fail    Invaild IP
-    Set Suite Variable    ${CHE_IP}    ${ip}
-    switch connection    ${switchBox}
-
-MTE Machine Setup
-    [Arguments]    ${ip}
-    [Documentation]    Create ssh connection to an MTE machine and start the components.
-    ${ret}    open connection    host=${ip}    port=${CHE_PORT}    timeout=6
-    login    ${USERNAME}    ${PASSWORD}
-    Set Suite Variable    ${CHE_IP}    ${ip}
-    start smf
-    setUtilPath
-    Set 24x7 Feed And Trade Time And No Holidays
-    Start MTE
-    [Return]    ${ret}
-
-Suite Setup
-    [Documentation]    Do test suite level setup, e.g. things that take time and do not need to be repeated for each test case.
-    ...    Make sure the CHE_IP machine has the LIVE MTE instance.
-    Should Not be Empty    ${CHE_IP}
-    ${ret}    MTE Machine Setup    ${CHE_IP}
-    Set Suite Variable    ${CHE_A_Session}    ${ret}
-    ${ip_list}    Create List
-    Run Keyword If    '${CHE_A_IP}' != '' and '${CHE_A_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_A_IP}
-    Run Keyword If    '${CHE_B_IP}' != '' and '${CHE_B_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_B_IP}
-    ${master_ip}    get master box ip    ${ip_list}
-    Run Keyword If    '${CHE_IP}'=='${CHE_A_IP}'    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
-    ...    ELSE IF    '${CHE_IP}'=='${CHE_B_IP}'    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
-    ...    ELSE    Fail    CHE_IP does not equal CHE_A_IP or CHE_B_IP in VenueVariables
-    Verify MTE State In Specific Box    ${CHE_IP}    LIVE
-    [Return]    ${ret}
-
-Suite Setup Two TD Boxes
-    [Documentation]    Setup 2 Sessions for 2 Peer Thunderdome Boxes
-    Should Not be Empty    ${CHE_A_IP}
-    Should Not be Empty    ${CHE_B_IP}
-    ${ret}    MTE Machine Setup    ${CHE_A_IP}
-    Set Suite Variable    ${CHE_A_Session}    ${ret}
-    ${ret}    MTE Machine Setup    ${CHE_B_IP}
-    Set Suite Variable    ${CHE_B_Session}    ${ret}
-
-Suite Setup Two TD Boxes With Playback
-    [Documentation]    Setup 3 Sessions, 2 Peer Thunderdome Boxes, 1 Playback Box
-    Should Not be Empty    ${CHE_A_IP}
-    Should Not be Empty    ${CHE_B_IP}
-    Should Not be Empty    ${PLAYBACK_MACHINE_IP}
-    ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
-    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
-    Set Suite Variable    ${Playback_Session}    ${plyblk}
-    ${ret}    MTE Machine Setup    ${CHE_B_IP}
-    Set Suite Variable    ${CHE_B_Session}    ${ret}
-    ${ret}    MTE Machine Setup    ${CHE_A_IP}
-    Set Suite Variable    ${CHE_A_Session}    ${ret}
-
-Suite Setup with Playback
-    [Documentation]    Setup Playback box and suit scope variable Playback_Session.
-    Should Not be Empty    ${PLAYBACK_MACHINE_IP}
-    ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
-    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
-    Set Suite Variable    ${Playback_Session}    ${plyblk}
-    ${ret}    Suite Setup
-
-Suite Teardown
-    [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
-    close all connections
-    ${localCfgFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
-    ${localCfgFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
-
 Case Teardown
     [Arguments]    @{tmpfiles}
     [Documentation]    Do test case teardown, e.g. remove temp files.
@@ -664,6 +588,18 @@ Manual ClosingRun for a RIC
     remove files    ${localcapture}
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
 
+MTE Machine Setup
+    [Arguments]    ${ip}
+    [Documentation]    Create ssh connection to an MTE machine and start the components.
+    ${ret}    open connection    host=${ip}    port=${CHE_PORT}    timeout=6
+    login    ${USERNAME}    ${PASSWORD}
+    Set Suite Variable    ${CHE_IP}    ${ip}
+    start smf
+    setUtilPath
+    Set 24x7 Feed And Trade Time And No Holidays
+    Start MTE
+    [Return]    ${ret}
+
 Persist File Should Exist
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
@@ -952,6 +888,70 @@ Stop Process
     [Documentation]    Stop process, argument is the process name
     run commander    process    stop ${process}
     wait for process to not exist    ${process}
+
+Suite Setup
+    [Documentation]    Do test suite level setup, e.g. things that take time and do not need to be repeated for each test case.
+    ...    Make sure the CHE_IP machine has the LIVE MTE instance.
+    Should Not be Empty    ${CHE_IP}
+    ${ret}    MTE Machine Setup    ${CHE_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${ret}
+    ${ip_list}    Create List
+    Run Keyword If    '${CHE_A_IP}' != '' and '${CHE_A_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_A_IP}
+    Run Keyword If    '${CHE_B_IP}' != '' and '${CHE_B_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    Run Keyword If    '${CHE_IP}'=='${CHE_A_IP}'    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    ...    ELSE IF    '${CHE_IP}'=='${CHE_B_IP}'    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
+    ...    ELSE    Fail    CHE_IP does not equal CHE_A_IP or CHE_B_IP in VenueVariables
+    Verify MTE State In Specific Box    ${CHE_IP}    LIVE
+    [Return]    ${ret}
+
+Suite Setup Two TD Boxes
+    [Documentation]    Setup 2 Sessions for 2 Peer Thunderdome Boxes
+    Should Not be Empty    ${CHE_A_IP}
+    Should Not be Empty    ${CHE_B_IP}
+    ${ret}    MTE Machine Setup    ${CHE_A_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${ret}
+    ${ret}    MTE Machine Setup    ${CHE_B_IP}
+    Set Suite Variable    ${CHE_B_Session}    ${ret}
+
+Suite Setup Two TD Boxes With Playback
+    [Documentation]    Setup 3 Sessions, 2 Peer Thunderdome Boxes, 1 Playback Box
+    Should Not be Empty    ${CHE_A_IP}
+    Should Not be Empty    ${CHE_B_IP}
+    Should Not be Empty    ${PLAYBACK_MACHINE_IP}
+    ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
+    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
+    Set Suite Variable    ${Playback_Session}    ${plyblk}
+    ${ret}    MTE Machine Setup    ${CHE_B_IP}
+    Set Suite Variable    ${CHE_B_Session}    ${ret}
+    ${ret}    MTE Machine Setup    ${CHE_A_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${ret}
+
+Suite Setup with Playback
+    [Documentation]    Setup Playback box and suit scope variable Playback_Session.
+    Should Not be Empty    ${PLAYBACK_MACHINE_IP}
+    ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
+    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
+    Set Suite Variable    ${Playback_Session}    ${plyblk}
+    ${ret}    Suite Setup
+
+Suite Teardown
+    [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
+    close all connections
+    ${localCfgFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
+    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    ${localCfgFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
+    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+
+Switch To TD Box
+    [Arguments]    ${ip}
+    [Documentation]    To switch the current ssh session to specific CHE_X_IP
+    ${switchBox}    Run Keyword If    '${ip}' == '${CHE_A_IP}'    set variable    ${CHE_A_Session}
+    ...    ELSE IF    '${ip}' == '${CHE_B_IP}'    set variable    ${CHE_B_Session}
+    ...    ELSE IF    '${ip}' == '${PLAYBACK_MACHINE_IP}'    set variable    ${Playback_Session}
+    ...    ELSE    Fail    Invaild IP
+    Set Suite Variable    ${CHE_IP}    ${ip}
+    switch connection    ${switchBox}
 
 Validate MTE Capture Against FIDFilter
     [Arguments]    ${pcapfile}    ${contextId}    ${constit}
