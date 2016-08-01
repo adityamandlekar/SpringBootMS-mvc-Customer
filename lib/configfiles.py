@@ -20,6 +20,42 @@ MANGLINGRULE = {'SOU': '3', 'BETA': '2', 'RRG': '1', 'UNMANGLED' : '0'};
 # Keywords that use local copy of configuration files
 #############################################################################
 
+def add_failover_publish_rate_in_MTE_cfg(mtecfgfile, value):
+    """ Add/Modify the FailoverPublishRate value in MET config file
+        params : mtecfgfile - filename of mte config file
+                 value - FailoverPublishRate value
+        return : N/A       
+
+        Examples :
+          | add failover publish rate in MTE cfg | hkf02m.xml | 500 |
+
+          Add the following tag to the general setting in MTE config file, if not exist.
+          Modify the FailoverPublishRate value if it already existed.
+            <BackgroundRebuild>
+              <FailoverPublishRate type="ul">500</FailoverPublishRate>
+            </BackgroundRebuild>
+    """
+    root = xmlutilities.load_xml_file(mtecfgfile,True)
+    nodes = root.find(".//BackgroundRebuild")
+
+    foundBackgroundRebuildNode = False
+    foundFailoverPublishRateNode = False
+    if (nodes != None):
+        foundBackgroundRebuildNode = True
+        for node in nodes:
+            if (node.tag == "FailoverPublishRate"):
+               foundFailoverPublishRateNode = True
+               node.text=str(value)
+               break
+    
+    if (not foundFailoverPublishRateNode):
+        if (foundBackgroundRebuildNode):
+            nodes.append(ET.fromstring('<FailoverPublishRate type=\"ul\">%s</FailoverPublishRate>\n' %value))
+        else:
+            root.append(ET.fromstring('<BackgroundRebuild>\n  <FailoverPublishRate type=\"ul\">%s</FailoverPublishRate>\n</BackgroundRebuild>\n' %value))
+
+    xmlutilities.save_to_xml_file(root,mtecfgfile,True)
+
 def add_mangling_rule_partition_node(rule, contextID, configFileLocalFullPath):
     """Add mangling rule of specific context ID in manglingConfiguration.xml
        add <Partition rule ... /> into <Partitions> if it does not exist, ignore if it has already exisited.
