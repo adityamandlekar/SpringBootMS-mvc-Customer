@@ -46,7 +46,6 @@ Empty Payload Detection with Blank TCONF
 Validate Downstream FID publication
     [Documentation]    Verify if MTE has publish fids that matches fids defined in fidfilter file
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1632
-    Start MTE
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     ${mteConfigFile}    Get MTE Config File
@@ -77,7 +76,6 @@ Validate Downstream FID publication from Reconcile
 Verify Outbound Heartbeats
     [Documentation]    Verify if MTE has publish heartbeat at specified interval
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1721
-    Start MTE
     Start Capture MTE Output
     Stop Capture MTE Output    5    10
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
@@ -87,7 +85,6 @@ Verify Outbound Heartbeats
 Verify Downstream Recovery Functions
     [Documentation]    This test uses DataView to send refresh request. MTE response will be captured in pcap and analysed with solicited flag for all possible constituents for the RIC
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1707
-    Start MTE
     ${domain}=    Get Preferred Domain
     ${ric_contextid_list}=    get RIC fields from cache    1    ${domain}    ${EMPTY}
     ${ric}=    set variable    ${ric_contextid_list[0]['RIC']}
@@ -107,7 +104,6 @@ Verify Common Required FID output
     [Documentation]    Verify the common fid in the output, http://www.iajira.amers.ime.reuters.com/browse/CATF-1847
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${serviceName}    Get FMS Service Name
-    Start MTE
     Start Capture MTE Output    ${remoteCapture}
     ${currentDateTime}    get date and time
     Rebuild FMS service    ${serviceName}
@@ -220,7 +216,6 @@ Perform DVT Validation - Process all EXL files
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1887
     ...    Verify DVT rule when process all EXL files
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
-    Start MTE
     Start Capture MTE Output    ${remoteCapture}
     ${serviceName}    Get FMS Service Name
     ${currentDateTime}    get date and time
@@ -237,7 +232,6 @@ Perform DVT Validation - Rebuild all EXL files
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1888
     ...    Verify DVT rule when reload all exl files
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
-    Start MTE
     Start Capture MTE Output    ${remoteCapture}
     ${serviceName}    Get FMS Service Name
     ${currentDateTime}    get date and time
@@ -275,7 +269,6 @@ Perform DVT Validation - Closing Run for all RICs
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1889
     ...    Verify DVT rule when close all rics
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
-    Start MTE
     Start Capture MTE Output    ${remoteCapture}
     ${serviceName}=    Get FMS Service Name
     Manual ClosingRun for ClosingRun Rics    ${serviceName}

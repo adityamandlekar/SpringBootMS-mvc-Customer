@@ -19,7 +19,6 @@ Full Reorg on Startup
 
 Partial REORG on Startup
     [Documentation]    Verify Partial REORG behaviour of MTE http://www.iajira.amers.ime.reuters.com/browse/CATF-1755
-    Start MTE
     ${service}    Get FMS Service Name
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${service}
     Stop MTE
