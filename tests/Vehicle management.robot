@@ -292,6 +292,7 @@ Verify Deletion Delay
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${StartOfDayGMT}    Get Start GMT Time
+    ${MTETimeOffset}=    Get MTE Machine Time Offset
     Drop ric    ${ric}    ${domain}    ${serviceName}
     Comment    Stopping EventScheduler elimintates extra processing that is done at each start of day and many FMSClient:SocketException messages. We are only interested in the deletion delay change.    This will be restarted during case teardown.
     ${result}=    Run Commander    process    stop EventScheduler
@@ -302,7 +303,7 @@ Verify Deletion Delay
     \    Should Be True    ${ricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
     \    Rollover MTE Start Date    ${StartOfDayGMT}
     Verify RIC Not In MTE Cache    ${ric}
-    [Teardown]    Correct MTE Machine Time
+    [Teardown]    Restore MTE Machine Time    ${MTETimeOffset}
 
 Verify Drop and Undrop from FMSCmd
     [Documentation]    Verify Drop/Undrop form FMSCmd, 1) Verify MTE is running.
@@ -450,15 +451,24 @@ Create Fid Value Pair
     \    Set To Dictionary    ${fidnumvalue}    ${fidNum}    1${value}
     [Return]    ${fidnamevalue}    ${fidnumvalue}
 
-Correct MTE Machine Time
+Get MTE Machine Time Offset
+    [Documentation]    Get the offset from GMT for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal GMT time.
+    ${currDateTime}=    get date and time
+    ${localTime}=    Get Current Date    exclude_millis=True
+    ${MTEtime}=    Convert Date    ${currDateTime[0]}-${currDateTime[1]}-${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    result_format=datetime
+    ${MTETimeOffset}=    Subtract Date From Date    ${MTEtime}    ${localTime}
+    [Return]    ${MTETimeOffset}
+
+Restore MTE Machine Time
+    [Arguments]    ${MTETimeOffset}
     [Documentation]    To correct Linux time and restart SMF, restart SMF because currently FMS client have a bug now, if we change the MTE Machine time when SMF running, FMS client start to report exception like below, and in this case we can't use FMS client correclty:
     ...    FMSClient:SocketException - ClientImpl::connect:connect (111); /ThomsonReuters/EventScheduler/EventScheduler; 18296; 18468; 0000235f; 07:00:00;
     ...
     ...    In addition, on a vagrant VirtualBox, restore the VirtualBox Guest Additions service, which includes clock sync with the host.
     stop smf
-    ${RIDEMachineTime}    Get Current Date    UTC    result_format=datetime
-    ${res}    set date and time    ${RIDEMachineTime.year}    ${RIDEMachineTime.month}    ${RIDEMachineTime.day}    ${RIDEMachineTime.hour}    ${RIDEMachineTime.minute}
-    ...    ${RIDEMachineTime.second}
+    ${RIDEMachineTime}=    Get Current Date    result_format=datetime    exclude_millis=True
+    ${MTEMachineTime}=    Add Time To Date    ${RIDEMachineTime}    ${MTETimeOffset}
+    set date and time    ${MTEMachineTime.year}    ${MTEMachineTime.month}    ${MTEMachineTime.day}    ${MTEMachineTime.hour}    ${MTEMachineTime.minute}    ${MTEMachineTime.second}
     Restore MTE Clock Sync
     start smf
 
