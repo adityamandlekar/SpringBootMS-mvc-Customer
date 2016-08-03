@@ -160,36 +160,37 @@ def get_GRS_stream_names_from_config_file(grs_config_file):
     return streamNames
 
 
-def get_fh_info_from_fhc_config(fhc_config_file):
+def get_fh_info_from_fhc_configs(fhc_config_files):
     """
     get the FMS service, domain, open/close RIC,and command arguments from file like matba_fhc.json, tdds_fhc.json under fhc directory
     Argument : 
-    fhc_config_file : full path of local fhc configuration file 
+    fhc_config_files : a list of full path of local fhc configuration files 
         
     Returns : a list of contains FMS service, domain, RIC, command argument.
 
     Examples:
-    | get fh info from fhc config | c:/temp/matba_fhc.json | 
+    | get fh info from fhc config | list contains c:/temp/szse_l1_fhc.json, c:/temp/szse_fdep_fhc.json | 
     return list contains AR_MAT, MARKET_PRICE, BCC%FD01,/ThomsonReuters/Venues/MATBA/config/matba-esf.json
     """  
     returnList = []
     fh_name = FH
-    with open(fhc_config_file) as data_file:   
-        data = json.load(data_file)
-        if (data.has_key("controllees")):  
-            fms = data["controllees"][fh_name]["fms"]
-            fmsKey = fms.keys()[0]
-            if(fmsKey):
-                returnList.append(fmsKey)
-                returnList.append(fms[fmsKey]["domains"][0])
+    for fhc_config_file in fhc_config_files:
+        with open(fhc_config_file) as data_file:   
+            data = json.load(data_file)
+            if (data.has_key("controllees") and data["controllees"].has_key(fh_name)):  
+                fms = data["controllees"][fh_name]["fms"]
+                fmsKey = fms.keys()[0]
+                if(fmsKey):
+                    returnList.append(fmsKey)
+                    returnList.append(fms[fmsKey]["domains"][0])
             
-            returnList.append(data["controllees"][fh_name]["events"].keys()[0])  
-            returnList.append(data["controllees"][fh_name]["arguments"]) 
-            
-        if len(returnList) < 4:  
-            raise AssertionError('*ERROR*  Cannot find service, domain, RIC, command argument from fhc config file: %s' %findFileName)
+                returnList.append(data["controllees"][fh_name]["events"].keys()[0])  
+                returnList.append(data["controllees"][fh_name]["arguments"]) 
+                break
+    
+    if len(returnList) < 4:  
+        raise AssertionError('*ERROR*  Cannot find service, domain, RIC, command argument from fhc config file(s): %s' %(', '.join(fhc_config_files)))
     return returnList
-
 
 def get_MTE_config_list_by_path(venueConfigFile,*xmlPath):
     """ Gets value(s) from venue config file
@@ -601,7 +602,7 @@ def backup_remote_cfg_file(searchdir,cfgfile,suffix='.backup'):
     return [foundfiles[0], backupfile]
 
 
-def Get_CHE_Config_Filepath(filename, *ignorePathFile):
+def Get_CHE_Config_Filepaths(filename, *ignorePathFile):
     """Get file path for specific filename from TD Box.
        We would ignore certain folder or file in list variable ignorePathFile
        if ignorePathFile is empty, then SCWatchdog will be ignored during search
@@ -610,7 +611,7 @@ def Get_CHE_Config_Filepath(filename, *ignorePathFile):
         filename : config filename
         ignorePathFile: config_grs.json | SCWatchdog
                  
-    Returns: 
+    Returns: a list of full path of remote fhc configuration files 
  
     Examples:
     | Get CHE Config Filepath | ddnPublishers.xml 
@@ -630,7 +631,7 @@ def Get_CHE_Config_Filepath(filename, *ignorePathFile):
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
      
-    return stdout.strip()
+    return stdout.strip().split()
 
 
 def get_FID_ID_by_FIDName(fieldName):

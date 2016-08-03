@@ -48,11 +48,13 @@ Verify FHController open and close timing
     ...    (4) outside feed time and end of holiday occurs, FH stays down
     ...
     ...    30 second is used for sleep. It is the waiting time that event scheduler reacts and time used for the process to be created. It is for case like FH doesn't exist to doesn't exist.
-    ${fhcConfigFile}=    Get CHE Config Filepath    *_fhc.json
-    ${localConfigFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_config.json
-    get remote file    ${fhcConfigFile}    ${localConfigFile}
-    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC Config    ${localConfigFile}
-    Remove Files    ${localConfigFile}
+    @{fhcConfigFiles}=    Get CHE Config Filepaths    *_fhc.json
+    @{localFhcConfigFiles}=    Create List
+    :FOR    ${index}    ${fhcConfigFile}    IN ENUMERATE    @{fhcConfigFiles}
+    \    Append To List    ${localFhcConfigFiles}    ${LOCAL_TMP_DIR}${/}local_fhc_config_${index}.json
+    \    get remote file    ${fhcConfigFile}    ${localFhcConfigFiles[${index}]}
+    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC Configs    ${localFhcConfigFiles}
+    Remove Files    @{localFhcConfigFiles}
     ${exlFile}=    get EXL for RIC    ${ricDomain}    ${serviceName}    ${timeRic}
     ${dstHolRics}=    get DST and holiday RICs from EXL    ${exlFile}    ${timeRic}
     ${holidayExlFile}=    get EXL for RIC    ${ricDomain}    ${serviceName}    ${dstHolRics[1]}
