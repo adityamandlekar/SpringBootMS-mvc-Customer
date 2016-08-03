@@ -467,7 +467,7 @@ Restore MTE Machine Time
     ...    In addition, on a vagrant VirtualBox, restore the VirtualBox Guest Additions service, which includes clock sync with the host.
     stop smf
     ${RIDEMachineTime}=    Get Current Date    result_format=datetime    exclude_millis=True
-    ${MTEMachineTime}=    Add Time To Date    ${RIDEMachineTime}    ${MTETimeOffset}
+    ${MTEMachineTime}=    Add Time To Date    ${RIDEMachineTime}    ${MTETimeOffset}    result_format=datetime
     set date and time    ${MTEMachineTime.year}    ${MTEMachineTime.month}    ${MTEMachineTime.day}    ${MTEMachineTime.hour}    ${MTEMachineTime.minute}    ${MTEMachineTime.second}
     Restore MTE Clock Sync
     start smf
