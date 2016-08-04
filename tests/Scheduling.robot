@@ -50,9 +50,10 @@ Verify FHController open and close timing
     ...    30 second is used for sleep. It is the waiting time that event scheduler reacts and time used for the process to be created. It is for case like FH doesn't exist to doesn't exist.
     @{fhcConfigFiles}=    Get CHE Config Filepaths    *_fhc.json
     @{localFhcConfigFiles}=    Create List
-    :FOR    ${index}    ${fhcConfigFile}    IN ENUMERATE    @{fhcConfigFiles}
-    \    Append To List    ${localFhcConfigFiles}    ${LOCAL_TMP_DIR}${/}local_fhc_config_${index}.json
-    \    get remote file    ${fhcConfigFile}    ${localFhcConfigFiles[${index}]}
+    :FOR    ${fhcConfigFile}    IN    @{fhcConfigFiles}
+    \    ${fhcConfigFileName}    Fetch From Right    ${fhcConfigFile}    /
+    \    Append To List    ${localFhcConfigFiles}    ${LOCAL_TMP_DIR}${/}${fhcConfigFileName}
+    \    get remote file    ${fhcConfigFile}    ${LOCAL_TMP_DIR}${/}${fhcConfigFileName}
     ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC Configs    ${localFhcConfigFiles}
     Remove Files    @{localFhcConfigFiles}
     ${exlFile}=    get EXL for RIC    ${ricDomain}    ${serviceName}    ${timeRic}
