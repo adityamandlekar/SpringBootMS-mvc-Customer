@@ -13,7 +13,8 @@ Verify Sync Pulse Missed QoS
     [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
-    ${ddnpublishersLabelfilepath}=    Get CHE Config Filepath    ddnPublishers.xml
+    ${ddnpublishersLabelfilepaths}=    Get CHE Config Filepaths    ddnPublishers.xml
+    ${ddnpublishersLabelfilepath}=    Get From List    ${ddnpublishersLabelfilepaths}    0
     ${labelfile_local}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishers.xml
     ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
