@@ -295,15 +295,24 @@ Get Label IDs
     [Return]    @{labelIDs}
 
 Get Mangling Config File
-    [Documentation]    Get the manglingConfiguration.xml from TD Box
-    ...    1. The file would be saved at Control PC and only removed at Suite Teardown
+    [Documentation]    Get the manglingConfiguration.xml for this venue from the TD Box.
+    ...
+    ...    There are separate manglingConfiguration.xml files for each venue on machines with multiple venues.
+    ...    We do not have the venue name, so we use the manglingConfiguration.xml file in the same directory as the MTE configuration file.
+    ...
+    ...    1. The file will be saved at Control PC and only removed at Suite Teardown
     ...    2. Suite Variable ${LOCAL_MANGLING_CONFIG_FILE} has created to store the fullpath of the config file at Control PC
     ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
     Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
-    ${res}=    search remote files    ${VENUE_DIR}    manglingConfiguration.xml    recurse=${True}
-    Length Should Be    ${res}    1    manglingConfiguration.xml not found (or multiple files found).
-    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mangling_config_file.xml
-    get remote file    ${res[0]}    ${localFile}
+    ${lowercase_filename}    convert to lowercase    ${MTE}.xml
+    ${mteConfig}=    search remote files    ${VENUE_DIR}    ${lowercase_filename}    recurse=${True}
+    Length Should Be    ${mteConfig}    1    ${lowercase_filename} file not found (or multiple files found).
+    ${dirAndFile}=    Split String From Right    ${mteConfig[0]}    /    max_split=1
+    ${configDir}=    Set Variable    ${dirAndFile[0]}
+    ${manglingFile}=    Set Variable    manglingConfiguration.xml
+    Remote File Should Exist    ${configDir}/${manglingFile}
+    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${manglingFile}
+    get remote file    ${configDir}/${manglingFile}    ${localFile}
     Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${localFile}
     [Return]    ${localFile}
 
