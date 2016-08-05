@@ -886,7 +886,7 @@ Verify MTE State In Specific Box
     Switch Connection    ${host}
 
 Verify RIC In MTE Cache
-    [Arguments]    ${ric}    ${domain}=${EMPTY}
+    [Arguments]    ${ric}    ${domain}
     ${ricFields}=    Get All Fields For RIC From Cache    ${ric}    ${domain}
     Should Not Be Empty    ${ricFields}    RIC ${ric} not found in MTE cache
     ${ric}=    set variable    ${ricFields['RIC']}
@@ -895,12 +895,12 @@ Verify RIC In MTE Cache
     [Return]    ${ric}    ${publish_key}
 
 Verify RIC Not In MTE Cache
-    [Arguments]    ${ric}    ${domain}=${EMPTY}
+    [Arguments]    ${ric}    ${domain}
     ${ricFields}=    Get All Fields For RIC From Cache    ${ric}    ${domain}
     Should Be Empty    ${ricFields}    RIC ${ric} found in MTE cache
 
 Verify RIC Is Dropped In MTE Cache
-    [Arguments]    ${ric}    ${domain}=${EMPTY}
+    [Arguments]    ${ric}    ${domain}
     [Documentation]    If a RIC be dropped, it will be non-publishable and be in InDeletionDelay state
     ${allricFields}=    get all fields for ric from cache    ${ric}    ${domain}
     Should Be Equal    ${allricFields['PUBLISHABLE']}    FALSE
