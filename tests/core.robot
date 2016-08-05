@@ -392,7 +392,7 @@ Get Sorted Cache Dump
 
 Go Into End Feed Time
     [Arguments]    ${serviceName}
-    [Documentation]    For all feeds, set start of feed time to current time and end of feed time in 2 minutes. Wait for end of feed time to occur.
+    [Documentation]    For all feeds, set end of feed time in 2 minutes. Wait for end of feed time to occur.
     ...    The returned EXL file lists should be used to call Restore EXL Changes at the end of the test.
     ...
     ...    Return:
@@ -428,9 +428,10 @@ Go Into End Feed Time
     \    ...    <it:THU_FD_CLOSE>BLANK</it:THU_FD_CLOSE>    <it:FRI_FD_OPEN>BLANK</it:FRI_FD_OPEN>    <it:FRI_FD_CLOSE>BLANK</it:FRI_FD_CLOSE>    <it:SAT_FD_OPEN>BLANK</it:SAT_FD_OPEN>    <it:SAT_FD_CLOSE>BLANK</it:SAT_FD_CLOSE>
     \    Modify EXL    ${useFile}    ${modifiedExlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    @{edits}
     \    Set Feed Time In EXL    ${modifiedExlFile}    ${modifiedExlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
-    \    ...    ${endTime}    ${startWeekDay}
+    \    ...    ${endTime}    ${startWeekDay}    ${False}    ${True}
     \    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}
-    \    ...    ${connectTimeRicDomain}    ${startTime}    ${endTime}    ${endWeekDay}
+    \    ...    ${connectTimeRicDomain}    ${startTime}    ${endTime}    ${endWeekDay}    ${False}
+    \    ...    ${True}
     : FOR    ${modifiedExlFile}    IN    @{modifiedExlFiles}
     \    Load Single EXL File    ${modifiedExlFile}    ${serviceName}    ${CHE_IP}
     sleep    ${secondsBeforeFeedEnd}
@@ -773,12 +774,15 @@ Set DST Datetime In EXL
 
 Set Feed Time In EXL
     [Arguments]    ${srcFile}    ${dstFile}    ${ric}    ${domain}    ${startTime}    ${endTime}
-    ...    ${feedDay}
+    ...    ${feedDay}    ${setStartTime}=${True}    ${setEndTime}=${True}
     [Documentation]    Set feed time in EXL:
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1646
-    modify EXL    ${srcFile}    ${dstFile}    ${ric}    ${domain}    <it:${feedDay}_FD_OPEN>${startTime}</it:${feedDay}_FD_OPEN>
-    modify EXL    ${dstFile}    ${dstFile}    ${ric}    ${domain}    <it:${feedDay}_FD_CLOSE>${endTime}</it:${feedDay}_FD_CLOSE>
+    Run Keyword If    ${setStartTime} == ${True}    modify EXL    ${srcFile}    ${dstFile}    ${ric}    ${domain}
+    ...    <it:${feedDay}_FD_OPEN>${startTime}</it:${feedDay}_FD_OPEN>
+    ${srcFile}    Set Variable If    ${setStartTime} == ${True}    ${dstFile}    ${srcFile}
+    Run Keyword If    ${setEndTime} == ${True}    modify EXL    ${srcFile}    ${dstFile}    ${ric}    ${domain}
+    ...    <it:${feedDay}_FD_CLOSE>${endTime}</it:${feedDay}_FD_CLOSE>
 
 Set Field Value in EXL
     [Arguments]    ${exlFile}    ${ric}    ${domain}    ${fieldName}    ${fieldValueNew}
