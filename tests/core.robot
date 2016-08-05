@@ -598,6 +598,8 @@ MTE Machine Setup
     setUtilPath
     Set 24x7 Feed And Trade Time And No Holidays
     Start MTE
+    ${memUsage}    get memory usage
+    Run Keyword If    ${memUsage} > 90    Fail    Memory usage > 90%. This would make the system become instable during testing. Please review the FMS file set used and reduce number of Rics if possible
     [Return]    ${ret}
 
 Persist File Should Exist
