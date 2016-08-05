@@ -20,42 +20,6 @@ MANGLINGRULE = {'SOU': '3', 'BETA': '2', 'RRG': '1', 'UNMANGLED' : '0'};
 # Keywords that use local copy of configuration files
 #############################################################################
 
-def add_failover_publish_rate_in_MTE_cfg(mtecfgfile, value):
-    """ Add/Modify the FailoverPublishRate value in MET config file
-        params : mtecfgfile - filename of mte config file
-                 value - FailoverPublishRate value
-        return : N/A       
-
-        Examples :
-          | add failover publish rate in MTE cfg | hkf02m.xml | 500 |
-
-          Add the following tag to the general setting in MTE config file, if not exist.
-          Modify the FailoverPublishRate value if it already existed.
-            <BackgroundRebuild>
-              <FailoverPublishRate type="ul">500</FailoverPublishRate>
-            </BackgroundRebuild>
-    """
-    root = xmlutilities.load_xml_file(mtecfgfile,True)
-    nodes = root.find(".//BackgroundRebuild")
-
-    foundBackgroundRebuildNode = False
-    foundFailoverPublishRateNode = False
-    if (nodes != None):
-        foundBackgroundRebuildNode = True
-        for node in nodes:
-            if (node.tag == "FailoverPublishRate"):
-               foundFailoverPublishRateNode = True
-               node.text=str(value)
-               break
-    
-    if (not foundFailoverPublishRateNode):
-        if (foundBackgroundRebuildNode):
-            nodes.append(ET.fromstring('<FailoverPublishRate type=\"ul\">%s</FailoverPublishRate>\n' %value))
-        else:
-            root.append(ET.fromstring('<BackgroundRebuild>\n  <FailoverPublishRate type=\"ul\">%s</FailoverPublishRate>\n</BackgroundRebuild>\n' %value))
-
-    xmlutilities.save_to_xml_file(root,mtecfgfile,True)
-
 def add_mangling_rule_partition_node(rule, contextID, configFileLocalFullPath):
     """Add mangling rule of specific context ID in manglingConfiguration.xml
        add <Partition rule ... /> into <Partitions> if it does not exist, ignore if it has already exisited.
@@ -538,19 +502,29 @@ def set_mangling_rule_parition_value(rule,contextIDs,configFileLocalFullPath):
             xmlutilities.set_xml_tag_attributes_value_with_conditions(configFileLocalFullPath,conditions,attribute,False,xPath)
             conditions.clear()
 
-def set_MTE_config_tag_value(xmlFileLocalFullPath,value,*xPath):
+def set_MTE_config_tag_value(xmlFileLocalFullPath,tagValue,tagAttributes,addTagIfNotExist=True,*xPath):
     """set tag value in venue config xml file
     
     xmlFileLocalFullPath : full path of xml file
-    value : target tag value
-    xPath : xPath for the node
+    tagValue : target tag value
+    tagAttributes : target tag attributes string value (e.g. "type=\"ul\""). 
+                    This is only use if addTagIfNotExist is True, and for node creation in the leaf node if the xPath not exist, not for searching. 
+    addTagIfNotExist: If addTagIfNotExist is True, add the non-exists nodes; else assert if the tag is not found. 
+    xPath : a list contain the xPath for the node
+
     Returns : Nil
 
     Examples:
-    | set MTE config tag value | C:/tmp/venue_config.xml | 13:00 | EndOfDayTime
+    | set MTE config tag value | C:/tmp/venue_config.xml | 500 | type=\"ul\" | ${True} | BackgroundRebuild | FailoverPublishRate
+        The above example means:
+        Add the following tag to the general setting in MTE config file, if not exist.
+        Modify the FailoverPublishRate value if it already existed.
+        <BackgroundRebuild>
+            <FailoverPublishRate type="ul">500</FailoverPublishRate>
+        </BackgroundRebuild>
     """
-                    
-    xmlutilities.set_xml_tag_value(xmlFileLocalFullPath,value,True,xPath)
+
+    xmlutilities.set_xml_tag_value(xmlFileLocalFullPath,xPath,tagValue,tagAttributes,True,addTagIfNotExist)
 
 def verify_filterString_contains_configured_context_ids(filter_string,venueConfigFile):
     """Get set of context id from FilterString and venue xml_config file

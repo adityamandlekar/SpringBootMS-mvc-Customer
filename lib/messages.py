@@ -690,7 +690,7 @@ def verify_message_fids_are_in_FIDfilter(localPcap, ric, domain, contextId):
                     raise AssertionError ('*ERROR* NONE negtive fid exists for contextID %s, constituent %s with RIC %s, domain %s' %(contextId, constituent, ric, domain))
 
 def verify_message_sequence_numbers_in_capture(pcapfile, ric, domain, mte_state):
-    """ verify if response/update message sequence numbers for RIC in each constitutes are in increasing order in MTE output pcap message
+    """ verify if response/update message sequence numbers for RIC in each constituents are in increasing order in MTE output pcap message
         if mte_state is startup, the sequence number should start from 0, then 4, 5, ... n, n+1...
         if mte_state is failover, the sequence number could start from 1, then 4, 5, ... n, n+1...
         if mte_state is rollover, the sequence number could start from 3, then 4, 5, ... n, n+1...
@@ -699,7 +699,7 @@ def verify_message_sequence_numbers_in_capture(pcapfile, ric, domain, mte_state)
                    ric : published RIC
                    domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
                    mte_state: possible value startup, rollover, failover.
-        return : the list of sequence number of constitute 1 (i.e. C1) messages (include response and update)
+        return : the list of sequence number of constituent 1 (i.e. C1) messages (include response and update)
     """           
 
     if (os.path.exists(pcapfile) == False):
@@ -727,12 +727,10 @@ def verify_message_sequence_numbers_in_capture(pcapfile, ric, domain, mte_state)
         seqNumList = constitDictSeqNumList[constituent]
         print '*INFO* Verify seqNumList of constituent %s: %s' %(constituent, seqNumList)
 
-        if len(seqNumList) > 0:
-            for i in xrange(len(seqNumList) - 1):
-                if int(seqNumList[i]) > 3:
-                    if int(seqNumList[i]) + 1 != int(seqNumList[i+1]):
-                        print seqNumList
-                        raise AssertionError('*ERROR* response/update message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be smaller than SeqNo[%d] %s by one.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
+        for i in xrange(1,len(seqNumList)-1):
+            if int(seqNumList[i]) + 1 != int(seqNumList[i+1]):
+                print seqNumList
+                raise AssertionError('*ERROR* response/update message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be smaller than SeqNo[%d] %s by one.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
         
         if len(seqNumList) > 1:
             if seqNumList[1] != '4':
@@ -741,16 +739,10 @@ def verify_message_sequence_numbers_in_capture(pcapfile, ric, domain, mte_state)
         if mte_state == 'startup':
             if seqNumList[0] != '0':
                 raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 0' %seqNumList[0])  
-            if '1' in seqNumList or '2' in seqNumList or '3' in seqNumList:
-                print seqNumList
-                raise AssertionError('*ERROR* sequence number 1, 2, 3 should not be in the message sequence number List')
      
         if mte_state == 'failover':  
             if seqNumList[0] != '1':
                 raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
-            if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
-                print seqNumList
-                raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list')
           
         if mte_state == 'rollover':
             if seqNumList[0] != '3':

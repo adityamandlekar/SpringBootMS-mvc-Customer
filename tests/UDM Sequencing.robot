@@ -30,16 +30,19 @@ Validate Item Sequence Numbering on Failover
     ...    Teardown: Restore FailoverPublishRate to 0 on standby MTE config
     [Setup]    Suite Setup Two TD Boxes With Playback
     Comment    Change the MTE config FailoverPublishRate to 500 on standby MTE B, to increase the failover rebuild publish rate
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
+    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     Switch To TD Box    ${CHE_B_IP}
     ${configFile}=    Convert To Lowercase    ${MTE}.xml
     ${localConfigFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_${configFile}
     ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${VENUE_DIR}    ${configFile}
     get remote file    ${orgCfgFile}    ${localConfigFile}
-    add failover publish rate in MTE cfg    ${localConfigFile}    500
+    set MTE config tag value    ${localConfigFile}    500    type=\"ul\"    ${True}    BackgroundRebuild    FailoverPublishRate
     put remote file    ${localConfigFile}    ${orgCfgFile}
     Comment    Inject PCAP1 and get the RIC list of the injected PCAP1
-    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
-    ${master_ip}    get master box ip    ${ip_list}
     Reset Sequence Numbers    ${CHE_A_IP}    ${CHE_B_IP}
     Switch To TD Box    ${CHE_A_IP}
     ${service}=    Get FMS Service Name
