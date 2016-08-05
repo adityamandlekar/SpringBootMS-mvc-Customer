@@ -429,6 +429,7 @@ def modify_exl(srcfile, dstfile, ric, domain, *ModifyItem):
     Examples:
     | ${result} | modify exl |c:/temp/ACLJ.exl | c:/temp/output.exl | ACLJ.JO | MARKET_PRICE | <it:DSPLY_NAME>xiaoqin</it:DSPLY_NAME> | 
     """
+
     return _modify_fm_file(srcfile, dstfile, 'exlObject', ric, domain, *ModifyItem)
 
 def modify_exl_header(srcfile, dstfile, *ModifyItem):
@@ -657,13 +658,22 @@ def _modify_fm_file(srcfile, dstfile, modifyType, ric, domain, *ModifyItem):
         return False     
     
     pat = re.compile('<(.*?)>(.*)</.*?>', re.DOTALL)
+
     for mitem in ModifyItem:
         modifyflag = False
         match = pat.search(mitem)
         if match:
             field = match.group(1)
             value = match.group(2)
-            tempdom = xml.dom.minidom.parseString('<%s xmlns:it="DbFieldsSchema">'%field +value + '</%s>'%field)  
+
+            #Remove invalid character for XML
+            value = value.replace("&","&amp;")
+            value = value.replace("\"","&quot;")
+            value = value.replace("'","&apos;")
+            value = value.replace("<","&lt;")
+            value = value.replace(">","&gt;")
+            
+            tempdom = xml.dom.minidom.parseString('<%s xmlns:it="DbFieldsSchema">'%field + value + '</%s>'%field) 
             tempnode = tempdom.documentElement
             if pat.search(value):
                 # multiple layers

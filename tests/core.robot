@@ -27,80 +27,6 @@ Library           utilpath
 Library           xmlutilities
 
 *** Keywords ***
-Switch To TD Box
-    [Arguments]    ${ip}
-    [Documentation]    To switch the current ssh session to specific CHE_X_IP
-    ${switchBox}    Run Keyword If    '${ip}' == '${CHE_A_IP}'    set variable    ${CHE_A_Session}
-    ...    ELSE IF    '${ip}' == '${CHE_B_IP}'    set variable    ${CHE_B_Session}
-    ...    ELSE IF    '${ip}' == '${PLAYBACK_MACHINE_IP}'    set variable    ${Playback_Session}
-    ...    ELSE    Fail    Invaild IP
-    Set Suite Variable    ${CHE_IP}    ${ip}
-    switch connection    ${switchBox}
-
-MTE Machine Setup
-    [Arguments]    ${ip}
-    [Documentation]    Create ssh connection to an MTE machine and start the components.
-    ${ret}    open connection    host=${ip}    port=${CHE_PORT}    timeout=6
-    login    ${USERNAME}    ${PASSWORD}
-    start smf
-    setUtilPath
-    Start MTE
-    [Return]    ${ret}
-
-Suite Setup
-    [Documentation]    Do test suite level setup, e.g. things that take time and do not need to be repeated for each test case.
-    ...    Make sure the CHE_IP machine has the LIVE MTE instance.
-    Should Not be Empty    ${CHE_IP}
-    ${ret}    MTE Machine Setup    ${CHE_IP}
-    Set Suite Variable    ${CHE_A_Session}    ${ret}
-    ${ip_list}    Create List
-    Run Keyword If    '${CHE_A_IP}' != '' and '${CHE_A_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_A_IP}
-    Run Keyword If    '${CHE_B_IP}' != '' and '${CHE_B_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_B_IP}
-    ${master_ip}    get master box ip    ${ip_list}
-    Run Keyword If    '${CHE_IP}'=='${CHE_A_IP}'    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
-    ...    ELSE IF    '${CHE_IP}'=='${CHE_B_IP}'    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
-    ...    ELSE    Fail    CHE_IP does not equal CHE_A_IP or CHE_B_IP in VenueVariables
-    Verify MTE State In Specific Box    ${CHE_IP}    LIVE
-    [Return]    ${ret}
-
-Suite Setup Two TD Boxes
-    [Documentation]    Setup 2 Sessions for 2 Peer Thunderdome Boxes
-    Should Not be Empty    ${CHE_A_IP}
-    Should Not be Empty    ${CHE_B_IP}
-    ${ret}    MTE Machine Setup    ${CHE_A_IP}
-    Set Suite Variable    ${CHE_A_Session}    ${ret}
-    ${ret}    MTE Machine Setup    ${CHE_B_IP}
-    Set Suite Variable    ${CHE_B_Session}    ${ret}
-
-Suite Setup Two TD Boxes With Playback
-    [Documentation]    Setup 3 Sessions, 2 Peer Thunderdome Boxes, 1 Playback Box
-    Should Not be Empty    ${CHE_A_IP}
-    Should Not be Empty    ${CHE_B_IP}
-    Should Not be Empty    ${PLAYBACK_MACHINE_IP}
-    ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
-    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
-    Set Suite Variable    ${Playback_Session}    ${plyblk}
-    ${ret}    MTE Machine Setup    ${CHE_B_IP}
-    Set Suite Variable    ${CHE_B_Session}    ${ret}
-    ${ret}    MTE Machine Setup    ${CHE_A_IP}
-    Set Suite Variable    ${CHE_A_Session}    ${ret}
-
-Suite Setup with Playback
-    [Documentation]    Setup Playback box and suit scope variable Playback_Session.
-    Should Not be Empty    ${PLAYBACK_MACHINE_IP}
-    ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
-    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
-    Set Suite Variable    ${Playback_Session}    ${plyblk}
-    ${ret}    Suite Setup
-
-Suite Teardown
-    [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
-    close all connections
-    ${localCfgFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
-    ${localCfgFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
-
 Case Teardown
     [Arguments]    @{tmpfiles}
     [Documentation]    Do test case teardown, e.g. remove temp files.
@@ -584,6 +510,46 @@ Load All EXL Files
     ...    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS files \ ${returnedStdOut}
 
+Load All State EXL Files
+    [Arguments]    ${headendIP}=${CHE_IP}
+    [Documentation]    Load the state EXL Files (Feed, Trade, and Holiday).
+    ...
+    ...    If Recon is changed to set ResendFM=0 in the MTE config file, this KW will no longer be needed, as Start MTE will need to load all the EXL files on startup, which will include the state EXL files.
+    ${statRicDomain}=    Set Variable    MARKET_PRICE
+    ${serviceName}=    get FMS service name
+    ${mteConfigFile}=    Get MTE Config File
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
+    @{highActivityIdentifierList}=    Get HighActivityTimesIdentifier    ${mteConfigFile}
+    @{feedEXLFiles}=    Create List
+    @{holidayEXLFiles}=    Create List
+    @{tradeEXLFiles}=    Create List
+    Comment    Feed Time
+    : FOR    ${ric}    IN    @{connectTimesIdentifierList}
+    \    ${exlFile}    get state EXL file    ${ric}    ${statRicDomain}    ${serviceName}    Feed Time
+    \    Append To List    ${feedEXLFiles}    ${exlFile}
+    \    Comment    Get associated holiday EXL
+    \    ${unused}    ${holidayRic}    Get DST And Holiday RICs From EXL    ${exlFile}    ${ric}
+    \    ${holidayEXL}=    get state EXL file    ${holidayRic}    ${statRicDomain}    ${serviceName}    Holiday
+    \    Append To List    ${holidayEXLFiles}    ${holidayEXL}
+    Comment    Trade Time
+    : FOR    ${ric}    IN    @{highActivityIdentifierList}
+    \    ${exlFile}    get state EXL file    ${ric}    ${statRicDomain}    ${serviceName}    Trade Time
+    \    Append To List    ${tradeEXLFiles}    ${exlFile}
+    \    Comment    Get associated holiday EXL
+    \    ${unused}    ${holidayRic}    Get DST And Holiday RICs From EXL    ${exlFile}    ${ric}
+    \    ${holidayEXL}=    get state EXL file    ${holidayRic}    ${statRicDomain}    ${serviceName}    Holiday
+    \    Append To List    ${holidayEXLFiles}    ${holidayEXL}
+    ${feedEXLFiles}    Remove Duplicates    ${feedEXLFiles}
+    ${tradeEXLFiles}    Remove Duplicates    ${tradeEXLFiles}
+    ${holidayEXLFiles}    Remove Duplicates    ${holidayEXLFiles}
+    : FOR    ${exlFile}    IN    @{feedEXLFiles}
+    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${headendIP}
+    : FOR    ${exlFile}    IN    @{tradeEXLFiles}
+    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${headendIP}
+    : FOR    ${exlFile}    IN    @{holidayEXLFiles}
+    \    Load Single EXL File    ${exlFile}    ${serviceName}    ${headendIP}
+    [Teardown]
+
 Load List of EXL Files
     [Arguments]    ${exlFiles}    ${serviceName}    ${headendIP}    @{optargs}
     : FOR    ${exlFiles}    IN    @{exlFiles}
@@ -621,6 +587,18 @@ Manual ClosingRun for a RIC
     Run Keyword And Continue On Failure    verify ClosingRun message in messages    ${localcapture}    ${publishKey}
     remove files    ${localcapture}
     delete remote files    ${REMOTE_TMP_DIR}/capture.pcap
+
+MTE Machine Setup
+    [Arguments]    ${ip}
+    [Documentation]    Create ssh connection to an MTE machine and start the components.
+    ${ret}    open connection    host=${ip}    port=${CHE_PORT}    timeout=6
+    login    ${USERNAME}    ${PASSWORD}
+    Set Suite Variable    ${CHE_IP}    ${ip}
+    start smf
+    setUtilPath
+    Set 24x7 Feed And Trade Time And No Holidays
+    Start MTE
+    [Return]    ${ret}
 
 Persist File Should Exist
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
@@ -741,6 +719,50 @@ Send TRWF2 Refresh Request No Blank FIDs
     Remove Files    ${labelfile}    ${updatedlabelfile}
     [Return]    ${res}
 
+Set 24x7 Feed And Trade Time And No Holidays
+    [Documentation]    Udate EXL files to define feed time and trade time to always be open and no holidays. This KW does not load the EXL files, just modifies them. Start MTE KW loads the EXL files.
+    ...    For all trade time RICs:
+    ...    Set start of trade time to 00:00:00 and end of feed time to 23:59:59 for all days of the week.
+    ...    For all feed time RICs:
+    ...    Set start of feed time to 00:00:00 and end of feed time to 23:59:59 for all days of the week.
+    ...    For all holidays:
+    ...    Blank out all holidays.
+    ${statRicDomain}=    Set Variable    MARKET_PRICE
+    ${serviceName}=    get FMS service name
+    ${mteConfigFile}=    Get MTE Config File
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
+    @{highActivityIdentifierList}=    Get HighActivityTimesIdentifier    ${mteConfigFile}
+    @{holidayEXLFiles}=    Create List
+    ${start}=    Set Variable    00:00:00
+    ${end}=    Set Variable    23:59:59
+    @{edits}=    Create List    <it:SUN_FD_OPEN>${start}</it:SUN_FD_OPEN>    <it:SUN_FD_CLOSE>${end}</it:SUN_FD_CLOSE>    <it:MON_FD_OPEN>${start}</it:MON_FD_OPEN>    <it:MON_FD_CLOSE>${end}</it:MON_FD_CLOSE>    <it:TUE_FD_OPEN>${start}</it:TUE_FD_OPEN>
+    ...    <it:TUE_FD_CLOSE>${end}</it:TUE_FD_CLOSE>    <it:WED_FD_OPEN>${start}</it:WED_FD_OPEN>    <it:WED_FD_CLOSE>${end}</it:WED_FD_CLOSE>    <it:THU_FD_OPEN>${start}</it:THU_FD_OPEN>    <it:THU_FD_CLOSE>${end}</it:THU_FD_CLOSE>    <it:FRI_FD_OPEN>${start}</it:FRI_FD_OPEN>
+    ...    <it:FRI_FD_CLOSE>${end}</it:FRI_FD_CLOSE>    <it:SAT_FD_OPEN>${start}</it:SAT_FD_OPEN>    <it:SAT_FD_CLOSE>${end}</it:SAT_FD_CLOSE>
+    Comment    Feed Time
+    : FOR    ${ric}    IN    @{connectTimesIdentifierList}
+    \    ${exlFile}    get state EXL file    ${ric}    ${statRicDomain}    ${serviceName}    Feed Time
+    \    Modify EXL    ${exlFile}    ${exlFile}    ${ric}    ${statRicDomain}    @{edits}
+    \    Comment    Get associated holiday EXL
+    \    ${unused}    ${holidayRic}    Get DST And Holiday RICs From EXL    ${exlFile}    ${ric}
+    \    ${holidayEXL}=    get state EXL file    ${holidayRic}    ${statRicDomain}    ${serviceName}    Holiday
+    \    Append To List    ${holidayEXLFiles}    ${holidayEXL}
+    Comment    Trade Time
+    @{edits}=    Create List    <it:SUN_TR_OPEN>${start}</it:SUN_TR_OPEN>    <it:SUN_TR_CLOSE>${end}</it:SUN_TR_CLOSE>    <it:MON_TR_OPEN>${start}</it:MON_TR_OPEN>    <it:MON_TR_CLOSE>${end}</it:MON_TR_CLOSE>    <it:TUE_TR_OPEN>${start}</it:TUE_TR_OPEN>
+    ...    <it:TUE_TR_CLOSE>${end}</it:TUE_TR_CLOSE>    <it:WED_TR_OPEN>${start}</it:WED_TR_OPEN>    <it:WED_TR_CLOSE>${end}</it:WED_TR_CLOSE>    <it:THU_TR_OPEN>${start}</it:THU_TR_OPEN>    <it:THU_TR_CLOSE>${end}</it:THU_TR_CLOSE>    <it:FRI_TR_OPEN>${start}</it:FRI_TR_OPEN>
+    ...    <it:FRI_TR_CLOSE>${end}</it:FRI_TR_CLOSE>    <it:SAT_TR_OPEN>${start}</it:SAT_TR_OPEN>    <it:SAT_TR_CLOSE>${end}</it:SAT_TR_CLOSE>
+    : FOR    ${ric}    IN    @{highActivityIdentifierList}
+    \    ${exlFile}    get state EXL file    ${ric}    ${statRicDomain}    ${serviceName}    Trade Time
+    \    Modify EXL    ${exlFile}    ${exlFile}    ${ric}    ${statRicDomain}    @{edits}
+    \    Comment    Get associated holiday EXL
+    \    ${unused}    ${holidayRic}    Get DST And Holiday RICs From EXL    ${exlFile}    ${ric}
+    \    ${holidayEXL}=    get state EXL file    ${holidayRic}    ${statRicDomain}    ${serviceName}    Holiday
+    \    Append To List    ${holidayEXLFiles}    ${holidayEXL}
+    ${holidayEXLFiles}    Remove Duplicates    ${holidayEXLFiles}
+    Comment    Holidays
+    : FOR    ${exlFile}    IN    @{holidayEXLFiles}
+    \    Blank Out Holidays    ${exlFile}    ${exlFile}
+    [Teardown]
+
 Set DST Datetime In EXL
     [Arguments]    ${srcFile}    ${dstFile}    ${ric}    ${domain}    ${startDateTime}    ${endDateTime}
     [Documentation]    Set DST datetime in EXL:
@@ -830,14 +852,19 @@ Start Capture MTE Output
 
 Start MTE
     [Documentation]    Start the MTE and wait for initialization to complete.
+    ...    Then load the state EXL files (that were modified by suite setup to set 24x7 feed and trade time).
+    ...
+    ...    If Recon is changed to set ResendFM=0 in the MTE config file, instead of loading just the state EXL files, this will need to load all of the EXL files (if they have not already been loaded). \ With ResendFM=1, we need to wait for FMS reorg to finish, and then load the state EXL files to override the ones loaded from the FMS server.
     ${result}=    find processes by pattern    MTE -c ${MTE}
     ${len}=    Get Length    ${result}
     Run keyword if    ${len} != 0    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
+    Run keyword if    ${len} != 0    Load All State EXL Files
     Return from keyword if    ${len} != 0
     run commander    process    start ${MTE}
     wait for process to exist    MTE -c ${MTE}
     wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
     Wait For FMS Reorg
+    Load All State EXL Files
 
 Start Process
     [Arguments]    ${process}
@@ -861,6 +888,70 @@ Stop Process
     [Documentation]    Stop process, argument is the process name
     run commander    process    stop ${process}
     wait for process to not exist    ${process}
+
+Suite Setup
+    [Documentation]    Do test suite level setup, e.g. things that take time and do not need to be repeated for each test case.
+    ...    Make sure the CHE_IP machine has the LIVE MTE instance.
+    Should Not be Empty    ${CHE_IP}
+    ${ret}    MTE Machine Setup    ${CHE_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${ret}
+    ${ip_list}    Create List
+    Run Keyword If    '${CHE_A_IP}' != '' and '${CHE_A_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_A_IP}
+    Run Keyword If    '${CHE_B_IP}' != '' and '${CHE_B_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    Run Keyword If    '${CHE_IP}'=='${CHE_A_IP}'    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    ...    ELSE IF    '${CHE_IP}'=='${CHE_B_IP}'    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
+    ...    ELSE    Fail    CHE_IP does not equal CHE_A_IP or CHE_B_IP in VenueVariables
+    Verify MTE State In Specific Box    ${CHE_IP}    LIVE
+    [Return]    ${ret}
+
+Suite Setup Two TD Boxes
+    [Documentation]    Setup 2 Sessions for 2 Peer Thunderdome Boxes
+    Should Not be Empty    ${CHE_A_IP}
+    Should Not be Empty    ${CHE_B_IP}
+    ${ret}    MTE Machine Setup    ${CHE_A_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${ret}
+    ${ret}    MTE Machine Setup    ${CHE_B_IP}
+    Set Suite Variable    ${CHE_B_Session}    ${ret}
+
+Suite Setup Two TD Boxes With Playback
+    [Documentation]    Setup 3 Sessions, 2 Peer Thunderdome Boxes, 1 Playback Box
+    Should Not be Empty    ${CHE_A_IP}
+    Should Not be Empty    ${CHE_B_IP}
+    Should Not be Empty    ${PLAYBACK_MACHINE_IP}
+    ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
+    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
+    Set Suite Variable    ${Playback_Session}    ${plyblk}
+    ${ret}    MTE Machine Setup    ${CHE_B_IP}
+    Set Suite Variable    ${CHE_B_Session}    ${ret}
+    ${ret}    MTE Machine Setup    ${CHE_A_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${ret}
+
+Suite Setup with Playback
+    [Documentation]    Setup Playback box and suit scope variable Playback_Session.
+    Should Not be Empty    ${PLAYBACK_MACHINE_IP}
+    ${plyblk}    open connection    host=${PLAYBACK_MACHINE_IP}    port=${PLAYBACK_PORT}    timeout=5
+    login    ${PLAYBACK_USERNAME}    ${PLAYBACK_PASSWORD}
+    Set Suite Variable    ${Playback_Session}    ${plyblk}
+    ${ret}    Suite Setup
+
+Suite Teardown
+    [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
+    close all connections
+    ${localCfgFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
+    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    ${localCfgFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
+    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+
+Switch To TD Box
+    [Arguments]    ${ip}
+    [Documentation]    To switch the current ssh session to specific CHE_X_IP
+    ${switchBox}    Run Keyword If    '${ip}' == '${CHE_A_IP}'    set variable    ${CHE_A_Session}
+    ...    ELSE IF    '${ip}' == '${CHE_B_IP}'    set variable    ${CHE_B_Session}
+    ...    ELSE IF    '${ip}' == '${PLAYBACK_MACHINE_IP}'    set variable    ${Playback_Session}
+    ...    ELSE    Fail    Invaild IP
+    Set Suite Variable    ${CHE_IP}    ${ip}
+    switch connection    ${switchBox}
 
 Validate MTE Capture Against FIDFilter
     [Arguments]    ${pcapfile}    ${contextId}    ${constit}

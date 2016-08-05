@@ -11,7 +11,6 @@ Variables         ../lib/VenueVariables.py
 Persistence File Backup
     [Documentation]    Verify persistence file could be backup after end of connection time http://www.iajira.amers.ime.reuters.com/browse/CATF-1756
     [Setup]
-    Start MTE
     Delete Persist Backup
     ${serviceName}=    Get FMS Service Name
     ${currDateTime}=    get date and time
@@ -23,7 +22,6 @@ Persistence File Backup
     ...    AND    Case Teardown    @{modifiedExlFiles}
 
 Persistence File Cleanup
-    Start MTE
     ${keepDays}=    Get Backup Keep Days
     Delete Persist Backup
     generate persistence backup    ${keepDays}
