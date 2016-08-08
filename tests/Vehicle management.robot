@@ -25,6 +25,7 @@ Verify Long RIC handled correctly
     Load Single EXL File    ${localEXLfile}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
     Wait For Persist File Update    5    60
     Stop Capture MTE Output    1    5
+
     ${newRic}    ${newPubRic}    Run Keyword And Continue On Failure    Verify RIC In MTE Cache    ${long_ric}    ${domain}
     Run Keyword And Continue On Failure    Verify RIC Published    ${remoteCapture}    ${localEXLfile}    ${newPubRic}    ${domain}
     Run Keyword And Continue On Failure    Verfiy Item Persisted    ${long_ric}    ${EMPTY}    ${domain}
@@ -40,15 +41,18 @@ Verify PE Change Behavior
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${EXLfullpath}    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     @{pe}=    get ric fields from EXL    ${EXLfullpath}    ${ric}    PROD_PERM
+
     ${penew}=    Evaluate    @{pe}[0] - 1
     ${penew}=    Convert To String    ${penew}
     ${exlfile}=    Fetch From Right    ${EXLfullpath}    \\
     ${exlmodified} =    set variable    ${LOCAL_TMP_DIR}/${exlfile}_modified.exl
-    Set PE in EXL    ${EXLfullpath}    ${exlmodified}    ${penew}
+
+    Set PE in EXL    ${EXLfullpath}    ${exlmodified}    ${ric}    ${domain}    ${penew}
     Start Capture MTE Output
     Load Single EXL File    ${exlmodified}    ${serviceName}    ${CHE_IP}
     Stop Capture MTE Output    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+
     Run Keyword And Continue On Failure    verify PE Change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${pe}    ${penew}    ${domain}
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     Load Mangling Settings
@@ -58,15 +62,17 @@ Verify PE Change Behavior
 Verify New Item Creation via FMS
     [Documentation]    Verify that a new item can be created by adding it to an EXL file and loading it via FMS
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1711
-    Start MTE
+
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${EXL_File}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     ${uniqueRic}=    Create Unique RIC Name
+
     add ric to exl file    ${EXL_File}    ${LOCAL_TMP_DIR}/output.exl    ${uniqueRic}    ${uniqueRic}    ${domain}
     Load Single EXL File    ${LOCAL_TMP_DIR}/output.exl    ${serviceName}    ${CHE_IP}
     Wait For FMS Reorg
+
     Verify RIC In MTE Cache    ${uniqueRic}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/output.exl
 
@@ -93,7 +99,7 @@ Partial REORG on EXL Change
 
 Verify RIC rename handled correctly
     [Documentation]    Verify RIC rename appeared in the cache dump file and updated persist file
-    start MTE
+
     Comment    //Setup variables for test
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
@@ -110,12 +116,14 @@ Verify RIC rename handled correctly
     Copy File    ${EXLfullpath}    ${LocalEXLfullpath}
     Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
     Wait For FMS Reorg
+
     Verify RIC NOT In MTE Cache    ${RIC_After_Rename}    ${domain}
     Comment    //Start test. Test 2: Check that the RIC can be renamed and that the existing RIC is no longer in the cache
     Start Capture MTE Output
     Set RIC in EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC_Before_Rename}    ${domain}    ${RIC_After_Rename}
     Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
     Wait For FMS Reorg
+
     Verify RIC NOT In MTE Cache    ${RIC_Before_Rename}    ${domain}
     ${ric}    ${Published_RIC_After_Rename}    Verify RIC In MTE Cache    ${RIC_After_Rename}    ${domain}
     Send TRWF2 Refresh Request    ${Published_RIC_After_Rename}    ${domain}
@@ -129,6 +137,7 @@ Verify RIC rename handled correctly
     Start Capture MTE Output
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
     Wait For FMS Reorg
+}
     Verify RIC NOT In MTE Cache    ${RIC_After_Rename}    ${domain}
     ${ric}    ${Published_RIC_Before_Rename}    Verify RIC In MTE Cache    ${RIC_Before_Rename}    ${domain}
     Send TRWF2 Refresh Request    ${Published_RIC_Before_Rename}    ${domain}
@@ -143,7 +152,7 @@ Verify FMS Rebuild
     [Documentation]    Force a rebuild of RIC via FMS and verify that a rebuild message is published for the RIC
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1849
-    Start MTE
+
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
@@ -151,6 +160,7 @@ Verify FMS Rebuild
     rebuild ric    ${serviceName}    ${ric}    ${domain}
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+
     Run Keyword And Continue On Failure    verify all response message num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
@@ -168,6 +178,7 @@ Drop a RIC by deleting EXL File and Full Reorg
     ${currentDateTime}    get date and time
     Load All EXL Files    ${serviceName}    ${CHE_IP}
     wait smf log message after time    Drop message sent    ${currentDateTime}
+
     Verify RIC is Dropped In MTE Cache    ${ric}    ${domain}
     [Teardown]    Drop a RIC Case Teardown    ${LOCAL_TMP_DIR}/${exlFileName}
 
@@ -182,19 +193,22 @@ Drop a RIC by deleting EXL file from LXL file
     ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
     ${service_dir}    Fetch From Left    ${exlFilePath}    \\${service}\\
     ${recon_files_dir}=    set variable    ${service_dir}\\${service}\\System Files\\Reconcile Files
-    ${exl_path_in_lxl}=    Get exl file path for lxl file    ${exlFilePath}
+
     ${tmp_lxl}    set variable    ${recon_files_dir}\\tmp.lxl
-    ${exl_file_list} =    List Files In Directory    ${exlFilePath}    *.exl
-    Remove Values From List    ${exl_file_list}    ${exlFileName}
-    ${lxl_content}=    Build LXL File    ${exl_path_in_lxl}    ${exl_file_list}
+
+    ${lxl_content}=    Build LXL File    ${exlFileName}
     Create File    ${tmp_lxl}    ${lxl_content}
+
     Run FmsCmd    ${CHE_IP}    Recon    --Services ${service}    --InputFile "${tmp_lxl}"    --HandlerName ${MTE}    --UseReconcileLXL true
     Wait For Persist File Update
+
     Run Keyword And Continue On Failure    Verify RIC is Dropped In MTE Cache    ${ric}    ${domain}
     Run FmsCmd    ${CHE_IP}    UnDrop    --Services ${service}    --InputFile "${exlFullFileName}"    --HandlerName ${MTE}
     Wait For Persist File Update
+
     Verify RIC In MTE Cache    ${ric}    ${domain}
-    [Teardown]    case teardown    ${tmp_lxl}
+
+    [Teardown]    Remove Files    ${tmp_lxl}
 
 Verify Reconcile of Cache
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1848
@@ -215,9 +229,11 @@ Verify Reconcile of Cache
     Run Keyword And Continue On Failure    Load All EXL Files    ${serviceName}    ${CHE_IP}
     copy File    ${LOCAL_TMP_DIR}/${exlFileName}    ${exlFullFileName}
     wait smf log message after time    FMS REORG DONE    ${currentDateTime}
+
     Verify RIC In MTE Cache    ${newRICName}    ${domain}
     Run Keyword And Continue On Failure    Verify RIC is Dropped In MTE Cache    ${ric}    ${domain}
     Load Single EXL File    ${exlFullFileName}    ${serviceName}    ${CHE_IP}
+
     Verify RIC In MTE Cache    ${ric}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/${exlFileName}
 
@@ -238,6 +254,7 @@ Verify SIC rename handled correctly
     Set Symbol In EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC}    ${domain}    ${Symbol_After_Rename}
     Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowSICChange true
     remove file    ${LocalEXLfullpath}
+
     ${ricFields}=    Get All Fields For RIC From Cache    ${RIC}    ${domain}
     ${SIC_1}=    set variable    ${ricFields['SIC']}
     Should Be Equal    ${SIC_1}    ${SIC_After_Rename}
@@ -245,6 +262,7 @@ Verify SIC rename handled correctly
     Verfiy Item Persisted    ${EMPTY}    ${SIC_After_Rename}    ${domain}
     Comment    //fallback
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowSICChange true
+
     ${ricFields}=    Get All Fields For RIC From Cache    ${RIC}    ${domain}
     ${SIC_2}=    set variable    ${ricFields['SIC']}
     Should Be Equal    ${SIC_2}    ${SIC_Before_Rename}
@@ -255,7 +273,7 @@ Verify SIC rename handled correctly
 Verify FMS Extract and Insert
     [Documentation]    Extract existing RIC fields and values \ into an .icf file using FmsCmd. Modify some of the values and re-load the .icf file using FmsCmd.Verify that the modified values are published.
     ...    Test Case - Verify FMS Extract and Insert : http://www.iajira.amers.ime.reuters.com/browse/CATF-1892
-    Start MTE
+
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
@@ -296,22 +314,26 @@ Verify Deletion Delay
     ...    Test Case - Verify Deletion Delay
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1891
     [Setup]    Disable MTE Clock Sync
-    start mte
+
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${StartOfDayGMT}    Get Start GMT Time
+    ${MTETimeOffset}=    Get MTE Machine Time Offset
     Drop ric    ${ric}    ${domain}    ${serviceName}
     Comment    Stopping EventScheduler elimintates extra processing that is done at each start of day and many FMSClient:SocketException messages. We are only interested in the deletion delay change.    This will be restarted during case teardown.
     ${result}=    Run Commander    process    stop EventScheduler
     : FOR    ${daysLeft}    IN RANGE    5    0    -1
+
     \    ${ricFields}=    Get All Fields For RIC From Cache    ${ric}    ${domain}
     \    Should Be Equal    ${ricFields['PUBLISHABLE']}    FALSE
     \    Should Be Equal As Integers    ${ricFields['DELETION_DELAY_DAYS_REMAINING']}    ${daysLeft}
     \    Should Be True    ${ricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
     \    Rollover MTE Start Date    ${StartOfDayGMT}
+
     Verify RIC Not In MTE Cache    ${ric}    ${domain}
-    [Teardown]    Correct MTE Machine Time
+
+    [Teardown]    Restore MTE Machine Time    ${MTETimeOffset}
 
 Verify Drop and Undrop from FMSCmd
     [Documentation]    Verify Drop/Undrop form FMSCmd, 1) Verify MTE is running.
@@ -328,7 +350,7 @@ Verify Drop and Undrop from FMSCmd
     ...
     ...    Test Case - Verify Drop/Undrop form FMSCmd
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2009
-    start mte
+
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
@@ -337,16 +359,20 @@ Verify Drop and Undrop from FMSCmd
     Start Capture MTE Output
     Drop ric    ${ric}    ${domain}    ${serviceName}
     wait smf log message after time    Drop message sent    ${currDateTime}
+
     Verify RIC Is Dropped In MTE Cache    ${ric}    ${domain}
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+
     verify DROP message in itemstatus messages    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
     Start Capture MTE Output
     Undrop ric    ${ric}    ${domain}    ${serviceName}
     wait smf log message after time    was Undropped    ${currDateTime}
+
     Verify RIC In MTE Cache    ${ric}    ${domain}
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+
     verify_all_response_message_num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
@@ -370,10 +396,12 @@ Calculate UpdateSince for REORG
     [Return]    ${UpdateSince}
 
 Set PE in EXL
-    [Arguments]    ${srcFile}    ${dstFile}    ${newPE}
+
+    [Arguments]    ${srcFile}    ${dstFile}    ${ric}    ${domain}    ${newPE}
     [Documentation]    Keyword - Modify PROD_PERM value in header of EXL file
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1718
-    modify exl header    ${srcFile}    ${dstFile}    <it:PROD_PERM>${newPE}</it:PROD_PERM>
+
+    modify_exl    ${srcFile}    ${dstFile}    ${ric}    ${domain}    <it:PROD_PERM>${newPE}</it:PROD_PERM>
 
 Trigger Partial REORG
     [Arguments]    ${startDateTime}    ${service}
@@ -460,15 +488,26 @@ Create Fid Value Pair
     \    Set To Dictionary    ${fidnumvalue}    ${fidNum}    1${value}
     [Return]    ${fidnamevalue}    ${fidnumvalue}
 
-Correct MTE Machine Time
+
+Get MTE Machine Time Offset
+    [Documentation]    Get the offset from GMT for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal GMT time.
+    ${currDateTime}=    get date and time
+    ${localTime}=    Get Current Date    exclude_millis=True
+    ${MTEtime}=    Convert Date    ${currDateTime[0]}-${currDateTime[1]}-${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    result_format=datetime
+    ${MTETimeOffset}=    Subtract Date From Date    ${MTEtime}    ${localTime}
+    [Return]    ${MTETimeOffset}
+
+Restore MTE Machine Time
+    [Arguments]    ${MTETimeOffset}
     [Documentation]    To correct Linux time and restart SMF, restart SMF because currently FMS client have a bug now, if we change the MTE Machine time when SMF running, FMS client start to report exception like below, and in this case we can't use FMS client correclty:
     ...    FMSClient:SocketException - ClientImpl::connect:connect (111); /ThomsonReuters/EventScheduler/EventScheduler; 18296; 18468; 0000235f; 07:00:00;
     ...
     ...    In addition, on a vagrant VirtualBox, restore the VirtualBox Guest Additions service, which includes clock sync with the host.
     stop smf
-    ${RIDEMachineTime}    Get Current Date    UTC    result_format=datetime
-    ${res}    set date and time    ${RIDEMachineTime.year}    ${RIDEMachineTime.month}    ${RIDEMachineTime.day}    ${RIDEMachineTime.hour}    ${RIDEMachineTime.minute}
-    ...    ${RIDEMachineTime.second}
+
+    ${RIDEMachineTime}=    Get Current Date    result_format=datetime    exclude_millis=True
+    ${MTEMachineTime}=    Add Time To Date    ${RIDEMachineTime}    ${MTETimeOffset}    result_format=datetime
+    set date and time    ${MTEMachineTime.year}    ${MTEMachineTime.month}    ${MTEMachineTime.day}    ${MTEMachineTime.hour}    ${MTEMachineTime.minute}    ${MTEMachineTime.second}
     Restore MTE Clock Sync
     start smf
 
