@@ -689,6 +689,75 @@ def verify_message_fids_are_in_FIDfilter(localPcap, ric, domain, contextId):
                 if fid > 0:
                     raise AssertionError ('*ERROR* NONE negtive fid exists for contextID %s, constituent %s with RIC %s, domain %s' %(contextId, constituent, ric, domain))
 
+def verify_message_sequence_numbers_in_capture(pcapfile, ric, domain, mte_state):
+    """ verify if response/update message sequence numbers for RIC in each constituents are in increasing order in MTE output pcap message
+        if mte_state is startup, the sequence number should start from 0, then 4, 5, ... n, n+1...
+        if mte_state is failover, the sequence number could start from 1, then 4, 5, ... n, n+1...
+        if mte_state is rollover, the sequence number could start from 3, then 4, 5, ... n, n+1...
+        
+        Argument : pcapfile : MTE output capture pcap file fullpath
+                   ric : published RIC
+                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
+                   mte_state: possible value startup, rollover, failover.
+        return : the list of sequence number of constituent 1 (i.e. C1) messages (include response and update)
+    """           
+
+    if (os.path.exists(pcapfile) == False):
+        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+    
+    filterDomain = 'TRWF_TRDM_DMT_'+ domain
+    outputfileprefix = 'test_seqnum_resp_'
+    filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, All_msgBase_msgKey_name = &quot;%s&quot;)'%(filterDomain, ric)
+    outputxmlfile = get_xml_from_pcap(pcapfile, filterstring, outputfileprefix)                
+    
+    parentName  = 'Message'
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
+
+    retSeqNumList = []
+    constitDictSeqNumList = {}
+    for messageNode in messages:
+        seqNum = xmlutilities.xml_parse_get_field_for_messageNode(messageNode, 'ItemSeqNum')
+        constitNum = xmlutilities.xml_parse_get_field_for_messageNode(messageNode, 'ConstitNum')
+        if (not constitDictSeqNumList.has_key(constitNum)):
+            constitDictSeqNumList[constitNum] = []
+        constitDictSeqNumList[constitNum].append(seqNum)
+
+    #loop for each existed constituent and check the sequnce number
+    for constituent in constitDictSeqNumList:
+        seqNumList = constitDictSeqNumList[constituent]
+        print '*INFO* Verify seqNumList of constituent %s: %s' %(constituent, seqNumList)
+
+        for i in xrange(1,len(seqNumList)-1):
+            if int(seqNumList[i]) + 1 != int(seqNumList[i+1]):
+                print seqNumList
+                raise AssertionError('*ERROR* response/update message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be smaller than SeqNo[%d] %s by one.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
+        
+        if len(seqNumList) > 1:
+            if seqNumList[1] != '4':
+                raise AssertionError('*ERROR* the second sequence number is %s, instead it should be 4' %seqNumList[1])  
+        
+        if mte_state == 'startup':
+            if seqNumList[0] != '0':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 0' %seqNumList[0])  
+     
+        if mte_state == 'failover':  
+            if seqNumList[0] != '1':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
+          
+        if mte_state == 'rollover':
+            if seqNumList[0] != '3':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 3' %seqNumList[0])  
+
+        #store the return list of sequence number of C1 messages
+        if (constituent == '1'):
+            retSeqNumList = seqNumList
+                
+    for exist_file in outputxmlfile:
+        os.remove(exist_file)
+    os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")       
+        
+    return retSeqNumList
+
 def verify_MTE_heartbeat_in_message(pcapfile,intervalInSec):
     """ verify MTE heartbeat in  MTE output pcap message
         pcapFile : is the pcap fullpath at local control PC  
