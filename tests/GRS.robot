@@ -70,7 +70,8 @@ GRS Writes to PCAP When Buffer Full
     ...    Verify that GRS writes the messages to a pcap file when the buffer is full.
     ...    Compare GRS output frames with injection file frames and buffer size in grs configuration file.
     ...    Requires injection pcap (FH output) file contains more than 5 frames
-    ${grsConfigFile}=    Get CHE Config Filepath    *_grs.json    config_grs.json    SCWatchdog
+    ${grsConfigFiles}=    Get CHE Config Filepaths    *_grs.json    config_grs.json    SCWatchdog
+    ${grsConfigFile}=    Get From List    ${grsConfigFiles}    0
     ${locaConfiglFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_grs_config.json
     get remote file    ${grsConfigFile}    ${locaConfiglFile}
     ${itemValue}=    Convert To Integer    5
