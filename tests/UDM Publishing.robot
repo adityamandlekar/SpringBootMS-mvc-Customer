@@ -9,25 +9,24 @@ Empty Payload Detection with Blank FIDFilter
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1988
     ...
     ...    Restart MTE with empty FIDFilter file. Verify no update messages with playback data. Restart MTE with restored FIDFilter file
-    ${fileList}=    backup remote cfg file    ${VENUE_DIR}    FIDFilter.txt
-    ${fidfilterFile}    set variable    ${fileList[0]}
+    ${fileList}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    FIDFilter.txt
+    ${fidFilterPath}    set variable    ${fileList[0]}
     ${fidfilterBackup}    set variable    ${fileList[1]}
     ${emptyContent}=    set variable    ${EMPTY}
-    Create Remote File Content    ${fidfilterFile}    ${emptyContent}
+    Create Remote File Content    ${fidFilterPath}    ${emptyContent}
     Reset Sequence Numbers
     ${service}    Get FMS Service Name
     ${pcapFileName} =    Generate PCAP File Name    ${service}    General RIC Update
     Run Keyword And Continue On Failure    Verify No Realtime Update    ${pcapFileName}
     Stop MTE
-    Restore Remote and Restart MTE    ${fidfilterFile}    ${fidfilterBackup}
+    Restore Remote and Restart MTE    ${fidFilterPath}    ${fidfilterBackup}
     [Teardown]
 
 Empty Payload Detection with Blank TCONF
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1987
     ...
     ...    Restart MTE with empty tconf file and modified ${MTE}.xml config file. Verify no update messages with playback data. Restart MTE with restored tconf and config file
-    ${lowercaseConfig}    convert to lowercase    ${MTE}.xml
-    ${fileList}=    backup remote cfg file    ${VENUE_DIR}    ${lowercaseConfig}
+    ${fileList}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${remoteConfig}    set variable    ${fileList[0]}
     ${remoteConfigBackup}    set variable    ${fileList[1]}
     ${rmtCfgPath}    ${rmtCfgFile}    Split Path    ${remoteConfig}
@@ -50,6 +49,7 @@ Validate Downstream FID publication
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     ${mteConfigFile}    Get MTE Config File
     ${contextIds}    get context ids from config file    ${mteConfigFile}
+    Get FIDFilter File
     : FOR    ${contextId}    IN    @{contextIds}
     \    ${ricFiledList}    get ric fields from cache    1    ${EMPTY}    ${contextId}
     \    ${pubRic}=    set variable    ${ricFiledList[0]['PUBLISH_KEY']}
@@ -70,6 +70,7 @@ Validate Downstream FID publication from Reconcile
     Wait For FMS Reorg
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    Get FIDFilter File
     verify FIDfilter FIDs are in message    ${LOCAL_TMP_DIR}/capture_local.pcap
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
@@ -96,6 +97,7 @@ Verify Downstream Recovery Functions
     Stop Capture MTE Output    5    10
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
+    Get FIDFilter File
     ${constituents}=    get constituents from FidFilter    ${contextId}
     Verify Unsolicited Response in Capture    ${localCapture}    ${pubRic}    ${domain}    ${constituents}
     [Teardown]    case teardown    ${localCapture}

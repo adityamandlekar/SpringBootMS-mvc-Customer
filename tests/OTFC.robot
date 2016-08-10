@@ -95,8 +95,7 @@ OTFC Setup
     ...    1. Enable OTFC
     ...    2. Disable ResendFM so that No Ric will be created from FMS Server provided EXL files.
     ...    (This actual empty the cache of MTE so that making OTFC easier)
-    ${mtecfgfile}=    Convert To Lowercase    ${MTE}.xml
-    ${orgFile}    ${backupFile}    backup remote cfg file    ${VENUE_DIR}    ${mtecfgfile}
+    ${orgFile}    ${backupFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     Set Suite Variable    ${mtecfgfile_backup}    ${backupFile}
     Set Suite Variable    ${mtecfgfile_org}    ${orgFile}
     Stop MTE
