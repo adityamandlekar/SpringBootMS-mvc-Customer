@@ -1,4 +1,4 @@
-from __future__ import with_statement
+﻿from __future__ import with_statement
 import os
 import os.path
 from sets import Set
@@ -106,20 +106,64 @@ def set_xml_tag_attributes_value_with_conditions(xmlFileLocalFullPath,conditions
             
     save_to_xml_file(root,xmlFileLocalFullPath,isNonStandardXml)
 
-def set_xml_tag_value(xmlFileLocalFullPath,tagValue,isNonStandardXml,xPath):
-    """set tag value in xml file specficied by xPath
+def set_xml_tag_value(xmlFileLocalFullPath, xPath, tagValue, tagAttributes=None,  isNonStandardXml=False, addTagIfNotExist=True):
+    """set tag value in xml file specified by xPath
     
     xmlFileLocalFullPath : full path of xml file
-    tagValue : target tag value
-    isNonStandardXml : indicate if xml file is non-starndard (e.g. MTE venue config xml file)
     xPath : a list contain the xPath for the node
+    tagValue : target tag value
+    tagAttributes : target tag attributes string value (e.g. "type=\"ul\""). 
+                    This is only use if addTagIfNotExist is True, and for node creation in the leaf node if the xPath not exist, not for searching. 
+    isNonStandardXml : indicate if xml file is non-standard (e.g. MTE venue config xml file)
+    addTagIfNotExist: If addTagIfNotExist is True, add the non-exists nodes; else assert if the tag is not found. 
+
     Returns : Nil
     """
+    if (tagAttributes == None):
+        tagAttributes = ""
+
+    lenOfxPathList = len(xPath)
+    if (lenOfxPathList <= 0):
+         raise AssertionError('*ERROR* the input paramater xPath list is empty')
+
     root = load_xml_file(xmlFileLocalFullPath,isNonStandardXml)
-    nodes = _get_xml_node_by_xPath(root, xPath)
-    for node in nodes:
-        node.text=str(tagValue)
-    
+    currentNode = root
+    insertedNodePos = None
+    foundLeafNode = False
+    insertPrefixNodeStr = ""
+    insertSuffixNodeStr = ""
+    i = -1
+
+    for tag in xPath:
+        i += 1
+        if (insertedNodePos == None):
+            nodes = currentNode.find("./" + tag)
+        
+        if (nodes == None):
+            if (not addTagIfNotExist):
+                break
+
+            if (insertedNodePos == None):
+                insertedNodePos = currentNode
+            if (i == lenOfxPathList - 1):
+                insertPrefixNodeStr = insertPrefixNodeStr + "<" + tag + " " + tagAttributes + " >" + tagValue
+            else:
+                insertPrefixNodeStr = insertPrefixNodeStr + "<" + tag + ">"
+            insertSuffixNodeStr = "</" + tag + ">\n" + insertSuffixNodeStr
+        else:
+            if (i == lenOfxPathList - 1):
+                #found the leaf node and change the value
+                nodes.text = str(tagValue)
+                foundLeafNode = True
+            else:
+                #continue loop for next node
+                currentNode = nodes
+
+    if (insertedNodePos != None):
+            insertedNodePos.append(ET.fromstring(insertPrefixNodeStr + insertSuffixNodeStr))
+    elif (not foundLeafNode):
+        raise AssertionError('*ERROR* The node of xPath=%s is not found in %s' %(xPath,xmlFileLocalFullPath))
+
     save_to_xml_file(root,xmlFileLocalFullPath,isNonStandardXml)
 
 def xml_parse_get_all_elements_by_name (xmlfile,tagName):
