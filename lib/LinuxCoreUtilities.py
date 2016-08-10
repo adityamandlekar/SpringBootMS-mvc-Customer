@@ -5,6 +5,7 @@ Created on May 12, 2014
 '''
 
 #!/usr/bin/env python
+import math
 import re
 import os
 import sys
@@ -221,6 +222,29 @@ class LinuxCoreUtilities():
                     return interfaceName
                    
         raise AssertionError('*ERROR* Fail to get the interface name for %s' %ip)
+
+    def get_memory_usage(self):
+        """
+        Find the memory usage(%) from system
+        
+        """
+
+        cmd = "egrep \'MemTotal\' /proc/meminfo | sed \'s/[^0-9]*//g\'"
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))       
+        total = float(stdout)
+
+        cmd = "egrep \'MemFree\' /proc/meminfo | sed \'s/[^0-9]*//g\'"
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        free = float(stdout)
+
+        usage = math.ceil(((total - free)/total)*100)
+
+        return usage
+
     
     def Get_process_and_pid_matching_pattern(self, *process_pattern): 
         """
