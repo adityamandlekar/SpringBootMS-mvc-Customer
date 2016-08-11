@@ -49,6 +49,7 @@ Verify PE Change Behavior
     Load Single EXL File    ${exlmodified}    ${serviceName}    ${CHE_IP}
     Stop Capture MTE Output    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    Get FIDFilter File
     Run Keyword And Continue On Failure    verify PE Change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${pe}    ${penew}    ${domain}
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     Load Mangling Settings
@@ -102,6 +103,7 @@ Verify RIC rename handled correctly
     ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
     ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
     ${contextIDs}=    Get Ric Fields from EXL    ${EXLfullpath}    ${RIC_Before_Rename}    CONTEXT_ID
+    Get FIDFilter File
     ${constituent_list}=    Get Constituents From FidFilter    ${contextIDs[0]}
     Comment    //Start test. Test 1: Check that the new RIC that we are about to create is NOT already in the cache
     Start Capture MTE Output
@@ -148,6 +150,7 @@ Verify FMS Rebuild
     rebuild ric    ${serviceName}    ${ric}    ${domain}
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    Get FIDFilter File
     Run Keyword And Continue On Failure    verify all response message num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
@@ -379,6 +382,7 @@ Verify RIC Published
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
     ${contextIDs}=    Get Ric Fields from EXL    ${exlFile}    ${ric}    CONTEXT_ID
+    Get FIDFilter File
     ${constituents}=    get constituents from FidFilter    ${contextIDs[0]}
     Verify Unsolicited Response in Capture    ${localCapture}    ${ric}    ${domain}    ${constituents}
     Remove Files    ${localCapture}

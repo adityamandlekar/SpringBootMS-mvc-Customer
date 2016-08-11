@@ -267,6 +267,23 @@ Get FID Values From Refresh Request
     ${ricDict}=    Convert DataView Response to MultiRIC Dictionary    ${result}
     [Return]    ${ricDict}
 
+Get FIDFilter File
+    [Documentation]    Get the FIDFilter.txt for this venue from the TD Box.
+    ...
+    ...    There are separate FIDFilter.txt files for each venue on machines with multiple venues.
+    ...    We do not have the venue name, so we use the FIDFilter.txt file in the same directory as the MTE configuration file.
+    ...
+    ...    1. The file will be saved at Control PC and only removed at Suite Teardown
+    ...    2. Suite Variable ${LOCAL_FIDFILTER_FILE} has created to store the fullpath of the config file at Control PC
+    ${localFile}=    Get Variable Value    ${LOCAL_FIDFILTER_FILE}
+    Return From Keyword If    '${localFile}' != 'None'    ${localFile}
+    ${fidfilterFile}=    Set Variable    FIDFilter.txt
+    Remote File Should Exist    ${REMOTE_MTE_CONFIG_DIR}/${fidfilterFile}
+    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${fidfilterFile}
+    get remote file    ${REMOTE_MTE_CONFIG_DIR}/${fidfilterFile}    ${localFile}
+    Set Suite Variable    ${LOCAL_FIDFILTER_FILE}    ${localFile}
+    [Return]    ${localFile}
+
 Get FMS Service Name
     [Documentation]    get the Service name from statBlock
     ${categories}=    get stat blocks for category    ${MTE}    FMS
@@ -303,16 +320,11 @@ Get Mangling Config File
     ...    1. The file will be saved at Control PC and only removed at Suite Teardown
     ...    2. Suite Variable ${LOCAL_MANGLING_CONFIG_FILE} has created to store the fullpath of the config file at Control PC
     ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
-    Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
-    ${lowercase_filename}    convert to lowercase    ${MTE}.xml
-    ${mteConfig}=    search remote files    ${VENUE_DIR}    ${lowercase_filename}    recurse=${True}
-    Length Should Be    ${mteConfig}    1    ${lowercase_filename} file not found (or multiple files found).
-    ${dirAndFile}=    Split String From Right    ${mteConfig[0]}    /    max_split=1
-    ${configDir}=    Set Variable    ${dirAndFile[0]}
+    Return From Keyword If    '${localFile}' != 'None'    ${localFile}
     ${manglingFile}=    Set Variable    manglingConfiguration.xml
-    Remote File Should Exist    ${configDir}/${manglingFile}
+    Remote File Should Exist    ${REMOTE_MTE_CONFIG_DIR}/${manglingFile}
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${manglingFile}
-    get remote file    ${configDir}/${manglingFile}    ${localFile}
+    get remote file    ${REMOTE_MTE_CONFIG_DIR}/${manglingFile}    ${localFile}
     Set Suite Variable    ${LOCAL_MANGLING_CONFIG_FILE}    ${localFile}
     [Return]    ${localFile}
 
@@ -320,12 +332,9 @@ Get MTE Config File
     [Documentation]    Get the MTE config file (MTE.xml) from the remote machine and save it as a local file.
     ...    If we already have the local file, just return the file name without copying the remote file again.
     ${localFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
-    Run Keyword If    '${localFile}' != 'None'    Return From Keyword    ${localFile}
-    ${lowercase_filename}    convert to lowercase    ${MTE}.xml
-    ${res}=    search remote files    ${VENUE_DIR}    ${lowercase_filename}    recurse=${True}
-    Length Should Be    ${res}    1    ${lowercase_filename} file not found (or multiple files found).
-    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}/mte_config_file.xml
-    get remote file    ${res[0]}    ${localFile}
+    Return From Keyword If    '${localFile}' != 'None'    ${localFile}
+    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${MTE_CONFIG}
+    get remote file    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    ${localFile}
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${localFile}
     [Return]    ${localFile}
 
@@ -602,7 +611,7 @@ MTE Machine Setup
     [Documentation]    Create ssh connection to an MTE machine and start the components.
     ${ret}    open connection    host=${ip}    port=${CHE_PORT}    timeout=6
     login    ${USERNAME}    ${PASSWORD}
-    Set Suite Variable    ${CHE_IP}    ${ip}
+    Set Common Suite Variables    ${ip}
     start smf
     setUtilPath
     Set 24x7 Feed And Trade Time And No Holidays
@@ -774,6 +783,23 @@ Set 24x7 Feed And Trade Time And No Holidays
     \    Blank Out Holidays    ${exlFile}    ${exlFile}
     [Teardown]
 
+Set Common Suite Variables
+    [Arguments]    ${ip}
+    [Documentation]    Set suite variable that are used by many suites.
+    ...    This Keyword is called by the suite setup Keywords.
+    ...
+    ...    The following varibles are set:
+    ...    CHE_IP - address of the current CHE box
+    ...    MTE_CONFIG - MTE config file name
+    ...    REMOTE_MTE_CONFIG_DIR - path to directory containing the MTE config file on Thunderdome box.
+    Set Suite Variable    ${CHE_IP}    ${ip}
+    ${MTE_CONFIG}=    convert to lowercase    ${MTE}.xml
+    Set Suite Variable    ${MTE_CONFIG}
+    ${fileList}=    search remote files    ${VENUE_DIR}    ${MTE_CONFIG}    recurse=${True}
+    Length Should Be    ${fileList}    1    ${MTE_CONFIG} file not found (or multiple files found).
+    ${dirAndFile}=    Split String From Right    ${fileList[0]}    /    max_split=1
+    Set Suite Variable    ${REMOTE_MTE_CONFIG_DIR}    ${dirAndFile[0]}
+
 Set DST Datetime In EXL
     [Arguments]    ${srcFile}    ${dstFile}    ${ric}    ${domain}    ${startDateTime}    ${endDateTime}
     [Documentation]    Set DST datetime in EXL:
@@ -815,7 +841,7 @@ Set Mangling Rule
     ...    Remark :
     ...    Current avaliable valid value for \ ${rule} : SOU, BETA, RRG \ or UNMANGLED
     ...    The KW would restore the config file to original value, but it would rely on user to calling KW : Load Mangling Settings to carry out the restore action at the end of their test case
-    @{files}=    backup remote cfg file    ${VENUE_DIR}    ${configFile}
+    @{files}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${configFile}
     ${configFileLocal}=    Get Mangling Config File
     set mangling rule default value    ${rule}    ${configFileLocal}
     set mangling rule parition value    ${rule}    ${Empty}    ${configFileLocal}
@@ -953,6 +979,8 @@ Suite Teardown
     Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
     ${localCfgFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
     Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    ${localCfgFile}=    Get Variable Value    ${LOCAL_FIDFILTER_FILE}
+    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
 
 Switch To TD Box
     [Arguments]    ${ip}
@@ -963,22 +991,6 @@ Switch To TD Box
     ...    ELSE    Fail    Invaild IP
     Set Suite Variable    ${CHE_IP}    ${ip}
     switch connection    ${switchBox}
-
-Validate MTE Capture Against FIDFilter
-    [Arguments]    ${pcapfile}    ${contextId}    ${constit}
-    [Documentation]    validate MTE pcap capture against content in FIDFilter.txt
-    get remote file    ${pcapfile}    ${LOCAL_TMP_DIR}/capture_local.pcap
-    verify fid in fidfilter by contextId and constit against pcap    ${LOCAL_TMP_DIR}/capture_local.pcap    ${contextId}    ${constit}
-    delete remote files    ${pcapfile}
-    Remove Files    ${LOCAL_TMP_DIR}/capture_local.pcap
-    [Teardown]
-
-Validate MTE Capture Within FID Range For Constituent
-    [Arguments]    ${pcapfile}    ${constit}    @{fid_range}
-    get remote file    ${pcapfile}    ${LOCAL_TMP_DIR}/capture_local.pcap
-    verify fid in range by constit against pcap    ${LOCAL_TMP_DIR}/capture_local.pcap    ${constit}    @{fid_range}
-    delete remote files    ${pcapfile}
-    Remove Files    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify MTE State In Specific Box
     [Arguments]    ${che_ip}    ${state}    ${waittime}=5    ${timeout}=150

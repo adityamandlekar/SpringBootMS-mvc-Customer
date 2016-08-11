@@ -438,55 +438,6 @@ def verify_DROP_message_in_itemstatus_messages(pcapfile,ricname,domain):
     #C63
     _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,63,domain)
 
-def verify_fid_in_fidfilter_by_contextId_against_message(messageNode,fidfilter,contextId,constit):
-    """ verify MTE output (per message) FIDs found in FIDFilter.txt given context ID and constit
-         messageNode : iterator pointing to one message node
-         fidfilter : dictionary of FIDFilter.txt
-         context Id : context Id that want to check 
-         constit : constituent number that want to check      
-        return : Nil
-        Assertion : 
-        (1) Empty payload detected
-        (2) FID is not found in FIDFilter.txt given contextId     
-    """ 
-    
-    fidsAndValues = xmlutilities.xml_parse_get_fidsAndValues_for_messageNode(messageNode)
-    ricname = xmlutilities.xml_parse_get_field_from_MsgKey(messageNode,'Name')        
-        
-    if (len(fidsAndValues) == 0):            
-        raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ricname)
-    
-    for fid in fidsAndValues.keys():
-        if (fidfilter[contextId][constit].has_key(fid) == False):
-            raise AssertionError('*ERROR* FID %s is not found in FIDFilter.txt for Ric=%s has published' %(fid,ricname))
-        
-def verify_fid_in_fidfilter_by_contextId_and_constit_against_pcap(pcapfile,contextId,constit):
-    """ compare  value found in FIDFilter.txt against MTE output pcap by given context Id and constituent
-        pcapFile : is the pcap fullpath at local control PC        
-        return : Nil
-        Assertion : If DAS fail to convert pcap to xml file
-        
-        [Assumption] :
-        (1) Pcap file is from MTE output
-    """                
-            
-    #Check if pcap file exist
-    if (os.path.exists(pcapfile) == False):
-        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
-
-    #Get the fidfilter and checking input argument context ID and constituent is valid in FIDFilter.txt
-    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
-    if (fidfilter.has_key(contextId) == False):
-        raise AssertionError('*ERROR* required context ID %s not found in FIDFilter.txt '%contextId)
-    elif ((fidfilter[contextId].has_key(constit) == False)):
-        raise AssertionError('*ERROR* required constituent %s not found in FIDFilter.txt '%constit)          
-            
-    #For Response
-    _verify_fid_in_fidfilter_by_contextId_and_constit_against_pcap_msgType(pcapfile,fidfilter,contextId,constit,'Response')
-    
-    #For Update
-    _verify_fid_in_fidfilter_by_contextId_and_constit_against_pcap_msgType(pcapfile,fidfilter,contextId,constit,'Update')  
-
 def verify_fid_in_range_against_message(messageNode,fid_range):
     """ verify MTE output FIDs is within specific range from message node
          messageNode : iterator pointing to one message node
@@ -592,15 +543,15 @@ def verify_FIDfilter_FIDs_are_in_message(pcapfile):
             
     #Check if pcap file exist
     if (os.path.exists(pcapfile) == False):
-        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)    
+    
+    #Get the fidfilter file contents
+    fidfilter = fidfilterfile.parse_local_fidfilter_file()                   
     
     #[ConstitNum = 1]
     #Convert pcap file to xml
     filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;1&quot;)'
     outputxmlfilelist_1 = get_xml_from_pcap(pcapfile,filterstring,'fidfilterVspcapC1',20)
-    
-    #Get the fidfilter
-    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
     
     for outputxmlfile in outputxmlfilelist_1:
         _verify_FIDfilter_FIDs_are_in_message_from_das_xml(outputxmlfile, fidfilter, ricsDict)
@@ -609,9 +560,6 @@ def verify_FIDfilter_FIDs_are_in_message(pcapfile):
     #Convert pcap file to xml
     filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;0&quot;)'
     outputxmlfilelist_0 = get_xml_from_pcap(pcapfile,filterstring,'fidfilterVspcapC0',20)
-    
-    #Get the fidfilter
-    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
     
     for outputxmlfile in outputxmlfilelist_0:
         _verify_FIDfilter_FIDs_are_in_message_from_das_xml(outputxmlfile, fidfilter, ricsDict)        
@@ -662,7 +610,7 @@ def verify_message_fids_are_in_FIDfilter(localPcap, ric, domain, contextId):
     constituents = fidfilterfile.get_constituents_from_FidFilter(contextId)
     for constituent in constituents:
         # create fidfilter fids set under contextId and constituent
-        contextIdMap = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
+        contextIdMap = fidfilterfile.parse_local_fidfilter_file()
         constitWithFIDs = contextIdMap[contextId]
         fidsdict = constitWithFIDs[constituent]
         fidsList = fidsdict.keys()
@@ -1256,21 +1204,7 @@ def _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,constnum,d
     for delFile in outputxmlfilelist:
         os.remove(delFile)
     
-    os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
-
-def _verify_fid_in_fidfilter_by_contextId_against_das_xml(xmlfile,fidfilter,contextId,constit):
-    """ verify MTE output (in XML format) FIDs found in FIDFilter.txt given context ID and constituent and constit
-         pcapfile : MTE output capture pcap file fullpath
-         context Id : context Id that want to check 
-         constit : constituent number that want to check
-         msgType : 'Response' = Checking Response message, 'Update' = Checking Update message
-        return : Nil      
-    """
-    parentName  = 'Message'
-    messages = xmlutilities.xml_parse_get_all_elements_by_name(xmlfile,parentName)
-    
-    for message in messages:
-        verify_fid_in_fidfilter_by_contextId_against_message(message,fidfilter,contextId,constit)           
+    os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")        
 
 def _verify_fid_in_range_against_das_xml(xmlfile,fid_range):
     """ verify MTE output FIDs is within specific range from DAS converted xml file
@@ -1283,24 +1217,6 @@ def _verify_fid_in_range_against_das_xml(xmlfile,fid_range):
     
     for message in messages:
         verify_fid_in_range_against_message(message,fid_range)
-
-def _verify_fid_in_fidfilter_by_contextId_and_constit_against_pcap_msgType(pcapfile,fidfilter,contextId,constit,msgType='Response'):
-    """ verify MTE output FIDs is align with FIDFilter.txt given context ID and constituent
-         pcapfile : MTE output capture pcap file fullpath
-         context Id : context Id that want to check 
-         constit : constituent number that want to check
-         msgType : 'Response' = Checking Response message, 'Update' = Checking Update message
-        return : Nil      
-    """            
-                             
-    filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;' + constit + '&quot;)'
-    if (msgType == 'Update'):        
-        filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_constitNum = &quot;' + constit + '&quot;)'
-               
-    outputxmlfile = get_xml_from_pcap(pcapfile, filterstring, 'pcapVsfidfilter')
-    
-    _verify_fid_in_fidfilter_by_contextId_against_das_xml(outputxmlfile[0],fidfilter,contextId,constit)  
-    os.remove(outputxmlfile)
 
 def _verify_fid_in_range_by_constit_against_pcap_msgType(pcapfile,fid_range,constit,msgType='Response'):
     """ verify MTE output FIDs is within specific range and specific constituent
@@ -1343,7 +1259,7 @@ def _verify_FID_value_in_dict(fidsAndValues,FID,newFIDValue):
 def _verify_FIDfilter_FIDs_are_in_message_from_das_xml(xmlfile,fidfilter, ricsDict):
     """ compare value found in FIDFilter.txt against xml file which converted from MTE output pcap
         messages : iterator for all Message tag found in xml
-        fidfilter : dictionary of fidfilter (captured from fidfilterfile::get_contextId_fids_constit_from_fidfiltertxt)
+        fidfilter : dictionary of fidfilter (captured from fidfilterfile::parse_local_fidfilter_file)
         ricsDist : updated with the RIC/contextID information during verification of reponse message with constit=1
         return : Nil
         Assertion : Nil             
@@ -1358,7 +1274,7 @@ def _verify_FIDfilter_FIDs_are_in_message_from_das_xml(xmlfile,fidfilter, ricsDi
 def _verify_FIDfilter_FIDs_in_single_message(messageNode,fidfilter, ricsDict):
     """ compare value found in FIDFilter.txt against MTE Response Message
         messageNode : iterator pointing to one message node
-        fidfilter : dictionary of fidfilter (captured from fidfilterfile::get_contextId_fids_constit_from_fidfiltertxt)
+        fidfilter : dictionary of fidfilter (captured from fidfilterfile::parse_local_fidfilter_file)
         ricsDist : updated with the RIC/contextID information during verification of reponse message with constit=1
         return : NIL
         Error : (1) No FIDs found in response message (Empty payload case)
@@ -1472,7 +1388,7 @@ def _verify_PE_change_in_message_c1(pcapfile,ricname,oldPEs,newPE,domain):
         
         #2nd C1 message : C1 Response, new PE in header, all payload FIDs included
         dummyricDict = {}
-        fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()   
+        fidfilter = fidfilterfile.parse_local_fidfilter_file()   
         _verify_FIDfilter_FIDs_in_single_message(messages[1],fidfilter, dummyricDict)    
         
         headerPE = xmlutilities.xml_parse_get_HeaderTag_Value_for_messageNode(messages[1],'PermissionInfo','PE')
@@ -1498,7 +1414,7 @@ def _verify_PE_change_in_message_c63(pcapfile,ricname,newPE,domain):
         1. C63 Response, new PE in header, all payload FIDs included.
     """         
     hasC63 = False
-    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
+    fidfilter = fidfilterfile.parse_local_fidfilter_file()
     contextIDs = fidfilter.keys()
     for contextID in contextIDs:
         constitIDs = fidfilter[contextID].keys()
@@ -1549,7 +1465,7 @@ def _verify_response_message_num_with_constnum(pcapfile,ricname,constnum,domain)
     """  
     if (constnum == 63):
         hasC = False
-        fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
+        fidfilter = fidfilterfile.parse_local_fidfilter_file()
         contextIDs = fidfilter.keys()
         for contextID in contextIDs:
             constitIDs = fidfilter[contextID].keys()

@@ -272,8 +272,7 @@ Restore Feed Line Timeout
 Set Feed Line Timeout
     [Arguments]    ${timeoutLimit}
     [Documentation]    Set the feed line timeout values (HiActTimeLimit and LoActTimeLimit) in MTE config file and restart dependent components.
-    ${mtecfgfile}=    Convert To Lowercase    ${MTE}.xml
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${VENUE_DIR}    ${mtecfgfile}
+    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     set value in MTE cfg    ${orgCfgFile}    HiActTimeLimit    ${timeoutLimit}
     set value in MTE cfg    ${orgCfgFile}    LoActTimeLimit    ${timeoutLimit}
     Stop SMF

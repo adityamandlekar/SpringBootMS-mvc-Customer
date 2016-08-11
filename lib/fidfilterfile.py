@@ -1,14 +1,17 @@
-﻿import re
-
-from utils.ssh import _exec_command
+﻿from __future__ import with_statement
+import os
+import os.path
+import re
 
 from VenueVariables import *
         
 def get_constituents_from_FidFilter(context_id):
     """ 
-        Return : constituent list which contains unique constituents defined in venue FidFilter.txt file for the context_id
+    Argument : 
+        context_id : Context ID
+    Return : constituent list which contains unique constituents defined in venue FidFilter.txt file for the context_id
     """ 
-    fidfilter = get_contextId_fids_constit_from_fidfiltertxt()
+    fidfilter = parse_local_fidfilter_file()
     if (fidfilter.has_key(context_id) == False):
         raise AssertionError('*ERROR* Context ID %s does not exist in FIDFilter.txt file' %(context_id))  
     
@@ -18,29 +21,30 @@ def get_constituents_from_FidFilter(context_id):
     
     return fidDic.keys()
     
-def get_contextId_fids_constit_from_fidfiltertxt():
-    """Get context ID, FIDs and Constituent from FIDFilter.txt
+def parse_local_fidfilter_file():
+    """Get context ID, FIDs and Constituent from the local copy of FIDFilter.txt.
+    FIDFilter.txt must be copied to LOCAL_TMP_DIR before calling this Keyword.
     Argument : NIL
     Returns : Dictionary of FIDFilter [contextID][constituent][fid]='1'
 
     Examples:
-    | get contextId fids constit from fidfiltertxt
+    | parse local fidfilter file |
      """    
                     
     constitWithFIDs = {} #dictionary with key=contituent number and content=array of FIDs
     contextIdsMap = {} #dictionary with key=contextID and content=map of constit with FIDs
     
-    cmd = 'cat `find ' + VENUE_DIR + ' -name FIDFilter.txt`'
-    stdout, stderr, rc = _exec_command(cmd)
+    localFidFilterFile = LOCAL_TMP_DIR + '\\FIDFilter.txt'
+    if not os.path.exists(localFidFilterFile):
+        raise AssertionError('*ERROR* File does not exist: %s' %localFidFilterFile)
     
-    if rc !=0 or stderr !='':
-        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))  
-    
-    lines = stdout.split('\n')
+    with open(localFidFilterFile, "r") as myfile:
+        linesRead = myfile.readlines()
     
     contextID = ""
-    for line in lines:
-        if (len(line.strip()) > 0 and line.strip()[0] != '!'):
+    for line in linesRead:
+        line = line.strip()
+        if (len(line) > 0 and line[0] != '!'):
             content = line.split(':')
             if (len(content) == 2):
                 if (content[0].find('LIST NUMBER') != -1):
@@ -84,5 +88,5 @@ def get_contextId_fids_constit_from_fidfiltertxt():
 
 
 def get_contextID_from_FidFilter():
-    fidfilter = get_contextId_fids_constit_from_fidfiltertxt()
+    fidfilter = parse_local_fidfilter_file()
     return fidfilter.keys()

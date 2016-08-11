@@ -45,6 +45,7 @@ Verify BETA Phase - Disable PE Mangling without Restart
     delete remote files    ${remotedumpfile}
     ${length}    Get Length    ${matchedLines}
     Should Be Equal    ${length}    ${0}    Phase isn't changed successfully    ${False}
+    Get FIDFilter File
     Run Keyword And Continue On Failure    verify PE Change in message    ${localcapture}    ${expected_RicPrefix}${sampleRic}    ${expected_pe}    ${penew}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
@@ -65,6 +66,7 @@ Verify Electron RRG Phase - RIC Mangling change without Restart
     Load Mangling Settings
     ${length}    Get Length    ${matchedLines}
     Should Be Equal    ${length}    ${0}    Phase wasn't changed successfully    ${False}
+    Get FIDFilter File
     Run Keyword And Continue On Failure    verify DROP message in itemstatus messages    ${localcapture}    ${beta_RicPrefix}${sampleRic}    ${domain}
     Run Keyword And Continue On Failure    verify all response message num    ${localcapture}    ${expected_RicPrefix}${sampleRic}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
@@ -86,6 +88,7 @@ Verify IDN RRG Phase - RIC Mangling change without Restart
     Load Mangling Settings
     ${length}    Get Length    ${matchedLines}
     Should Be Equal    ${length}    ${0}    Mangled isn't removed    ${False}
+    Get FIDFilter File
     Run Keyword And Continue On Failure    verify DROP message in itemstatus messages    ${localcapture}    ${rrg_RicPrefix}${sampleRic}    ${domain}
     Run Keyword And Continue On Failure    verify all response message num    ${localcapture}    ${sampleRic}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
@@ -147,7 +150,8 @@ Get ContextIDs for Shell RIC
     ${mteConfigFile}    Get MTE Config File
     ${contextIdsSupported}    Get Context Ids From Config File    ${mteConfigFile}
     ${contextIdsSupportedLen}    Get Length    ${contextIdsSupported}
-    ${fidfilterDict}    Get ContextId Fids Constit From Fidfiltertxt
+    Get FIDFilter File
+    ${fidfilterDict}    Parse Local FIDFilter File
     ${contextIds}    Get Dictionary Keys    ${fidfilterDict}
     ${contextIdsForShellRic}    Create List
     ${contextIdsUse}    Run Keyword If    ${contextIdsSupportedLen} == 0    Set Variable    ${contextIds}
@@ -184,7 +188,7 @@ Verify Mangling Rule On All Context IDs
 Verify Mangling by Context ID Case Setup
     [Arguments]    ${configFile}=manglingConfiguration.xml
     [Documentation]    Backup remote mangling config file
-    @{files}=    backup remote cfg file    ${VENUE_DIR}    ${configFile}
+    @{files}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${configFile}
     Set Suite Variable    @{files}
     ${configFileLocal}=    Get Mangling Config File
     Set Suite Variable    ${configFileLocal}

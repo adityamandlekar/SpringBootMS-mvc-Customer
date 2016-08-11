@@ -127,8 +127,7 @@ MTE Recovery by SN Range Request
     ...    - inject the non-gap pcap file into GRS and gapped pcap file into MTE.
     ...    - verify gap recovery occurred by verifying the FID values match the baseline FID values.
     Reset Sequence Numbers
-    ${configFile}=    Convert To Lowercase    ${MTE}.xml
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${VENUE_DIR}    ${configFile}
+    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${service}    Get FMS Service Name
     ${domain}=    Get Preferred Domain
     ${injectFile}=    Generate FH PCAP File Name    ${service}    General FH Output    FH=${FH}
