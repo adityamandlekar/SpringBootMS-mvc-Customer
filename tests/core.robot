@@ -790,7 +790,6 @@ Set Common Suite Variables
     ...    CHE_IP - address of the current CHE box
     ...    MTE_CONFIG - MTE config file name
     ...    REMOTE_MTE_CONFIG_DIR - path to directory containing the MTE config file on Thunderdome box.
-    ...    REMOTE_MTE_CONFIG_PATH - full path to MTE config file on Thunderdome box.
     Set Suite Variable    ${CHE_IP}    ${ip}
     ${MTE_CONFIG}=    convert to lowercase    ${MTE}.xml
     Set Suite Variable    ${MTE_CONFIG}
