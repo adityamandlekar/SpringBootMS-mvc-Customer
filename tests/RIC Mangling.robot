@@ -151,7 +151,7 @@ Get ContextIDs for Shell RIC
     ${contextIdsSupported}    Get Context Ids From Config File    ${mteConfigFile}
     ${contextIdsSupportedLen}    Get Length    ${contextIdsSupported}
     Get FIDFilter File
-    ${fidfilterDict}    Get ContextId Fids Constit From Fidfiltertxt
+    ${fidfilterDict}    Parse Local FIDFilter File
     ${contextIds}    Get Dictionary Keys    ${fidfilterDict}
     ${contextIdsForShellRic}    Create List
     ${contextIdsUse}    Run Keyword If    ${contextIdsSupportedLen} == 0    Set Variable    ${contextIds}

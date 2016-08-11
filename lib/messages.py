@@ -546,7 +546,7 @@ def verify_FIDfilter_FIDs_are_in_message(pcapfile):
         raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)    
     
     #Get the fidfilter file contents
-    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()                   
+    fidfilter = fidfilterfile.parse_local_fidfilter_file()                   
     
     #[ConstitNum = 1]
     #Convert pcap file to xml
@@ -610,7 +610,7 @@ def verify_message_fids_are_in_FIDfilter(localPcap, ric, domain, contextId):
     constituents = fidfilterfile.get_constituents_from_FidFilter(contextId)
     for constituent in constituents:
         # create fidfilter fids set under contextId and constituent
-        contextIdMap = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
+        contextIdMap = fidfilterfile.parse_local_fidfilter_file()
         constitWithFIDs = contextIdMap[contextId]
         fidsdict = constitWithFIDs[constituent]
         fidsList = fidsdict.keys()
@@ -1259,7 +1259,7 @@ def _verify_FID_value_in_dict(fidsAndValues,FID,newFIDValue):
 def _verify_FIDfilter_FIDs_are_in_message_from_das_xml(xmlfile,fidfilter, ricsDict):
     """ compare value found in FIDFilter.txt against xml file which converted from MTE output pcap
         messages : iterator for all Message tag found in xml
-        fidfilter : dictionary of fidfilter (captured from fidfilterfile::get_contextId_fids_constit_from_fidfiltertxt)
+        fidfilter : dictionary of fidfilter (captured from fidfilterfile::parse_local_fidfilter_file)
         ricsDist : updated with the RIC/contextID information during verification of reponse message with constit=1
         return : Nil
         Assertion : Nil             
@@ -1274,7 +1274,7 @@ def _verify_FIDfilter_FIDs_are_in_message_from_das_xml(xmlfile,fidfilter, ricsDi
 def _verify_FIDfilter_FIDs_in_single_message(messageNode,fidfilter, ricsDict):
     """ compare value found in FIDFilter.txt against MTE Response Message
         messageNode : iterator pointing to one message node
-        fidfilter : dictionary of fidfilter (captured from fidfilterfile::get_contextId_fids_constit_from_fidfiltertxt)
+        fidfilter : dictionary of fidfilter (captured from fidfilterfile::parse_local_fidfilter_file)
         ricsDist : updated with the RIC/contextID information during verification of reponse message with constit=1
         return : NIL
         Error : (1) No FIDs found in response message (Empty payload case)
@@ -1388,7 +1388,7 @@ def _verify_PE_change_in_message_c1(pcapfile,ricname,oldPEs,newPE,domain):
         
         #2nd C1 message : C1 Response, new PE in header, all payload FIDs included
         dummyricDict = {}
-        fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()   
+        fidfilter = fidfilterfile.parse_local_fidfilter_file()   
         _verify_FIDfilter_FIDs_in_single_message(messages[1],fidfilter, dummyricDict)    
         
         headerPE = xmlutilities.xml_parse_get_HeaderTag_Value_for_messageNode(messages[1],'PermissionInfo','PE')
@@ -1414,7 +1414,7 @@ def _verify_PE_change_in_message_c63(pcapfile,ricname,newPE,domain):
         1. C63 Response, new PE in header, all payload FIDs included.
     """         
     hasC63 = False
-    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
+    fidfilter = fidfilterfile.parse_local_fidfilter_file()
     contextIDs = fidfilter.keys()
     for contextID in contextIDs:
         constitIDs = fidfilter[contextID].keys()
@@ -1465,7 +1465,7 @@ def _verify_response_message_num_with_constnum(pcapfile,ricname,constnum,domain)
     """  
     if (constnum == 63):
         hasC = False
-        fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
+        fidfilter = fidfilterfile.parse_local_fidfilter_file()
         contextIDs = fidfilter.keys()
         for contextID in contextIDs:
             constitIDs = fidfilter[contextID].keys()

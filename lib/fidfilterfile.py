@@ -11,7 +11,7 @@ def get_constituents_from_FidFilter(context_id):
         context_id : Context ID
     Return : constituent list which contains unique constituents defined in venue FidFilter.txt file for the context_id
     """ 
-    fidfilter = get_contextId_fids_constit_from_fidfiltertxt()
+    fidfilter = parse_local_fidfilter_file()
     if (fidfilter.has_key(context_id) == False):
         raise AssertionError('*ERROR* Context ID %s does not exist in FIDFilter.txt file' %(context_id))  
     
@@ -21,13 +21,14 @@ def get_constituents_from_FidFilter(context_id):
     
     return fidDic.keys()
     
-def get_contextId_fids_constit_from_fidfiltertxt():
+def parse_local_fidfilter_file():
     """Get context ID, FIDs and Constituent from the local copy of FIDFilter.txt.
+    FIDFilter.txt must be copied to LOCAL_TMP_DIR before calling this Keyword.
     Argument : NIL
     Returns : Dictionary of FIDFilter [contextID][constituent][fid]='1'
 
     Examples:
-    | get contextId fids constit from fidfiltertxt |
+    | parse local fidfilter file |
      """    
                     
     constitWithFIDs = {} #dictionary with key=contituent number and content=array of FIDs
@@ -87,5 +88,5 @@ def get_contextId_fids_constit_from_fidfiltertxt():
 
 
 def get_contextID_from_FidFilter():
-    fidfilter = get_contextId_fids_constit_from_fidfiltertxt()
+    fidfilter = parse_local_fidfilter_file()
     return fidfilter.keys()
