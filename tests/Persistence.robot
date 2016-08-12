@@ -183,7 +183,6 @@ Get Backup Keep Days
 Go Into EndOfDay time
     [Documentation]    Force MTE go through EndOfDay event
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
-    ${mtecfgfile}=    Convert To Lowercase    ${MTE}.xml
     ${mteConfigFile}=    Get MTE Config File
     @{dstRic}=    get MTE config list by path    ${mteConfigFile}    CHE-TimeZoneForConfigTimes
     @{tdBoxDateTime}=    get date and time
@@ -191,7 +190,7 @@ Go Into EndOfDay time
     ...    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
     ${offsetInSecond}=    set variable    300
     ${endOfDay}    add time to date    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]    ${offsetInSecond} second    result_format=%H:%M
-    ${orgFile}    ${backupFile}    backup remote cfg file    ${VENUE_DIR}    ${mtecfgfile}
+    ${orgFile}    ${backupFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     set value in MTE cfg    ${orgFile}    EndOfDayTime    ${endOfDay}
     stop MTE
     start MTE

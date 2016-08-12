@@ -13,7 +13,8 @@ Verify Sync Pulse Missed QoS
     [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
-    ${ddnpublishersLabelfilepath}=    Get CHE Config Filepath    ddnPublishers.xml
+    ${ddnpublishersLabelfilepaths}=    Get CHE Config Filepaths    ddnPublishers.xml
+    ${ddnpublishersLabelfilepath}=    Get From List    ${ddnpublishersLabelfilepaths}    0
     ${labelfile_local}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishers.xml
     ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
@@ -271,8 +272,7 @@ Restore Feed Line Timeout
 Set Feed Line Timeout
     [Arguments]    ${timeoutLimit}
     [Documentation]    Set the feed line timeout values (HiActTimeLimit and LoActTimeLimit) in MTE config file and restart dependent components.
-    ${mtecfgfile}=    Convert To Lowercase    ${MTE}.xml
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${VENUE_DIR}    ${mtecfgfile}
+    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     set value in MTE cfg    ${orgCfgFile}    HiActTimeLimit    ${timeoutLimit}
     set value in MTE cfg    ${orgCfgFile}    LoActTimeLimit    ${timeoutLimit}
     Stop SMF

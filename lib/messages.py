@@ -266,21 +266,22 @@ def validate_messages_against_DVT_rules(pcapfile,rulefile):
         raise AssertionError('*ERROR* Found DVT violation')
     os.remove(outputfile)
 
-def verify_all_response_message_num(pcapfile,ricname):
+def verify_all_response_message_num(pcapfile,ricname,domain):
     """ keyword used to verify the response message for RIC in MTE output pcap message, 
         pcapFile : is the pcap fullpath at local control PC  
-        ricname : target ric name            
-        return : Nil
+        ricname  : target ric name       
+        domain   : target ric domain     
+        return   : Nil
         
         verify:
         1. C0 , C1 and C63 message response 
         
         example:
-        verify all response message num  |   ${LOCAL_TMP_DIR}/capture_local.pcap  |   ${pubRic}
+        verify all response message num  |   ${LOCAL_TMP_DIR}/capture_local.pcap  |   ${pubRic} | MARKET_PRICE
     """   
-    _verify_response_message_num_with_constnum(pcapfile,ricname,0)    
-    _verify_response_message_num_with_constnum(pcapfile,ricname,1)    
-    _verify_response_message_num_with_constnum(pcapfile,ricname,63)
+    _verify_response_message_num_with_constnum(pcapfile,ricname,0,domain)    
+    _verify_response_message_num_with_constnum(pcapfile,ricname,1,domain)    
+    _verify_response_message_num_with_constnum(pcapfile,ricname,63,domain)
 
 def verify_ClosingRun_message_in_messages(pcapfile,ricname):
     """ verify ClosingRun message for RIC in MTE output pcap message
@@ -409,10 +410,11 @@ def verify_correction_updates_in_capture(pcapfile):
         os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")   
         raise AssertionError('*ERROR* updates for Market Price domain have type other than "correction" ' )      
 
-def verify_DROP_message_in_itemstatus_messages(pcapfile,ricname):
+def verify_DROP_message_in_itemstatus_messages(pcapfile,ricname,domain):
     """ verify DROP message for RIC in MTE output pcap message
-        pcapFile : is the pcap fullpath at local control PC  
-        ricname : target ric name    
+        pcapFile    : is the pcap fullpath at local control PC  
+        ricname     : target ric name  
+        domain      : target ric domain
         return : Nil
         
         Verify:
@@ -421,69 +423,20 @@ def verify_DROP_message_in_itemstatus_messages(pcapfile,ricname):
         3. C63 Item Status, ContainerType value is NoData
         
         Examples:
-        | verify DROP message in itemstatus messages  | C:\\temp\\capture_local.pcap  |  /ThomsonReuters/Venues/ | C:\\Program Files\\Reuters Test Tools\\DAS |   AAAAX.O |              
+        | verify DROP message in itemstatus messages  | C:\\temp\\capture_local.pcap | AAAAX.O | MARKET_PRICE       
     """           
     #Check if pcap file exist
     if (os.path.exists(pcapfile) == False):
         raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
     
     #C0
-    _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,0)
+    _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,0,domain)
     
     #C1
-    _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,1)
+    _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,1,domain)
     
     #C63
-    _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,63)
-
-def verify_fid_in_fidfilter_by_contextId_against_message(messageNode,fidfilter,contextId,constit):
-    """ verify MTE output (per message) FIDs found in FIDFilter.txt given context ID and constit
-         messageNode : iterator pointing to one message node
-         fidfilter : dictionary of FIDFilter.txt
-         context Id : context Id that want to check 
-         constit : constituent number that want to check      
-        return : Nil
-        Assertion : 
-        (1) Empty payload detected
-        (2) FID is not found in FIDFilter.txt given contextId     
-    """ 
-    
-    fidsAndValues = xmlutilities.xml_parse_get_fidsAndValues_for_messageNode(messageNode)
-    ricname = xmlutilities.xml_parse_get_field_from_MsgKey(messageNode,'Name')        
-        
-    if (len(fidsAndValues) == 0):            
-        raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ricname)
-    
-    for fid in fidsAndValues.keys():
-        if (fidfilter[contextId][constit].has_key(fid) == False):
-            raise AssertionError('*ERROR* FID %s is not found in FIDFilter.txt for Ric=%s has published' %(fid,ricname))
-        
-def verify_fid_in_fidfilter_by_contextId_and_constit_against_pcap(pcapfile,contextId,constit):
-    """ compare  value found in FIDFilter.txt against MTE output pcap by given context Id and constituent
-        pcapFile : is the pcap fullpath at local control PC        
-        return : Nil
-        Assertion : If DAS fail to convert pcap to xml file
-        
-        [Assumption] :
-        (1) Pcap file is from MTE output
-    """                
-            
-    #Check if pcap file exist
-    if (os.path.exists(pcapfile) == False):
-        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
-
-    #Get the fidfilter and checking input argument context ID and constituent is valid in FIDFilter.txt
-    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
-    if (fidfilter.has_key(contextId) == False):
-        raise AssertionError('*ERROR* required context ID %s not found in FIDFilter.txt '%contextId)
-    elif ((fidfilter[contextId].has_key(constit) == False)):
-        raise AssertionError('*ERROR* required constituent %s not found in FIDFilter.txt '%constit)          
-            
-    #For Response
-    _verify_fid_in_fidfilter_by_contextId_and_constit_against_pcap_msgType(pcapfile,fidfilter,contextId,constit,'Response')
-    
-    #For Update
-    _verify_fid_in_fidfilter_by_contextId_and_constit_against_pcap_msgType(pcapfile,fidfilter,contextId,constit,'Update')  
+    _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,63,domain)
 
 def verify_fid_in_range_against_message(messageNode,fid_range):
     """ verify MTE output FIDs is within specific range from message node
@@ -590,15 +543,15 @@ def verify_FIDfilter_FIDs_are_in_message(pcapfile):
             
     #Check if pcap file exist
     if (os.path.exists(pcapfile) == False):
-        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)    
+    
+    #Get the fidfilter file contents
+    fidfilter = fidfilterfile.parse_local_fidfilter_file()                   
     
     #[ConstitNum = 1]
     #Convert pcap file to xml
     filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;1&quot;)'
     outputxmlfilelist_1 = get_xml_from_pcap(pcapfile,filterstring,'fidfilterVspcapC1',20)
-    
-    #Get the fidfilter
-    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
     
     for outputxmlfile in outputxmlfilelist_1:
         _verify_FIDfilter_FIDs_are_in_message_from_das_xml(outputxmlfile, fidfilter, ricsDict)
@@ -607,9 +560,6 @@ def verify_FIDfilter_FIDs_are_in_message(pcapfile):
     #Convert pcap file to xml
     filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;0&quot;)'
     outputxmlfilelist_0 = get_xml_from_pcap(pcapfile,filterstring,'fidfilterVspcapC0',20)
-    
-    #Get the fidfilter
-    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
     
     for outputxmlfile in outputxmlfilelist_0:
         _verify_FIDfilter_FIDs_are_in_message_from_das_xml(outputxmlfile, fidfilter, ricsDict)        
@@ -660,7 +610,7 @@ def verify_message_fids_are_in_FIDfilter(localPcap, ric, domain, contextId):
     constituents = fidfilterfile.get_constituents_from_FidFilter(contextId)
     for constituent in constituents:
         # create fidfilter fids set under contextId and constituent
-        contextIdMap = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
+        contextIdMap = fidfilterfile.parse_local_fidfilter_file()
         constitWithFIDs = contextIdMap[contextId]
         fidsdict = constitWithFIDs[constituent]
         fidsList = fidsdict.keys()
@@ -688,6 +638,75 @@ def verify_message_fids_are_in_FIDfilter(localPcap, ric, domain, contextId):
             for fid in msgFidSet:
                 if fid > 0:
                     raise AssertionError ('*ERROR* NONE negtive fid exists for contextID %s, constituent %s with RIC %s, domain %s' %(contextId, constituent, ric, domain))
+
+def verify_message_sequence_numbers_in_capture(pcapfile, ric, domain, mte_state):
+    """ verify if response/update message sequence numbers for RIC in each constituents are in increasing order in MTE output pcap message
+        if mte_state is startup, the sequence number should start from 0, then 4, 5, ... n, n+1...
+        if mte_state is failover, the sequence number could start from 1, then 4, 5, ... n, n+1...
+        if mte_state is rollover, the sequence number could start from 3, then 4, 5, ... n, n+1...
+        
+        Argument : pcapfile : MTE output capture pcap file fullpath
+                   ric : published RIC
+                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
+                   mte_state: possible value startup, rollover, failover.
+        return : the list of sequence number of constituent 1 (i.e. C1) messages (include response and update)
+    """           
+
+    if (os.path.exists(pcapfile) == False):
+        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+    
+    filterDomain = 'TRWF_TRDM_DMT_'+ domain
+    outputfileprefix = 'test_seqnum_resp_'
+    filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, All_msgBase_msgKey_name = &quot;%s&quot;)'%(filterDomain, ric)
+    outputxmlfile = get_xml_from_pcap(pcapfile, filterstring, outputfileprefix)                
+    
+    parentName  = 'Message'
+    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
+
+    retSeqNumList = []
+    constitDictSeqNumList = {}
+    for messageNode in messages:
+        seqNum = xmlutilities.xml_parse_get_field_for_messageNode(messageNode, 'ItemSeqNum')
+        constitNum = xmlutilities.xml_parse_get_field_for_messageNode(messageNode, 'ConstitNum')
+        if (not constitDictSeqNumList.has_key(constitNum)):
+            constitDictSeqNumList[constitNum] = []
+        constitDictSeqNumList[constitNum].append(seqNum)
+
+    #loop for each existed constituent and check the sequnce number
+    for constituent in constitDictSeqNumList:
+        seqNumList = constitDictSeqNumList[constituent]
+        print '*INFO* Verify seqNumList of constituent %s: %s' %(constituent, seqNumList)
+
+        for i in xrange(1,len(seqNumList)-1):
+            if int(seqNumList[i]) + 1 != int(seqNumList[i+1]):
+                print seqNumList
+                raise AssertionError('*ERROR* response/update message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be smaller than SeqNo[%d] %s by one.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
+        
+        if len(seqNumList) > 1:
+            if seqNumList[1] != '4':
+                raise AssertionError('*ERROR* the second sequence number is %s, instead it should be 4' %seqNumList[1])  
+        
+        if mte_state == 'startup':
+            if seqNumList[0] != '0':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 0' %seqNumList[0])  
+     
+        if mte_state == 'failover':  
+            if seqNumList[0] != '1':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
+          
+        if mte_state == 'rollover':
+            if seqNumList[0] != '3':
+                raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 3' %seqNumList[0])  
+
+        #store the return list of sequence number of C1 messages
+        if (constituent == '1'):
+            retSeqNumList = seqNumList
+                
+    for exist_file in outputxmlfile:
+        os.remove(exist_file)
+    os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")       
+        
+    return retSeqNumList
 
 def verify_MTE_heartbeat_in_message(pcapfile,intervalInSec):
     """ verify MTE heartbeat in  MTE output pcap message
@@ -765,12 +784,13 @@ def verify_no_realtime_update_type_in_capture( pcapfile, domain):
            
     raise AssertionError('*ERROR* realtime updates exist for domain %s.' %domain)
 
-def verify_PE_change_in_message(pcapfile,ricname,oldPEs,newPE):
+def verify_PE_change_in_message(pcapfile,ricname,oldPEs,newPE,domain):
     """ verify PE Change response for RIC in MTE output pcap message
-        pcapFile : is the pcap fullpath at local control PC  
-        ricname : target ric name
-        oldPEs : a list of possible original PEs (We use a list of candidates due to the fact we use hardcode way for RIC Mangling test cases)  
-        newPE : new value of PE
+        pcapFile    : is the pcap fullpath at local control PC  
+        ricname     : target ric name
+        oldPEs      : a list of possible original PEs (We use a list of candidates due to the fact we use hardcode way for RIC Mangling test cases)  
+        newPE       : new value of PE
+        domain      : target ric domain
         return : Nil
         
         Verify:
@@ -780,20 +800,20 @@ def verify_PE_change_in_message(pcapfile,ricname,oldPEs,newPE):
         4. C63 Response, new PE in header, all payload FIDs included.
         
         Examples:
-        | verify PE change in message  | C:\\temp\\capture_local.pcap  |  /ThomsonReuters/Venues/ | C:\\Program Files\\Reuters Test Tools\\DAS |   AAAAX.O |  2600| 12341 |            
+        | verify PE change in message  | C:\\temp\\capture_local.pcap | AAAAX.O | 2600 | 12341 | MARKET_PRICE     
     """           
     #Check if pcap file exist
     if (os.path.exists(pcapfile) == False):
         raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
     
     #C0
-    _verify_PE_change_in_message_c0(pcapfile,ricname,newPE)
+    _verify_PE_change_in_message_c0(pcapfile,ricname,newPE,domain)
     
     #C1
-    _verify_PE_change_in_message_c1(pcapfile,ricname,oldPEs,newPE)
+    _verify_PE_change_in_message_c1(pcapfile,ricname,oldPEs,newPE,domain)
     
     #C63
-    _verify_PE_change_in_message_c63(pcapfile,ricname,newPE)
+    _verify_PE_change_in_message_c63(pcapfile,ricname,newPE,domain)
 
 def verify_realtime_update_type_in_capture(pcapfile, domain):
     """ Verify the realtime updates for MP domain have type "Quote", "Trade".
@@ -1151,11 +1171,12 @@ def _get_RICs_from_das_xml(xmlfile, ricsDict, includeSystemRics):
                 continue
         ricsDict[ric] = 1 # value is not important, just need RIC name as key
 
-def _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,constnum):
+def _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,constnum,domain):
     """ internal function used to verify DROP message (C0) for RIC in MTE output pcap message
-        pcapFile : is the pcap fullpath at local control PC  
-        ricname : target ric name 
-        constnum:  the constitNum in itemstatus message   
+        pcapFile    : is the pcap fullpath at local control PC  
+        ricname     : target ric name 
+        constnum    : the constitNum in itemstatus message   
+        domain      : target ric domain
         return : Nil
         
         Verify:
@@ -1163,7 +1184,8 @@ def _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,constnum):
     """         
     
     outputfileprefix = 'peChgCheckC'+str(constnum)
-    filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_ITEM_STATUS&quot;, AND(ItemStatus_itemSeqNum != &quot;0&quot;, ItemStatus_constitNum = &quot;%s&quot;)))'%(ricname,constnum)
+    filterDomain = 'TRWF_TRDM_DMT_' + domain
+    filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_ITEM_STATUS&quot;, AND(ItemStatus_itemSeqNum != &quot;0&quot;, ItemStatus_constitNum = &quot;%s&quot;))))'%(filterDomain,ricname,constnum)
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
     
     parentName  = 'Message'
@@ -1182,21 +1204,7 @@ def _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,constnum):
     for delFile in outputxmlfilelist:
         os.remove(delFile)
     
-    os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
-
-def _verify_fid_in_fidfilter_by_contextId_against_das_xml(xmlfile,fidfilter,contextId,constit):
-    """ verify MTE output (in XML format) FIDs found in FIDFilter.txt given context ID and constituent and constit
-         pcapfile : MTE output capture pcap file fullpath
-         context Id : context Id that want to check 
-         constit : constituent number that want to check
-         msgType : 'Response' = Checking Response message, 'Update' = Checking Update message
-        return : Nil      
-    """
-    parentName  = 'Message'
-    messages = xmlutilities.xml_parse_get_all_elements_by_name(xmlfile,parentName)
-    
-    for message in messages:
-        verify_fid_in_fidfilter_by_contextId_against_message(message,fidfilter,contextId,constit)           
+    os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")        
 
 def _verify_fid_in_range_against_das_xml(xmlfile,fid_range):
     """ verify MTE output FIDs is within specific range from DAS converted xml file
@@ -1209,24 +1217,6 @@ def _verify_fid_in_range_against_das_xml(xmlfile,fid_range):
     
     for message in messages:
         verify_fid_in_range_against_message(message,fid_range)
-
-def _verify_fid_in_fidfilter_by_contextId_and_constit_against_pcap_msgType(pcapfile,fidfilter,contextId,constit,msgType='Response'):
-    """ verify MTE output FIDs is align with FIDFilter.txt given context ID and constituent
-         pcapfile : MTE output capture pcap file fullpath
-         context Id : context Id that want to check 
-         constit : constituent number that want to check
-         msgType : 'Response' = Checking Response message, 'Update' = Checking Update message
-        return : Nil      
-    """            
-                             
-    filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;' + constit + '&quot;)'
-    if (msgType == 'Update'):        
-        filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, Update_constitNum = &quot;' + constit + '&quot;)'
-               
-    outputxmlfile = get_xml_from_pcap(pcapfile, filterstring, 'pcapVsfidfilter')
-    
-    _verify_fid_in_fidfilter_by_contextId_against_das_xml(outputxmlfile[0],fidfilter,contextId,constit)  
-    os.remove(outputxmlfile)
 
 def _verify_fid_in_range_by_constit_against_pcap_msgType(pcapfile,fid_range,constit,msgType='Response'):
     """ verify MTE output FIDs is within specific range and specific constituent
@@ -1269,7 +1259,7 @@ def _verify_FID_value_in_dict(fidsAndValues,FID,newFIDValue):
 def _verify_FIDfilter_FIDs_are_in_message_from_das_xml(xmlfile,fidfilter, ricsDict):
     """ compare value found in FIDFilter.txt against xml file which converted from MTE output pcap
         messages : iterator for all Message tag found in xml
-        fidfilter : dictionary of fidfilter (captured from fidfilterfile::get_contextId_fids_constit_from_fidfiltertxt)
+        fidfilter : dictionary of fidfilter (captured from fidfilterfile::parse_local_fidfilter_file)
         ricsDist : updated with the RIC/contextID information during verification of reponse message with constit=1
         return : Nil
         Assertion : Nil             
@@ -1284,7 +1274,7 @@ def _verify_FIDfilter_FIDs_are_in_message_from_das_xml(xmlfile,fidfilter, ricsDi
 def _verify_FIDfilter_FIDs_in_single_message(messageNode,fidfilter, ricsDict):
     """ compare value found in FIDFilter.txt against MTE Response Message
         messageNode : iterator pointing to one message node
-        fidfilter : dictionary of fidfilter (captured from fidfilterfile::get_contextId_fids_constit_from_fidfiltertxt)
+        fidfilter : dictionary of fidfilter (captured from fidfilterfile::parse_local_fidfilter_file)
         ricsDist : updated with the RIC/contextID information during verification of reponse message with constit=1
         return : NIL
         Error : (1) No FIDs found in response message (Empty payload case)
@@ -1324,11 +1314,12 @@ def _verify_FIDfilter_FIDs_in_single_message(messageNode,fidfilter, ricsDict):
             else:
                 raise AssertionError('*ERROR* Context ID (FID %s) = %s found in MTE response output is missing from FIDFilter.txt' %(FID_CONTEXTID,contextId))
 
-def _verify_PE_change_in_message_c0(pcapfile,ricname,newPE):
+def _verify_PE_change_in_message_c0(pcapfile,ricname,newPE,domain):
     """ internal function used to verify PE Change response (C0) for RIC in MTE output pcap message
-        pcapFile : is the pcap fullpath at local control PC  
-        ricname : target ric name    
-        newPE : new value of PE
+        pcapFile    : is the pcap fullpath at local control PC  
+        ricname     : target ric name    
+        newPE       : new value of PE
+        domain      : target ric domain
         return : Nil
         
         Verify:
@@ -1336,7 +1327,8 @@ def _verify_PE_change_in_message_c0(pcapfile,ricname,newPE):
     """         
     
     outputfileprefix = 'peChgCheckC0'
-    filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, AND(Response_itemSeqNum != &quot;0&quot;, Response_constitNum = &quot;0&quot;)))'%(ricname)
+    filterDomain = 'TRWF_TRDM_DMT_' + domain
+    filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, AND(Response_itemSeqNum != &quot;0&quot;, Response_constitNum = &quot;0&quot;))))'%(filterDomain,ricname)
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
     
     parentName  = 'Message'
@@ -1355,12 +1347,13 @@ def _verify_PE_change_in_message_c0(pcapfile,ricname,newPE):
     
     os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
 
-def _verify_PE_change_in_message_c1(pcapfile,ricname,oldPEs,newPE):
+def _verify_PE_change_in_message_c1(pcapfile,ricname,oldPEs,newPE,domain):
     """ internal function used to verify PE Change response (C1) for RIC in MTE output pcap message
-        pcapFile : is the pcap fullpath at local control PC  
-        ricname : target ric name
-        oldPEs : a list of possible original PEs (We use a list of candidates due to the fact we use hardcode way for RIC Mangling test cases)  
-        newPE : new value of PE
+        pcapFile    : is the pcap fullpath at local control PC  
+        ricname     : target ric name
+        oldPEs      : a list of possible original PEs (We use a list of candidates due to the fact we use hardcode way for RIC Mangling test cases)  
+        newPE       : new value of PE
+        domain      : target ric domain
         return : Nil
         
         Verify:
@@ -1369,7 +1362,8 @@ def _verify_PE_change_in_message_c1(pcapfile,ricname,oldPEs,newPE):
     """ 
             
     outputfileprefix = 'peChgCheckC1'
-    filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, AND(Response_itemSeqNum != &quot;0&quot;, Response_constitNum = &quot;1&quot;)))'%(ricname)
+    filterDomain = 'TRWF_TRDM_DMT_' + domain
+    filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, AND(Response_itemSeqNum != &quot;0&quot;, Response_constitNum = &quot;1&quot;))))'%(filterDomain,ricname)
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
     
     parentName  = 'Message'
@@ -1394,7 +1388,7 @@ def _verify_PE_change_in_message_c1(pcapfile,ricname,oldPEs,newPE):
         
         #2nd C1 message : C1 Response, new PE in header, all payload FIDs included
         dummyricDict = {}
-        fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()   
+        fidfilter = fidfilterfile.parse_local_fidfilter_file()   
         _verify_FIDfilter_FIDs_in_single_message(messages[1],fidfilter, dummyricDict)    
         
         headerPE = xmlutilities.xml_parse_get_HeaderTag_Value_for_messageNode(messages[1],'PermissionInfo','PE')
@@ -1408,18 +1402,19 @@ def _verify_PE_change_in_message_c1(pcapfile,ricname,oldPEs,newPE):
     
     os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")                
 
-def _verify_PE_change_in_message_c63(pcapfile,ricname,newPE):
+def _verify_PE_change_in_message_c63(pcapfile,ricname,newPE,domain):
     """ internal function used to verify PE Change response (C63) for RIC in MTE output pcap message
-        pcapFile : is the pcap fullpath at local control PC  
-        ricname : target ric name
-        newPE : new value of PE
+        pcapFile    : is the pcap fullpath at local control PC  
+        ricname     : target ric name
+        newPE       : new value of PE
+        domain      : target ric domain
         return : Nil
         
         Verify:
         1. C63 Response, new PE in header, all payload FIDs included.
     """         
     hasC63 = False
-    fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
+    fidfilter = fidfilterfile.parse_local_fidfilter_file()
     contextIDs = fidfilter.keys()
     for contextID in contextIDs:
         constitIDs = fidfilter[contextID].keys()
@@ -1432,7 +1427,8 @@ def _verify_PE_change_in_message_c63(pcapfile,ricname,newPE):
         return
     
     outputfileprefix = 'peChgCheckC63'
-    filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;63&quot;))'%(ricname)
+    filterDomain = 'TRWF_TRDM_DMT_' + domain
+    filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;63&quot;)))'%(filterDomain,ricname)
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
     
     parentName  = 'Message'
@@ -1456,19 +1452,20 @@ def _verify_PE_change_in_message_c63(pcapfile,ricname,newPE):
     
     os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
 
-def _verify_response_message_num_with_constnum(pcapfile,ricname,constnum):
+def _verify_response_message_num_with_constnum(pcapfile,ricname,constnum,domain):
     """ internal function used to verify response message with constnum for RIC in MTE output pcap message 
 
         Argument : pcapFile : is the pcap fullpath at local control PC  
-        ricname : target ric name    
-        constnum: Response_constitNum       
+        ricname  : target ric name    
+        constnum : Response_constitNum   
+        domain   : target ric domain   
         return : Nil
                    
         Return : N/A   
     """  
     if (constnum == 63):
         hasC = False
-        fidfilter = fidfilterfile.get_contextId_fids_constit_from_fidfiltertxt()
+        fidfilter = fidfilterfile.parse_local_fidfilter_file()
         contextIDs = fidfilter.keys()
         for contextID in contextIDs:
             constitIDs = fidfilter[contextID].keys()
@@ -1481,7 +1478,8 @@ def _verify_response_message_num_with_constnum(pcapfile,ricname,constnum):
             return   
     
     outputfileprefix = 'rebuildCheckC'
-    filterstring = 'AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;%s&quot;))'%(ricname,constnum)
+    filterDomain = 'TRWF_TRDM_DMT_' + domain
+    filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;%s&quot;)))'%(filterDomain,ricname,constnum)
     
     parentName  = 'Message'        
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)

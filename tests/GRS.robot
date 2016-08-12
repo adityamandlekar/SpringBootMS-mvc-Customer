@@ -89,7 +89,8 @@ GRS Writes to PCAP When Buffer Full
     ...    Verify that GRS writes the messages to a pcap file when the buffer is full.
     ...    Compare GRS output frames with injection file frames and buffer size in grs configuration file.
     ...    Requires injection pcap (FH output) file contains more than 5 frames
-    ${grsConfigFile}=    Get CHE Config Filepath    *_grs.json    config_grs.json    SCWatchdog
+    ${grsConfigFiles}=    Get CHE Config Filepaths    *_grs.json    config_grs.json    SCWatchdog
+    ${grsConfigFile}=    Get From List    ${grsConfigFiles}    0
     ${locaConfiglFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_grs_config.json
     get remote file    ${grsConfigFile}    ${locaConfiglFile}
     ${itemValue}=    Convert To Integer    5
@@ -145,8 +146,7 @@ MTE Recovery by SN Range Request
     ...    - inject the non-gap pcap file into GRS and gapped pcap file into MTE.
     ...    - verify gap recovery occurred by verifying the FID values match the baseline FID values.
     Reset Sequence Numbers
-    ${configFile}=    Convert To Lowercase    ${MTE}.xml
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${VENUE_DIR}    ${configFile}
+    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${service}    Get FMS Service Name
     ${domain}=    Get Preferred Domain
     ${injectFile}=    Generate FH PCAP File Name    ${service}    General FH Output    FH=${FH}
