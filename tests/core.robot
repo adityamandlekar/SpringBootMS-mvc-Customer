@@ -410,7 +410,7 @@ Get Sorted Cache Dump
 
 Go Into End Feed Time
     [Arguments]    ${serviceName}
-    [Documentation]    For all feeds, set start of feed time to current time and end of feed time in 2 minutes. Wait for end of feed time to occur.
+    [Documentation]    For all feeds, set end of feed time in 2 minutes. Wait for end of feed time to occur.
     ...    The returned EXL file lists should be used to call Restore EXL Changes at the end of the test.
     ...
     ...    Return:
@@ -435,20 +435,13 @@ Go Into End Feed Time
     \    @{tdBoxDateTime}=    get date and time
     \    @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]
     \    ...    @{tdBoxDateTime}[3]    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
-    \    ${startWeekDay}=    get day of week from date    @{localDateTime}[0]    @{localDateTime}[1]    @{localDateTime}[2]
     \    ${startTime}=    set variable    @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]
     \    ${endDateTime}    add time to date    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] ${startTime}    ${secondsBeforeFeedEnd} second
     \    ${endDateTime}    get Time    year month day hour min sec    ${endDateTime}
     \    ${endWeekDay}=    get day of week from date    @{endDateTime}[0]    @{endDateTime}[1]    @{endDateTime}[2]
     \    ${endTime}=    set variable    @{endDateTime}[3]:@{endDateTime}[4]:@{endDateTime}[5]
-    \    @{edits}    Create List    <it:SUN_FD_OPEN>BLANK</it:SUN_FD_OPEN>    <it:SUN_FD_CLOSE>BLANK</it:SUN_FD_CLOSE>    <it:MON_FD_OPEN>BLANK</it:MON_FD_OPEN>    <it:MON_FD_CLOSE>BLANK</it:MON_FD_CLOSE>
-    \    ...    <it:TUE_FD_OPEN>BLANK</it:TUE_FD_OPEN>    <it:TUE_FD_CLOSE>BLANK</it:TUE_FD_CLOSE>    <it:WED_FD_OPEN>BLANK</it:WED_FD_OPEN>    <it:WED_FD_CLOSE>BLANK</it:WED_FD_CLOSE>    <it:THU_FD_OPEN>BLANK</it:THU_FD_OPEN>
-    \    ...    <it:THU_FD_CLOSE>BLANK</it:THU_FD_CLOSE>    <it:FRI_FD_OPEN>BLANK</it:FRI_FD_OPEN>    <it:FRI_FD_CLOSE>BLANK</it:FRI_FD_CLOSE>    <it:SAT_FD_OPEN>BLANK</it:SAT_FD_OPEN>    <it:SAT_FD_CLOSE>BLANK</it:SAT_FD_CLOSE>
-    \    Modify EXL    ${useFile}    ${modifiedExlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    @{edits}
-    \    Set Feed Time In EXL    ${modifiedExlFile}    ${modifiedExlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${startTime}
-    \    ...    ${endTime}    ${startWeekDay}
-    \    Run Keyword Unless    '${startWeekDay}' == '${endWeekDay}'    Set Feed Time In EXL    ${exlFile}    ${exlFile}    ${connectTimesIdentifier}
-    \    ...    ${connectTimeRicDomain}    ${startTime}    ${endTime}    ${endWeekDay}
+    \    Set Feed Time In EXL    ${useFile}    ${modifiedExlFile}    ${connectTimesIdentifier}    ${connectTimeRicDomain}    ${EMPTY}
+    \    ...    ${endTime}    ${endWeekDay}
     : FOR    ${modifiedExlFile}    IN    @{modifiedExlFiles}
     \    Load Single EXL File    ${modifiedExlFile}    ${serviceName}    ${CHE_IP}
     sleep    ${secondsBeforeFeedEnd}
@@ -814,8 +807,11 @@ Set Feed Time In EXL
     [Documentation]    Set feed time in EXL:
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1646
-    modify EXL    ${srcFile}    ${dstFile}    ${ric}    ${domain}    <it:${feedDay}_FD_OPEN>${startTime}</it:${feedDay}_FD_OPEN>
-    modify EXL    ${dstFile}    ${dstFile}    ${ric}    ${domain}    <it:${feedDay}_FD_CLOSE>${endTime}</it:${feedDay}_FD_CLOSE>
+    Run Keyword If    '${startTime}'!='${Empty}'    modify EXL    ${srcFile}    ${dstFile}    ${ric}    ${domain}
+    ...    <it:${feedDay}_FD_OPEN>${startTime}</it:${feedDay}_FD_OPEN>
+    ${srcFile}    Set Variable If    '${startTime}'!='${Empty}'    ${dstFile}    ${srcFile}
+    Run Keyword If    '${endTime}'!='${Empty}'    modify EXL    ${srcFile}    ${dstFile}    ${ric}    ${domain}
+    ...    <it:${feedDay}_FD_CLOSE>${endTime}</it:${feedDay}_FD_CLOSE>
 
 Set Field Value in EXL
     [Arguments]    ${exlFile}    ${ric}    ${domain}    ${fieldName}    ${fieldValueNew}

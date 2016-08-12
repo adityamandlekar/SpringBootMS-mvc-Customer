@@ -64,6 +64,25 @@ GRS Writes to PCAP on Exit
     Should Not Be Empty    ${files}
     [Teardown]    Run Keyword    Start Process    GRS
 
+GRS Writes to PCAP on Feed Close
+    [Documentation]    Verify that GRS writes messages from its buffer to a PCAP file upon feed close event.
+    ...    1. Delete GRS PCAP files
+    ...    2. Reset sequence numbers
+    ...    3. Inject generic pcap file
+    ...    4. Force feed close time
+    ...    5. Verify GRS PCAP file is created
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2120
+    Reset Sequence Numbers
+    ${service}=    Get FMS Service Name
+    ${injectFile}=    Generate PCAP File Name    ${service}    General RIC Update
+    ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}
+    ${exlFiles}    ${modifiedExlFiles}    Go Into End Feed Time    ${service}
+    ${files}    Search Remote Files    ${BASE_DIR}    *.pcap    ${True}
+    Should Not Be Empty    ${files}
+    [Teardown]    Run Keywords    Restore EXL Changes    ${service}    ${exlFiles}
+    ...    AND    Case Teardown    @{modifiedExlFiles}
+
 GRS Writes to PCAP When Buffer Full
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1997
     ...
