@@ -25,12 +25,55 @@ GRS Peer Recovery SMF Restart
     Verify Peers Match    ${remoteCapture}
     [Teardown]    Peer Recovery Teardown
 
+GRS Peer Recovery Successive Restart
+    [Documentation]    Verify that the GRS recovery properly handles successive restart.
+    ...    1. Delete GRS PCAP files on live and standby
+    ...    2. Reset sequence numbers on live and standby
+    ...    3. Stop GRS and MTE on standby
+    ...    4. Inject generic PCAP file
+    ...    5. Start GRS and MTE on standby
+    ...    6. Verify Peers match
+    ...    7. Stop GRS and MTE on standby
+    ...    8. Start GRS and MTE on standby
+    ...    9. Verify Peers match
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2128
+    ${service}=    Get FMS Service Name
+    ${injectFile}=    Generate PCAP File Name    ${service}    General RIC Update
+    Reset Sequence Numbers    ${CHE_A_IP}    ${CHE_B_IP}
+    Switch To TD Box    ${CHE_B_IP}
+    Stop Process    GRS
+    Stop MTE
+    Switch To TD Box    ${CHE_A_IP}
+    ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}
+    Switch To TD Box    ${CHE_B_IP}
+    ${currDateTime}    get date and time
+    Start Process    GRS
+    Start MTE
+    wait smf log message after time    ${MTE}.*Start of Day request accepted    ${currDateTime}    10    180
+    wait smf log message after time    ${MTE}.*Start of Day request complete    ${currDateTime}    2    10
+    wait smf log message after time    ${MTE}.*Begin Regular Execution    ${currDateTime}    2    10
+    Verify Peers Match    ${remoteCapture}    ${False}
+    Switch To TD Box    ${CHE_B_IP}
+    Stop Process    GRS
+    Stop MTE
+    ${currDateTime}    get date and time
+    Start Process    GRS
+    Start MTE
+    wait smf log message after time    ${MTE}.*Start of Day request accepted    ${currDateTime}    10    180
+    wait smf log message after time    ${MTE}.*Start of Day request complete    ${currDateTime}    2    10
+    wait smf log message after time    ${MTE}.*Begin Regular Execution    ${currDateTime}    2    10
+    Verify Peers Match    ${remoteCapture}    ${True}
+    [Teardown]    Peer Recovery Teardown
+
 *** Keywords ***
 Peer Recovery Teardown
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     Switch To TD Box    ${CHE_B_IP}
     Start smf
+    Start MTE
+    Start Process    GRS
     Switch To TD Box    ${CHE_A_IP}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     verify MTE state    LIVE
@@ -45,7 +88,7 @@ Recovery Setup With SMF Standby Stop
     Reset Sequence Numbers
 
 Verify Peers Match
-    [Arguments]    ${remoteCapture}
+    [Arguments]    ${remoteCapture}    ${deleteRemoteCapture}=${True}
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     ${domain}=    Get Preferred Domain
@@ -57,7 +100,8 @@ Verify Peers Match
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     verify MTE state    LIVE
     ${A_FIDs}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
-    Delete Remote Files    ${remoteCapture}    ${remoteRicFile}
+    Run Keyword If     ${deleteRemoteCapture}==${True}    Delete Remote Files    ${remoteCapture}
+    Delete Remote Files    ${remoteRicFile}
     Comment    Make B LIVE before running Dataview on B.
     Switch To TD Box    ${CHE_B_IP}
     Create Remote File Content    ${remoteRicFile}    ${ricList}
