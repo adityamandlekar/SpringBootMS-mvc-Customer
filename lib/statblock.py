@@ -1,4 +1,5 @@
 ﻿from datetime import datetime
+import re
 import time
 
 from utilpath import utilpath
@@ -68,23 +69,31 @@ def get_outputAddress_and_port_for_mte(labelIDs):
 
     return ipAndPortList
 
-def get_stat_block_field(writerName, blockName, fieldName):
+def get_stat_block_field(writerName, blockName, fieldName, allowNotFound=False):
     """Returns the specified Stat Block field value.
 
     Example:
     | ${field}= | get stat block field  | ${mte}  | FMS  |  lastReorgType  |
     """
             
-    cmd = "%s -f %s %s %s | grep 'Value:' | sed -n -e '/^Value:/s/^Value:[\t ]*//p' " %(utilpath.STATBLOCKFIELDREADER, writerName, blockName, fieldName)
+    cmd = "%s -f %s %s %s" %(utilpath.STATBLOCKFIELDREADER, writerName, blockName, fieldName)
     stdout, stderr, rc = _exec_command(cmd)
 
 #         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
     if rc !=0 or stderr !='':
-        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
-    if stdout != '':
-        return stdout.strip()
+        if allowNotFound:
+            return "Not Found"
+        else:
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+    
+    value = re.search(r'^Value:(.*)$', stdout, re.MULTILINE)
+    if value:
+        return value.group(1).strip()
     else:
-        raise AssertionError('*ERROR* No field found for %s, %s, %s' %(writerName, blockName, fieldName))
+        if allowNotFound:
+            return "Not Found"
+        else:
+            raise AssertionError('*ERROR* No value found for %s, %s, %s.  Received the following:%s' %(writerName, blockName, fieldName, stdout))
 
 def get_statBlockList_for_fh_output():
     """get all the stat block name for FH output
@@ -181,7 +190,7 @@ def wait_for_StatBlock(writerName, statBlock, fieldToCheck, fieldValue, waittime
     maxtime = time.time() + float(timeout)
     while time.time() <= maxtime:
         time.sleep(waittime)
-        val = get_stat_block_field(writerName,statBlock,fieldToCheck)
+        val = get_stat_block_field(writerName,statBlock,fieldToCheck,True)
 #             print 'DEBUG time=%f maxtime=%f value=%s' %(time.time(),maxtime,val)
         if val.strip() == fieldValue:
             return 0
