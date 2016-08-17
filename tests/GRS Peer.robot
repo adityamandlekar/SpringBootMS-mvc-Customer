@@ -66,6 +66,28 @@ GRS Peer Recovery Successive Restart
     Verify Peers Match    ${remoteCapture}    ${True}
     [Teardown]    Peer Recovery Teardown
 
+GRS Peer Recovery With All Local PCAPs
+    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-2123
+    ...
+    ...    Verify that GRS recovery when all GRS PCAP files are on local machine.
+    Reset Sequence Numbers    ${CHE_A_IP}    ${CHE_B_IP}
+    Switch To TD Box    ${CHE_A_IP}
+    ${service}=    Get FMS Service Name
+    ${injectFile}=    Generate PCAP File Name    ${service}    General RIC Update
+    ${remoteCapture}=    Inject PCAP File And Wait For Output    ${injectFile}
+    Switch To TD Box    ${CHE_B_IP}
+    Stop MTE
+    Stop Process    GRS
+    ${currDateTime}    get date and time
+    Start Process    GRS
+    Start MTE
+    wait smf log message after time    ${MTE}.*Start of Day request accepted    ${currDateTime}    2    120
+    wait smf log message after time    ${MTE}.*Start of Day request complete    ${currDateTime}    2    30
+    wait smf log message after time    Loading ${/}ThomsonReuters${/}GRS${/}bin${/}*.pcap to streambuffer    ${currDateTime}    2    10
+    wait smf log does not contain    Peer Recovery finished for stream:*    2    10
+    Verify Peers Match    ${remoteCapture}
+    [Teardown]    Peer Recovery Teardown
+
 *** Keywords ***
 Peer Recovery Teardown
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
@@ -100,7 +122,7 @@ Verify Peers Match
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     verify MTE state    LIVE
     ${A_FIDs}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
-    Run Keyword If     ${deleteRemoteCapture}==${True}    Delete Remote Files    ${remoteCapture}
+    Run Keyword If    ${deleteRemoteCapture}==${True}    Delete Remote Files    ${remoteCapture}
     Delete Remote Files    ${remoteRicFile}
     Comment    Make B LIVE before running Dataview on B.
     Switch To TD Box    ${CHE_B_IP}
