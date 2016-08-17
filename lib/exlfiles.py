@@ -666,20 +666,28 @@ def _modify_fm_file(srcfile, dstfile, modifyType, ric, domain, *ModifyItem):
             field = match.group(1)
             value = match.group(2)
 
-            #Remove invalid character for XML
-            value = value.replace("&","&amp;")
-            value = value.replace("\"","&quot;")
-            value = value.replace("'","&apos;")
-            value = value.replace("<","&lt;")
-            value = value.replace(">","&gt;")
-            
-            tempdom = xml.dom.minidom.parseString('<%s xmlns:it="DbFieldsSchema">'%field + value + '</%s>'%field) 
-            tempnode = tempdom.documentElement
             if pat.search(value):
                 # multiple layers
+                # (KW does not currently support special XML chars in new value if multiple layers)
+                tempdom = xml.dom.minidom.parseString('<%s xmlns:it="DbFieldsSchema">'%field + value + '</%s>'%field) 
+#                 print tempdom.toprettyxml()
+                tempnode = tempdom.documentElement
                 modifyflag = setvalue(iteratoroot, field, tempnode, True)
                 #print iteratoroot.childNodes.item(11).childNodes.item(1).childNodes
             else:
+                # replace all XML special chars (&"'<>) in new value with the escaped equivalent
+                escapedValue = value
+                escapedValue = escapedValue.replace("&","&amp;")
+                escapedValue = escapedValue.replace("\"","&quot;")
+                escapedValue = escapedValue.replace("'","&apos;")
+                escapedValue = escapedValue.replace("<","&lt;")
+                escapedValue = escapedValue.replace(">","&gt;")
+                
+                # use the escaped value here, or parsing fails
+                tempdom = xml.dom.minidom.parseString('<%s xmlns:it="DbFieldsSchema">'%field + escapedValue + '</%s>'%field) 
+#                 print tempdom.toprettyxml()
+                tempnode = tempdom.documentElement
+                # use the orginal value here, not the escaped value
                 modifyflag = setvalue(iteratoroot, field, value, False)
             if modifyflag == False:
                 #raise AssertionError("*ERROR* not found field %s for %s and %s in exl" % (field, ric, domain))
