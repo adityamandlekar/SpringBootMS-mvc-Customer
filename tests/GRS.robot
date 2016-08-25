@@ -100,7 +100,11 @@ GRS Writes to PCAP When Buffer Full
     ${service}    Get FMS Service Name
     ${injectFile}=    Generate FH PCAP File Name    ${service}    General FH Output    FH=${FH}
     ${loopbackIntf}=    set variable    127.0.0.1
+    Comment    Inject messages at 1 PPS. \ GRS pcap files have 1-second timestamp resolution, so the test should not create multiple pcap files within 1 second.
+    ${savePPS}=    set variable    ${PLAYBACK_PPS}
+    set suite variable    ${PLAYBACK_PPS}    1
     Inject PCAP File on UDP at MTE Box    ${loopbackIntf}    ${injectFile}
+    set suite variable    ${PLAYBACK_PPS}    ${savePPS}
     wait for MTE capture to complete
     Stop Process    GRS
     ${injectFileList}=    Create List    ${injectFile}
@@ -244,7 +248,7 @@ Compare GRS output frames with Injection file frames
     Should be equal    ${fhFrames}    ${grsFrames}
 
 Get GRS output file list
-    ${stdout}    ${stderr}=    Execute Command    find ${BASE_DIR} -name "*.pcap"    return_stderr=True
+    ${stdout}    ${stderr}=    Execute Command    find ${BASE_DIR} -name "*.pcap" | sort    return_stderr=True
     Should Be Empty    ${stderr}
     Should Not Be Empty    ${stdout}
     ${grsfiles}=    Split To Lines    ${stdout}
