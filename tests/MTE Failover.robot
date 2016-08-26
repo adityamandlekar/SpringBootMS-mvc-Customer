@@ -123,8 +123,8 @@ Critical Message Logging - MTE State change
     switch MTE LIVE STANDBY status    A    STANDBY    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
     wait GMI message after time    WARNING.*LIVE switch has occurred.*Entity: ${MTE}.*EVENT:WDG_ERROR_ENTITY_LIVE_SWITCH : Investigate the cause of the entity switch    ${currDateTime}    2    100
-    wait GMI message after time    CRITICAL.*Normal Processing.*MTE.*ReportSituation    ${currDateTime}    2    100
-    wait GMI message after time    CRITICAL.*Watchdog event.*MTE.*ReportSituation    ${currDateTime}    2    100
+    wait GMI message after time    CRITICAL.*Normal Processing.*[FM]TE.*ReportSituation    ${currDateTime}    2    100
+    wait GMI message after time    CRITICAL.*Watchdog event.*[FM]TE.*ReportSituation    ${currDateTime}    2    100
     [Teardown]    MTE Failover Case Teardown    ${master_ip}
 
 Verify STANDBY Handles Sync Pulse

@@ -888,13 +888,13 @@ Start MTE
     ...    Then load the state EXL files (that were modified by suite setup to set 24x7 feed and trade time).
     ...
     ...    If Recon is changed to set ResendFM=0 in the MTE config file, instead of loading just the state EXL files, this will need to load all of the EXL files (if they have not already been loaded). \ With ResendFM=1, we need to wait for FMS reorg to finish, and then load the state EXL files to override the ones loaded from the FMS server.
-    ${result}=    find processes by pattern    MTE -c ${MTE}
+    ${result}=    find processes by pattern    [FM]TE -c ${MTE}
     ${len}=    Get Length    ${result}
     Run keyword if    ${len} != 0    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
     Run keyword if    ${len} != 0    Load All State EXL Files
     Return from keyword if    ${len} != 0
     run commander    process    start ${MTE}
-    wait for process to exist    MTE -c ${MTE}
+    wait for process to exist    [FM]TE -c ${MTE}
     wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
     Wait For FMS Reorg
     Load All State EXL Files
@@ -914,7 +914,7 @@ Stop Capture MTE Output
 
 Stop MTE
     run commander    process    stop ${MTE}
-    wait for process to not exist    MTE -c ${MTE}
+    wait for process to not exist    [FM]TE -c ${MTE}
 
 Stop Process
     [Arguments]    ${process}
