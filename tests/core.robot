@@ -167,11 +167,11 @@ Get HighActivityTimesIdentifier
     ${allHighActivityTimesIdentifiers}=    Create List
     @{blocks}=    Get Stat Blocks For Category    ${MTE}    InputLineStats
     : FOR    ${block}    IN    @{blocks}
-    \    ${HighActivityTimesIdentifier}=    Get Stat Block Field    ${MTE}    ${block}    highActTimesIdentifier
+    \    ${HighActivityTimesIdentifier}=    Get Stat Block Field    ${MTE}    ${block}    highactTimesIdentifier
     \    @{retList}=    Split String    ${HighActivityTimesIdentifier}    ,
     \    Append To List    ${allHighActivityTimesIdentifiers}    @{retList}
     ${allHighActivityTimesIdentifiers}=    Remove Duplicates    ${allHighActivityTimesIdentifiers}
-    Should Not Be Empty    ${allHighActivityTimesIdentifiers}    No HighActivityTimesIdentifier found.
+    Should Not Be Empty    ${allHighActivityTimesIdentifiers}    No highactTimesIdentifier found.
     [Return]    ${allHighActivityTimesIdentifiers}
 
 Get Domain Names
