@@ -25,7 +25,7 @@ Empty Payload Detection with Blank FIDFilter
 Empty Payload Detection with Blank TCONF
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1987
     ...
-    ...    Restart MTE with empty tconf file and modified ${MTE}.xml config file. Verify no update messages with playback data. Restart MTE with restored tconf and config file
+    ...    Restart MTE with empty tconf file and modified MTE config file. Verify no update messages with playback data. Restart MTE with restored tconf and config file
     ${fileList}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${remoteConfig}    set variable    ${fileList[0]}
     ${remoteConfigBackup}    set variable    ${fileList[1]}

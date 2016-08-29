@@ -67,12 +67,12 @@ Start MTE for OTFC
     ...    This make original KW 'Start MTE' fail to use in our case.
     ...
     ...    This KW doing similar thing as 'Start MTE' but it would check other important health status and skip checking IsLineHandlerStartupComplete
-    ${result}=    find processes by pattern    MTE -c ${MTE}
+    ${result}=    find processes by pattern    [FM]TE -c ${MTE}
     ${len}=    Get Length    ${result}
     Run keyword if    ${len} != 0    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
     Return from keyword if    ${len} != 0
     run commander    process    start ${MTE}
-    wait for process to exist    MTE -c ${MTE}
+    wait for process to exist    [FM]TE -c ${MTE}
     wait for HealthCheck    ${MTE}    DownstreamRecoveryConfigurationIsvalid
     wait for HealthCheck    ${MTE}    FMSConfigurationIsValid
     wait for HealthCheck    ${MTE}    IsConnectedToFMSClient

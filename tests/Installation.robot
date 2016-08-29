@@ -9,7 +9,7 @@ Verify duplicate processes are not created
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1964
     ...
     ...    Check if MTE, FHController, and GRS exist already. Start processes again by using commander and check no changes in PID
-    @{process_pattern_list}=    Create List    MTE -c ${MTE}    GRS -cfg    FHController -cfg
+    @{process_pattern_list}=    Create List    [FM]TE -c ${MTE}    GRS -cfg    FHController -cfg
     @{process_list}=    Create List    ${MTE}    GRS    FHController
     ${pid_dict1}    Get process and pid matching pattern    @{process_pattern_list}
     ${list_length} =    Get Length    ${process_pattern_list}

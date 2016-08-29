@@ -55,7 +55,7 @@ Persistence File Loading
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
 Verify Cache Contains Only Configured Context IDs
-    [Documentation]    Verify that all context ids in the MTE cache are listed in <Transforms> section \ in the MTE xml configuration file.
+    [Documentation]    Verify that all context ids in the MTE cache are listed in <Transforms> section \ in the MTE configuration file.
     Stop MTE
     Delete Persist Files
     Start MTE

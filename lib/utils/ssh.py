@@ -103,8 +103,9 @@ def _get_process_pid_pattern_dict(process_pattern_list):
     dict = {}
     for process_item in pid_cmd_list:
         for pattern_item in process_pattern_list:
-            if process_item.lower().find(pattern_item.lower()) != -1:
+            if re.search(pattern_item.lower(), process_item.lower()):
                 dict[process_item.split()[0]] = pattern_item
+                break
     return dict  
 
 
