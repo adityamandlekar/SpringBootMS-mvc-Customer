@@ -41,17 +41,6 @@ Create Unique RIC Name
     ${ric}=    set variable    TEST${text}${dt[0]}${dt[1]}${dt[2]}${dt[3]}${dt[4]}${dt[5]}
     [Return]    ${ric}
 
-Delete GRS PCAP Files
-    [Arguments]    @{mach_ip_list}
-    [Documentation]    Delete the PCAP files created by GRS on each of the specified machines. \ If no machine is specified, delete GRS PCAP files on the current machine.
-    ${host}=    get current connection index
-    @{new_list}    Run Keyword If    len(${mach_ip_list}) == 0    Create List    ${host}
-    ...    ELSE    Create List    @{mach_ip_list}
-    : FOR    ${mach}    IN    @{new_list}
-    \    Run Keyword If    '${mach}' != '${host}'    Switch To TD Box    ${mach}
-    \    Delete Remote Files Matching Pattern    ${BASE_DIR}    *.pcap    ${True}
-    [Teardown]    Switch Connection    ${host}
-
 Delete Persist Files
     delete remote files matching pattern    ${VENUE_DIR}    PERSIST_${MTE}.DAT*    recurse=${True}
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
@@ -131,21 +120,6 @@ Force Persist File Write
     [Teardown]
     [Return]    ${exlFiles}    ${modifiedExlFiles}
 
-Generate FH PCAP File Name
-    [Arguments]    ${service}    ${testCase}    @{keyValuePairs}
-    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
-    ...
-    ...    Generate the file name based on service name, test case and input key/value pairs
-    ...
-    ...    Example:
-    ...    MFDS-Testcase.pcap
-    ...    TDDS_BDDS-MyTestName-FH=TDDS01F.pcap
-    ...    TDDS_BDDS-TransientGap-FH=TDDS01F.pcap
-    ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}
-    ${pcapFileName} =    Catenate    SEPARATOR=    ${REMOTE_TMP_DIR}/    ${pcapFileName}    .pcap
-    ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
-    [Return]    ${pcapFileName}
-
 Generate PCAP File Name
     [Arguments]    ${service}    ${testCase}    ${playbackBindSide}=A    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
@@ -154,8 +128,7 @@ Generate PCAP File Name
     ...
     ...    Example:
     ...    MFDS-Testcase-B.pcap
-    ...    TDDS_BDDS-MyTestName-FH=TDDS01F-A.pcap
-    ...    TDDS_BDDS-TransientGap-FH=TDDS01F-A.pcap
+    ...    TDDS_BDDS-TransientGap-domain=MARKET_PRICE-A.pcap
     ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}    ${playbackBindSide}
     ${pcapFileName} =    Catenate    SEPARATOR=    ${PLAYBACK_PCAP_DIR}    ${pcapFileName}    .pcap
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
@@ -174,81 +147,32 @@ Get Playback NIC For PCAP File
     [Return]    ${intfName}
 
 Get ConnectTimesIdentifier
-    [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
-    [Documentation]    get the ConnectTimesIdentifier (feed times RIC) from venue config file.
-    ...    returns
-    ...    1. list with ConnectTimesIdentifier(s)
+    [Documentation]    Get the combined list of ConnectTimesIdentifier (feed times RIC) from all of the InputPortStatsBlock_* blocks.
     ...
-    ...    Note that there are currently 2 different config file formats - MFDS and HKFE. MFDS may be the "old" way so will check that format if the initial search attempt fails.
-    ...
-    ...    Config file examples:
-    ...
-    ...    HKFE:
-    ...    <Inputs>
-    ...    <Channels type="multistring">
-    ...    <Z>HKF02M</Z>
-    ...    </Channels>
-    ...    <HKF02M>
-    ...    <DictionaryFile>/ThomsonReuters/config/EDFFieldDictionary</DictionaryFile>
-    ...    <FHRealtimeLine>
-    ...    <ConnectTimesIdentifier>HKF%FD01</ConnectTimesIdentifier>
-    ...    <HighActivityTimesIdentifier>HKF%TRD01</HighActivityTimesIdentifier>
-    ...
-    ...
-    ...    MFDS:
-    ...    <!-- Input Channels -->
-    ...    <ConnectTimesRIC>MUT%FD01</ConnectTimesRIC>
-    ...    <HighActivityTimesRIC>MUT%TRD01</HighActivityTimesRIC>
-    ...    <Inputs>
-    ${len}    Get Length    ${fhName}
-    ${connectTimesIdentifier}=    Run Keyword If    ${len} > 0    get MTE config value    ${mteConfigFile}    Inputs    ${fhName}
-    ...    FHRealtimeLine    ConnectTimesIdentifier
-    ...    ELSE    set variable    None
-    Comment    Currently 'get MTE config value' will only return a string value. To align all return from 'Get ConnectTimesIdentifier' is a list, adding return value into a list
-    @{retList}=    Split String    ${connectTimesIdentifier}    ,
-    return from keyword if    '${connectTimesIdentifier}' != 'NOT FOUND' and '${connectTimesIdentifier}' != 'None'    ${retList}
-    ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    FHRealtimeLine    ConnectTimesIdentifier
-    @{retList}=    Remove Duplicates    ${connectTimesIdentifier}
-    return from keyword if    len(${retList}) > 0    ${retList}
-    ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    ConnectTimesRIC
-    @{retList}=    Remove Duplicates    ${connectTimesIdentifier}
-    return from keyword if    len(${retList}) > 0    ${retList}
-    FAIL    No ConnectTimesIdentifier found in venue config file: ${mteConfigFile}
+    ...    Returns a list of ConnectTimesIdentifier(s).
+    ${allConnectTimeIdentifiers}=    Create List
+    @{blocks}=    Get Stat Blocks For Category    ${MTE}    InputLineStats
+    : FOR    ${block}    IN    @{blocks}
+    \    ${connectTimesIdentifier}=    Get Stat Block Field    ${MTE}    ${block}    connectTimesIdentifier
+    \    @{retList}=    Split String    ${connectTimesIdentifier}    ,
+    \    Append To List    ${allConnectTimeIdentifiers}    @{retList}
+    ${allConnectTimeIdentifiers}=    Remove Duplicates    ${allConnectTimeIdentifiers}
+    Should Not Be Empty    ${allConnectTimeIdentifiers}    No ConnectTimesIdentifier found.
+    [Return]    ${allConnectTimeIdentifiers}
 
 Get HighActivityTimesIdentifier
-    [Arguments]    ${mteConfigFile}
-    [Documentation]    get the HighActivityTimesIdentifier (trade times RIC) from venue config file.
-    ...    returns a list of HighActivityTimesIdentifier.
+    [Documentation]    Get the combined list of HighActivityTimesIdentifier (trade times RIC) from all of the InputPortStatsBlock_* blocks.
     ...
-    ...    Note that there are currently 2 different config file formats - MFDS and HKFE. MFDS may be the "old" way so will check that format if the initial search attempt fails.
-    ...
-    ...    Config file examples:
-    ...
-    ...    HKFE:
-    ...    <Inputs>
-    ...    <Channels type="multistring">
-    ...    <Z>HKF02M</Z>
-    ...    </Channels>
-    ...    <HKF02M>
-    ...    <DictionaryFile>/ThomsonReuters/config/EDFFieldDictionary</DictionaryFile>
-    ...    <FHRealtimeLine>
-    ...    <ConnectTimesIdentifier>HKF%FD01</ConnectTimesIdentifier>
-    ...    <HighActivityTimesIdentifier>HKF%TRD01</HighActivityTimesIdentifier>
-    ...
-    ...
-    ...    MFDS:
-    ...    <!-- Input Channels -->
-    ...    <ConnectTimesRIC>MUT%FD01</ConnectTimesRIC>
-    ...    <HighActivityTimesRIC>MUT%TRD01</HighActivityTimesRIC>
-    ...    <Inputs>
-    ${highActivityTimesIdentifier}=    get MTE config value    ${mteConfigFile}    Inputs    ${FH}    FHRealtimeLine    HighActivityTimesIdentifier
-    @{retList}=    Split String    ${highActivityTimesIdentifier}    ,
-    return from keyword if    '${highActivityTimesIdentifier}' != 'NOT FOUND'    @{retList}
-    ${highActivityTimesIdentifier}=    get MTE config value    ${mteConfigFile}    HighActivityTimesRIC
-    @{retList}=    Split String    ${highActivityTimesIdentifier}    ,
-    return from keyword if    '${highActivityTimesIdentifier}' != 'NOT FOUND'    @{retList}
-    FAIL    No HighActivityTimesIdentifier found in venue config file: ${mteConfigFile}
-    [Return]    @{retList}
+    ...    Returns a list of HighActivityTimesIdentifier(s).
+    ${allHighActivityTimesIdentifiers}=    Create List
+    @{blocks}=    Get Stat Blocks For Category    ${MTE}    InputLineStats
+    : FOR    ${block}    IN    @{blocks}
+    \    ${HighActivityTimesIdentifier}=    Get Stat Block Field    ${MTE}    ${block}    highActTimesIdentifier
+    \    @{retList}=    Split String    ${HighActivityTimesIdentifier}    ,
+    \    Append To List    ${allHighActivityTimesIdentifiers}    @{retList}
+    ${allHighActivityTimesIdentifiers}=    Remove Duplicates    ${allHighActivityTimesIdentifiers}
+    Should Not Be Empty    ${allHighActivityTimesIdentifiers}    No HighActivityTimesIdentifier found.
+    [Return]    ${allHighActivityTimesIdentifiers}
 
 Get Domain Names
     [Arguments]    ${mteConfigFile}
@@ -418,8 +342,7 @@ Go Into End Feed Time
     ...    ${modifiedExlFiles} : list of the modified exlFiles
     ${secondsBeforeFeedEnd}=    set variable    120
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
-    ${mteConfigFile}=    Get MTE Config File
-    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier
     @{modifiedExlFiles}=    Create List
     @{exlFiles}=    Create List
     : FOR    ${connectTimesIdentifier}    IN    @{connectTimesIdentifierList}
@@ -528,9 +451,8 @@ Load All State EXL Files
     ...    If Recon is changed to set ResendFM=0 in the MTE config file, this KW will no longer be needed, as Start MTE will need to load all the EXL files on startup, which will include the state EXL files.
     ${statRicDomain}=    Set Variable    MARKET_PRICE
     ${serviceName}=    get FMS service name
-    ${mteConfigFile}=    Get MTE Config File
-    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
-    @{highActivityIdentifierList}=    Get HighActivityTimesIdentifier    ${mteConfigFile}
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier
+    @{highActivityIdentifierList}=    Get HighActivityTimesIdentifier
     @{feedEXLFiles}=    Create List
     @{holidayEXLFiles}=    Create List
     @{tradeEXLFiles}=    Create List
@@ -620,10 +542,10 @@ Persist File Should Exist
 
 Reset Sequence Numbers
     [Arguments]    @{mach_ip_list}
-    [Documentation]    Reset the FH, GRS, and MTE sequence numbers on each specified machine (default is current machine).
-    ...    Currently this is done by stopping and starting the components and deleting the GRS PCAP and MTE PERSIST files.
+    [Documentation]    Reset the FTE sequence numbers on each specified machine (default is current machine).
+    ...    Currently this is done by stopping and starting the component and deleting the PERSIST files.
     ...    If/when a hook is provided to reset the sequence numbers without restarting the component, it should be used.
-    ...    For peer testing, stop processes and delete files on all machines before restarting processes to avoid GRS peer recovery of sequence numbers.
+    ...    For peer testing, stop processes and delete files on all machines before restarting processes to avoid peer recovery of sequence numbers.
     ...
     ...    This KW also waits for any publishing due to the MTE restart/reorg to complete.
     ...
@@ -636,16 +558,11 @@ Reset Sequence Numbers
     : FOR    ${mach}    IN    @{new_list}
     \    Run Keyword If    '${mach}' != '${host}'    Switch To TD Box    ${mach}
     \    Stop MTE
-    \    Stop Process    GRS
-    \    Stop Process    FHController
-    \    Delete GRS PCAP Files
     \    Delete Persist Files
     Comment    Then, restart everything
     : FOR    ${mach}    IN    @{new_list}
     \    Run Keyword If    '${mach}' != '${host}'    Switch To TD Box    ${mach}
     \    ${currDateTime}    get date and time
-    \    Start Process    GRS
-    \    Start Process    FHController
     \    Start MTE
     \    Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
     \    Comment    We don't capture the output file, but this waits for any publishing to complete
@@ -742,9 +659,8 @@ Set 24x7 Feed And Trade Time And No Holidays
     ...    Blank out all holidays.
     ${statRicDomain}=    Set Variable    MARKET_PRICE
     ${serviceName}=    get FMS service name
-    ${mteConfigFile}=    Get MTE Config File
-    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
-    @{highActivityIdentifierList}=    Get HighActivityTimesIdentifier    ${mteConfigFile}
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier
+    @{highActivityIdentifierList}=    Get HighActivityTimesIdentifier
     @{holidayEXLFiles}=    Create List
     ${start}=    Set Variable    00:00:00
     ${end}=    Set Variable    23:59:59
