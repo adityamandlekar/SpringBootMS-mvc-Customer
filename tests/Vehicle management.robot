@@ -329,6 +329,7 @@ Verify Drop and Undrop from FMSCmd
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${mteConfigFile}=    Get MTE Config File
     ${currDateTime}    get date and time
+    Get FIDFilter File
     Start Capture MTE Output
     Drop ric    ${ric}    ${domain}    ${serviceName}
     wait smf log message after time    Drop message sent    ${currDateTime}
