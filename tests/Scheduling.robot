@@ -387,15 +387,12 @@ Check InputPortStatsBlock
     ...    (This actually indicate if the time Ric e.g. feed time ric or trade time ric has influence on this InputPortStatsBlock_x)
     ...
     ...    2. If 1.) is True, verify InputPortStatsBlock's ${statFieldName} == ${statValue}
-    ...
-    ...    Remark:
-    ...    Break out from the loop if \ InputPortStatsBlock's ${identifierFieldName} return empty content
-    : FOR    ${index}    IN RANGE    0    255
-    \    ${fieldValue}    get stat block field    ${MTE}    InputPortStatsBlock_${index}    ${identifierFieldName}
+    @{blocks}=    Get Stat Blocks For Category    ${MTE}    InputLineStats
+    : FOR    ${block}    IN    @{blocks}
+    \    ${fieldValue}    get stat block field    ${MTE}    ${block}    ${identifierFieldName}
     \    ${fieldValueList}    Split String    ${fieldValue}    ,
-    \    return from keyword if    '${fieldValue}' == ''
     \    ${count}    Count Values In List    ${fieldValueList}    ${identifierValue}
-    \    run keyword if    ${count} > 0    wait for statBlock    ${MTE}    InputPortStatsBlock_${index}    ${statFieldName}
+    \    run keyword if    ${count} > 0    wait for statBlock    ${MTE}    ${block}    ${statFieldName}
     \    ...    ${statValue}    waittime=2    timeout=300
 
 Check ConfigurationStatsBlock
