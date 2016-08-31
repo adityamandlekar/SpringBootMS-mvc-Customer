@@ -134,18 +134,6 @@ Generate PCAP File Name
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
 
-Get Playback NIC For PCAP File
-    [Arguments]    ${pcapFile}
-    ${partialFile}=    Fetch From Right    ${pcapFile}    -
-    ${sideInfo}    Fetch From Left    ${partialFile}    .
-    ${uppercaseName} =    Convert To Uppercase    ${sideInfo}
-    ${nicBindTo}    Run Keyword If    '${uppercaseName}' == 'A'    set variable    ${PLAYBACK_BIND_IP_A}
-    ...    ELSE IF    '${uppercaseName}' == 'B'    set variable    ${PLAYBACK_BIND_IP_B}
-    ...    ELSE    Fail    pcap file name must end with Side designation, e.g. service-testcase-A.pcap or service-testcase-B.pcap
-    ${intfName}=    get interface name by ip    ${nicBindTo}
-    Should Not be Empty    ${intfName}
-    [Return]    ${intfName}
-
 Get ConnectTimesIdentifier
     [Documentation]    Get the combined list of ConnectTimesIdentifier (feed times RIC) from all of the InputPortStatsBlock_* blocks.
     ...
@@ -160,19 +148,24 @@ Get ConnectTimesIdentifier
     Should Not Be Empty    ${allConnectTimeIdentifiers}    No ConnectTimesIdentifier found.
     [Return]    ${allConnectTimeIdentifiers}
 
-Get HighActivityTimesIdentifier
-    [Documentation]    Get the combined list of HighActivityTimesIdentifier (trade times RIC) from all of the InputPortStatsBlock_* blocks.
+Get Critical Process Config Info
+    [Documentation]    Get the configuration information for the list of processes monitored by CritProcMon.
     ...
-    ...    Returns a list of HighActivityTimesIdentifier(s).
-    ${allHighActivityTimesIdentifiers}=    Create List
-    @{blocks}=    Get Stat Blocks For Category    ${MTE}    InputLineStats
-    : FOR    ${block}    IN    @{blocks}
-    \    ${HighActivityTimesIdentifier}=    Get Stat Block Field    ${MTE}    ${block}    highactTimesIdentifier
-    \    @{retList}=    Split String    ${HighActivityTimesIdentifier}    ,
-    \    Append To List    ${allHighActivityTimesIdentifiers}    @{retList}
-    ${allHighActivityTimesIdentifiers}=    Remove Duplicates    ${allHighActivityTimesIdentifiers}
-    Should Not Be Empty    ${allHighActivityTimesIdentifiers}    No highactTimesIdentifier found.
-    [Return]    ${allHighActivityTimesIdentifiers}
+    ...    Returns a two dimensional array with process name, DownTime threshold and UpTime threshold, e.g.
+    ...    [FMSClient,0,20], [NetConStat,0, 20], ...
+    ${fileName}=    Set Variable    CritProcMon.xml
+    ${remoteFile}=    Search Remote Files    ${BASE_DIR}    ${fileName}    recurse=${True}
+    Length Should Be    ${remoteFile}    1    ${filename} file not found (or multiple files found).
+    ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${fileName}
+    Get Remote File    ${remoteFile[0]}    ${localFile}
+    @{critProcInfo}=    Get XML Text For Node    ${localFile}    CriticalProcesses
+    Remove File    ${localFile}
+    Should Not Be Empty    ${critProcInfo}
+    ${retArray}=    Create List
+    : FOR    ${procInfo}    IN    @{critProcInfo}
+    \    ${info}=    Split String    ${procInfo}    |
+    \    Append To List    ${retArray}    ${info}
+    [Return]    ${retArray}
 
 Get Domain Names
     [Arguments]    ${mteConfigFile}
@@ -227,6 +220,20 @@ Get GMT Offset And Apply To Datetime
     ...    year month day hour min sec    ${newdate}
     [Return]    ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}
 
+Get HighActivityTimesIdentifier
+    [Documentation]    Get the combined list of HighActivityTimesIdentifier (trade times RIC) from all of the InputPortStatsBlock_* blocks.
+    ...
+    ...    Returns a list of HighActivityTimesIdentifier(s).
+    ${allHighActivityTimesIdentifiers}=    Create List
+    @{blocks}=    Get Stat Blocks For Category    ${MTE}    InputLineStats
+    : FOR    ${block}    IN    @{blocks}
+    \    ${HighActivityTimesIdentifier}=    Get Stat Block Field    ${MTE}    ${block}    highactTimesIdentifier
+    \    @{retList}=    Split String    ${HighActivityTimesIdentifier}    ,
+    \    Append To List    ${allHighActivityTimesIdentifiers}    @{retList}
+    ${allHighActivityTimesIdentifiers}=    Remove Duplicates    ${allHighActivityTimesIdentifiers}
+    Should Not Be Empty    ${allHighActivityTimesIdentifiers}    No highactTimesIdentifier found.
+    [Return]    ${allHighActivityTimesIdentifiers}
+
 Get Label IDs
     [Documentation]    Get the list of labelIDs from MTE config file on current machine.
     ...    The LabelID may be different across machines, so use config files from current machine.
@@ -261,6 +268,18 @@ Get MTE Config File
     get remote file    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    ${localFile}
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${localFile}
     [Return]    ${localFile}
+
+Get Playback NIC For PCAP File
+    [Arguments]    ${pcapFile}
+    ${partialFile}=    Fetch From Right    ${pcapFile}    -
+    ${sideInfo}    Fetch From Left    ${partialFile}    .
+    ${uppercaseName} =    Convert To Uppercase    ${sideInfo}
+    ${nicBindTo}    Run Keyword If    '${uppercaseName}' == 'A'    set variable    ${PLAYBACK_BIND_IP_A}
+    ...    ELSE IF    '${uppercaseName}' == 'B'    set variable    ${PLAYBACK_BIND_IP_B}
+    ...    ELSE    Fail    pcap file name must end with Side designation, e.g. service-testcase-A.pcap or service-testcase-B.pcap
+    ${intfName}=    get interface name by ip    ${nicBindTo}
+    Should Not be Empty    ${intfName}
+    [Return]    ${intfName}
 
 Get Preferred Domain
     [Arguments]    @{preferenceOrder}
