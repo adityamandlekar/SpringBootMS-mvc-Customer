@@ -52,7 +52,7 @@ Verify Sync Pulse Missed QoS
 Verify QoS Failover for Critical Process Failure
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1762 to verify QOS CritProcessFail will increase and failover happen if critical process is shutdown.
     ...
-    ...    1. Stop each of the following critical processes: \ FMSClient, NetConStat, EventScheduler, StatsGen, GapStatGen, LatencyHandler, StatRicGen.
+    ...    1. Stop each of the critical processes.
     ...    2. Verify LIVE MTE failover after first Critical Process failure.
     ...    3. Verify CritProcessFail count indicates the number of critical processes that are down.
     ...    4. Restart the components.
@@ -63,30 +63,21 @@ Verify QoS Failover for Critical Process Failure
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     Switch To TD Box    ${CHE_A_IP}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
-    Stop Process    FMSClient
-    Comment    Use 'continue on failure' so the processes are restarted even if a validation fails.
-    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
-    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
-    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    ${master_ip}    1    0
-    Stop Process    NetConStat
-    Stop Process    EventScheduler
-    Stop Process    StatsGen
-    Stop Process    GapStatGen
-    Stop Process    LatencyHandler
-    Stop Process    DudtGen
-    Stop Process    StatRicGen
-    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    ${master_ip}    8    0
-    Comment    Restart process in same order that SMF starts them
-    Run Keyword and Continue on Failure    Start Process    StatRicGen
-    Run Keyword and Continue on Failure    Start Process    DudtGen
-    Run Keyword and Continue on Failure    Start Process    LatencyHandler
-    Run Keyword and Continue on Failure    Start Process    GapStatGen
-    Run Keyword and Continue on Failure    Start Process    StatsGen
-    Run Keyword and Continue on Failure    Start Process    EventScheduler
-    Run Keyword and Continue on Failure    Start Process    NetConStat
-    Run Keyword and Continue on Failure    Start Process    FMSClient
+    ${stopOrder}=    Create List    FMSClient    NetConStat    EventScheduler    StatsGen    GapStatGen
+    ...    LatencyHandler    DudtGen    StatRicGen
+    ${startOrder}=    Copy List    ${stopOrder}
+    Reverse List    ${stopOrder}
+    ${numDown}=    Set Variable    0
+    : FOR    ${proc}    IN    @{stopOrder}
+    \    Stop Process    ${proc}
+    \    ${numDown}=    Evaluate    ${numDown}+1
+    \    Comment    Verify failover occurs after first process is killed.
+    \    Run Keyword If    ${numDown} == 1    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    \    Run Keyword If    ${numDown} == 1    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    \    Verify QoS for CritProcessFail    A    ${master_ip}    ${numDown}    0
+    Restart Critical Processes    @{startOrder}
     Verify QoS for CritProcessFail    A    ${master_ip}    0    100
-    [Teardown]
+    [Teardown]    Run Keyword If Test Failed    Restart Critical Processes    @{startOrder}
 
 Verify QoS Failover for Feed Line Down
     [Documentation]    Verify that the LIVE MTE fails over to the STANDBY MTE when the feed line is down longer than HiActTimeLimit/LoActTimeLimit configuration value.
@@ -259,6 +250,12 @@ QoS Case Teardown
     [Documentation]    Make sure all interfaces are enabled after the test
     : FOR    ${interfaceName}    IN    @{disabledInterfaceName}
     \    Enable Disable Interface    ${interfaceName}    Enable
+
+Restart Critical Processes
+    [Arguments]    @{startOrder}
+    [Documentation]    Restart the specified list of processes, in the order llisted.
+    : FOR    ${proc}    IN    @{startOrder}
+    \    Run Keyword and Continue on Failure    Start Process    ${proc}
 
 Restore Feed Line Timeout
     [Arguments]    ${orgCfgFile}    ${backupCfgFile}
