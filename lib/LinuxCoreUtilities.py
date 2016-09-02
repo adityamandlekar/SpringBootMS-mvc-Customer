@@ -250,7 +250,7 @@ class LinuxCoreUtilities():
         """
         From process patterns return dictionary contains pid and process_pattern
         Examples:
-        | MTE -c ${MTE} | GRS -cfg  | FHController -cfg |
+        | MTE -c ${MTE} | FMSClient  | SCWatchdog |
         
         """
         return _get_process_pid_pattern_dict(list(process_pattern))

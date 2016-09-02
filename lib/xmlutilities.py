@@ -19,6 +19,48 @@ def get_all_fid_names_from_xml(xmlfile):
     
     return fidSet
 
+def get_xml_text_for_node(xmlFile,*xmlPath):
+    """Get the text values for the specified XML node
+    
+    xmlFile: full path to the local xml file
+    xmlPath: a list defining the XML path for the node to use
+    Returns a list of values associated with the node
+    
+    Example:
+    | Get XML Text For Node | ${LOCAL_TMP_DIR}${/}CritProcMon.xml | CriticalProcessses |
+    """
+    foundValues = []
+    
+    xmlPathLength = len(xmlPath)
+    if xmlPathLength < 1:
+        raise AssertionError('*ERROR*  Need to provide xmlPath to look up.')
+    elif xmlPathLength > 1:
+        xmlPathString = '/'.join(map(str, xmlPath))
+    else:
+        xmlPathString = str(xmlPath[0])
+        
+    if not os.path.exists(xmlFile):
+        raise AssertionError('*ERROR*  %s is not available' %xmlFile)
+    
+    with open (xmlFile, "r") as myfile:
+        linesRead = myfile.readlines()
+
+    # Note that the following workaround is needed to make the venue config file a valid XML file.
+    if linesRead[0].startswith('<?xml'):
+        linesReadString = ''.join(linesRead)
+    else:
+        linesReadString = "<GATS>" + ''.join(linesRead) + "</GATS>"
+    
+    root = ET.fromstring(linesReadString)
+    
+    for foundNode in root.iterfind(".//" + xmlPathString):
+        for text in foundNode.itertext():
+            strippedText = text.strip()
+            if strippedText:
+                    foundValues.append(strippedText)
+        
+    return foundValues
+
 def load_xml_file(xmlFileLocalFullPath,isNonStandardXml):
     """load xml file into cache and get the iterator point to first element
     

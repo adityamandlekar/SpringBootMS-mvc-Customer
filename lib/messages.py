@@ -1574,7 +1574,7 @@ def wait_for_capture_to_complete(instanceName,statBlockList,field,waittime=5,tim
     """wait for capture finish by checking the stat block information
 
     Argument 
-    instanceName : either instance of MTE of FH e.g. MFDS1M or MFDS1F
+    instanceName : name of the instance to check e.g. MFDS1M or MFDS1F
     statBlockList : [list] of stat block name that want to monitor during capture
     field : field name that want to monitor during capture e.g. outputMessageCount
     waittime : how long we wait for each cycle during checking (second)
@@ -1623,21 +1623,6 @@ def wait_for_capture_to_complete(instanceName,statBlockList,field,waittime=5,tim
     
     #Timeout                    
     raise AssertionError('*ERROR* Timeout %ds : Playback has not ended yet for some channel (suggest to adjust timeout)' %(timeout))
-
-def wait_for_fh_capture_to_complete(waittime=5,timeout=30):
-    """wait for FH capture finish by checking the stat block information
-
-    Argument 
-    waittime : how long we wait for each cycle during checking (second)
-    timeout : how long we monitor before we timeout (second)
-
-    Returns NIL.
-
-    Examples:
-    | wait for fh capture to complete | 2 | 300 |
-     """
-    statBlockList = statblock.get_statBlockList_for_fh_output()
-    wait_for_capture_to_complete(FH,statBlockList,'numberMessagesSent',waittime,timeout)
 
 def wait_for_mte_capture_to_complete(waittime=5,timeout=30):
     """wait for MTE capture finish by checking the stat block information
