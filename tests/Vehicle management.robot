@@ -22,13 +22,13 @@ Verify Long RIC handled correctly
     Set RIC In EXL    ${EXLfullpath}    ${localEXLfile}    ${ric}    ${domain}    ${long_ric}
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     Start Capture MTE Output    ${remoteCapture}
-    Load Single EXL File    ${localEXLfile}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
+    Load Single EXL File    ${localEXLfile}    ${serviceName}    ${CHE_IP}
     Wait For Persist File Update    5    60
     Stop Capture MTE Output    1    5
     ${newRic}    ${newPubRic}    Run Keyword And Continue On Failure    Verify RIC In MTE Cache    ${long_ric}    ${domain}
     Run Keyword And Continue On Failure    Verify RIC Published    ${remoteCapture}    ${localEXLfile}    ${newPubRic}    ${domain}
     Run Keyword And Continue On Failure    Verfiy Item Persisted    ${long_ric}    ${EMPTY}    ${domain}
-    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
+    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     Wait For Persist File Update
     [Teardown]    case teardown    ${localEXLfile}
 
@@ -108,13 +108,13 @@ Verify RIC rename handled correctly
     Comment    //Start test. Test 1: Check that the new RIC that we are about to create is NOT already in the cache
     Start Capture MTE Output
     Copy File    ${EXLfullpath}    ${LocalEXLfullpath}
-    Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
+    Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}
     Wait For FMS Reorg
     Verify RIC NOT In MTE Cache    ${RIC_After_Rename}    ${domain}
     Comment    //Start test. Test 2: Check that the RIC can be renamed and that the existing RIC is no longer in the cache
     Start Capture MTE Output
     Set RIC in EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC_Before_Rename}    ${domain}    ${RIC_After_Rename}
-    Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
+    Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}
     Wait For FMS Reorg
     Verify RIC NOT In MTE Cache    ${RIC_Before_Rename}    ${domain}
     ${ric}    ${Published_RIC_After_Rename}    Verify RIC In MTE Cache    ${RIC_After_Rename}    ${domain}
@@ -127,7 +127,7 @@ Verify RIC rename handled correctly
     Comment    //Start test. Test 3: Check that the new RIC can be renamed back to the original name.
     Comment    //This also reverts the state back to as the begining of the test
     Start Capture MTE Output
-    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
+    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     Wait For FMS Reorg
     Verify RIC NOT In MTE Cache    ${RIC_After_Rename}    ${domain}
     ${ric}    ${Published_RIC_Before_Rename}    Verify RIC In MTE Cache    ${RIC_Before_Rename}    ${domain}
@@ -233,7 +233,7 @@ Verify SIC rename handled correctly
     ${LocalEXLfullpath}=    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
     Copy File    ${EXLfullpath}    ${LocalEXLfullpath}
     Set Symbol In EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC}    ${domain}    ${Symbol_After_Rename}
-    Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowSICChange true
+    Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}
     remove file    ${LocalEXLfullpath}
     ${ricFields}=    Get All Fields For RIC From Cache    ${RIC}    ${domain}
     ${SIC_1}=    set variable    ${ricFields['SIC']}
@@ -241,7 +241,7 @@ Verify SIC rename handled correctly
     Wait For Persist File Update    5    60
     Verfiy Item Persisted    ${EMPTY}    ${SIC_After_Rename}    ${domain}
     Comment    //fallback
-    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowSICChange true
+    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     ${ricFields}=    Get All Fields For RIC From Cache    ${RIC}    ${domain}
     ${SIC_2}=    set variable    ${ricFields['SIC']}
     Should Be Equal    ${SIC_2}    ${SIC_Before_Rename}
