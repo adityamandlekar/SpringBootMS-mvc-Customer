@@ -247,7 +247,7 @@ Verify SIC rename handled correctly
     Should Be Equal    ${SIC_2}    ${SIC_Before_Rename}
     Wait For Persist File Update    5    60
     Verfiy Item Persisted    ${EMPTY}    ${SIC_Before_Rename}    ${domain}
-    [Teardown]    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowSICChange true
+    [Teardown]    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
 
 Verify FMS Extract and Insert
     [Documentation]    Extract existing RIC fields and values \ into an .icf file using FmsCmd. Modify some of the values and re-load the .icf file using FmsCmd.Verify that the modified values are published.
