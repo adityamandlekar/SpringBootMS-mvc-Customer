@@ -142,13 +142,13 @@ Verify Message Key Name is Compressed
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     Start Capture MTE Output    ${remoteCapture}
-    Load Single EXL File    ${localEXLfile}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
+    Load Single EXL File    ${localEXLfile}    ${serviceName}    ${CHE_IP}
     Wait For Persist File Update    5    60
     Stop Capture MTE Output    1    5
     get remote file    ${remoteCapture}    ${localCapture}
     ${mangle}    Fetch From Left    ${pubRic}    ${ric}
     verify key compression in message    ${localCapture}    ${mangle}${long_ric}
-    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
+    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     [Teardown]    case teardown    ${localCapture}
 
 Verify SPS RIC is published
