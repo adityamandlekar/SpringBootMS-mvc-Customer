@@ -33,6 +33,7 @@ Verify Sync Pulse Missed QoS
     \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
     \    unblock_dataflow
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
+    \    sleep    5
     Comment    Blocking Live Side OUTPUT
     Switch to TD Box    ${CHE_A_IP}
     @{labelIDs}=    Get Label IDs
