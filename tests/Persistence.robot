@@ -131,7 +131,7 @@ Verify Realtime MARKET_PRICE Persistence
     ${re}=    Remove String Using Regexp    ${re}    !\\[|!!
     @{allFidValuesBefore}=    Grep Local File    ${persistDump}    ${re}
     Comment    Get FID values for published RICs from Persist file after injection
-    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Wait For Persist File Update
+    Wait For Persist File Update
     ${persistDump}=    Dump Persist File to Text
     @{allFidValuesAfter}=    Grep Local File    ${persistDump}    ${re}
     : FOR    ${ric}    IN    @{ricList}
