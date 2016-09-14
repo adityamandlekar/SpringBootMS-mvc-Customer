@@ -1011,8 +1011,10 @@ Verify MTE State In Specific Box
     [Arguments]    ${che_ip}    ${state}    ${waittime}=5    ${timeout}=150
     ${host}=    get current connection index
     Switch To TD Box    ${che_ip}
-    verify MTE state    ${state}    ${waittime}    ${timeout}
+    Run Keyword And Continue On Failure    verify MTE state    ${state}    ${waittime}    ${timeout}
     Switch Connection    ${host}
+    Run Keyword If    '${host}' == '${CHE_A_Session}'    Set Suite Variable    ${CHE_IP}    ${CHE_A_IP}
+    ...    ELSE    Set Suite Variable    ${CHE_IP}    ${CHE_B_IP}
 
 Verify RIC In MTE Cache
     [Arguments]    ${ric}    ${domain}
