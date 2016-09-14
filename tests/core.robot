@@ -102,24 +102,6 @@ Extract ICF
     ...    --Domain ${domain}    --ExcludeNullFields true    --HandlerName ${MTE}    --OutputFile ${extractFile}    --Services ${serviceName}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
-Force Persist File Write
-    [Arguments]    ${serviceName}
-    [Documentation]    Force the MTE to write all updates to the Persist file.
-    ...    This is done by putting all feeds into end of feed time; the MTE writes the Persist file as part of end of feed time processing.
-    ...
-    ...    There is currently no Commander command to force a Persist file write. \ If one exists in the future, this KW should be updated to use it instead of end of feed time.
-    ...
-    ...    The returned EXL file lists should be used to call Restore EXL Changes at the end of the test.
-    ...
-    ...    Return:
-    ...    ${exlFiles} : list of exlFiles that were modified by this KW
-    ...    ${modifiedExlFiles} : list of the modified exlFiles
-    ${currDateTime}=    get date and time
-    ${exlFiles}    ${modifiedExlFiles}    Go Into End Feed Time    ${serviceName}
-    Wait SMF Log Message After Time    ${MTE}.*Persist cycle completed    ${currDateTime}    10    120
-    [Teardown]
-    [Return]    ${exlFiles}    ${modifiedExlFiles}
-
 Generate PCAP File Name
     [Arguments]    ${service}    ${testCase}    ${playbackBindSide}=A    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
