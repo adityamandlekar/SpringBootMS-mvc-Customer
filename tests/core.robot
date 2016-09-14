@@ -593,7 +593,7 @@ Load Single EXL File
     [Arguments]    ${exlFile}    ${service}    ${headendIP}    @{optargs}
     [Documentation]    Loads a single EXL file using FMSCMD. The EXL file must be on the local machine. Inputs for this keyword are the EXL Filename including the path, the FMS service and the headend's IP.
     ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${headendIP}    Process    --Services ${service}
-    ...    --InputFile "${exlFile}"    @{optargs}
+    ...    --InputFile "${exlFile}"    --AllowSICChange true    --AllowRICChange true    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
 Manual ClosingRun for ClosingRun Rics
