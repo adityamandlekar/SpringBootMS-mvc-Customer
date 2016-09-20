@@ -48,14 +48,7 @@ Verify FHController open and close timing
     ...    (4) outside feed time and end of holiday occurs, FH stays down
     ...
     ...    30 second is used for sleep. It is the waiting time that event scheduler reacts and time used for the process to be created. It is for case like FH doesn't exist to doesn't exist.
-    @{fhcConfigFiles}=    Get CHE Config Filepaths    *_fhc.json
-    @{localFhcConfigFiles}=    Create List
-    :FOR    ${fhcConfigFile}    IN    @{fhcConfigFiles}
-    \    ${fhcConfigFileName}    Fetch From Right    ${fhcConfigFile}    /
-    \    Append To List    ${localFhcConfigFiles}    ${LOCAL_TMP_DIR}${/}${fhcConfigFileName}
-    \    get remote file    ${fhcConfigFile}    ${LOCAL_TMP_DIR}${/}${fhcConfigFileName}
-    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC Configs    ${localFhcConfigFiles}
-    Remove Files    @{localFhcConfigFiles}
+    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC
     ${exlFile}=    get EXL for RIC    ${ricDomain}    ${serviceName}    ${timeRic}
     ${dstHolRics}=    get DST and holiday RICs from EXL    ${exlFile}    ${timeRic}
     ${holidayExlFile}=    get EXL for RIC    ${ricDomain}    ${serviceName}    ${dstHolRics[1]}
@@ -90,6 +83,38 @@ Verify FHController open and close timing
     Wait For Process To Not Exist    ${cmdArg}
     ${exlFileList}=    Create List    ${exlFile}    ${holidayExlFile}
     [Teardown]    Load List of EXl Files    ${exlFileList}    ${serviceName}    ${CHE_IP}    ${EMPTY}
+
+Verify Holiday Removal
+    [Documentation]    Verify that holiday can be removed properly.
+    ...    1. Set current day inside holiday
+    ...    2. Remove the holiday from the holiday RIC
+    ...    3. Verify that the TD goes outside holiday based on holidayStatus stat block and FH status
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2212
+    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC
+    Comment    Feed Time Holiday
+    ${feedTimeRic}    Set Variable    ${feedTimeRics[0]}
+    ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
+    ${feedHolidayRic}    Set Variable    ${contents[2]}
+    ${contents}    Set Variable    ${feedHolidayRicsDict['${feedHolidayRic}']}
+    ${feedHolidayEXL}    Set Variable    ${contents[0]}
+    Go Into Datetime    HOL    ${holidayStatField}    ${feedHolidayEXL}    ${feedHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
+    Wait For Process To Not Exist    ${cmdArg}
+    Load Single EXL File    ${feedHolidayEXL}    ${serviceName}    ${CHE_IP}
+    Check InputPortStatsBlock    ${connectTimesIdentifier}    ${feedTimeRic}    ${holidayStatField}    0
+    Wait For Process To Exist    ${cmdArg}
+    Comment    Trade Time Holiday
+    ${tradeTimeRic}    Set Variable    ${tradeTimeRics[0]}
+    ${contents}    Set Variable    ${tradeTimeRicsDict['${tradeTimeRic}']}
+    ${tradeHolidayRic}    Set Variable    ${contents[2]}
+    ${contents}    Set Variable    ${tradeHolidayRicsDict['${tradeHolidayRic}']}
+    ${tradeHolidayEXL}    Set Variable    ${contents[0]}
+    Go Into Datetime    HOL    ${holidayStatField}    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
+    Wait For Process To Not Exist    ${cmdArg}
+    Load Single EXL File    ${tradeHolidayEXL}    ${serviceName}    ${CHE_IP}
+    Check InputPortStatsBlock    ${connectTimesIdentifier}    ${feedTimeRic}    ${holidayStatField}    0
+    Wait For Process To Exist    ${cmdArg}
+    [Teardown]    Holiday Cleanup
 
 Verify Holiday RIC processing
     [Documentation]    Verify Holiday RIC processing:
@@ -680,3 +705,14 @@ Set Holiday Time
     Set Holiday Datetime In EXL    ${holidayExlFile}    ${exlFileModified}    ${holRicName}    ${statRicDomain}    ${startDateTimeT}.00    ${endDatetimeT}.00
     Load Single EXL File    ${exlFileModified}    ${serviceName}    ${CHE_IP}
     remove files    ${exlFileModified}
+
+Get FH Info From FHC
+    @{fhcConfigFiles}=    Get CHE Config Filepaths    *_fhc.json
+    @{localFhcConfigFiles}=    Create List
+    : FOR    ${fhcConfigFile}    IN    @{fhcConfigFiles}
+    \    ${fhcConfigFileName}    Fetch From Right    ${fhcConfigFile}    /
+    \    Append To List    ${localFhcConfigFiles}    ${LOCAL_TMP_DIR}${/}${fhcConfigFileName}
+    \    get remote file    ${fhcConfigFile}    ${LOCAL_TMP_DIR}${/}${fhcConfigFileName}
+    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC Configs    ${localFhcConfigFiles}
+    Remove Files    @{localFhcConfigFiles}
+    [Return]    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}
