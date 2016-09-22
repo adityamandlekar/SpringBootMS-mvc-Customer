@@ -274,9 +274,13 @@ class LinuxCoreUtilities():
         for process in list(Proc):
             findflag =0
             for ps in stdout.split('\n'):
-                if ps !='' and (ps.split()[-1] == process or ps.split()[-1].endswith('/' + process)):
-                    PIDlist.append(re.findall(pat,ps)[0])
-                    findflag =1
+                if ps !='' and ps.split()[-1] != []:
+                    #the pslist proces name is limited to display first 15 chars
+                    psCompareProcessName = ps.split()[-1][:15]
+                    compareProcessName = process[:15]
+                    if psCompareProcessName == compareProcessName or psCompareProcessName.endswith('/' + compareProcessName):
+                        PIDlist.append(re.findall(pat,ps)[0])
+                        findflag =1
             if findflag == 0:
                 not_found_list.append(process)
         if PIDlist != []:

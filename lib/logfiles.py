@@ -1,4 +1,4 @@
-import time
+﻿import time
 
 from LinuxCoreUtilities import LinuxCoreUtilities
 from LinuxFSUtilities import LinuxFSUtilities
@@ -89,12 +89,14 @@ def wait_smf_log_message_after_time(message,timeRef, waittime=2, timeout=60):
         waittime : specifies the time to wait between checks, in seconds.
         timeout : specifies the maximum time to wait, in seconds.
     
-    Return : Nil if success or raise error
+    Return : the timestamp of the message found if success, or raise error
 
     Examples:
     | ${dt}= | get date and time |
-    | wait smf log message after time | FMS REORG DONE | ${dt} |
+    | ${logMsgTimestamp}= | wait smf log message after time | FMS REORG DONE | ${dt} |
     """
+
+    retLogTimestamp = None
     refDate = '%s-%s-%s' %(timeRef[0], timeRef[1], timeRef[2])
     refTime = '%s:%s:%s' %(timeRef[3], timeRef[4], timeRef[5])
 #         print 'DEBUG refDate %s, refTime %s' %(refDate,refTime)
@@ -113,6 +115,7 @@ def wait_smf_log_message_after_time(message,timeRef, waittime=2, timeout=60):
             logContents = retMessages[-1].split(';')
             if (len(logContents) >= 2):
                 if logContents[0].strip() >= refDate and logContents[1].strip() >= refTime:
-                    return
+                    retLogTimestamp = logContents[0].strip() + ' ' + logContents[1].strip()
+                    return retLogTimestamp
         time.sleep(waittime)
     raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smf log before timeout %ds' %(message, timeout))
