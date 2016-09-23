@@ -15,7 +15,7 @@ from datetime import datetime, date
 from utils.version import get_version
 from utils.rc import _rc
 
-from utils.ssh import _get_process_pid_pattern_dict, _check_process, _exec_command, _get_datetime, _set_datetime, _return_pslist, _kill_process
+from utils.ssh import _get_process_pid_pattern_dict, _check_process, _exec_command, _get_datetime, _get_datetime_string, _set_datetime, _return_pslist, _kill_process
 from utils.ssh import G_SSHInstance
        
 class LinuxCoreUtilities():    
@@ -150,6 +150,18 @@ class LinuxCoreUtilities():
         """
         return _get_datetime()
 
+    def get_date_and_time_string(self):
+        """
+        Get the date and time value in string format.
+        
+        The return datetime string in format of 'YYYY-MM-DD hh:mm:ss', e.g. 2016-09-23 03:47:50.
+        It is the supported Date format in robot framework.
+
+        Examples:
+        | ${datetime}= | get date and time string |
+        """
+        return _get_datetime_string()
+
     def get_day_of_week_as_string(self):
         """
         Get the current day of week from remote machine.
@@ -274,7 +286,7 @@ class LinuxCoreUtilities():
         for process in list(Proc):
             findflag =0
             for ps in stdout.split('\n'):
-                if ps !='' and ps.split()[-1] != []:
+                if ps != '':
                     #the pslist proces name is limited to display first 15 chars
                     psCompareProcessName = ps.split()[-1][:15]
                     compareProcessName = process[:15]

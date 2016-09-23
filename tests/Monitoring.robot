@@ -31,14 +31,14 @@ Verify CritProcMon Message Logging
     \    ${configProcUpTime}=    Convert To Integer    ${critProcConfigInfo[2]}
     \    ${waitLogTimeout}=    Evaluate    ${configProcUpTime} + 10
     \    ${currDateTime}=    Get Date and Time
-    \    ${expectedBackUpTime}=    Get Current Date    increment=${configProcUpTime}    exclude_millis=True
+    \    ${currDateTimeStr}=    Get Date and Time String
+    \    ${expectedBackUpTime}    Add Time To Date     ${currDateTimeStr}    ${configProcUpTime}    exclude_millis=True
     \    @{retCode}=    Kill Processes    ${configMonProcess}
     \    Should be True    ${retCode[0]} == 0    Fail to find the process ${configMonProcess} to kill
     \    ${logStopRuningTime}=    Wait SMF Log Message After Time    ${configMonProcessLowerCase} \+is no longer running    ${currDateTime}    2    ${waitLogTimeout}
     \    ${logBackUpTime}=    Wait SMF Log Message After Time    ${configMonProcessLowerCase} \+has been back up for ${configProcUpTime} seconds or more    ${currDateTime}    2    ${waitLogTimeout}
     \    ${timeDiff}=    Subtract Date From Date    ${logBackUpTime}    ${expectedBackUpTime}
     \    Should Be True    ${timeDiff} >= 0    CritProcMon should NOT generate a clear message prior to the configured process uptime
-    \    Sleep    10    Sleep for 10 seconds before killing next process
     [Teardown]    Restart SMF    # Restart SMF as a workaround for the defect of fail to read Stat Blocks fields after StatBlockManager process is killed.
 
 *** Keywords ***

@@ -1,4 +1,4 @@
-'''
+﻿'''
 Created on May 12, 2014
 
 @author: xiaoqin.li
@@ -140,6 +140,14 @@ def _get_datetime():
     if rc !=0 or stderr !='':
         raise AssertionError("*ERROR* %s, %s" %(rc, stderr))
     return stdout.strip().split('-')
+
+def _get_datetime_string():
+    cmd = 'date \'+%Y-%m-%d %H:%M:%S\''
+    stdout, stderr, rc = _get_current_connection().execute_command(cmd)
+    print stdout
+    if rc !=0 or stderr !='':
+        raise AssertionError("*ERROR* %s, %s" %(rc, stderr))
+    return stdout.strip()
 
 def _set_datetime(year,month,day, hour, min, sec, system='linux'):
     if system == 'linux':
