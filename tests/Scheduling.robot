@@ -112,24 +112,6 @@ Verify Half Day Holiday
     Sleep    120
     Check InputPortStatsBlock    ${connectTimesIdentifier}    ${feedTimeRic}    ${holidayStatField}    0
     Wait For Process To Exist    ${cmdArg}
-    ${tradeTimeRic}    Set Variable    ${tradeTimeRics[0]}
-    ${contents}    Set Variable    ${tradeTimeRicsDict['${tradeTimeRic}']}
-    ${tradeTimeExl}    Set Variable    ${contents[0]}
-    ${tradeHolidayRic}    Set Variable    ${contents[2]}
-    ${contents}    Set Variable    ${tradeHolidayRicsDict['${tradeHolidayRic}']}
-    ${tradeHolidayEXL}    Set Variable    ${contents[0]}
-    @{dstRic}=    Get Ric Fields from EXL    ${tradeTimeExl}    ${tradeTimeRic}    DST_REF
-    @{tdBoxDateTime}=    Get Date and Time
-    @{localDateTime}=    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]    @{tdBoxDateTime}[3]
-    ...    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
-    ${startDateTime}=    Set Variable    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]
-    ${endDateTime}=    add time to date    ${startDateTime}    2 minute    exclude_millis=yes
-    Go Into Datetime    HOL    ${holidayStatField}    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${connectTimesIdentifier}    ${tradeTimeRic}
-    ...    ${startDateTime}    ${endDateTime}
-    Wait For Process To Not Exist    ${cmdArg}
-    Sleep    120
-    Check InputPortStatsBlock    ${connectTimesIdentifier}    ${feedTimeRic}    ${holidayStatField}    0
-    Wait For Process To Exist    ${cmdArg}
     [Teardown]    Holiday Cleanup
 
 Verify Holiday Removal
@@ -662,6 +644,8 @@ Go Into Datetime
     [Arguments]    ${type}    ${statField}    ${exlFile}    ${ricName}    ${identifier}    ${identifierValue}
     ...    ${startDatetime}={EMPTY}    ${endDatetime}=${EMPTY}
     [Documentation]    Go into holiday or DST dateime
+    ...
+    ...    If ${startDatetime} or ${endDatetime} is not specified, it will call KW 'Set Datetims FOR IN State' to get the start time and end time.
     ${exlFilename}    Fetch From Right    ${exlFile}    \\
     ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${exlFilename}_modified.exl
     ${tdBoxDateTime}    get date and time
