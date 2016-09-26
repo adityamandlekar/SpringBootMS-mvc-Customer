@@ -84,6 +84,36 @@ Verify FHController open and close timing
     ${exlFileList}=    Create List    ${exlFile}    ${holidayExlFile}
     [Teardown]    Load List of EXl Files    ${exlFileList}    ${serviceName}    ${CHE_IP}    ${EMPTY}
 
+Verify Half Day Holiday
+    [Documentation]    Verify that TD can handle half day holiday properly.
+    ...    1. Verify that TD goes outside holiday
+    ...    2. Set holiday open time to current time and close time to 2 minutes later
+    ...    3. Verify that TD is inside holiday
+    ...    4. Sleep 2 minutes
+    ...    5. Verify that TD goes outside holiday
+    ...
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2242
+    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC
+    ${feedTimeRic}    Set Variable    ${feedTimeRics[0]}
+    ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
+    ${feedTimeExl}    Set Variable    ${contents[0]}
+    ${feedHolidayRic}    Set Variable    ${contents[2]}
+    ${contents}    Set Variable    ${feedHolidayRicsDict['${feedHolidayRic}']}
+    ${feedHolidayEXL}    Set Variable    ${contents[0]}
+    @{dstRic}=    Get Ric Fields from EXL    ${feedTimeExl}    ${feedTimeRic}    DST_REF
+    @{tdBoxDateTime}=    Get Date and Time
+    @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]    @{tdBoxDateTime}[3]
+    ...    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
+    ${startDateTime}=    Set Variable    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]
+    ${endDateTime}=    add time to date    ${startDateTime}    2 minute    exclude_millis=yes
+    Go Into Datetime    HOL    ${holidayStatField}    ${feedHolidayEXL}    ${feedHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
+    ...    ${startDateTime}    ${endDateTime}
+    Wait For Process To Not Exist    ${cmdArg}
+    Sleep    120
+    Check InputPortStatsBlock    ${connectTimesIdentifier}    ${feedTimeRic}    ${holidayStatField}    0
+    Wait For Process To Exist    ${cmdArg}
+    [Teardown]    Holiday Cleanup
+
 Verify Holiday Removal
     [Documentation]    Verify that holiday can be removed properly.
     ...    1. Set current day inside holiday
@@ -612,12 +642,16 @@ Set Datetimes For IN State
 
 Go Into Datetime
     [Arguments]    ${type}    ${statField}    ${exlFile}    ${ricName}    ${identifier}    ${identifierValue}
+    ...    ${startDatetime}={EMPTY}    ${endDatetime}=${EMPTY}
     [Documentation]    Go into holiday or DST dateime
+    ...
+    ...    If ${startDatetime} or ${endDatetime} is not specified, it will call KW 'Set Datetims FOR IN State' to get the start time and end time.
     ${exlFilename}    Fetch From Right    ${exlFile}    \\
     ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${exlFilename}_modified.exl
     ${tdBoxDateTime}    get date and time
-    ${startDatetime}    ${endDatetime}    Set Datetimes For IN State    ${tdBoxDateTime[0]}    ${tdBoxDateTime[1]}    ${tdBoxDateTime[2]}    ${tdBoxDateTime[3]}
-    ...    ${tdBoxDateTime[4]}    ${tdBoxDateTime[5]}
+    ${startDatetime}    ${endDatetime}    Run Keyword If    '${startDateTime}' == '${EMPTY}' or '${endDateTime}' == '${EMPTY}'    Set Datetimes For IN State    ${tdBoxDateTime[0]}    ${tdBoxDateTime[1]}
+    ...    ${tdBoxDateTime[2]}    ${tdBoxDateTime[3]}    ${tdBoxDateTime[4]}    ${tdBoxDateTime[5]}
+    ...    ELSE    set variable    ${startDatetime}    ${endDatetime}
     ${startDateTimeT}    Replace String    ${startDatetime}    ${SPACE}    T
     ${endDatetimeT}    Replace String    ${endDatetime}    ${SPACE}    T
     Run Keyword If    '${type}' == 'HOL'    Run Keywords    Set Holiday Datetime In EXL    ${exlFile}    ${exlFileModified}    ${ricName}
