@@ -205,10 +205,10 @@ MTE Startup with GRS Not Running
     Stop Process    GRS
     ${currDateTime}    Get Date and Time
     Start MTE
-    Wait SMF Log Message After Time    Unable to connect to the GRS\|Failed to connect to GRS    ${currDateTime}    2    120
+    Wait SMF Log Message After Time    Unable to connect to the GRS\|Failed to connect to GRS    ${currDateTime}    waittime=2    timeout=120
     ${currDateTime}    Get Date and Time
     Start Process    GRS
-    Wait SMF Log Message After Time    ${MTE}..Connected to IP:127.0.0.1-TCP    ${currDateTime}    2    120
+    Wait SMF Log Message After Time    ${MTE}..Connected to IP:127.0.0.1-TCP    ${currDateTime}    waittime=2    timeout=120
 
 MTE Startup with No GRS Messages for Feed
     [Documentation]    Verify that the MTE can handle negative response from GRS.
@@ -231,7 +231,7 @@ MTE Startup with No GRS Messages for Feed
     Start Process    GRS
     ${currDateTime}=    Get Date and Time
     Start MTE
-    Wait SMF Log Message After Time    Start of Day request rejected\|SOD request rejected    ${currDateTime}    2    120
+    Wait SMF Log Message After Time    Start of Day request rejected\|SOD request rejected    ${currDateTime}    waittime=2    timeout=120
     Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
     Comment    Verify MTE is publishing new messages
     ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}

@@ -26,17 +26,16 @@ Verify CritProcMon Message Logging
     Append To List    ${critProcConfigInfoList}    ${mteInfo}
     : FOR    ${critProcConfigInfo}    IN    @{critProcConfigInfoList}
     \    ${configMonProcess}=    set variable    ${critProcConfigInfo[0]}
-    \    ${configMonProcessLowerCase}=    Convert To Lowercase    ${critProcConfigInfo[0]}
-    \    ${configMonProcessLowerCase}=    set variable if    '${configMonProcess}' == 'MTE'    mte -c ${MTE}    ${configMonProcessLowerCase}
+    \    ${configMonProcess}=    set variable if    '${configMonProcess}' == 'MTE'    mte -c ${MTE}    ${configMonProcess}
     \    ${configProcUpTime}=    Convert To Integer    ${critProcConfigInfo[2]}
     \    ${waitLogTimeout}=    Evaluate    ${configProcUpTime} + 10
     \    ${currDateTime}=    Get Date and Time
     \    ${currDateTimeStr}=    Get Date and Time String
-    \    ${expectedBackUpTime}    Add Time To Date     ${currDateTimeStr}    ${configProcUpTime}    exclude_millis=True
+    \    ${expectedBackUpTime}    Add Time To Date    ${currDateTimeStr}    ${configProcUpTime}    exclude_millis=True
     \    @{retCode}=    Kill Processes    ${configMonProcess}
     \    Should be True    ${retCode[0]} == 0    Fail to find the process ${configMonProcess} to kill
-    \    ${logStopRuningTime}=    Wait SMF Log Message After Time    ${configMonProcessLowerCase} \+is no longer running    ${currDateTime}    2    ${waitLogTimeout}
-    \    ${logBackUpTime}=    Wait SMF Log Message After Time    ${configMonProcessLowerCase} \+has been back up for ${configProcUpTime} seconds or more    ${currDateTime}    2    ${waitLogTimeout}
+    \    ${logStopRuningTime}=    Wait SMF Log Message After Time    ${configMonProcess} \+is no longer running    ${currDateTime}    waittime=2    timeout=${waitLogTimeout}
+    \    ${logBackUpTime}=    Wait SMF Log Message After Time    ${configMonProcess} \+has been back up for ${configProcUpTime} seconds or more    ${currDateTime}    waittime=2    timeout=${waitLogTimeout}
     \    ${timeDiff}=    Subtract Date From Date    ${logBackUpTime}    ${expectedBackUpTime}
     \    Should Be True    ${timeDiff} >= 0    CritProcMon should NOT generate a clear message prior to the configured process uptime
     [Teardown]    Restart SMF    # Restart SMF as a workaround for the defect of fail to read Stat Blocks fields after StatBlockManager process is killed.

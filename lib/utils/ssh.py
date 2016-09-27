@@ -144,7 +144,6 @@ def _get_datetime():
 def _get_datetime_string():
     cmd = 'date \'+%Y-%m-%d %H:%M:%S\''
     stdout, stderr, rc = _get_current_connection().execute_command(cmd)
-    print stdout
     if rc !=0 or stderr !='':
         raise AssertionError("*ERROR* %s, %s" %(rc, stderr))
     return stdout.strip()
