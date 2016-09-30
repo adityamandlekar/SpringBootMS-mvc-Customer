@@ -382,11 +382,11 @@ Get RIC From MTE Cache
     [Documentation]    Get a single RIC name from MTE cache for the specified Domain and contextID.
     ...    If no Domain is specified it will call Get Preferred Domain to get the domain name to use.
     ...    If no contextID is specified, it will use any contextID
-    ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}'    Get Preferred Domain
-    ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
-    ${result}=    get RIC fields from cache    1    ${domain}    ${contextID}
-    ${ric}=    set variable    ${result[0]['RIC']}
-    ${publish_key}=    set variable    ${result[0]['PUBLISH_KEY']}
+    ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    Get Preferred Domain
+    ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
+    ${status}    ${result}    Run Keyword And Ignore Error     get RIC fields from cache    1    ${domain}    ${contextID}
+    ${ric}=    set variable if    '${status}' == 'PASS'    ${result[0]['RIC']}    ${EMPTY}
+    ${publish_key}=    set variable if    '${status}' == 'PASS'    ${result[0]['PUBLISH_KEY']}    ${EMPTY}
     [Teardown]
     [Return]    ${ric}    ${publish_key}
 

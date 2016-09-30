@@ -127,7 +127,9 @@ Verify UP_SOURCE_RIC Mangling in Shell RIC
     Pass Execution If    len(${contextIds}) == 0    MTE does not support Shell RIC
     Set Mangling Rule    SOU
     : FOR    ${contextId}    IN    @{contextIds}
-    \    ${ricFiledList}    Get Ric Fields From Cache    1    ${EMPTY}    ${contextId}
+    \    ${status}     ${ricFiledList}    Run Keyword And Ignore Error     Get Ric Fields From Cache    1    ${EMPTY}
+    \    ...    ${contextId}
+    \    Continue For Loop If     '${status}' == 'FAIL'
     \    ${pubRic}    Set Variable    ${ricFiledList[0]['PUBLISH_KEY']}
     \    ${domain}    Set Variable    ${ricFiledList[0]['DOMAIN']}
     \    ${output}    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
@@ -175,14 +177,17 @@ Verify Mangling Rule On All Context IDs
     [Arguments]    ${allcontextids}    ${specialContextId}
     [Documentation]    Verify mangling rule on all context ids.
     ...    ${specialContextId} is a dictionary, if you want to verify context id 1234 has a prefix !!, call | Set To Dictionary | ${specialContextId} | "1234" | !! |
-    ${domain}    Get Preferred Domain
+    Comment    ${domain}    Get Preferred Domain
+    ${domain}    set variable    ${EMPTY}
     : FOR    ${contextid}    IN    @{specialContextId}
     \    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}    ${contextid}
+    \    Continue For Loop If    '${sampleRic}' =='${EMPTY}'
     \    ${expectedPrefix}    Get From Dictionary    ${specialContextId}    ${contextid}
     \    Should Be Equal    ${publishKey}    ${expectedPrefix}${sampleRic}    The mangling is not set for context id ${contextid}
     \    Remove Values From List    ${allcontextids}    ${contextid}
     : FOR    ${contextid}    IN    @{allcontextids}
     \    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}    ${contextid}
+    \    Continue For Loop If    '${sampleRic}' =='${EMPTY}'
     \    Should Be Equal    ${publishKey}    ${sampleRic}    The mangling is not the default for context id ${contextid}
 
 Verify Mangling by Context ID Case Setup
