@@ -223,7 +223,7 @@ Perform DVT Validation - Process all EXL files
     ${serviceName}    Get FMS Service Name
     ${currentDateTime}    get date and time
     Load All EXL Files    ${serviceName}    ${CHE_IP}
-    wait smf log message after time    FMS REORG DONE    ${currentDateTime}    2    120
+    wait smf log message after time    FMS REORG DONE    ${currentDateTime}    waittime=2    timeout=120
     Stop Capture MTE Output
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
@@ -259,7 +259,7 @@ Perform DVT Validation -- Restart MTE
     Start Capture MTE Output    ${remoteCapture}
     ${currentDateTime}    get date and time
     Start MTE
-    wait SMF log message after time    Finished Sending Images    ${currentDateTime}    2    120
+    wait SMF log message after time    Finished Sending Images    ${currentDateTime}    waittime=2    timeout=120
     Stop Capture MTE Output
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}

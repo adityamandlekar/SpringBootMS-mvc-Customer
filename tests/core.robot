@@ -127,7 +127,7 @@ Force Persist File Write
     ...    ${modifiedExlFiles} : list of the modified exlFiles
     ${currDateTime}=    get date and time
     ${exlFiles}    ${modifiedExlFiles}    Go Into End Feed Time    ${serviceName}
-    Wait SMF Log Message After Time    ${MTE}.*Persist cycle completed    ${currDateTime}    10    120
+    Wait SMF Log Message After Time    ${MTE}.*Persist cycle completed    ${currDateTime}    waittime=10    timeout=120
     [Teardown]
     [Return]    ${exlFiles}    ${modifiedExlFiles}
 
@@ -587,7 +587,7 @@ Load List of EXL Files
 
 Load Mangling Settings
     Run Commander    linehandler    lhcommand ${MTE} mangling:refresh_settings
-    wait SMF log does not contain    Drop message sent for    10    600
+    wait SMF log does not contain    Drop message sent for    waittime=10    timeout=600
 
 Load Single EXL File
     [Arguments]    ${exlFile}    ${service}    ${headendIP}    @{optargs}
@@ -603,7 +603,7 @@ Manual ClosingRun for ClosingRun Rics
     \    ${currentDateTime}    get date and time
     \    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    ClsRun
     \    ...    --RIC ${closingrunRicName}    --Services ${serviceName}    --Domain MARKET_PRICE    --ClosingRunOperation Invoke    --HandlerName ${MTE}
-    \    wait SMF log message after time    ClosingRun.*?CloseItemGroup.*?Found [0-9]* closeable items out of [0-9]* items    ${currentDateTime}    2    60
+    \    wait SMF log message after time    ClosingRun.*?CloseItemGroup.*?Found [0-9]* closeable items out of [0-9]* items    ${currentDateTime}    waittime=2    timeout=60
 
 Manual ClosingRun for a RIC
     [Arguments]    ${sampleRic}    ${publishKey}    ${domain}

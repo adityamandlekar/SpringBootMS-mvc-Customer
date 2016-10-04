@@ -466,7 +466,7 @@ Run Re-schedule ClosingRun Test
     Load Single EXL File    ${closingRunExlfileModified}    ${serviceName}    ${CHE_IP}
     remove files    ${closingRunExlfileModified}
     sleep    1 minutes 20 seconds
-    wait smf log message after time    ClosingRunEventHandler for [0-9]*.*?TRIGGERING    ${tdBoxDateTime}    5    120
+    wait smf log message after time    ClosingRunEventHandler for [0-9]*.*?TRIGGERING    ${tdBoxDateTime}    waittime=5    timeout=120
 
 Re-schedule ClosingRun Cleanup
     Comment    Restore all closing run
@@ -483,7 +483,7 @@ Manual ClosingRun for the EXL File including target Ric
     ${currentDateTime}    get date and time
     ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    Close    --Services ${serviceName}
     ...    --BypassFiltering ${True}    --SendOrphanedToAllHeadends ${True}    --ClosingRunRule 1000    --InputFile "${sampleExlFile}"
-    wait SMF log message after time    Closing RIC:    ${currentDateTime}    2    60
+    wait SMF log message after time    Closing RIC:    ${currentDateTime}    waittime=2    timeout=60
     Stop Capture MTE Output
     ${localcapture}    set variable    ${LOCAL_TMP_DIR}/capture_local.pcap
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
