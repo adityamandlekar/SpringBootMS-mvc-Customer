@@ -67,7 +67,9 @@ Verify New Item Creation via FMS
     add ric to exl file    ${EXL_File}    ${LOCAL_TMP_DIR}/output.exl    ${uniqueRic}    ${uniqueRic}    ${domain}
     Load Single EXL File    ${LOCAL_TMP_DIR}/output.exl    ${serviceName}    ${CHE_IP}
     Wait For FMS Reorg
-    Verify RIC In MTE Cache    ${uniqueRic}    ${domain}
+    ${ricFields}=    Get All Fields For RIC From Cache    ${ric}    ${domain}
+    Should Not Be Empty    ${ricFields}    RIC ${ric} not found in MTE cache
+    Should Be Equal    ${ricFields['PUBLISHABLE']}    TRUE    Publishable Verification
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/output.exl
 
 Partial REORG on EXL Change
