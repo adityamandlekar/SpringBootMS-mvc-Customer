@@ -260,7 +260,6 @@ Get FMS Service Name
     [Documentation]    get the Service name from statBlock
     ${categories}=    get stat blocks for category    ${MTE}    FMS
     ${services}=    Get Matches    ${categories}    Service_*
-    log    ${services}
     ${serviceName}    get stat block field    ${MTE}    ${services[0]}    serviceName
     [Return]    ${serviceName}
 
@@ -386,7 +385,6 @@ Get RIC From MTE Cache
     ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}'    Get Preferred Domain
     ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
     ${result}=    get RIC fields from cache    1    ${domain}    ${contextID}
-    log    ${result[0]}
     ${ric}=    set variable    ${result[0]['RIC']}
     ${publish_key}=    set variable    ${result[0]['PUBLISH_KEY']}
     [Teardown]
@@ -1022,7 +1020,6 @@ Verify RIC In MTE Cache
     Should Not Be Empty    ${ricFields}    RIC ${ric} not found in MTE cache
     ${ric}=    set variable    ${ricFields['RIC']}
     ${publish_key}=    set variable    ${ricFields['PUBLISH_KEY']}
-    ${publishable}=    set variable    ${ricFields['PUBLISHABLE']}
     [Teardown]
     [Return]    ${ric}    ${publish_key}    ${publishable}
 
