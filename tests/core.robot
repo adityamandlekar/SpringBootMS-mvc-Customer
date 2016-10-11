@@ -1021,7 +1021,7 @@ Verify RIC In MTE Cache
     ${ric}=    set variable    ${ricFields['RIC']}
     ${publish_key}=    set variable    ${ricFields['PUBLISH_KEY']}
     [Teardown]
-    [Return]    ${ric}    ${publish_key}    ${publishable}
+    [Return]    ${ric}    ${publish_key}
 
 Verify RIC Not In MTE Cache
     [Arguments]    ${ric}    ${domain}
