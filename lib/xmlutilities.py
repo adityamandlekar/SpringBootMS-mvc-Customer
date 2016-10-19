@@ -225,6 +225,30 @@ def xml_parse_get_all_elements_by_name (xmlfile,tagName):
         
     return  retIter
 
+def xml_parse_get_fidsAndTypeAndValues_for_messageNode (messageNode):
+    """ get FIDs and corresponding data type and value from a message node
+        messageNode : iterator pointing to one message node
+        return : dictionary of FIDs and corresponding list of data type and value (key=FID no.; value=list of [dataType, value])
+        Assertion : NIL
+    """
+
+    fidsDictTypeAndValueList= {}
+    for fieldEntry in messageNode.getiterator('FieldEntry'):
+        fieldId = fieldEntry.find('FieldID')
+        fieldType = fieldEntry.find('DataType')
+        fieldValue = fieldEntry.find('Data')
+        
+        if (fieldId != None):
+            fieldIdNum = fieldId.attrib['value']
+            fidsDictTypeAndValueList[fieldIdNum] = []
+
+            fieldType = 'NoData' if fieldType == None else fieldType.attrib['value']
+            fieldValue = 'NoData' if fieldValue == None else fieldValue.attrib['value']
+            fidsDictTypeAndValueList[fieldIdNum].append(fieldType)
+            fidsDictTypeAndValueList[fieldIdNum].append(fieldValue)
+        
+    return fidsDictTypeAndValueList
+
 def xml_parse_get_fidsAndValues_for_messageNode (messageNode):
     """ get FIDs and corresponding value from a message node
         messageNode : iterator pointing to one message node

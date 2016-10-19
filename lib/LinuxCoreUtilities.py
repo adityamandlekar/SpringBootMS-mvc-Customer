@@ -186,6 +186,19 @@ class LinuxCoreUtilities():
         """
         return date(int(year), int(month), int(day)).strftime('%a').upper()
     
+    def get_hostname(self):
+        """
+        Get the hostname of remote machine.
+
+        Examples:
+        | ${hostname} | get hostname |
+        """
+        cmd = 'hostname'
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))       
+        return stdout.strip()
+
     def get_interface_name_by_alias(self,alias):
         """Get network ard interface name by given alias
 
@@ -267,6 +280,21 @@ class LinuxCoreUtilities():
         """
         return _get_process_pid_pattern_dict(list(process_pattern))
     
+    def get_time_in_microseconds(self):
+        """
+        Get the local system time of remote TD machine in microsecond from midnight
+
+        Examples:
+        | ${microsec} | get time in microseconds |
+        """
+        #dateInfo return value is list as [year, month, day, hour, min, second, dayofweek]. Each value is a string.
+        dateInfo = _get_datetime()
+
+        hour = int(dateInfo[3])
+        min = int(dateInfo[4])
+        sec = int(dateInfo[5])
+        return (hour*60*60 + min*60 + sec)*1000000
+
     def kill_processes(self, *Proc):
         """
         kill process.
