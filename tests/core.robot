@@ -1011,10 +1011,11 @@ Verify MTE State In Specific Box
     [Arguments]    ${che_ip}    ${state}    ${waittime}=5    ${timeout}=150
     ${host}=    get current connection index
     Switch To TD Box    ${che_ip}
-    Run Keyword And Continue On Failure    verify MTE state    ${state}    ${waittime}    ${timeout}
-    Switch Connection    ${host}
-    Run Keyword If    '${host}' == '${CHE_A_Session}'    Set Suite Variable    ${CHE_IP}    ${CHE_A_IP}
-    ...    ELSE    Set Suite Variable    ${CHE_IP}    ${CHE_B_IP}
+    verify MTE state    ${state}    ${waittime}    ${timeout}
+    [Teardown]    Run Keyword If    '${host}' == '${CHE_A_Session}'    Switch To TD Box    ${CHE_A_IP}
+    ...    ELSE IF    '${host}' == '${CHE_B_Session}'    Switch To TD Box    ${CHE_B_IP}
+    ...    ELSE IF    '${host}' == '${PLAYBACK_Session}'    Switch To TD Box    ${PLAYBACK_MACHINE_IP}
+    ...    ELSE    Fail    Current host IP ${host} is not A, B, or Playback machine IP
 
 Verify RIC In MTE Cache
     [Arguments]    ${ric}    ${domain}
