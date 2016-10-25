@@ -395,7 +395,7 @@ Verify CMP_NME_ET
 
 Get SPS RIC From Label File
     [Arguments]    ${labelid}
-    ${ddnLabelfilepath}=    search remote files    ${BASE_DIR}    ddnLabels.xml    recurse=${True}
+    ${ddnLabelfilepath}=    Get CHE Config Filepaths    ddnLabels.xml
     Length Should Be    ${ddnLabelfilepath}    1    ddnLabels.xml file not found (or multiple files found).
     ${localddnLabelfile}=    set variable    ${LOCAL_TMP_DIR}/ddnLabel.xml
     get remote file    ${ddnLabelfilepath[0]}    ${localddnLabelfile}
