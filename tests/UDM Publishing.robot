@@ -187,7 +187,7 @@ Verify DDS RIC is published
     ...    4. FID: 6461, DataType: Buffer, Value: hostname of TD
     ...    5. FID: 6462, DataType: UInt, Value: 0, 1 or 2
     ...    6. FID: 6463, DataType: Integer
-    ...    7. FID: 6464, DataType: Time, Value: within the range of TD Local System Time +10 sec as buffer
+    ...    7. FID: 6464, DataType: Time, Value: within the range of TD Local System Time +10 sec as threshold
     ...    8. FID: 6468, DataType: Integer
     ...
     ...    Verify DDS RIC is published test fails because it does not conform to DUDT DN
@@ -230,11 +230,15 @@ Verify DDS RIC is published
     \    ${published_DDS_ric}=    Get DDS RIC    ${labelID}    ${instance}
     \    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     \    Comment    Update the expected current time range of FID 6464
+    \    ${timeThreshold}=    set variable    10
+    \    ${timeBeforeMidnight}=    Get Time Before Midnight In Seconds
+    \    Comment    To handle the boundary case of running test pass through midnight, sleep a few seconds to avoid the time wrap around to 0.
+    \    Run Keyword If    ${timeThreshold} > ${timeBeforeMidnight}    Sleep    ${timeBeforeMidnight}
     \    ${curTimeMicrosec}=    Get Time in Microseconds
     \    ${microsecLowerLimit}=    set variable    ${curTimeMicrosec}
-    \    ${microsecUpperLimit}=    Evaluate    ${curTimeMicrosec}+(1000000*10)
+    \    ${microsecUpperLimit}=    Evaluate    ${curTimeMicrosec}+(${timeThreshold}*1000000)
     \    Remove From List    ${valuesList}    -1
-    \    Append To List    ${valuesList}    ${microsecLowerLimit}~${microsecUpperLimit}
+    \    Append To List    ${valuesList}    ${microsecLowerLimit}:${microsecUpperLimit}
     \    Start Capture MTE Output    ${remoteCapture}    DDNA    ${labelID}
     \    Stop Capture MTE Output    11    11
     \    get remote file    ${remoteCapture}    ${localCapture}

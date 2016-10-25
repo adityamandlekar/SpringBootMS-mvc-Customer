@@ -450,13 +450,13 @@ def verify_fid_dataType_value_in_unsolicited_response(pcapfile, ric, domain, con
                                  (if set a data type in the list None, this fid data type checking will be ignored)
                    valueList : a list specify the expected value you want to compare, it should 1:1 correspond with fidList
                                (if set a value in the list None, this fid value checking will be ignored)
-                               (support range of integers with elimiter '~' (e.g. "1~100")  or muliple values split by ',' (e.g. "0,1,2"))
+                               (support range of integers with elimiter ':' (e.g. "1:100")  or muliple values split by ',' (e.g. "0,1,2"))
         Return : Nil
 
         Examples :
         ${fidsList}=     | Create List | 1080    | 6462  | 6464
         ${dataTypeList}= | Create List | UInt    | UInt  | Time
-        ${valuesList}=   | Create List | ${None} | 0,1,2 | 34713000000~34723000000
+        ${valuesList}=   | Create List | ${None} | 0,1,2 | 34713000000:34723000000
         Verify FID DataType Value in Unsolicited Response | C:\\Program Files\\Reuters Test Tools\\DAS\\capture.pcap | .[----SGD01M08070 | TIMING_LOG | 1 | ${fidsList} | ${dataTypeList} | ${valuesList}
         
         The example shows to verify if the RIC publishs the unsolicited response DUDT RIC(.[----SGD01M08070)) with domain TIMING_LOG and constituent 1, with
@@ -467,7 +467,10 @@ def verify_fid_dataType_value_in_unsolicited_response(pcapfile, ric, domain, con
     """           
     #Check if pcap file exist
     if (os.path.exists(pcapfile) == False):
-        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
+        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)           
+    
+    if (len(fidList) != len(dataTypeList) or len(fidList) != len(valueList)):
+        raise AssertionError('*ERROR* The item number of fidList, dataTypeList and valueList are not the same' )                
     
     filterDomain = 'TRWF_TRDM_DMT_'+ domain
     outputfileprefix = 'unsolpcap'
@@ -480,21 +483,18 @@ def verify_fid_dataType_value_in_unsolicited_response(pcapfile, ric, domain, con
         #get the dictionary of FIDs and corresponding data type and value for verification
         messageNode = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfile[0], 'Message')
         fidsDictTypeAndValueList = xmlutilities.xml_parse_get_fidsAndTypeAndValues_for_messageNode(messageNode[0])
-        ricname = xmlutilities.xml_parse_get_field_from_MsgKey(messageNode[0],'Name')
 
         if (len(fidsDictTypeAndValueList) == 0):            
-            raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ricname)
-    
-        if (len(fidList) != len(dataTypeList) or len(fidList) != len(valueList)):
-            raise AssertionError('*ERROR* The item number of fidList, dataTypeList and valueList are not the same' )
-        print '*INFO* Verifying the response message for Ric=%s' %ricname
+            raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ric)
+        print '*INFO* Verifying the response message for Ric=%s' %ric
 
-        i = 0
-        for fid in fidList:
-            if (fid == None):
-                raise AssertionError('*ERROR* One fid in fidList is None' )
-            _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, fid, dataTypeList[i], valueList[i])
-            i += 1
+        succ = True
+        for i in range(len(fidList)):
+            if not _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, fidList[i], dataTypeList[i], valueList[i]):
+                succ = False
+        if not succ:
+            raise AssertionError('*ERROR* Some of the RIC\'s fid data type or value are not equal to the expected values.')
+
 
         for exist_file in outputxmlfile:
             os.remove(exist_file)
@@ -1285,8 +1285,8 @@ def _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, FID, newDataTyp
         FID             : FID no. 
         newDataType     : Expected Data Type of this field (optional - if None, ingore this checking)
         newFIDValue     : Expected value for the given FID no. (optional - if None, ingore this checking);
-                          support range of integers with elimiter '~' (e.g. "1~100")  or muliple values split by ',' (e.g. "0,1,2")
-        return : Nil         
+                          support range of integers with elimiter ':' (e.g. "1:100")  or muliple values split by ',' (e.g. "0,1,2")
+        return : True if success, False if any of the checking failed.         
     """
     if (fidsDictTypeAndValueList.has_key(FID)):      
         dataTypeValueList = fidsDictTypeAndValueList[FID]
@@ -1294,15 +1294,13 @@ def _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, FID, newDataTyp
         #check if dataType is same as expected value
         if (newDataType != None):          
             if (dataTypeValueList[0].upper() != newDataType.upper()):            
-                raise AssertionError('*ERROR* FID (%s) Data Type in message (%s) is not equal to (%s)'%(FID, dataTypeValueList[0], newDataType))
-            else:
-                print '*INFO* FID (%s) Data Type in message (%s) is equal to (%s)' %(FID, dataTypeValueList[0], newDataType)
+                print '*ERROR* FID (%s) Data Type in message (%s) is not equal to (%s)' %(FID, dataTypeValueList[0], newDataType)
+                return False
 
         #check if FID value is same as expected values (support range of numbers or muliple values split by ',')
         if (newFIDValue != None):
-            #check FID value within the range of integers split by '~' 
-            isCheckNumRange = False
-            refNumList = newFIDValue.split('~')
+            #check FID value within the range of integers split by ':' 
+            refNumList = newFIDValue.split(':')
             if len(refNumList) == 2:
                 isFailToConvertInt = False
                 try:
@@ -1311,37 +1309,34 @@ def _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, FID, newDataTyp
                     actIntVal = int(dataTypeValueList[1])
                 except ValueError:
                     isFailToConvertInt = True
-                    print '*INFO* Fail to convert string to int on either values %s, %s or %s; will verify it by string comparison.' %(refNumList[0], refNumList[1], dataTypeValueList[1])
 
                 if not isFailToConvertInt:
-                    isCheckNumRange = True
                     if (actIntVal < lowerLimit or actIntVal > upperLimit):
-                        raise AssertionError('*ERROR* FID (%s) value in message (%s) is not within the range of integer values (%s, %s)' %(FID, actIntVal, lowerLimit, upperLimit))
-                    else:
-                        print '*INFO* FID (%s) value in message (%s) is within the range of integer values (%s, %s)' %(FID, actIntVal, lowerLimit, upperLimit)
+                        print '*ERROR* FID (%s) value in message (%s) is not within the range of integer values (%s, %s)' %(FID, actIntVal, lowerLimit, upperLimit)
+                        return False
+                    return True
 
-            if not isCheckNumRange:
-                #check FID value belong to one of the muliple values split by ','
-                refValueList = newFIDValue.split(',')
-                convertedValueList = []
+            #check FID value belong to one of the muliple values split by ','
+            refValueList = newFIDValue.split(',')
+            convertedValueList = []
 
-                for splitRefValue in refValueList:
-                    splitRefValue = splitRefValue.strip()
-                    if (splitRefValue != None and splitRefValue.isdigit() == False):
-                        #string type need to convert to Hex for comparison
-                        refValue = ""
-                        for character in splitRefValue:
-                                refValue = refValue + (character.encode("hex")).upper()
-                        print '*INFO* FID value is string. Convert FID value from (%s) to Hex (%s)' %(splitRefValue,refValue)
-                        splitRefValue = refValue
-                    convertedValueList.append(splitRefValue)
+            for splitRefValue in refValueList:
+                splitRefValue = splitRefValue.strip()
+                if (splitRefValue != None and splitRefValue.isdigit() == False):
+                    #string type need to convert to Hex for comparison
+                    refValue = ""
+                    for character in splitRefValue:
+                            refValue = refValue + (character.encode("hex")).upper()
+                    splitRefValue = refValue
+                convertedValueList.append(splitRefValue)
 
-                if (not dataTypeValueList[1].upper() in convertedValueList):
-                    raise AssertionError('*ERROR* FID value in message (%s) is not belong to one of the expected valuse in the list (%s)' %(dataTypeValueList[1], convertedValueList))
-                else:
-                    print '*INFO* FID (%s) value in message (%s) is belong to one of the expected values in the list (%s)' %(FID, dataTypeValueList[1], convertedValueList)
+            if (not dataTypeValueList[1].upper() in convertedValueList):
+                print '*ERROR* FID (%s) value in message (%s) is not belong to one of the expected valuse in the list (%s)' %(FID, dataTypeValueList[1], convertedValueList)
+                return False
     else:
-        raise AssertionError('*ERROR* Missing FID (%s) in message '%FID)
+        print '*ERROR* Missing FID (%s) in message '%FID
+        return False
+    return True
 
 def _verify_fid_in_range_against_das_xml(xmlfile,fid_range):
     """ verify MTE output FIDs is within specific range from DAS converted xml file

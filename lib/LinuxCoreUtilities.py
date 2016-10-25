@@ -280,6 +280,24 @@ class LinuxCoreUtilities():
         """
         return _get_process_pid_pattern_dict(list(process_pattern))
     
+    def get_time_before_midnight_in_seconds(self):
+        """
+        Get the time in seconds of remote TD machine before midnight
+        E.g. Current local system time of remote TD machine = 23:58:55, it will return the seconds of (00:00:00 - 23:58:55) = 65.
+        
+        Examples:
+        | ${sec} | get time before midnight in seconds |
+        """
+        #dateInfo return value is list as [year, month, day, hour, min, second, dayofweek]. Each value is a string.
+        dateInfo = _get_datetime()
+        hour = int(dateInfo[3])
+        min = int(dateInfo[4])
+        sec = int(dateInfo[5])
+        
+        currTimeInSec = hour*60*60 + min*60 + sec
+        totalSec = 23*60*60 + 59*60 + 60
+        return totalSec - currTimeInSec
+    
     def get_time_in_microseconds(self):
         """
         Get the local system time of remote TD machine in microsecond from midnight
