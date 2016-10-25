@@ -295,7 +295,7 @@ class LinuxCoreUtilities():
         sec = int(dateInfo[5])
         
         currTimeInSec = hour*60*60 + min*60 + sec
-        totalSec = 23*60*60 + 59*60 + 60
+        totalSec = 24*60*60
         return totalSec - currTimeInSec
     
     def get_time_in_microseconds(self):
