@@ -662,7 +662,7 @@ def backup_remote_cfg_file(searchdir,cfgfile,suffix='.backup'):
 
 def Get_CHE_Config_Filepaths(filename, *ignorePathFile):
     """Get file path for specific filename from TD Box.
-       Ignore files that contain any of the stings in list variable ignorePathFile
+       Ignore files that contain any of the strings in list variable ignorePathFile
        if ignorePathFile is empty, then SCWatchdog and puppet directories will be ignored during search
      
     Argument: 
