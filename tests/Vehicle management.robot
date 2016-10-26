@@ -68,8 +68,8 @@ Verify New Item Creation via FMS
     Load Single EXL File    ${LOCAL_TMP_DIR}/output.exl    ${serviceName}    ${CHE_IP}
     Wait For FMS Reorg
     ${ricFields}=    Get All Fields For RIC From Cache    ${ric}    ${domain}
-    Should Not Be Empty    ${ricFields}    RIC ${ric} not found in MTE cache
-    Should Be Equal    ${ricFields['PUBLISHABLE']}    TRUE    Publishable Verification
+    Should Not Be Empty    ${ricFields}    RIC ${ric} not found in MTE cache for domain ${domain}
+    Should Be Equal    ${ricFields['PUBLISHABLE']}    TRUE    RIC ${ric} is not pubulishable: Expected PUBLISHABLE==TRUE, found PUBLISHABLE=${ricFields['PUBLISHABLE']}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/output.exl
 
 Partial REORG on EXL Change
