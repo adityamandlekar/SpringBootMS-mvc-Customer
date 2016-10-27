@@ -108,7 +108,8 @@ Verify QoS Failover for Feed Line Down
     Verify MTE State IN Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State IN Specific Box    ${CHE_B_IP}    STANDBY
     Comment    Failover should occur when feed line timeout on A is reached
-    Verify MTE State IN Specific Box    ${CHE_A_IP}    STANDBY    10    ${timeoutLimit}
+    Sleep    ${timeoutLimit}
+    Verify MTE State IN Specific Box    ${CHE_A_IP}    STANDBY    5    60
     Verify MTE State IN Specific Box    ${CHE_B_IP}    LIVE
     [Teardown]    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
 
