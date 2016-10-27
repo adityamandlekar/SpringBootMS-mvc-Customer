@@ -450,7 +450,7 @@ def verify_fid_dataType_value_in_unsolicited_response(pcapfile, ric, domain, con
                                  (if set a data type in the list None, this fid data type checking will be ignored)
                    valueList : a list specify the expected value you want to compare, it should 1:1 correspond with fidList
                                (if set a value in the list None, this fid value checking will be ignored)
-                               (support range of integers with elimiter ':' (e.g. "1:100")  or muliple values split by ',' (e.g. "0,1,2"))
+                               (support range of integers with delimiter ':' (e.g. "1:100")  or muliple values split by ',' (e.g. "0,1,2"))
         Return : Nil
 
         Examples :
@@ -486,7 +486,6 @@ def verify_fid_dataType_value_in_unsolicited_response(pcapfile, ric, domain, con
 
         if (len(fidsDictTypeAndValueList) == 0):            
             raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ric)
-        print '*INFO* Verifying the response message for Ric=%s' %ric
 
         succ = True
         for i in range(len(fidList)):
@@ -1285,7 +1284,7 @@ def _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, FID, newDataTyp
         FID             : FID no. 
         newDataType     : Expected Data Type of this field (optional - if None, ingore this checking)
         newFIDValue     : Expected value for the given FID no. (optional - if None, ingore this checking);
-                          support range of integers with elimiter ':' (e.g. "1:100")  or muliple values split by ',' (e.g. "0,1,2")
+                          support range of integers with delimiter ':' (e.g. "1:100")  or muliple values split by ',' (e.g. "0,1,2")
         return : True if success, False if any of the checking failed.         
     """
     if (fidsDictTypeAndValueList.has_key(FID)):      
