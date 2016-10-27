@@ -91,27 +91,6 @@ Verify QoS Failover for Critical Process Failure
     Verify QoS for CritProcessFail    A    ${master_ip}    0    100
     [Teardown]
 
-Verify QoS Failover for Feed Line Down
-    [Documentation]    Verify that the LIVE MTE fails over to the STANDBY MTE when the feed line is down longer than HiActTimeLimit/LoActTimeLimit configuration value.
-    ...
-    ...    Set feed line down timeout interval (HiActTimeLimit/LoActTimeLimit) for MTE A to a small value, which still gives the MTE time to start up (currently using 150 seconds) and stop/start SMF.
-    ...    Promote MTE A to LIVE.
-    ...    Wait for feed line down timeout interval.
-    ...    Verify that failover occurred and MTE B is now LIVE.
-    [Tags]    Peer
-    Switch To TD Box    ${CHE_A_IP}
-    ${timeoutLimit}=    Set Variable    150
-    ${orgCfgFile}    ${backupCfgFile}    Set UDP Feed Line Timeout    ${timeoutLimit}
-    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
-    ${master_ip}    get master box ip    ${ip_list}
-    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
-    Verify MTE State IN Specific Box    ${CHE_A_IP}    LIVE
-    Verify MTE State IN Specific Box    ${CHE_B_IP}    STANDBY
-    Comment    Failover should occur when feed line timeout on A is reached
-    Verify MTE State IN Specific Box    ${CHE_A_IP}    STANDBY    10    ${timeoutLimit}
-    Verify MTE State IN Specific Box    ${CHE_B_IP}    LIVE
-    [Teardown]    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
-
 Verify QoS Failover for UDP Feed Line Down
     [Documentation]    Verify that the LIVE MTE fails over to the STANDBY MTE when the UDP feed line is down longer than HiActTimeLimit/LoActTimeLimit configuration value.
     ...
@@ -120,6 +99,7 @@ Verify QoS Failover for UDP Feed Line Down
     ...    Wait for feed line down timeout interval.
     ...    Verify that failover occurred and MTE B is now LIVE.
     [Tags]    Peer
+    Should Be Equal    ${PROTOCOL}    UDP    Venue Protocol ${PROTOCOL} is not UDP
     Switch To TD Box    ${CHE_A_IP}
     ${timeoutLimit}=    Set Variable    200
     ${orgCfgFile}    ${backupCfgFile}    Set UDP Feed Line Timeout    ${timeoutLimit}
@@ -141,17 +121,17 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     ...    Wait for feed line down timeout interval.
     ...    Verify that failover occurred and MTE B is now LIVE.
     [Tags]    Peer
+    Should Not be Equal    ${PROTOCOL}    UDP    Venue Protocol ${PROTOCOL} is not TCP or FTP
     Switch To TD Box    ${CHE_A_IP}
-    ${hiTimeOut}=    Set Variable    200
-    ${loTimeOut}=    Set Variable    200
-    ${orgCfgFile}    ${backupCfgFile}    Set TCP-FTP Feed Line Timeout    ${hiTimeOut}    ${loTimeOut}
+    ${TimeOut}=    Set Variable    200
+    ${orgCfgFile}    ${backupCfgFile}    Set TCP-FTP Feed Line Timeout    ${TimeOut}
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     Comment    Failover should occur when feed line timeout on A is reached
-    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY    10    ${loTimeOut}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY    10    ${TimeOut}
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
     [Teardown]    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
 
@@ -325,11 +305,11 @@ Set UDP Feed Line Timeout
     [Return]    ${orgCfgFile}    ${backupCfgFile}
 
 Set TCP-FTP Feed Line Timeout
-    [Arguments]    ${hiTimeOut}    ${loTimeOut}
+    [Arguments]    ${TimeOut}
     [Documentation]    Set the feed line timeout values (HiActTimeLimit and LoActTimeLimit) in MTE config file and restart dependent components.
     ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    set value in MTE cfg    ${orgCfgFile}    HiActTimeOut    ${hiTimeOut}
-    set value in MTE cfg    ${orgCfgFile}    LoActTimeOut    ${loTimeOut}
+    set value in MTE cfg    ${orgCfgFile}    HiActTimeOut    ${TimeOut}
+    set value in MTE cfg    ${orgCfgFile}    LoActTimeOut    ${TimeOut}
     Stop SMF
     Start SMF
     Start MTE
