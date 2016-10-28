@@ -19,9 +19,9 @@ GRS Peer Recovery SMF Restart
     ${currDateTime}    get date and time
     Start smf
     Comment    Verify GRS recovery request was fully processed
-    wait smf log message after time    ${MTE}.*Start of Day request accepted    ${currDateTime}    10    180
-    wait smf log message after time    ${MTE}.*Start of Day request complete    ${currDateTime}    2    10
-    wait smf log message after time    ${MTE}.*Begin Regular Execution    ${currDateTime}    2    10
+    wait smf log message after time    ${MTE}.*Start of Day request accepted    ${currDateTime}    waittime=10    timeout=180
+    wait smf log message after time    ${MTE}.*Start of Day request complete    ${currDateTime}    waittime=2    timeout=10
+    wait smf log message after time    ${MTE}.*Begin Regular Execution    ${currDateTime}    waittime=2    timeout=10
     Verify Peers Match    ${remoteCapture}
     [Teardown]    Peer Recovery Teardown
 
@@ -50,9 +50,9 @@ GRS Peer Recovery Successive Restart
     ${currDateTime}    get date and time
     Start Process    GRS
     Start MTE
-    wait smf log message after time    ${MTE}.*Start of Day request accepted    ${currDateTime}    10    180
-    wait smf log message after time    ${MTE}.*Start of Day request complete    ${currDateTime}    2    10
-    wait smf log message after time    ${MTE}.*Begin Regular Execution    ${currDateTime}    2    10
+    wait smf log message after time    ${MTE}.*Start of Day request accepted    ${currDateTime}    waittime=10    timeout=180
+    wait smf log message after time    ${MTE}.*Start of Day request complete    ${currDateTime}    waittime=2    timeout=10
+    wait smf log message after time    ${MTE}.*Begin Regular Execution    ${currDateTime}    waittime=2    timeout=10
     Verify Peers Match    ${remoteCapture}    ${False}
     Switch To TD Box    ${CHE_B_IP}
     Stop Process    GRS
@@ -60,9 +60,9 @@ GRS Peer Recovery Successive Restart
     ${currDateTime}    get date and time
     Start Process    GRS
     Start MTE
-    wait smf log message after time    ${MTE}.*Start of Day request accepted    ${currDateTime}    10    180
-    wait smf log message after time    ${MTE}.*Start of Day request complete    ${currDateTime}    2    10
-    wait smf log message after time    ${MTE}.*Begin Regular Execution    ${currDateTime}    2    10
+    wait smf log message after time    ${MTE}.*Start of Day request accepted    ${currDateTime}    waittime=10    timeout=180
+    wait smf log message after time    ${MTE}.*Start of Day request complete    ${currDateTime}    waittime=2    timeout=10
+    wait smf log message after time    ${MTE}.*Begin Regular Execution    ${currDateTime}    waittime=2    timeout=10
     Verify Peers Match    ${remoteCapture}    ${True}
     [Teardown]    Peer Recovery Teardown
 
@@ -90,10 +90,10 @@ GRS Peer Recovery With All Local PCAPs
     ${currDateTime}    get date and time
     Start Process    GRS
     Start MTE
-    wait smf log message after time    ${MTE}.*Start of Day request accepted    ${currDateTime}    2    120
-    wait smf log message after time    ${MTE}.*Start of Day request complete    ${currDateTime}    2    30
-    wait smf log message after time    Loading ${/}ThomsonReuters${/}GRS${/}bin${/}*.pcap to streambuffer    ${currDateTime}    2    10
-    wait smf log does not contain    Peer Recovery finished for stream:*    2    10
+    wait smf log message after time    ${MTE}.*Start of Day request accepted    ${currDateTime}    waittime=2    timeout=120
+    wait smf log message after time    ${MTE}.*Start of Day request complete    ${currDateTime}    waittime=2    timeout=30
+    wait smf log message after time    Loading ${/}ThomsonReuters${/}GRS${/}bin${/}*.pcap to streambuffer    ${currDateTime}    waittime=2    timeout=10
+    wait smf log does not contain    Peer Recovery finished for stream:*    waittime=2    timeout=10
     Verify Peers Match    ${remoteCapture}
     Stop MTE
     Stop Process    GRS

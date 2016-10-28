@@ -48,14 +48,7 @@ Verify FHController open and close timing
     ...    (4) outside feed time and end of holiday occurs, FH stays down
     ...
     ...    30 second is used for sleep. It is the waiting time that event scheduler reacts and time used for the process to be created. It is for case like FH doesn't exist to doesn't exist.
-    @{fhcConfigFiles}=    Get CHE Config Filepaths    *_fhc.json
-    @{localFhcConfigFiles}=    Create List
-    :FOR    ${fhcConfigFile}    IN    @{fhcConfigFiles}
-    \    ${fhcConfigFileName}    Fetch From Right    ${fhcConfigFile}    /
-    \    Append To List    ${localFhcConfigFiles}    ${LOCAL_TMP_DIR}${/}${fhcConfigFileName}
-    \    get remote file    ${fhcConfigFile}    ${LOCAL_TMP_DIR}${/}${fhcConfigFileName}
-    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC Configs    ${localFhcConfigFiles}
-    Remove Files    @{localFhcConfigFiles}
+    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC
     ${exlFile}=    get EXL for RIC    ${ricDomain}    ${serviceName}    ${timeRic}
     ${dstHolRics}=    get DST and holiday RICs from EXL    ${exlFile}    ${timeRic}
     ${holidayExlFile}=    get EXL for RIC    ${ricDomain}    ${serviceName}    ${dstHolRics[1]}
@@ -90,6 +83,68 @@ Verify FHController open and close timing
     Wait For Process To Not Exist    ${cmdArg}
     ${exlFileList}=    Create List    ${exlFile}    ${holidayExlFile}
     [Teardown]    Load List of EXl Files    ${exlFileList}    ${serviceName}    ${CHE_IP}    ${EMPTY}
+
+Verify Half Day Holiday
+    [Documentation]    Verify that TD can handle half day holiday properly.
+    ...    1. Verify that TD goes outside holiday
+    ...    2. Set holiday open time to current time and close time to 2 minutes later
+    ...    3. Verify that TD is inside holiday
+    ...    4. Sleep 2 minutes
+    ...    5. Verify that TD goes outside holiday
+    ...
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2242
+    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC
+    ${feedTimeRic}    Set Variable    ${feedTimeRics[0]}
+    ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
+    ${feedTimeExl}    Set Variable    ${contents[0]}
+    ${feedHolidayRic}    Set Variable    ${contents[2]}
+    ${contents}    Set Variable    ${feedHolidayRicsDict['${feedHolidayRic}']}
+    ${feedHolidayEXL}    Set Variable    ${contents[0]}
+    @{dstRic}=    Get Ric Fields from EXL    ${feedTimeExl}    ${feedTimeRic}    DST_REF
+    @{tdBoxDateTime}=    Get Date and Time
+    @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]    @{tdBoxDateTime}[3]
+    ...    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
+    ${startDateTime}=    Set Variable    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]
+    ${endDateTime}=    add time to date    ${startDateTime}    2 minute    exclude_millis=yes
+    Go Into Datetime    HOL    ${holidayStatField}    ${feedHolidayEXL}    ${feedHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
+    ...    ${startDateTime}    ${endDateTime}
+    Wait For Process To Not Exist    ${cmdArg}
+    Sleep    120
+    Check InputPortStatsBlock    ${connectTimesIdentifier}    ${feedTimeRic}    ${holidayStatField}    0
+    Wait For Process To Exist    ${cmdArg}
+    [Teardown]    Holiday Cleanup
+
+Verify Holiday Removal
+    [Documentation]    Verify that holiday can be removed properly.
+    ...    1. Set current day inside holiday
+    ...    2. Remove the holiday from the holiday RIC
+    ...    3. Verify that the TD goes outside holiday based on holidayStatus stat block and FH status
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2212
+    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC
+    Comment    Feed Time Holiday
+    ${feedTimeRic}    Set Variable    ${feedTimeRics[0]}
+    ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
+    ${feedHolidayRic}    Set Variable    ${contents[2]}
+    ${contents}    Set Variable    ${feedHolidayRicsDict['${feedHolidayRic}']}
+    ${feedHolidayEXL}    Set Variable    ${contents[0]}
+    Go Into Datetime    HOL    ${holidayStatField}    ${feedHolidayEXL}    ${feedHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
+    Wait For Process To Not Exist    ${cmdArg}
+    Load Single EXL File    ${feedHolidayEXL}    ${serviceName}    ${CHE_IP}
+    Check InputPortStatsBlock    ${connectTimesIdentifier}    ${feedTimeRic}    ${holidayStatField}    0
+    Wait For Process To Exist    ${cmdArg}
+    Comment    Trade Time Holiday
+    ${tradeTimeRic}    Set Variable    ${tradeTimeRics[0]}
+    ${contents}    Set Variable    ${tradeTimeRicsDict['${tradeTimeRic}']}
+    ${tradeHolidayRic}    Set Variable    ${contents[2]}
+    ${contents}    Set Variable    ${tradeHolidayRicsDict['${tradeHolidayRic}']}
+    ${tradeHolidayEXL}    Set Variable    ${contents[0]}
+    Go Into Datetime    HOL    ${holidayStatField}    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
+    Wait For Process To Not Exist    ${cmdArg}
+    Load Single EXL File    ${tradeHolidayEXL}    ${serviceName}    ${CHE_IP}
+    Check InputPortStatsBlock    ${connectTimesIdentifier}    ${feedTimeRic}    ${holidayStatField}    0
+    Wait For Process To Exist    ${cmdArg}
+    [Teardown]    Holiday Cleanup
 
 Verify Holiday RIC processing
     [Documentation]    Verify Holiday RIC processing:
@@ -411,7 +466,7 @@ Run Re-schedule ClosingRun Test
     Load Single EXL File    ${closingRunExlfileModified}    ${serviceName}    ${CHE_IP}
     remove files    ${closingRunExlfileModified}
     sleep    1 minutes 20 seconds
-    wait smf log message after time    ClosingRunEventHandler for [0-9]*.*?TRIGGERING    ${tdBoxDateTime}    5    120
+    wait smf log message after time    ClosingRunEventHandler for [0-9]*.*?TRIGGERING    ${tdBoxDateTime}    waittime=5    timeout=120
 
 Re-schedule ClosingRun Cleanup
     Comment    Restore all closing run
@@ -428,7 +483,7 @@ Manual ClosingRun for the EXL File including target Ric
     ${currentDateTime}    get date and time
     ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    Close    --Services ${serviceName}
     ...    --BypassFiltering ${True}    --SendOrphanedToAllHeadends ${True}    --ClosingRunRule 1000    --InputFile "${sampleExlFile}"
-    wait SMF log message after time    Closing RIC:    ${currentDateTime}    2    60
+    wait SMF log message after time    Closing RIC:    ${currentDateTime}    waittime=2    timeout=60
     Stop Capture MTE Output
     ${localcapture}    set variable    ${LOCAL_TMP_DIR}/capture_local.pcap
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${localcapture}
@@ -587,12 +642,16 @@ Set Datetimes For IN State
 
 Go Into Datetime
     [Arguments]    ${type}    ${statField}    ${exlFile}    ${ricName}    ${identifier}    ${identifierValue}
+    ...    ${startDatetime}={EMPTY}    ${endDatetime}=${EMPTY}
     [Documentation]    Go into holiday or DST dateime
+    ...
+    ...    If ${startDatetime} or ${endDatetime} is not specified, it will call KW 'Set Datetims FOR IN State' to get the start time and end time.
     ${exlFilename}    Fetch From Right    ${exlFile}    \\
     ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}/${exlFilename}_modified.exl
     ${tdBoxDateTime}    get date and time
-    ${startDatetime}    ${endDatetime}    Set Datetimes For IN State    ${tdBoxDateTime[0]}    ${tdBoxDateTime[1]}    ${tdBoxDateTime[2]}    ${tdBoxDateTime[3]}
-    ...    ${tdBoxDateTime[4]}    ${tdBoxDateTime[5]}
+    ${startDatetime}    ${endDatetime}    Run Keyword If    '${startDateTime}' == '${EMPTY}' or '${endDateTime}' == '${EMPTY}'    Set Datetimes For IN State    ${tdBoxDateTime[0]}    ${tdBoxDateTime[1]}
+    ...    ${tdBoxDateTime[2]}    ${tdBoxDateTime[3]}    ${tdBoxDateTime[4]}    ${tdBoxDateTime[5]}
+    ...    ELSE    set variable    ${startDatetime}    ${endDatetime}
     ${startDateTimeT}    Replace String    ${startDatetime}    ${SPACE}    T
     ${endDatetimeT}    Replace String    ${endDatetime}    ${SPACE}    T
     Run Keyword If    '${type}' == 'HOL'    Run Keywords    Set Holiday Datetime In EXL    ${exlFile}    ${exlFileModified}    ${ricName}
@@ -680,3 +739,14 @@ Set Holiday Time
     Set Holiday Datetime In EXL    ${holidayExlFile}    ${exlFileModified}    ${holRicName}    ${statRicDomain}    ${startDateTimeT}.00    ${endDatetimeT}.00
     Load Single EXL File    ${exlFileModified}    ${serviceName}    ${CHE_IP}
     remove files    ${exlFileModified}
+
+Get FH Info From FHC
+    @{fhcConfigFiles}=    Get CHE Config Filepaths    *_fhc.json
+    @{localFhcConfigFiles}=    Create List
+    : FOR    ${fhcConfigFile}    IN    @{fhcConfigFiles}
+    \    ${fhcConfigFileName}    Fetch From Right    ${fhcConfigFile}    /
+    \    Append To List    ${localFhcConfigFiles}    ${LOCAL_TMP_DIR}${/}${fhcConfigFileName}
+    \    get remote file    ${fhcConfigFile}    ${LOCAL_TMP_DIR}${/}${fhcConfigFileName}
+    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC Configs    ${localFhcConfigFiles}
+    Remove Files    @{localFhcConfigFiles}
+    [Return]    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}

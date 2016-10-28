@@ -117,15 +117,16 @@ Verify Common Required FID output
     @{ric_contextid_list}    get ric fields from cache    1    ${domain}    ${EMPTY}
     ${publishKey}=    set variable    ${ric_contextid_list[0]['PUBLISH_KEY']}
     ${contextId}=    set variable    ${ric_contextid_list[0]['CONTEXT_ID']}
-    Verify DDS_DSO_ID    ${localCapture}    ${publishKey}
-    @{labelIDs}=    Get Label IDs
-    Verify SPS_SP_RIC    ${localCapture}    ${publishKey}    ${labelIDs[0]}
-    Verify CONTEXT_ID    ${localCapture}    ${publishKey}    ${contextId}
-    Verify MC_LABEL    ${localCapture}    ${publishKey}    ${labelIDs[0]}
-    Verify MC_REC_LAB    ${localCapture}    ${publishKey}    ${labelIDs[0]}
-    Verify UNCOMP_NAM    ${localCapture}    ${publishKey}
-    Verify CMP_NME_ET    ${localCapture}    ${publishKey}
-    Verify SetID In Response    ${localCapture}    ${publishKey}
+    ${mteConfigFile}=    Get MTE Config File
+    ${labelID}=    Get Label ID For Context ID    ${mteConfigFile}    ${contextId}
+    Verify DDS_DSO_ID    ${localCapture}    ${publishKey}    ${domain}
+    Verify SPS_SP_RIC    ${localCapture}    ${publishKey}    ${labelID}    ${domain}
+    Verify CONTEXT_ID    ${localCapture}    ${publishKey}    ${contextId}    ${domain}
+    Verify MC_LABEL    ${localCapture}    ${publishKey}    ${labelID}    ${domain}
+    Verify MC_REC_LAB    ${localCapture}    ${publishKey}    ${labelID}    ${domain}
+    Verify UNCOMP_NAM    ${localCapture}    ${publishKey}    ${domain}
+    Verify CMP_NME_ET    ${localCapture}    ${publishKey}    ${domain}
+    Verify SetID In Response    ${localCapture}    ${publishKey}    ${domain}
     [Teardown]    case teardown    ${localCapture}
 
 Verify Message Key Name is Compressed
@@ -222,7 +223,7 @@ Perform DVT Validation - Process all EXL files
     ${serviceName}    Get FMS Service Name
     ${currentDateTime}    get date and time
     Load All EXL Files    ${serviceName}    ${CHE_IP}
-    wait smf log message after time    FMS REORG DONE    ${currentDateTime}    2    120
+    wait smf log message after time    FMS REORG DONE    ${currentDateTime}    waittime=2    timeout=120
     Stop Capture MTE Output
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
@@ -258,7 +259,7 @@ Perform DVT Validation -- Restart MTE
     Start Capture MTE Output    ${remoteCapture}
     ${currentDateTime}    get date and time
     Start MTE
-    wait SMF log message after time    Finished Sending Images    ${currentDateTime}    2    120
+    wait SMF log message after time    Finished Sending Images    ${currentDateTime}    waittime=2    timeout=120
     Stop Capture MTE Output
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
@@ -361,36 +362,36 @@ Rebuild FMS service
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
 Verify DDS_DSO_ID
-    [Arguments]    ${pcapfilename}    ${ricname}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${domain}
     [Documentation]    Verify DDO_DSO_ID should equal to provider id
     ${mteConfigFile}=    Get MTE Config File
     ${providerId}    Get MTE Config Value    ${mteConfigFile}    ProviderId
     ${fids}    Create List    6401
     ${values}    Create List    ${providerId}
-    verify fid value in message    ${pcapfilename}    ${ricname}    1    ${fids}    ${values}
+    verify fid value in message    ${pcapfilename}    ${ricname}    1    ${domain}    ${fids}    ${values}
 
 Verify SPS_SP_RIC
-    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}    ${domain}
     ${spsRicName}    Get SPS RIC From Label File    ${labelid}
     ${fids}    Create List    6480
     ${values}    Create List    ${spsRicName}
-    verify fid value in message    ${pcapfilename}    ${ricname}    1    ${fids}    ${values}
+    verify fid value in message    ${pcapfilename}    ${ricname}    1    ${domain}    ${fids}    ${values}
 
 Verify CONTEXT_ID
-    [Arguments]    ${pcapfilename}    ${ricname}    ${contextID}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${contextID}    ${domain}
     ${fids}    Create List    5357
     ${values}    Create List    ${contextID}
-    verify fid value in message    ${pcapfilename}    ${ricname}    1    ${fids}    ${values}
+    verify fid value in message    ${pcapfilename}    ${ricname}    1    ${domain}    ${fids}    ${values}
 
 Verify MC_LABEL
-    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}    ${domain}
     ${fids}    Create List    6394
     ${values}    Create List    ${labelid}
-    verify fid value in message    ${pcapfilename}    ${ricname}    0    ${fids}    ${values}
+    verify fid value in message    ${pcapfilename}    ${ricname}    0    ${domain}    ${fids}    ${values}
 
 Verify CMP_NME_ET
-    [Arguments]    ${pcapfilename}    ${ricname}
-    verify CMP_NME_ET in message    ${pcapfilename}    ${ricname}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${domain}
+    verify CMP_NME_ET in message    ${pcapfilename}    ${ricname}    ${domain}
 
 Get SPS RIC From Label File
     [Arguments]    ${labelid}
@@ -406,20 +407,20 @@ Get SPS RIC From Label File
     [Return]    ${spsRicName}
 
 Verify UNCOMP_NAM
-    [Arguments]    ${pcapfilename}    ${ricname}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${domain}
     ${fids}    Create List    6395
     ${values}    Create List    ${ricname}
-    verify fid value in message    ${pcapfilename}    ${ricname}    0    ${fids}    ${values}
+    verify fid value in message    ${pcapfilename}    ${ricname}    0    ${domain}    ${fids}    ${values}
 
 Verify SetID In Response
-    [Arguments]    ${pcapfilename}    ${ricname}
-    verify setID in message    ${pcapfilename}    ${ricname}    30    Resopnse
+    [Arguments]    ${pcapfilename}    ${ricname}    ${domain}
+    verify setID in message    ${pcapfilename}    ${ricname}    30    Resopnse    ${domain}
 
 Verify MC_REC_LAB
-    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}    ${domain}
     ${fids}    Create List    9140
     ${values}    Create List    ${labelid}
-    verify fid value in message    ${pcapfilename}    ${ricname}    0    ${fids}    ${values}
+    verify fid value in message    ${pcapfilename}    ${ricname}    0    ${domain}    ${fids}    ${values}
 
 Verify FMS Correction Update
     [Arguments]    ${service}
