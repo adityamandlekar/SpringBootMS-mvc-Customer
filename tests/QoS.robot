@@ -99,7 +99,7 @@ Verify QoS Failover for UDP Feed Line Down
     ...    Wait for feed line down timeout interval.
     ...    Verify that failover occurred and MTE B is now LIVE.
     [Tags]    Peer
-    Should Be Equal    ${PROTOCOL}    UDP    Venue Protocol ${PROTOCOL} is not UDP
+    Pass Execution If    '${PROTOCOL}' !='UDP'    Venue Protocol ${PROTOCOL} is not UDP
     Switch To TD Box    ${CHE_A_IP}
     ${timeoutLimit}=    Set Variable    200
     ${orgCfgFile}    ${backupCfgFile}    Set UDP Feed Line Timeout    ${timeoutLimit}
@@ -111,7 +111,7 @@ Verify QoS Failover for UDP Feed Line Down
     Comment    Failover should occur when feed line timeout on A is reached
     Verify MTE State IN Specific Box    ${CHE_A_IP}    STANDBY    10    ${timeoutLimit}
     Verify MTE State IN Specific Box    ${CHE_B_IP}    LIVE
-    [Teardown]    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
+    [Teardown]    Run Keyword If    '${PROTOCOL}' == 'UDP'    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
 
 Verify QoS Failover for TCP-FTP Feed Line Down
     [Documentation]    Verify that the LIVE MTE fails over to the STANDBY MTE when the TCP-FTP feed line is down longer than HighActTimeOut/LoActTimeOut configuration value.
@@ -121,7 +121,7 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     ...    Wait for feed line down timeout interval.
     ...    Verify that failover occurred and MTE B is now LIVE.
     [Tags]    Peer
-    Should Not be Equal    ${PROTOCOL}    UDP    Venue Protocol ${PROTOCOL} is not TCP or FTP
+    Pass Execution If    '${PROTOCOL}' == 'UDP'    Venue Protocol ${PROTOCOL} is not TCP or FTP
     Switch To TD Box    ${CHE_A_IP}
     ${TimeOut}=    Set Variable    200
     ${orgCfgFile}    ${backupCfgFile}    Set TCP-FTP Feed Line Timeout    ${TimeOut}
@@ -133,7 +133,7 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     Comment    Failover should occur when feed line timeout on A is reached
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY    10    ${TimeOut}
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
-    [Teardown]    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
+    [Teardown]    Run Keyword If    '${PROTOCOL}' != 'UDP'    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
 
 Watchdog QOS - MTE Egress NIC
     [Documentation]    Test the QOS value and MTE failover when disabling MTE Egress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1966
@@ -288,7 +288,7 @@ QoS Case Teardown
 
 Restore Feed Line Timeout
     [Arguments]    ${orgCfgFile}    ${backupCfgFile}
-    [Documentation]    Restore the orginal feed line timeout values (HiActTimeLimit and LoActTimeLimit) in MTE config file and restart dependent components.
+    [Documentation]    Restore the orginal feed line timeout values (HiActTimeLimit and LoActTimeLimit, HiActTimeOut and LoActTimeOut) in MTE config file and restart dependent components.
     restore remote cfg file    ${orgCfgFile}    ${backupCfgFile}
     stop MTE
     start MTE
@@ -306,7 +306,7 @@ Set UDP Feed Line Timeout
 
 Set TCP-FTP Feed Line Timeout
     [Arguments]    ${TimeOut}
-    [Documentation]    Set the feed line timeout values (HiActTimeLimit and LoActTimeLimit) in MTE config file and restart dependent components.
+    [Documentation]    Set the feed line timeout values (HiActTimeOut and LoActTimeOut) in MTE config file and restart dependent components.
     ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     set value in MTE cfg    ${orgCfgFile}    HiActTimeOut    ${TimeOut}
     set value in MTE cfg    ${orgCfgFile}    LoActTimeOut    ${TimeOut}
