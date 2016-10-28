@@ -1012,7 +1012,9 @@ Verify MTE State In Specific Box
     ${host}=    get current connection index
     Switch To TD Box    ${che_ip}
     verify MTE state    ${state}    ${waittime}    ${timeout}
-    Switch Connection    ${host}
+    [Teardown]    Run Keyword If    '${host}' == '${CHE_A_Session}'    Switch To TD Box    ${CHE_A_IP}
+    ...    ELSE IF    '${host}' == '${CHE_B_Session}'    Switch To TD Box    ${CHE_B_IP}
+    ...    ELSE    Fail    Current host IP ${host} is not A, B machine IP
 
 Verify RIC In MTE Cache
     [Arguments]    ${ric}    ${domain}
