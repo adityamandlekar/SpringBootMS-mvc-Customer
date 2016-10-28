@@ -176,6 +176,20 @@ Verify DDS RIC is published
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1758
     ...
+    ...    Auto Check DUDT FIDs
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2230
+    ...
+    ...    According to DDN DN124 - DUDT Section 4.2, check the published DUDT RIC with the following fields:
+    ...    1. FID: 1080, DataType: UInt
+    ...    2. FID: 3263, DataType: UInt
+    ...    3. FID: 6401, DataType: UInt
+    ...    4. FID: 6461, DataType: Buffer, Value: hostname of TD
+    ...    5. FID: 6462, DataType: UInt, Value: 0, 1 or 2
+    ...    6. FID: 6463, DataType: Integer
+    ...    7. FID: 6464, DataType: Time, Value: within the range of TD Local System Time +10 sec as threshold
+    ...    8. FID: 6468, DataType: Integer
+    ...
     ...    Verify DDS RIC is published test fails because it does not conform to DUDT DN
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2031
@@ -205,14 +219,32 @@ Verify DDS RIC is published
     @{labelIDs}=    Get Label IDs
     ${mteConfigFile}=    Get MTE Config File
     ${instance}=    Get MTE Instance    ${mteConfigFile}
+    ${hostname}=    Get Hostname
+    ${fidsList}=    Create List    1080    3263    6401    6461    6462
+    ...    6463    6468    6464
+    ${dataTypeList}=    Create List    UInt    UInt    UInt    Buffer    UInt
+    ...    Integer    Integer    Time
+    ${valuesList}=    Create List    ${None}    ${None}    ${None}    ${hostname}    0,1,2
+    ...    ${None}    ${None}    0
     : FOR    ${labelID}    IN    @{labelIDs}
     \    ${published_DDS_ric}=    Get DDS RIC    ${labelID}    ${instance}
     \    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    \    Comment    Update the expected current time range of FID 6464
+    \    ${timeThreshold}=    set variable    10
+    \    ${timeBeforeMidnight}=    Get Time Before Midnight In Seconds
+    \    Comment    To handle the boundary case of running test pass through midnight, sleep a few seconds to avoid the time wrap around to 0.
+    \    Run Keyword If    ${timeThreshold} > ${timeBeforeMidnight}    Sleep    ${timeBeforeMidnight}
+    \    ${curTimeMicrosec}=    Get Time in Microseconds
+    \    ${microsecLowerLimit}=    set variable    ${curTimeMicrosec}
+    \    ${microsecUpperLimit}=    Evaluate    ${curTimeMicrosec}+(${timeThreshold}*1000000)
+    \    Remove From List    ${valuesList}    -1
+    \    Append To List    ${valuesList}    ${microsecLowerLimit}:${microsecUpperLimit}
     \    Start Capture MTE Output    ${remoteCapture}    DDNA    ${labelID}
     \    Stop Capture MTE Output    11    11
     \    get remote file    ${remoteCapture}    ${localCapture}
     \    Verify Unsolicited Response in Capture    ${localCapture}    ${published_DDS_ric}    TIMING_LOG    0
-    \    Verify Unsolicited Response in Capture    ${localCapture}    ${published_DDS_ric}    TIMING_LOG    1
+    \    Verify FID DataType Value in Unsolicited Response    ${localCapture}    ${published_DDS_ric}    TIMING_LOG    1    ${fidsList}
+    \    ...    ${dataTypeList}    ${valuesList}
     [Teardown]    case teardown    ${localCapture}
 
 Perform DVT Validation - Process all EXL files
