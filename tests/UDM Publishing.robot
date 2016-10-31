@@ -51,7 +51,9 @@ Validate Downstream FID publication
     ${contextIds}    get context ids from config file    ${mteConfigFile}
     Get FIDFilter File
     : FOR    ${contextId}    IN    @{contextIds}
-    \    ${ricFiledList}    get ric fields from cache    1    ${EMPTY}    ${contextId}
+    \    ${status}    ${ricFiledList}    Run Keyword And Ignore Error     get ric fields from cache    1    ${EMPTY}
+    \    ...    ${contextId}
+    \    Continue For Loop If     '${status}' == 'FAIL'
     \    ${pubRic}=    set variable    ${ricFiledList[0]['PUBLISH_KEY']}
     \    ${domain}=    set variable    ${ricFiledList[0]['DOMAIN']}
     \    Start Capture MTE Output    ${remoteCapture}
