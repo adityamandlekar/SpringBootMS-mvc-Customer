@@ -109,7 +109,8 @@ Verify QoS Failover for UDP Feed Line Down
     Verify MTE State IN Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State IN Specific Box    ${CHE_B_IP}    STANDBY
     Comment    Failover should occur when feed line timeout on A is reached
-    Verify MTE State IN Specific Box    ${CHE_A_IP}    STANDBY    10    ${timeoutLimit}
+    Sleep    ${timeoutLimit}
+    Verify MTE State IN Specific Box    ${CHE_A_IP}    STANDBY    5    60
     Verify MTE State IN Specific Box    ${CHE_B_IP}    LIVE
     [Teardown]    Run Keyword If    '${PROTOCOL}' == 'UDP'    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
 
@@ -131,7 +132,8 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     Comment    Failover should occur when feed line timeout on A is reached
-    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY    10    ${TimeOut}
+    Sleep    ${timeoutLimit}
+    Verify MTE State IN Specific Box    ${CHE_A_IP}    STANDBY    5    60
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
     [Teardown]    Run Keyword If    '${PROTOCOL}' != 'UDP'    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
 
