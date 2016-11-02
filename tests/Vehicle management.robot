@@ -467,7 +467,6 @@ Get MTE Machine Time Offset
     ${currDateTime}=    get date and time
     ${localTime}=    Get Current Date    exclude_millis=True
     ${MTEtime}=    Convert Date    ${currDateTime[0]}-${currDateTime[1]}-${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    result_format=datetime
-    log    ${MTEtime}
     ${MTETimeOffset}=    Subtract Date From Date    ${MTEtime}    ${localTime}
     [Return]    ${MTETimeOffset}
 
