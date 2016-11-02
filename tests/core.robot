@@ -947,6 +947,7 @@ Suite Setup
     Should Not be Empty    ${CHE_IP}
     ${ret}    MTE Machine Setup    ${CHE_IP}
     Set Suite Variable    ${CHE_A_Session}    ${ret}
+    Set Suite Variable    ${CHE_B_Session}    ${EMPTY}
     ${ip_list}    Create List
     Run Keyword If    '${CHE_A_IP}' != '' and '${CHE_A_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_A_IP}
     Run Keyword If    '${CHE_B_IP}' != '' and '${CHE_B_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_B_IP}
