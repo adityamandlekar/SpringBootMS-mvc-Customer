@@ -382,9 +382,9 @@ Get RIC From MTE Cache
     [Documentation]    Get a single RIC name from MTE cache for the specified Domain and contextID.
     ...    If no Domain is specified it will call Get Preferred Domain to get the domain name to use.
     ...    If no contextID is specified, it will use any contextID
-    ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}'    Get Preferred Domain
-    ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
-    ${result}=    get RIC fields from cache    1    ${domain}    ${contextID}
+    ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    Get Preferred Domain
+    ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
+    ${result}    get RIC fields from cache    1    ${domain}    ${contextID}
     ${ric}=    set variable    ${result[0]['RIC']}
     ${publish_key}=    set variable    ${result[0]['PUBLISH_KEY']}
     [Teardown]
@@ -1012,7 +1012,9 @@ Verify MTE State In Specific Box
     ${host}=    get current connection index
     Switch To TD Box    ${che_ip}
     verify MTE state    ${state}    ${waittime}    ${timeout}
-    Switch Connection    ${host}
+    [Teardown]    Run Keyword If    '${host}' == '${CHE_A_Session}'    Switch To TD Box    ${CHE_A_IP}
+    ...    ELSE IF    '${host}' == '${CHE_B_Session}'    Switch To TD Box    ${CHE_B_IP}
+    ...    ELSE    Fail    Current host IP ${host} is not A, B machine IP
 
 Verify RIC In MTE Cache
     [Arguments]    ${ric}    ${domain}
