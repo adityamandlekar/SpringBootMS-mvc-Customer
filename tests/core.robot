@@ -693,7 +693,7 @@ Send TRWF2 Refresh Request
     [Documentation]    Call DataView to send TRWF2 Refresh Request to MTE.
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
-    ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
+    ${ddnreqLabelfilepath}=    Get CHE Config Filepaths    ddnReqLabels.xml
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
     ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
     get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
@@ -725,7 +725,7 @@ Send TRWF2 Refresh Request No Blank FIDs
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    FIDs with blank value will be excluded
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
-    ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
+    ${ddnreqLabelfilepath}=    Get CHE Config Filepaths    ddnReqLabels.xml
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
     ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
     get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
