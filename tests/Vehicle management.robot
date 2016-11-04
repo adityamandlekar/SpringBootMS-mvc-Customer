@@ -408,6 +408,9 @@ Get Start GMT Time
     ${mteConfigFile}=    Get MTE Config File
     ${StartOfDayTime}=    get MTE config value    ${mteConfigFile}    StartOfDayTime
     ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
+    ${StartOfDayGMT} =    Split String    ${StartOfDayGMT}    :
+    ${StartOfDayGMT} =    Add Time To Time    ${StartOfDayGMT[0]} hours ${StartOfDayGMT[1]} minutes    00:01:00    timer    exclude_mills= yes
+    ${StartOfDayGMT} =    Get Substring    ${StartOfDayGMT}    \    5
     [Return]    ${StartOfDayGMT}
 
 Convert to GMT
@@ -418,10 +421,7 @@ Convert to GMT
     ${currentGmtOffset}    get stat block field    ${MTE}    ${DSTRIC}    currentGMTOffset
     ${currDateTime}    get date and time
     ${GMTTime}    Subtract Time From date    ${currDateTime[0]}.${currDateTime[1]}.${currDateTime[2]} ${localTime}    ${currentGmtOffset}    date_format=%Y.%m.%d \ %H:%M    result_format=%H:%M
-    ${GMTTimeUpdate} =    Split String    ${GMTTime}    :
-    ${GMTTimeUpdated}    Add Time To Time    ${GMTTimeUpdate[0]} hours ${GMTTimeUpdate[1]} minutes    00:01:00    timer    exclude_mills= yes
-    ${GMTTimeUpdated} =    Get Substring    ${GMTTimeUpdated}    \    5
-    [Return]    ${GMTTimeUpdated}
+    [Return]    ${GMTTime}
 
 Drop a RIC Case Setup
     [Documentation]    The setup will get FMS service name to ${serviceName} and get perferred domain to ${domain}.
