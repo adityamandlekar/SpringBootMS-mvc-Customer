@@ -693,7 +693,7 @@ Send TRWF2 Refresh Request
     [Documentation]    Call DataView to send TRWF2 Refresh Request to MTE.
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
-    ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
+    ${ddnreqLabelfilepath}=    Get CHE Config Filepaths    ddnReqLabels.xml
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
     ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
     get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
@@ -725,7 +725,7 @@ Send TRWF2 Refresh Request No Blank FIDs
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    FIDs with blank value will be excluded
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
-    ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
+    ${ddnreqLabelfilepath}=    Get CHE Config Filepaths    ddnReqLabels.xml
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
     ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
     get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
@@ -947,6 +947,7 @@ Suite Setup
     Should Not be Empty    ${CHE_IP}
     ${ret}    MTE Machine Setup    ${CHE_IP}
     Set Suite Variable    ${CHE_A_Session}    ${ret}
+    Set Suite Variable    ${CHE_B_Session}    ${EMPTY}
     ${ip_list}    Create List
     Run Keyword If    '${CHE_A_IP}' != '' and '${CHE_A_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_A_IP}
     Run Keyword If    '${CHE_B_IP}' != '' and '${CHE_B_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_B_IP}
