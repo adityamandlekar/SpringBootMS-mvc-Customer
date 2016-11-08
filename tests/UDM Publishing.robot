@@ -51,9 +51,9 @@ Validate Downstream FID publication
     ${contextIds}    get context ids from config file    ${mteConfigFile}
     Get FIDFilter File
     : FOR    ${contextId}    IN    @{contextIds}
-    \    ${status}    ${ricFiledList}    Run Keyword And Ignore Error     get ric fields from cache    1    ${EMPTY}
+    \    ${status}    ${ricFiledList}    Run Keyword And Ignore Error    get ric fields from cache    1    ${EMPTY}
     \    ...    ${contextId}
-    \    Continue For Loop If     '${status}' == 'FAIL'
+    \    Continue For Loop If    '${status}' == 'FAIL'
     \    ${pubRic}=    set variable    ${ricFiledList[0]['PUBLISH_KEY']}
     \    ${domain}=    set variable    ${ricFiledList[0]['DOMAIN']}
     \    Start Capture MTE Output    ${remoteCapture}
@@ -159,17 +159,55 @@ Verify SPS RIC is published
     ...    Since Recon creates the ddnLabels.xml file, we cannot verify that the SPS RIC name is defined using the correct rules in the production label files.
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1757
+    ...
+    ...    Auto Check SPS FIDs
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2229
+    ...
+    ...    According to DN129 - Service Provider Status - "Section 9.2.1 SubProvider-Level SPS Fields Across Devices" and https://thehub.thomsonreuters.com/docs/DOC-76053, check the published SPS Response RIC with the following fields:
+    ...    1. FID: 1, DataType: UInt, Value: 2923
+    ...    2. FID: 6401, DataType: UInt
+    ...    3. FID: 6469, DataType: Buffer, Value: MTE name
+    ...    4. FID: 6471, DataType: Buffer, Value: MTE name
+    ...    5. FID: 6601, DataType: UInt, Value: 0, 1, 2, 3 or 4
+    ...    6. FID: 12833, DataType: UInt, Value: within 0~9
+    ...    7. FID: 6472, DataType: Time
+    ...    8. FID: 6477, DataType: UInt
+    ...    9. FID: 6473, DataType: UInt, Value: 1000
+    ...    10. FID: 6478, DataType: UInt
+    ...    11. FID: 8323, DataType: Buffer, Value: SPS RIC name with "_INS" at the end, e.g. ".[SPSHKF02M_0_INS"
+    ...    12. FID: 8920, DataType: UInt, Value: 0 or 1
+    ...    13. FID: 6475, DataType: UInt
+    ...    14. FID: 6476, DataType: UInt, Value: 0, 1 or 2
+    ...    15. FID: 6479, DataType: UInt, Value: 0, 1, 2 or 3
+    ...    16. FID: 6474, DataType: UInt, Value: within 0~9
+    ...    17. FID: 5198, DataType: UInt
+    ...    18. FID: 5524, DataType: UInt
+    ...    19. FID: 6480, DataType: Buffer, Value: SPS RIC name
     @{labelIDs}=    Get Label IDs
     ${SPSric}=    Get SPS RIC From Label File    @{labelIDs}[0]
     ${SPSric_input_stats}=    set variable    ${SPSric}_INS
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    ${fidsList}=    Create List    1    6401    6469    6471    6601
+    ...    12833    6472    6477    6473    6478    8323
+    ...    8920    6475    6476    6479    6474    5198
+    ...    5524    6480
+    ${dataTypeList}=    Create List    UInt    UInt    Buffer    Buffer    UInt
+    ...    UInt    Time    UInt    UInt    UInt    Buffer
+    ...    UInt    UInt    UInt    UInt    UInt    UInt
+    ...    UInt    Buffer
+    ${valuesList}=    Create List    2923    ${None}    ${MTE}    ${MTE}    0,1,2,3,4
+    ...    0:9    ${None}    ${None}    1000    ${None}    ${SPSric_input_stats}
+    ...    0,1    ${None}    0,1,2    0,1,2,3    0:9    ${None}
+    ...    ${None}    ${SPSric}
     Start Capture MTE Output    ${remoteCapture}    DDNA    @{labelIDs}[0]
     Stop Capture MTE Output    5    10
     get remote file    ${remoteCapture}    ${localCapture}
     Verify Unsolicited Response in Capture    ${localCapture}    ${SPSric}    SERVICE_PROVIDER_STATUS    0
     Verify Unsolicited Response in Capture    ${localCapture}    ${SPSric_input_stats}    SERVICE_PROVIDER_STATUS    0
-    Verify Unsolicited Response in Capture    ${localCapture}    ${SPSric}    SERVICE_PROVIDER_STATUS    1
+    Verify FID DataType Value in Unsolicited Response    ${localCapture}    ${SPSric}    SERVICE_PROVIDER_STATUS    1    ${fidsList}    ${dataTypeList}
+    ...    ${valuesList}
     Verify Unsolicited Response in Capture    ${localCapture}    ${SPSric_input_stats}    SERVICE_PROVIDER_STATUS    1
     [Teardown]    case teardown    ${localCapture}
 
