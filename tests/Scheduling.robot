@@ -37,7 +37,6 @@ Verify Half Day Holiday
     ...    5. Verify that TD goes outside holiday
     ...
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2242
-    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC
     ${feedTimeRic}    Set Variable    ${feedTimeRics[0]}
     ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
     ${feedTimeExl}    Set Variable    ${contents[0]}
@@ -52,20 +51,17 @@ Verify Half Day Holiday
     ${endDateTime}=    add time to date    ${startDateTime}    2 minute    exclude_millis=yes
     Go Into Datetime    HOL    ${holidayStatField}    ${feedHolidayEXL}    ${feedHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
     ...    ${startDateTime}    ${endDateTime}
-    Wait For Process To Not Exist    ${cmdArg}
     Sleep    120
     Check InputPortStatsBlock    ${connectTimesIdentifier}    ${feedTimeRic}    ${holidayStatField}    0
-    Wait For Process To Exist    ${cmdArg}
     [Teardown]    Holiday Cleanup
 
 Verify Holiday Removal
     [Documentation]    Verify that holiday can be removed properly.
     ...    1. Set current day inside holiday
     ...    2. Remove the holiday from the holiday RIC
-    ...    3. Verify that the TD goes outside holiday based on holidayStatus stat block and FH status
+    ...    3. Verify that the TD goes outside holiday based on holidayStatus stat block
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2212
-    ${serviceName}    ${ricDomain}    ${timeRic}    ${cmdArg}    Get FH Info From FHC
     Comment    Feed Time Holiday
     ${feedTimeRic}    Set Variable    ${feedTimeRics[0]}
     ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
@@ -73,10 +69,8 @@ Verify Holiday Removal
     ${contents}    Set Variable    ${feedHolidayRicsDict['${feedHolidayRic}']}
     ${feedHolidayEXL}    Set Variable    ${contents[0]}
     Go Into Datetime    HOL    ${holidayStatField}    ${feedHolidayEXL}    ${feedHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
-    Wait For Process To Not Exist    ${cmdArg}
     Load Single EXL File    ${feedHolidayEXL}    ${serviceName}    ${CHE_IP}
     Check InputPortStatsBlock    ${connectTimesIdentifier}    ${feedTimeRic}    ${holidayStatField}    0
-    Wait For Process To Exist    ${cmdArg}
     Comment    Trade Time Holiday
     ${tradeTimeRic}    Set Variable    ${tradeTimeRics[0]}
     ${contents}    Set Variable    ${tradeTimeRicsDict['${tradeTimeRic}']}
@@ -84,10 +78,8 @@ Verify Holiday Removal
     ${contents}    Set Variable    ${tradeHolidayRicsDict['${tradeHolidayRic}']}
     ${tradeHolidayEXL}    Set Variable    ${contents[0]}
     Go Into Datetime    HOL    ${holidayStatField}    ${tradeHolidayEXL}    ${tradeHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
-    Wait For Process To Not Exist    ${cmdArg}
     Load Single EXL File    ${tradeHolidayEXL}    ${serviceName}    ${CHE_IP}
     Check InputPortStatsBlock    ${connectTimesIdentifier}    ${feedTimeRic}    ${holidayStatField}    0
-    Wait For Process To Exist    ${cmdArg}
     [Teardown]    Holiday Cleanup
 
 Verify Holiday RIC processing
