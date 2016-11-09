@@ -15,7 +15,7 @@ Persistence File Backup
     ${serviceName}=    Get FMS Service Name
     ${currDateTime}=    get date and time
     ${exlFiles}    ${modifiedExlFiles}    Go Into End Feed Time    ${serviceName}
-    Wait SMF Log Message After Time    ${MTE}.*Creating Snapshot of Persister Database    ${currDateTime}    10    120
+    Wait SMF Log Message After Time    ${MTE}.*Creating Snapshot of Persister Database    ${currDateTime}    waittime=10    timeout=120
     @{existingPersistBackupFiles}=    wait for search file    ${VENUE_DIR}    PERSIST_${MTE}_*.DAT    2    180
     Delete Persist Backup
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${exlFiles}

@@ -1,4 +1,4 @@
-import time
+﻿import time
 
 from LinuxCoreUtilities import LinuxCoreUtilities
 from LinuxFSUtilities import LinuxFSUtilities
@@ -8,13 +8,14 @@ from VenueVariables import *
 
 SMFLOGDIR = BASE_DIR + '/smf/log/'
 
-def wait_GMI_message_after_time(message,timeRef, waittime=2, timeout=60):
+def wait_GMI_message_after_time(message, timeRef, isCaseSensitive=False, waittime=2, timeout=60):
     """Wait until the EventLogAdapterGMILog file contains the specified message with a timestamp newer than the specified reference time
     NOTE: This does not yet handle log file rollover at midnight
 
     Argument :
         message : target message in grep format to find in smf log
         timeRef : UTC time message must be after. It is a list of values as returned by the get_date_and_time Keyword [year, month, day, hour, min, second]
+        isCaseSensitive : flag indicates if search message is case sensitive.
         waittime : specifies the time to wait between checks, in seconds.
         timeout : specifies the maximum time to wait, in seconds.
     
@@ -32,7 +33,7 @@ def wait_GMI_message_after_time(message,timeRef, waittime=2, timeout=60):
     waittime = int(waittime)
     maxtime = time.time() + float(timeout)
     while time.time() <= maxtime:            
-        retMessages = LinuxFSUtilities().grep_remote_file(currentFile, message)
+        retMessages = LinuxFSUtilities().grep_remote_file(currentFile, message, isCaseSensitive=isCaseSensitive)
         if (len(retMessages) > 0):
             logContents = retMessages[-1].split('|')
             if (len(logContents) >= 2):
@@ -43,11 +44,12 @@ def wait_GMI_message_after_time(message,timeRef, waittime=2, timeout=60):
         time.sleep(waittime)
     raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smfGMI log before timeout %ds' %(message, timeout)) 
 
-def wait_smf_log_does_not_contain(message, waittime=2, timeout=60):
+def wait_smf_log_does_not_contain(message, isCaseSensitive=False, waittime=2, timeout=60):
     """Wait until the SMF log file does not contain the specified message within the last 'waittime' interval
 
     Argument :
         message : target message in grep format to find in smf log
+        isCaseSensitive : flag indicates if search message is case sensitive.
         waittime : specifies the time to wait between checks, in seconds.
         timeout : specifies the maximum time to wait, in seconds.
     
@@ -68,7 +70,10 @@ def wait_smf_log_does_not_contain(message, waittime=2, timeout=60):
         refDate = '%s-%s-%s' %(dt[0], dt[1], dt[2])
         refTime = '%s:%s:%s' %(dt[3], dt[4], dt[5])
         currentFile = '%s/smf-log-files.%s%s%s.txt' %(SMFLOGDIR, dt[0], dt[1], dt[2])
-        cmd = "grep '%s' %s | tail --lines=1" %(message, currentFile)
+        if isCaseSensitive:
+            cmd = "grep '%s' %s | tail --lines=1" %(message, currentFile)
+        else:
+            cmd = "grep -i '%s' %s | tail --lines=1" %(message, currentFile)
         stdout, stderr, rc = _exec_command(cmd)
         retMessage = stdout.split(';')
         if (len(retMessage) < 2):
@@ -79,22 +84,25 @@ def wait_smf_log_does_not_contain(message, waittime=2, timeout=60):
         dt = LinuxCoreUtilities().get_date_and_time()
     raise AssertionError('*ERROR* SMF log still contains pattern \'%s\' after timeout %ds' %(message, timeout))    
 
-def wait_smf_log_message_after_time(message,timeRef, waittime=2, timeout=60):
+def wait_smf_log_message_after_time(message, timeRef, isCaseSensitive=False, waittime=2, timeout=60):
     """Wait until the SMF log file contains the specified message with a timestamp newer than the specified reference time
     NOTE: This does not yet handle log file rollover at midnight
 
     Argument :
         message : target message in grep format to find in smf log
         timeRef : UTC time message must be after. It is a list of values as returned by the get_date_and_time Keyword [year, month, day, hour, min, second]
+        isCaseSensitive : flag indicates if search message is case sensitive.
         waittime : specifies the time to wait between checks, in seconds.
         timeout : specifies the maximum time to wait, in seconds.
     
-    Return : Nil if success or raise error
+    Return : the timestamp of the message found if success, or raise error
 
     Examples:
     | ${dt}= | get date and time |
-    | wait smf log message after time | FMS REORG DONE | ${dt} |
+    | ${logMsgTimestamp}= | wait smf log message after time | FMS REORG DONE | ${dt} |
     """
+
+    retLogTimestamp = None
     refDate = '%s-%s-%s' %(timeRef[0], timeRef[1], timeRef[2])
     refTime = '%s:%s:%s' %(timeRef[3], timeRef[4], timeRef[5])
 #         print 'DEBUG refDate %s, refTime %s' %(refDate,refTime)
@@ -107,12 +115,13 @@ def wait_smf_log_message_after_time(message,timeRef, waittime=2, timeout=60):
     waittime = int(waittime)
     maxtime = time.time() + float(timeout)
     while time.time() <= maxtime:            
-        retMessages = LinuxFSUtilities().grep_remote_file(currentFile, message)
+        retMessages = LinuxFSUtilities().grep_remote_file(currentFile, message, isCaseSensitive=isCaseSensitive)
 #             print 'DEBUG retMessages: %s' %retMessages
         if (len(retMessages) > 0):
             logContents = retMessages[-1].split(';')
             if (len(logContents) >= 2):
                 if logContents[0].strip() >= refDate and logContents[1].strip() >= refTime:
-                    return
+                    retLogTimestamp = logContents[0].strip() + ' ' + logContents[1].strip()
+                    return retLogTimestamp
         time.sleep(waittime)
     raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smf log before timeout %ds' %(message, timeout))

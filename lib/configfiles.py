@@ -159,6 +159,54 @@ def get_GRS_stream_names_from_config_file(grs_config_file):
 
     return streamNames
 
+def get_Label_ID_For_Context_ID(venueConfigFile, contextId):
+    """ Get Label ID For Context ID from venue config file
+    Get the Label ID by search for node <CXXXX> in <Transforms> section, which XXXX is the Context ID. 
+    Its child node <OutputLabel> value is the corresponding Label ID. 
+
+    Argument : venueConfigFile : local path of venue config file
+               contextId : the target Context ID which you want to found its Label ID
+
+    Return : Label ID of the input Context ID
+
+    Examples :
+    | ${labelID}= | Get Label ID For Context ID | venue_config_file | 1688 |
+
+    Venue config file example:
+    <Transforms>
+      <C1688>
+        <OutputLabel>8070</OutputLabel>
+         ...
+      <C1690>
+        <OutputLabel>8070</OutputLabel>
+         ...
+    </Tramsforms>
+    """
+
+    foundLabelId = None
+    contextIdLength = len(contextId)
+    if contextIdLength < 1:
+        raise AssertionError('*ERROR*  Need to provide Context ID to look up.')
+
+    if not os.path.exists(venueConfigFile):
+        raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
+    
+    with open (venueConfigFile, "r") as myfile:
+        linesRead = myfile.readlines()
+
+    # Note that the following workaround is needed to make the venue config file a valid XML file.
+    linesRead = "<GATS>" + ''.join(linesRead) + "</GATS>"
+
+    root = ET.fromstring(linesRead)
+    xmlPathString = './/Transforms/C' + contextId + '/OutputLabel'
+
+    foundNode = root.find(xmlPathString)
+    if foundNode is None:
+        raise AssertionError('*ERROR*  Fail to find Label ID for Context ID %s from venue config file: %s' %(contextId, venueConfigFile))
+
+    foundLabelId = foundNode.text
+    return foundLabelId
+
 def get_MTE_config_list_by_path(venueConfigFile,*xmlPath):
     """ Gets value(s) from venue config file
         http://www.iajira.amers.ime.reuters.com/browse/CATF-1798
@@ -581,26 +629,24 @@ def backup_remote_cfg_file(searchdir,cfgfile,suffix='.backup'):
 
 def Get_CHE_Config_Filepaths(filename, *ignorePathFile):
     """Get file path for specific filename from TD Box.
-       We would ignore certain folder or file in list variable ignorePathFile
-       if ignorePathFile is empty, then SCWatchdog will be ignored during search
+       Ignore files that contain any of the strings in list variable ignorePathFile
+       if ignorePathFile is empty, then SCWatchdog and puppet directories will be ignored during search
      
     Argument: 
         filename : config filename
-        ignorePathFile: config_grs.json | SCWatchdog
+        ignorePathFile: list of strings to ignore
                  
-    Returns: a list of full path of remote fhc configuration files 
+    Returns: a list of full path of remote configuration files 
  
     Examples:
     | Get CHE Config Filepath | ddnPublishers.xml 
     | Get CHE Config Filepath | *_grs.json | config_grs.json | SCWatchdog
     """  
-    ignoresLength = len(ignorePathFile)
+    if len(ignorePathFile) == 0:
+        ignorePathFile = ['/SCWatchdog/', '/puppet/']
     
-    if ignoresLength > 0:
-        ignoreString = ' | grep -v '.join(map(str, ignorePathFile))
-        ignoreString = ' | grep -v ' + ignoreString
-    else:
-        ignoreString = " | grep -v SCWatchdog"
+    ignoreString = ' | grep -v '.join(map(str, ignorePathFile))
+    ignoreString = ' | grep -v ' + ignoreString
                        
     cmd = "find " + BASE_DIR + " -type f -name " + filename + "  " + ignoreString
     
