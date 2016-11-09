@@ -188,3 +188,11 @@ def _run_local_SCWCLI(cmd):
         raise AssertionError('*ERROR* in running SCWLLi.exe %s' %stderr)  
     
     return stdout
+
+def verify_sync_pulse_missed_Qos_byRestoreNIC(syncPulseBefore, syncPulseAfter):
+    if (syncPulseAfter [0]>0):
+        if ((syncPulseAfter[0] - syncPulseBefore[0]) <> 0):
+            raise AssertionError('*ERROR* Sync Pulse Missed Count has increased after disable DDN (before : %d, after : %d)' %(syncPulseBefore[0], syncPulseAfter[0]))
+    else:
+        if ((syncPulseAfter[1] - syncPulseBefore[1]) <> 0):
+            raise AssertionError('*ERROR* Sync Pulse Missed Count has increased after disable DDN (before : %d, after : %d)' %(syncPulseBefore[1], syncPulseAfter[1]))
