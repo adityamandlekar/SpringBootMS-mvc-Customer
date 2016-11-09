@@ -536,6 +536,16 @@ MTE Machine Setup
     Run Keyword If    ${memUsage} > 90    Fail    Memory usage > 90%. This would make the system become instable during testing.
     [Return]    ${ret}
 
+MTE or FTE
+    [Documentation]    Determine if this venue has an MTE or FTE.
+    ...    Return either 'MTE' or 'FTE'.
+    ...    Fail if neither MTD nor FTE is found.
+    ${result}=    find processes by pattern    FTE -c ${MTE}
+    Return From Keyword If    len(${result}    FTE
+    ${result}=    find processes by pattern    MTE -c ${MTE}
+    Return From Keyword If    len(${result}    MTE
+    Fail    Neither FTE nor MTE process is running
+
 Persist File Should Exist
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
