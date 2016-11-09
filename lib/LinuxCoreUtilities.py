@@ -334,8 +334,8 @@ class LinuxCoreUtilities():
             for ps in stdout.split('\n'):
                 if ps != '':
                     #the pslist proces name is limited to display first 15 chars
-                    psCompareProcessName = ps.split()[-1][:15]
-                    compareProcessName = process[:15]
+                    psCompareProcessName = ps.split().lower()[-1][:15]
+                    compareProcessName = process.lower()[:15]
                     if psCompareProcessName == compareProcessName or psCompareProcessName.endswith('/' + compareProcessName):
                         PIDlist.append(re.findall(pat,ps)[0])
                         findflag =1
