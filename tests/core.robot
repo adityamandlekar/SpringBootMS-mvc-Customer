@@ -288,9 +288,9 @@ Get RIC From MTE Cache
     [Documentation]    Get a single RIC name from MTE cache for the specified Domain and contextID.
     ...    If no Domain is specified it will call Get Preferred Domain to get the domain name to use.
     ...    If no contextID is specified, it will use any contextID
-    ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}'    Get Preferred Domain
-    ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
-    ${result}=    get RIC fields from cache    1    ${domain}    ${contextID}
+    ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    Get Preferred Domain
+    ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
+    ${result}    get RIC fields from cache    1    ${domain}    ${contextID}
     ${ric}=    set variable    ${result[0]['RIC']}
     ${publish_key}=    set variable    ${result[0]['PUBLISH_KEY']}
     [Teardown]
@@ -491,13 +491,13 @@ Load List of EXL Files
 
 Load Mangling Settings
     Run Commander    linehandler    lhcommand ${MTE} mangling:refresh_settings
-    wait SMF log does not contain    Drop message sent for    10    600
+    wait SMF log does not contain    Drop message sent for    waittime=10    timeout=600
 
 Load Single EXL File
     [Arguments]    ${exlFile}    ${service}    ${headendIP}    @{optargs}
     [Documentation]    Loads a single EXL file using FMSCMD. The EXL file must be on the local machine. Inputs for this keyword are the EXL Filename including the path, the FMS service and the headend's IP.
     ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${headendIP}    Process    --Services ${service}
-    ...    --InputFile "${exlFile}"    @{optargs}
+    ...    --InputFile "${exlFile}"    --AllowSICChange true    --AllowRICChange true    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
 Manual ClosingRun for ClosingRun Rics
@@ -507,7 +507,7 @@ Manual ClosingRun for ClosingRun Rics
     \    ${currentDateTime}    get date and time
     \    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${CHE_IP}    ClsRun
     \    ...    --RIC ${closingrunRicName}    --Services ${serviceName}    --Domain MARKET_PRICE    --ClosingRunOperation Invoke    --HandlerName ${MTE}
-    \    wait SMF log message after time    ClosingRun.*?CloseItemGroup.*?Found [0-9]* closeable items out of [0-9]* items    ${currentDateTime}    2    60
+    \    wait SMF log message after time    ClosingRun.*?CloseItemGroup.*?Found [0-9]* closeable items out of [0-9]* items    ${currentDateTime}    waittime=2    timeout=60
 
 Manual ClosingRun for a RIC
     [Arguments]    ${sampleRic}    ${publishKey}    ${domain}
@@ -535,6 +535,16 @@ MTE Machine Setup
     ${memUsage}    get memory usage
     Run Keyword If    ${memUsage} > 90    Fail    Memory usage > 90%. This would make the system become instable during testing.
     [Return]    ${ret}
+
+MTE or FTE
+    [Documentation]    Determine if this venue has an MTE or FTE.
+    ...    Return either 'MTE' or 'FTE'.
+    ...    Fail if neither MTD nor FTE is found.
+    ${result}=    find processes by pattern    FTE -c ${MTE}
+    Return From Keyword If    len(${result}    FTE
+    ${result}=    find processes by pattern    MTE -c ${MTE}
+    Return From Keyword If    len(${result}    MTE
+    Fail    Neither FTE nor MTE process is running
 
 Persist File Should Exist
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
@@ -592,7 +602,7 @@ Send TRWF2 Refresh Request
     [Documentation]    Call DataView to send TRWF2 Refresh Request to MTE.
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
-    ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
+    ${ddnreqLabelfilepath}=    Get CHE Config Filepaths    ddnReqLabels.xml
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
     ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
     get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
@@ -624,7 +634,7 @@ Send TRWF2 Refresh Request No Blank FIDs
     ...    The refresh request will be sent to all possible multicast addresses for each labelID defined in venue configuration file.
     ...    FIDs with blank value will be excluded
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1708
-    ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
+    ${ddnreqLabelfilepath}=    Get CHE Config Filepaths    ddnReqLabels.xml
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
     ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
     get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
@@ -845,6 +855,7 @@ Suite Setup
     Should Not be Empty    ${CHE_IP}
     ${ret}    MTE Machine Setup    ${CHE_IP}
     Set Suite Variable    ${CHE_A_Session}    ${ret}
+    Set Suite Variable    ${CHE_B_Session}    ${EMPTY}
     ${ip_list}    Create List
     Run Keyword If    '${CHE_A_IP}' != '' and '${CHE_A_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_A_IP}
     Run Keyword If    '${CHE_B_IP}' != '' and '${CHE_B_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_B_IP}
@@ -910,7 +921,9 @@ Verify MTE State In Specific Box
     ${host}=    get current connection index
     Switch To TD Box    ${che_ip}
     verify MTE state    ${state}    ${waittime}    ${timeout}
-    Switch Connection    ${host}
+    [Teardown]    Run Keyword If    '${host}' == '${CHE_A_Session}'    Switch To TD Box    ${CHE_A_IP}
+    ...    ELSE IF    '${host}' == '${CHE_B_Session}'    Switch To TD Box    ${CHE_B_IP}
+    ...    ELSE    Fail    Current host IP ${host} is not A, B machine IP
 
 Verify RIC In MTE Cache
     [Arguments]    ${ric}    ${domain}

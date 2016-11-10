@@ -15,7 +15,7 @@ from datetime import datetime, date
 from utils.version import get_version
 from utils.rc import _rc
 
-from utils.ssh import _get_process_pid_pattern_dict, _check_process, _exec_command, _get_datetime, _set_datetime, _return_pslist, _kill_process
+from utils.ssh import _get_process_pid_pattern_dict, _check_process, _exec_command, _get_datetime, _get_datetime_string, _set_datetime, _return_pslist, _kill_process
 from utils.ssh import G_SSHInstance
        
 class LinuxCoreUtilities():    
@@ -150,6 +150,18 @@ class LinuxCoreUtilities():
         """
         return _get_datetime()
 
+    def get_date_and_time_string(self):
+        """
+        Get the date and time value in string format.
+        
+        The return datetime string in format of 'YYYY-MM-DD hh:mm:ss', e.g. 2016-09-23 03:47:50.
+        It is the supported Date format in robot framework.
+
+        Examples:
+        | ${datetime}= | get date and time string |
+        """
+        return _get_datetime_string()
+
     def get_day_of_week_as_string(self):
         """
         Get the current day of week from remote machine.
@@ -174,6 +186,19 @@ class LinuxCoreUtilities():
         """
         return date(int(year), int(month), int(day)).strftime('%a').upper()
     
+    def get_hostname(self):
+        """
+        Get the hostname of remote machine.
+
+        Examples:
+        | ${hostname} | get hostname |
+        """
+        cmd = 'hostname'
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))       
+        return stdout.strip()
+
     def get_interface_name_by_alias(self,alias):
         """Get network ard interface name by given alias
 
@@ -255,6 +280,39 @@ class LinuxCoreUtilities():
         """
         return _get_process_pid_pattern_dict(list(process_pattern))
     
+    def get_time_before_midnight_in_seconds(self):
+        """
+        Get the time in seconds of remote TD machine before midnight
+        E.g. Current local system time of remote TD machine = 23:58:55, it will return the seconds of (00:00:00 - 23:58:55) = 65.
+        
+        Examples:
+        | ${sec} | get time before midnight in seconds |
+        """
+        #dateInfo return value is list as [year, month, day, hour, min, second, dayofweek]. Each value is a string.
+        dateInfo = _get_datetime()
+        hour = int(dateInfo[3])
+        min = int(dateInfo[4])
+        sec = int(dateInfo[5])
+        
+        currTimeInSec = hour*60*60 + min*60 + sec
+        totalSec = 24*60*60
+        return totalSec - currTimeInSec
+    
+    def get_time_in_microseconds(self):
+        """
+        Get the local system time of remote TD machine in microsecond from midnight
+
+        Examples:
+        | ${microsec} | get time in microseconds |
+        """
+        #dateInfo return value is list as [year, month, day, hour, min, second, dayofweek]. Each value is a string.
+        dateInfo = _get_datetime()
+
+        hour = int(dateInfo[3])
+        min = int(dateInfo[4])
+        sec = int(dateInfo[5])
+        return (hour*60*60 + min*60 + sec)*1000000
+
     def kill_processes(self, *Proc):
         """
         kill process.
@@ -274,9 +332,13 @@ class LinuxCoreUtilities():
         for process in list(Proc):
             findflag =0
             for ps in stdout.split('\n'):
-                if ps !='' and (ps.split()[-1] == process or ps.split()[-1].endswith('/' + process)):
-                    PIDlist.append(re.findall(pat,ps)[0])
-                    findflag =1
+                if ps != '':
+                    #the pslist proces name is limited to display first 15 chars
+                    psCompareProcessName = ps.split().lower()[-1][:15]
+                    compareProcessName = process.lower()[:15]
+                    if psCompareProcessName == compareProcessName or psCompareProcessName.endswith('/' + compareProcessName):
+                        PIDlist.append(re.findall(pat,ps)[0])
+                        findflag =1
             if findflag == 0:
                 not_found_list.append(process)
         if PIDlist != []:

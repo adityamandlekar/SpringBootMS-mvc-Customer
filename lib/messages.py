@@ -315,23 +315,24 @@ def verify_ClosingRun_message_in_messages(pcapfile,ricname):
     
     os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
 
-def verify_CMP_NME_ET_in_message(pcapfile, ric):
+def verify_CMP_NME_ET_in_message(pcapfile, ric, domain='*'):
     """ Verify CMP_NME_ET in message, it should be 0 or 1 or 2 or 3
 
         Argument : pcapfile - the full name of pacpfile, it should be local path e.g. C:\\temp\\capture.pcap
                    ric - the specified ric name if you want to check
+                   domain - the specified target ric domain (e.g. 'MARKET_PRICE' or 'MARKET_BY_PRICE') or '*' (by default)
 
         Return : Nil
         
         Examples :
-        verify CMP_NME_ET in message | capture.pcap | C:\\Program Files\\Reuters Test Tools\\DAS | AAAX.O |
+        verify CMP_NME_ET in message | C:\\Program Files\\Reuters Test Tools\\DAS\\capture.pcap | AAAX.O | MARKET_PRICE |
         
     """
     #Check if pcap file exist
     if (os.path.exists(pcapfile) == False):
         raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)
     #Build the filterstring
-    filterstring = _build_DAS_filter_string('*', ric, 0);
+    filterstring = _build_DAS_filter_string('*', ric, 0, domain);
     
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,'setIDVerificationVspcap',20)
     
@@ -438,6 +439,67 @@ def verify_DROP_message_in_itemstatus_messages(pcapfile,ricname,domain):
     #C63
     _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,63,domain)
 
+def verify_fid_dataType_value_in_unsolicited_response(pcapfile, ric, domain, constituent_list, fidList=[], dataTypeList=[], valueList=[]):
+    """ verify if unsolicited response for RIC has found in MTE output pcap message, and check if the fid data type and value equals to the specified values
+        Argument : pcapfile : MTE output capture pcap file fullpath
+                   ric : published RIC
+                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
+                   constituent_list: list contains all possible constituents 
+                   fidList : a list specify the fid you want to check
+                   dataTypeList : a list specify the expected data type you want to compare, it should 1:1 correspond with fidList 
+                                 (if set a data type in the list None, this fid data type checking will be ignored)
+                   valueList : a list specify the expected value you want to compare, it should 1:1 correspond with fidList
+                               (if set a value in the list None, this fid value checking will be ignored)
+                               (support range of integers with delimiter ':' (e.g. "1:100")  or muliple values split by ',' (e.g. "0,1,2"))
+        Return : Nil
+
+        Examples :
+        ${fidsList}=     | Create List | 1080    | 6462  | 6464
+        ${dataTypeList}= | Create List | UInt    | UInt  | Time
+        ${valuesList}=   | Create List | ${None} | 0,1,2 | 34713000000:34723000000
+        Verify FID DataType Value in Unsolicited Response | C:\\Program Files\\Reuters Test Tools\\DAS\\capture.pcap | .[----SGD01M08070 | TIMING_LOG | 1 | ${fidsList} | ${dataTypeList} | ${valuesList}
+        
+        The example shows to verify if the RIC publishs the unsolicited response DUDT RIC(.[----SGD01M08070)) with domain TIMING_LOG and constituent 1, with
+        - PREF_DISP(1080) data type is UInt;
+        - DUDT_UP_PT(6462) data type is UInt, and its value equal to either 0, 1 or 2;
+        - DUDT_LST(6464) data type is Time, and it values is within the range 34713000000 to 34723000000.
+
+    """           
+    #Check if pcap file exist
+    if (os.path.exists(pcapfile) == False):
+        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)           
+    
+    if (len(fidList) != len(dataTypeList) or len(fidList) != len(valueList)):
+        raise AssertionError('*ERROR* The item number of fidList, dataTypeList and valueList are not the same' )                
+    
+    filterDomain = 'TRWF_TRDM_DMT_'+ domain
+    outputfileprefix = 'unsolpcap'
+    
+    #Check if the unsolicited response for RIC is found
+    for constit in constituent_list:
+        filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, AND(Response_responseTypeNum= &quot;TRWF_TRDM_RPT_UNSOLICITED_RESP&quot;, Response_constitNum = &quot;%s&quot;))))'%(filterDomain, ric, constit)
+        outputxmlfile = get_xml_from_pcap(pcapfile, filterstring, outputfileprefix)                
+            
+        #get the dictionary of FIDs and corresponding data type and value for verification
+        messageNode = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfile[0], 'Message')
+        fidsDictTypeAndValueList = xmlutilities.xml_parse_get_fidsAndTypeAndValues_for_messageNode(messageNode[0])
+
+        if (len(fidsDictTypeAndValueList) == 0):            
+            raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ric)
+
+        succ = True
+        for i in range(len(fidList)):
+            if not _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, fidList[i], dataTypeList[i], valueList[i]):
+                succ = False
+        if not succ:
+            raise AssertionError('*ERROR* Some of the RIC\'s fid data type or value are not equal to the expected values.')
+
+
+        for exist_file in outputxmlfile:
+            os.remove(exist_file)
+
+        os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")
+
 def verify_fid_in_range_against_message(messageNode,fid_range):
     """ verify MTE output FIDs is within specific range from message node
          messageNode : iterator pointing to one message node
@@ -480,19 +542,20 @@ def verify_fid_in_range_by_constit_against_pcap(pcapfile,constit,fid_range=[-367
     #Checking Update
     _verify_fid_in_range_by_constit_against_pcap_msgType(pcapfile,fid_range,constit,'Update')
 
-def verify_fid_value_in_message(pcapfile, ric, constitNum, fidList=[], valueList=[]):
+def verify_fid_value_in_message(pcapfile, ric, constitNum, domain='*', fidList=[], valueList=[]):
     """ Verify if the fid value equals to the specified value
 
         Argument : pcapfile - the full name of pacpfile, it should be local path e.g. C:\\temp\\capture.pcap
                    ric - the specified ric name if you want to check
                    constitNum - the constitNum you want to check, should be 0, 1 or 63
+                   domain - the specified target ric domain you want to check (e.g. 'MARKET_PRICE' or 'MARKET_BY_PRICE') or '*' (by default)
                    fidList - a list specify the fid you want to check
                    valueList - a list specify the value you want to compare, it should 1:1 correspond with valueList
 
         Return : Nil
         
         Examples :
-        verify fid in message | capture.pcap | C:\\Program Files\\Reuters Test Tools\\DAS | AAAX.O | 1 | ['6401', '6480'] | ['12345','.[SPSMFDS1M_0'] |
+        verify fid value in message | C:\\Program Files\\Reuters Test Tools\\DAS\\capture.pcap | AAAX.O | MARKET_PRICE | 1 | ['6401', '6480'] | ['12345','.[SPSMFDS1M_0'] |
         
         The example shows to verify if the RIC publishs the DDS_DSO_ID(6401) equals 12345 and SPS_SP_RIC(6480) equals .[SPSMFDS1M_0.
     """        
@@ -500,7 +563,7 @@ def verify_fid_value_in_message(pcapfile, ric, constitNum, fidList=[], valueList
     if (os.path.exists(pcapfile) == False):
         raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)
     #Build the filterstring
-    filterstring = _build_DAS_filter_string('Response', ric, constitNum);
+    filterstring = _build_DAS_filter_string('Response', ric, constitNum, domain);
     
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,'fidVerificationVspcap',20)
     
@@ -850,25 +913,26 @@ def verify_realtime_update_type_in_capture(pcapfile, domain):
         if filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_ORDER' or filterDomain == 'TRWF_TRDM_DMT_MARKET_BY_PRICE' or filterDomain == 'TRWF_TRDM_DMT_MARKET_MAKER':  
             raise AssertionError('*ERROR* realtime updates for domain %s have type other than "unspecified".' %domain)
 
-def verify_setID_in_message(pcapfile, ric, expectedSetID, msgType):
+def verify_setID_in_message(pcapfile, ric, expectedSetID, msgType, domain='*'):
     """ Verify if the SetID in message equals with expected value 
 
         Argument : pcapfile - the full name of pacpfile, it should be local path e.g. C:\\temp\\capture.pcap
                    ric - the specified ric name if you want to check
                    expectedSetID - the number for SetID, it should be 10 or 12 or 14 or 30
                    msgType - should be 'Resopnse' or 'Update'
+                   domain - the specified target ric domain (e.g. 'MARKET_PRICE' or 'MARKET_BY_PRICE') or '*' (by default)
 
         Return : Nil
         
         Examples :
-        verify setID in message | capture.pcap | C:\\Program Files\\Reuters Test Tools\\DAS | AAAX.O | 30 |
+        verify setID in message | C:\\Program Files\\Reuters Test Tools\\DAS\\capture.pcap | AAAX.O | 30 | Resopnse |
         
     """        
     #Check if pcap file exist
     if (os.path.exists(pcapfile) == False):
         raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)
     #Build the filterstring
-    filterstring = _build_DAS_filter_string('*', ric);
+    filterstring = _build_DAS_filter_string('*', ric, '*', domain);
     
     outputxmlfilelist = get_xml_from_pcap(pcapfile,filterstring,'setIDVerificationVspcap',20)
     
@@ -1115,13 +1179,14 @@ def _and_DAS_filter_string(filterString1, filterStirng2):
             return filterStirng2
         else:
             return ''
-    
-def _build_DAS_filter_string(msgClass = '*', ric = '*', constitNum = '*'):
+
+def _build_DAS_filter_string(msgClass = '*', ric = '*', constitNum = '*', domain = '*'):
     """ Build the DAS filter string by specified condition
     
         Argument : msgClass - to filter the pcap message by Response or Update, it should be 'Response' or 'Update' or '*' (by default)
                    ric - to filter the pcap by ric name, it can be a ric name (e.g. AAXRY.O) or '*' (by default)
                    constitNum - to filter the pcap by constitNum, it can be '0' or '1' or '63' or '*' (by default)
+                   domain - to filter the pcap by target ric domain (e.g. 'MARKET_PRICE' or 'MARKET_BY_PRICE') or '*' (by default)
         
         Return : The filter string e.g. 'All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot'
         
@@ -1150,6 +1215,13 @@ def _build_DAS_filter_string(msgClass = '*', ric = '*', constitNum = '*'):
     else:
         pass
     
+    if domain != '*':
+        filterDomain = 'TRWF_TRDM_DMT_'+ domain
+        filterstring_for_doamin = 'All_msgBase_msgKey_domainType = &quot;%s&quot;' % filterDomain
+        filterstring = _and_DAS_filter_string(filterstring, filterstring_for_doamin)
+    else:
+        pass
+
     return filterstring
 
 def _get_RICs_from_das_xml(xmlfile, ricsDict, includeSystemRics):
@@ -1205,6 +1277,65 @@ def _verify_DROP_message_in_specific_constit_message(pcapfile,ricname,constnum,d
         os.remove(delFile)
     
     os.remove(os.path.dirname(outputxmlfilelist[0]) + "/" + outputfileprefix + "xmlfromDAS.log")        
+
+def _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, FID, newDataType, newFIDValue):
+    """ compare the value and its data type found in pcap message for specific FID with the requirement
+        fidsDictTypeAndValueList  : dictionary of FIDs with list of corresponding data type and values (key = FID no., content = list of field data type, FID value) 
+        FID             : FID no. 
+        newDataType     : Expected Data Type of this field (optional - if None, ingore this checking)
+        newFIDValue     : Expected value for the given FID no. (optional - if None, ingore this checking);
+                          support range of integers with delimiter ':' (e.g. "1:100")  or muliple values split by ',' (e.g. "0,1,2")
+        return : True if success, False if any of the checking failed.         
+    """
+    if (fidsDictTypeAndValueList.has_key(FID)):      
+        dataTypeValueList = fidsDictTypeAndValueList[FID]
+
+        #check if dataType is same as expected value
+        if (newDataType != None):          
+            if (dataTypeValueList[0].upper() != newDataType.upper()):            
+                print '*ERROR* FID (%s) Data Type in message (%s) is not equal to (%s)' %(FID, dataTypeValueList[0], newDataType)
+                return False
+
+        #check if FID value is same as expected values (support range of numbers or muliple values split by ',')
+        if (newFIDValue != None):
+            #check FID value within the range of integers split by ':' 
+            refNumList = newFIDValue.split(':')
+            if len(refNumList) == 2:
+                isFailToConvertInt = False
+                try:
+                    lowerLimit = int(refNumList[0])
+                    upperLimit = int(refNumList[1])
+                    actIntVal = int(dataTypeValueList[1])
+                except ValueError:
+                    isFailToConvertInt = True
+
+                if not isFailToConvertInt:
+                    if (actIntVal < lowerLimit or actIntVal > upperLimit):
+                        print '*ERROR* FID (%s) value in message (%s) is not within the range of integer values (%s, %s)' %(FID, actIntVal, lowerLimit, upperLimit)
+                        return False
+                    return True
+
+            #check FID value belong to one of the muliple values split by ','
+            refValueList = newFIDValue.split(',')
+            convertedValueList = []
+
+            for splitRefValue in refValueList:
+                splitRefValue = splitRefValue.strip()
+                if (splitRefValue != None and splitRefValue.isdigit() == False):
+                    #string type need to convert to Hex for comparison
+                    refValue = ""
+                    for character in splitRefValue:
+                            refValue = refValue + (character.encode("hex")).upper()
+                    splitRefValue = refValue
+                convertedValueList.append(splitRefValue)
+
+            if (not dataTypeValueList[1].upper() in convertedValueList):
+                print '*ERROR* FID (%s) value in message (%s) is not belong to one of the expected valuse in the list (%s)' %(FID, dataTypeValueList[1], convertedValueList)
+                return False
+    else:
+        print '*ERROR* Missing FID (%s) in message '%FID
+        return False
+    return True
 
 def _verify_fid_in_range_against_das_xml(xmlfile,fid_range):
     """ verify MTE output FIDs is within specific range from DAS converted xml file

@@ -51,7 +51,9 @@ Validate Downstream FID publication
     ${contextIds}    get context ids from config file    ${mteConfigFile}
     Get FIDFilter File
     : FOR    ${contextId}    IN    @{contextIds}
-    \    ${ricFiledList}    get ric fields from cache    1    ${EMPTY}    ${contextId}
+    \    ${status}    ${ricFiledList}    Run Keyword And Ignore Error    get ric fields from cache    1    ${EMPTY}
+    \    ...    ${contextId}
+    \    Continue For Loop If    '${status}' == 'FAIL'
     \    ${pubRic}=    set variable    ${ricFiledList[0]['PUBLISH_KEY']}
     \    ${domain}=    set variable    ${ricFiledList[0]['DOMAIN']}
     \    Start Capture MTE Output    ${remoteCapture}
@@ -117,15 +119,16 @@ Verify Common Required FID output
     @{ric_contextid_list}    get ric fields from cache    1    ${domain}    ${EMPTY}
     ${publishKey}=    set variable    ${ric_contextid_list[0]['PUBLISH_KEY']}
     ${contextId}=    set variable    ${ric_contextid_list[0]['CONTEXT_ID']}
-    Verify DDS_DSO_ID    ${localCapture}    ${publishKey}
-    @{labelIDs}=    Get Label IDs
-    Verify SPS_SP_RIC    ${localCapture}    ${publishKey}    ${labelIDs[0]}
-    Verify CONTEXT_ID    ${localCapture}    ${publishKey}    ${contextId}
-    Verify MC_LABEL    ${localCapture}    ${publishKey}    ${labelIDs[0]}
-    Verify MC_REC_LAB    ${localCapture}    ${publishKey}    ${labelIDs[0]}
-    Verify UNCOMP_NAM    ${localCapture}    ${publishKey}
-    Verify CMP_NME_ET    ${localCapture}    ${publishKey}
-    Verify SetID In Response    ${localCapture}    ${publishKey}
+    ${mteConfigFile}=    Get MTE Config File
+    ${labelID}=    Get Label ID For Context ID    ${mteConfigFile}    ${contextId}
+    Verify DDS_DSO_ID    ${localCapture}    ${publishKey}    ${domain}
+    Verify SPS_SP_RIC    ${localCapture}    ${publishKey}    ${labelID}    ${domain}
+    Verify CONTEXT_ID    ${localCapture}    ${publishKey}    ${contextId}    ${domain}
+    Verify MC_LABEL    ${localCapture}    ${publishKey}    ${labelID}    ${domain}
+    Verify MC_REC_LAB    ${localCapture}    ${publishKey}    ${labelID}    ${domain}
+    Verify UNCOMP_NAM    ${localCapture}    ${publishKey}    ${domain}
+    Verify CMP_NME_ET    ${localCapture}    ${publishKey}    ${domain}
+    Verify SetID In Response    ${localCapture}    ${publishKey}    ${domain}
     [Teardown]    case teardown    ${localCapture}
 
 Verify Message Key Name is Compressed
@@ -142,13 +145,13 @@ Verify Message Key Name is Compressed
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     Start Capture MTE Output    ${remoteCapture}
-    Load Single EXL File    ${localEXLfile}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
+    Load Single EXL File    ${localEXLfile}    ${serviceName}    ${CHE_IP}
     Wait For Persist File Update    5    60
     Stop Capture MTE Output    1    5
     get remote file    ${remoteCapture}    ${localCapture}
     ${mangle}    Fetch From Left    ${pubRic}    ${ric}
     verify key compression in message    ${localCapture}    ${mangle}${long_ric}
-    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}    --AllowRICChange true
+    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     [Teardown]    case teardown    ${localCapture}
 
 Verify SPS RIC is published
@@ -156,17 +159,55 @@ Verify SPS RIC is published
     ...    Since Recon creates the ddnLabels.xml file, we cannot verify that the SPS RIC name is defined using the correct rules in the production label files.
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1757
+    ...
+    ...    Auto Check SPS FIDs
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2229
+    ...
+    ...    According to DN129 - Service Provider Status - "Section 9.2.1 SubProvider-Level SPS Fields Across Devices" and https://thehub.thomsonreuters.com/docs/DOC-76053, check the published SPS Response RIC with the following fields:
+    ...    1. FID: 1, DataType: UInt, Value: 2923
+    ...    2. FID: 6401, DataType: UInt
+    ...    3. FID: 6469, DataType: Buffer, Value: MTE name
+    ...    4. FID: 6471, DataType: Buffer, Value: MTE name
+    ...    5. FID: 6601, DataType: UInt, Value: 0, 1, 2, 3 or 4
+    ...    6. FID: 12833, DataType: UInt, Value: within 0~9
+    ...    7. FID: 6472, DataType: Time
+    ...    8. FID: 6477, DataType: UInt
+    ...    9. FID: 6473, DataType: UInt, Value: 1000
+    ...    10. FID: 6478, DataType: UInt
+    ...    11. FID: 8323, DataType: Buffer, Value: SPS RIC name with "_INS" at the end, e.g. ".[SPSHKF02M_0_INS"
+    ...    12. FID: 8920, DataType: UInt, Value: 0 or 1
+    ...    13. FID: 6475, DataType: UInt
+    ...    14. FID: 6476, DataType: UInt, Value: 0, 1 or 2
+    ...    15. FID: 6479, DataType: UInt, Value: 0, 1, 2 or 3
+    ...    16. FID: 6474, DataType: UInt, Value: within 0~9
+    ...    17. FID: 5198, DataType: UInt
+    ...    18. FID: 5524, DataType: UInt
+    ...    19. FID: 6480, DataType: Buffer, Value: SPS RIC name
     @{labelIDs}=    Get Label IDs
     ${SPSric}=    Get SPS RIC From Label File    @{labelIDs}[0]
     ${SPSric_input_stats}=    set variable    ${SPSric}_INS
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
+    ${fidsList}=    Create List    1    6401    6469    6471    6601
+    ...    12833    6472    6477    6473    6478    8323
+    ...    8920    6475    6476    6479    6474    5198
+    ...    5524    6480
+    ${dataTypeList}=    Create List    UInt    UInt    Buffer    Buffer    UInt
+    ...    UInt    Time    UInt    UInt    UInt    Buffer
+    ...    UInt    UInt    UInt    UInt    UInt    UInt
+    ...    UInt    Buffer
+    ${valuesList}=    Create List    2923    ${None}    ${MTE}    ${MTE}    0,1,2,3,4
+    ...    0:9    ${None}    ${None}    1000    ${None}    ${SPSric_input_stats}
+    ...    0,1    ${None}    0,1,2    0,1,2,3    0:9    ${None}
+    ...    ${None}    ${SPSric}
     Start Capture MTE Output    ${remoteCapture}    DDNA    @{labelIDs}[0]
     Stop Capture MTE Output    5    10
     get remote file    ${remoteCapture}    ${localCapture}
     Verify Unsolicited Response in Capture    ${localCapture}    ${SPSric}    SERVICE_PROVIDER_STATUS    0
     Verify Unsolicited Response in Capture    ${localCapture}    ${SPSric_input_stats}    SERVICE_PROVIDER_STATUS    0
-    Verify Unsolicited Response in Capture    ${localCapture}    ${SPSric}    SERVICE_PROVIDER_STATUS    1
+    Verify FID DataType Value in Unsolicited Response    ${localCapture}    ${SPSric}    SERVICE_PROVIDER_STATUS    1    ${fidsList}    ${dataTypeList}
+    ...    ${valuesList}
     Verify Unsolicited Response in Capture    ${localCapture}    ${SPSric_input_stats}    SERVICE_PROVIDER_STATUS    1
     [Teardown]    case teardown    ${localCapture}
 
@@ -174,6 +215,20 @@ Verify DDS RIC is published
     [Documentation]    Verify DDS RIC is published
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1758
+    ...
+    ...    Auto Check DUDT FIDs
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2230
+    ...
+    ...    According to DDN DN124 - DUDT Section 4.2, check the published DUDT RIC with the following fields:
+    ...    1. FID: 1080, DataType: UInt
+    ...    2. FID: 3263, DataType: UInt
+    ...    3. FID: 6401, DataType: UInt
+    ...    4. FID: 6461, DataType: Buffer, Value: hostname of TD
+    ...    5. FID: 6462, DataType: UInt, Value: 0, 1 or 2
+    ...    6. FID: 6463, DataType: Integer
+    ...    7. FID: 6464, DataType: Time, Value: within the range of TD Local System Time +10 sec as threshold
+    ...    8. FID: 6468, DataType: Integer
     ...
     ...    Verify DDS RIC is published test fails because it does not conform to DUDT DN
     ...
@@ -204,14 +259,32 @@ Verify DDS RIC is published
     @{labelIDs}=    Get Label IDs
     ${mteConfigFile}=    Get MTE Config File
     ${instance}=    Get MTE Instance    ${mteConfigFile}
+    ${hostname}=    Get Hostname
+    ${fidsList}=    Create List    1080    3263    6401    6461    6462
+    ...    6463    6468    6464
+    ${dataTypeList}=    Create List    UInt    UInt    UInt    Buffer    UInt
+    ...    Integer    Integer    Time
+    ${valuesList}=    Create List    ${None}    ${None}    ${None}    ${hostname}    0,1,2
+    ...    ${None}    ${None}    0
     : FOR    ${labelID}    IN    @{labelIDs}
     \    ${published_DDS_ric}=    Get DDS RIC    ${labelID}    ${instance}
     \    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
+    \    Comment    Update the expected current time range of FID 6464
+    \    ${timeThreshold}=    set variable    10
+    \    ${timeBeforeMidnight}=    Get Time Before Midnight In Seconds
+    \    Comment    To handle the boundary case of running test pass through midnight, sleep a few seconds to avoid the time wrap around to 0.
+    \    Run Keyword If    ${timeThreshold} > ${timeBeforeMidnight}    Sleep    ${timeBeforeMidnight}
+    \    ${curTimeMicrosec}=    Get Time in Microseconds
+    \    ${microsecLowerLimit}=    set variable    ${curTimeMicrosec}
+    \    ${microsecUpperLimit}=    Evaluate    ${curTimeMicrosec}+(${timeThreshold}*1000000)
+    \    Remove From List    ${valuesList}    -1
+    \    Append To List    ${valuesList}    ${microsecLowerLimit}:${microsecUpperLimit}
     \    Start Capture MTE Output    ${remoteCapture}    DDNA    ${labelID}
     \    Stop Capture MTE Output    11    11
     \    get remote file    ${remoteCapture}    ${localCapture}
     \    Verify Unsolicited Response in Capture    ${localCapture}    ${published_DDS_ric}    TIMING_LOG    0
-    \    Verify Unsolicited Response in Capture    ${localCapture}    ${published_DDS_ric}    TIMING_LOG    1
+    \    Verify FID DataType Value in Unsolicited Response    ${localCapture}    ${published_DDS_ric}    TIMING_LOG    1    ${fidsList}
+    \    ...    ${dataTypeList}    ${valuesList}
     [Teardown]    case teardown    ${localCapture}
 
 Perform DVT Validation - Process all EXL files
@@ -222,7 +295,7 @@ Perform DVT Validation - Process all EXL files
     ${serviceName}    Get FMS Service Name
     ${currentDateTime}    get date and time
     Load All EXL Files    ${serviceName}    ${CHE_IP}
-    wait smf log message after time    FMS REORG DONE    ${currentDateTime}    2    120
+    wait smf log message after time    FMS REORG DONE    ${currentDateTime}    waittime=2    timeout=120
     Stop Capture MTE Output
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
@@ -258,7 +331,7 @@ Perform DVT Validation -- Restart MTE
     Start Capture MTE Output    ${remoteCapture}
     ${currentDateTime}    get date and time
     Start MTE
-    wait SMF log message after time    Finished Sending Images    ${currentDateTime}    2    120
+    wait SMF log message after time    Finished Sending Images    ${currentDateTime}    waittime=2    timeout=120
     Stop Capture MTE Output
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     get remote file    ${remoteCapture}    ${localCapture}
@@ -361,40 +434,40 @@ Rebuild FMS service
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
 Verify DDS_DSO_ID
-    [Arguments]    ${pcapfilename}    ${ricname}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${domain}
     [Documentation]    Verify DDO_DSO_ID should equal to provider id
     ${mteConfigFile}=    Get MTE Config File
     ${providerId}    Get MTE Config Value    ${mteConfigFile}    ProviderId
     ${fids}    Create List    6401
     ${values}    Create List    ${providerId}
-    verify fid value in message    ${pcapfilename}    ${ricname}    1    ${fids}    ${values}
+    verify fid value in message    ${pcapfilename}    ${ricname}    1    ${domain}    ${fids}    ${values}
 
 Verify SPS_SP_RIC
-    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}    ${domain}
     ${spsRicName}    Get SPS RIC From Label File    ${labelid}
     ${fids}    Create List    6480
     ${values}    Create List    ${spsRicName}
-    verify fid value in message    ${pcapfilename}    ${ricname}    1    ${fids}    ${values}
+    verify fid value in message    ${pcapfilename}    ${ricname}    1    ${domain}    ${fids}    ${values}
 
 Verify CONTEXT_ID
-    [Arguments]    ${pcapfilename}    ${ricname}    ${contextID}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${contextID}    ${domain}
     ${fids}    Create List    5357
     ${values}    Create List    ${contextID}
-    verify fid value in message    ${pcapfilename}    ${ricname}    1    ${fids}    ${values}
+    verify fid value in message    ${pcapfilename}    ${ricname}    1    ${domain}    ${fids}    ${values}
 
 Verify MC_LABEL
-    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}    ${domain}
     ${fids}    Create List    6394
     ${values}    Create List    ${labelid}
-    verify fid value in message    ${pcapfilename}    ${ricname}    0    ${fids}    ${values}
+    verify fid value in message    ${pcapfilename}    ${ricname}    0    ${domain}    ${fids}    ${values}
 
 Verify CMP_NME_ET
-    [Arguments]    ${pcapfilename}    ${ricname}
-    verify CMP_NME_ET in message    ${pcapfilename}    ${ricname}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${domain}
+    verify CMP_NME_ET in message    ${pcapfilename}    ${ricname}    ${domain}
 
 Get SPS RIC From Label File
     [Arguments]    ${labelid}
-    ${ddnLabelfilepath}=    search remote files    ${BASE_DIR}    ddnLabels.xml    recurse=${True}
+    ${ddnLabelfilepath}=    Get CHE Config Filepaths    ddnLabels.xml
     Length Should Be    ${ddnLabelfilepath}    1    ddnLabels.xml file not found (or multiple files found).
     ${localddnLabelfile}=    set variable    ${LOCAL_TMP_DIR}/ddnLabel.xml
     get remote file    ${ddnLabelfilepath[0]}    ${localddnLabelfile}
@@ -406,20 +479,20 @@ Get SPS RIC From Label File
     [Return]    ${spsRicName}
 
 Verify UNCOMP_NAM
-    [Arguments]    ${pcapfilename}    ${ricname}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${domain}
     ${fids}    Create List    6395
     ${values}    Create List    ${ricname}
-    verify fid value in message    ${pcapfilename}    ${ricname}    0    ${fids}    ${values}
+    verify fid value in message    ${pcapfilename}    ${ricname}    0    ${domain}    ${fids}    ${values}
 
 Verify SetID In Response
-    [Arguments]    ${pcapfilename}    ${ricname}
-    verify setID in message    ${pcapfilename}    ${ricname}    30    Resopnse
+    [Arguments]    ${pcapfilename}    ${ricname}    ${domain}
+    verify setID in message    ${pcapfilename}    ${ricname}    30    Resopnse    ${domain}
 
 Verify MC_REC_LAB
-    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}
+    [Arguments]    ${pcapfilename}    ${ricname}    ${labelid}    ${domain}
     ${fids}    Create List    9140
     ${values}    Create List    ${labelid}
-    verify fid value in message    ${pcapfilename}    ${ricname}    0    ${fids}    ${values}
+    verify fid value in message    ${pcapfilename}    ${ricname}    0    ${domain}    ${fids}    ${values}
 
 Verify FMS Correction Update
     [Arguments]    ${service}
