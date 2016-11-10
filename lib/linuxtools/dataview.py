@@ -2,7 +2,7 @@ import string
 import re
 
 from utilpath import utilpath
-from utils.ssh import _exec_command
+from utils.ssh import _exec_command,_start_command
 
 def convert_dataView_response_to_dictionary(dataview_response):
     """ capture the FID Name and FID value from DateView output which return from run_dataview
@@ -139,6 +139,71 @@ def run_dataview_noblanks(dataType, multicastIP, interfaceIP, multicastPort, Lin
     noBlanks = re.sub('.*<blank>\n','',stdout)
    
     return noBlanks
+
+def run_dataview_saveToFile(dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain, outputfile, *optArgs):
+    """ Run Dataview command with specified arguments and don't wait it exit because don't know the duration .
+        Argument :
+            dataType : Could be TRWF2 or RWF
+            multicastIP : multicast IP DataView listen to
+            multicastPort : muticast port DataView used to get data
+            interfaceIP : interface IP (DDNA or DDNB)
+            LineID : lineID published by line handler
+            RIC : published RIC by MTE
+            Domain : published data domain
+            optargs : a variable list of optional arguments for refresh request and DataView run time.
+        Return: pid of DataView.
+        examples:
+            Run Dataview SaveToFile    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]    ${lineID}    ${ric}
+            ...    ${domain}    ${outputFile}    -IMSG ${reqMsgMultcastAddres[0]}    -PMSG ${reqMsgMultcastAddres[1]}    -S 0
+            ...    @{optargs}
+            DataView -TRWF2 -IM 232.2.19.229 -IH 10.91.57.71 -PM 7777 -L 4608 -R ??? -D MARKET_BY_PRICE  -O output_test.txt -REF -IMSG 232.2.9.0 -PMSG 9000 -S 0 
+            DataView -TRWF2 -IM 232.2.19.229 -IH 10.91.57.71 -PM 7777 -L 4096 -R .[SPSCB1L2_I -D SERVICE_PROVIDER_STATUS
+            ftp://ftp-coll.stldevnet.reuters.com/release/CI-CD/CATF/Installers/OL%20DataView%20Release%20Notes.txt
+    """
+    
+    # cleanup all existing DataView process
+    cmd = 'pkill DataView'
+    _exec_command(cmd)
+
+    # use pipefail to detect failure of a command within a pipeline
+    # remove non-printable chars; dataview COMP_NAME output contains binary characters that can cause utf-8 decode problems
+    cmd = 'set -o pipefail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s -O %s' % (utilpath.DATAVIEW, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain, outputfile)
+    cmd = cmd + ' ' + ' '.join( map(str, optArgs))
+    #cmd = cmd + ' | tr -dc \'[:print:],[:blank:],\\n\''
+    print '*INFO* ' + cmd
+    if '-REF' in optArgs:
+        stdout, stderr, rc = _exec_command(cmd)
+    else:
+        _start_command(cmd)
+    
+    if '-REF' in optArgs:
+        if rc != 0:
+            raise AssertionError('*ERROR* %s' %stderr)
+        return ''
+    
+    #|grep -i %s"%RIC
+    cmd = "ps -ef | grep -i 'dataview' | grep -v grep |grep -v pipefail"
+    stdout, stderr, rc = _exec_command(cmd)
+    import re
+    pattern = re.compile(r'\w\s+(\d+)')
+    pid =''
+    if re.findall(pattern, stdout)!=[]:
+        pid=re.findall(pattern, stdout)[0]
+        return pid
+    else:
+        raise AssertionError('*ERROR* Cannot find any DataView process' )
+
+
+def stop_dataview(pidDataView):
+    """ Stop Dataview command.
+        Argument :
+            pidDataView: pid of the DataView which want to stop
+        Return: None
+    """
+    stdout, stderr, rc = _exec_command('kill -SIGINT %s'%pidDataView)
+    print '*INFO* stop dataview: %s'%stdout
+    if rc != 0:
+        raise AssertionError('*ERROR* %s' %stderr)
 
 def verify_mangling_from_dataview_response(dataview_response,expected_pe,expected_ricname):
     """ Based on the DataView response to check if the expected Ric could be retrieved from MTE and having expected PE value
