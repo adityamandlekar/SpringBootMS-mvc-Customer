@@ -297,7 +297,7 @@ Verify Deletion Delay
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${StartOfDayGMT}    Get Start GMT Time
+    ${StartOfDayGMT}    ${Updateflag}    ${backupCfgFile}    ${orgCfgFile}    Get Start Time
     ${MTETimeOffset}=    Get MTE Machine Time Offset
     Drop ric    ${ric}    ${domain}    ${serviceName}
     Comment    Stopping EventScheduler elimintates extra processing that is done at each start of day and many FMSClient:SocketException messages. We are only interested in the deletion delay change.    This will be restarted during case teardown.
@@ -309,7 +309,7 @@ Verify Deletion Delay
     \    Should Be True    ${ricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
     \    Rollover MTE Start Date    ${StartOfDayGMT}
     Verify RIC Not In MTE Cache    ${ric}    ${domain}
-    [Teardown]    Restore MTE Machine Time    ${MTETimeOffset}
+    [Teardown]    Tear Down Verify Deletion Delay    ${Updateflag}    ${backupCfgFile}    ${orgCfgFile}    ${MTETimeOffset}
 
 Verify Drop and Undrop from FMSCmd
     [Documentation]    Verify Drop/Undrop form FMSCmd, 1) Verify MTE is running.
@@ -404,15 +404,6 @@ Drop ric
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
     wait smf log message after time    Drop    ${currDateTime}
 
-Get Start GMT Time
-    ${mteConfigFile}=    Get MTE Config File
-    ${StartOfDayTime}=    get MTE config value    ${mteConfigFile}    StartOfDayTime
-    ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
-    ${StartOfDayGMT} =    Split String    ${StartOfDayGMT}    :
-    ${StartOfDayGMT} =    Add Time To Time    ${StartOfDayGMT[0]} hours ${StartOfDayGMT[1]} minutes    00:01:00    timer    exclude_mills= yes
-    ${StartOfDayGMT} =    Get Substring    ${StartOfDayGMT}    \    5
-    [Return]    ${StartOfDayGMT}
-
 Convert to GMT
     [Arguments]    ${localTime}
     [Documentation]    convert the local time to GMT
@@ -498,3 +489,41 @@ Disable MTE Clock Sync
 Restore MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
     ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
+
+Get Start Time
+    [Documentation]    Get startOfday time from MTE config file
+    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${mteConfigFile}=    Get MTE Config File
+    ${StartOfDayTime}=    get MTE config value    ${mteConfigFile}    StartOfDayTime
+    ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
+    ${Updateflag}    Run Keyword if    '${StartOfDayGMT}' == '00:00'    set variable    1
+    ...    ELSE    set variable    0
+    Run Keyword if    '${Updateflag}' == '1'    Set Start Time    ${StartOfDayGMT}    ${orgCfgFile}
+    [Return]    ${StartOfDayGMT}    ${Updateflag}    ${backupCfgFile}    ${orgCfgFile}
+
+Set Start Time
+    [Arguments]    ${StartOfDayGMT}    ${orgCfgFile}
+    [Documentation]    Set StartofDay Time more one minute when the startoftimeGMT == 00:00
+    ${StartOfDayGMT} =    Split String    ${StartOfDayGMT}    :
+    ${StartOfDayGMT} =    Add Time To Time    ${StartOfDayGMT[0]} hours ${StartOfDayGMT[1]} minutes    00:01:00    timer    exclude_mills= yes
+    ${StartOfDayGMT} =    Get Substring    ${StartOfDayGMT}    \    5
+    set value in MTE cfg    ${orgCfgFile}    StartOfDayTime    ${StartOfDayGMT}
+    Stop MTE
+    Start MTE
+    [Return]    ${StartOfDayGMT}    ${orgCfgFile}
+
+Remote Cfg File
+    [Arguments]    ${Updateflag}    ${backupCfgFile}    ${orgCfgFile}
+    [Documentation]    Restore MTE config file after startOfDay time is updated
+    Run Keyword if    '${Updateflag}' == '1'    restore remote cfg file    ${orgCfgFile}    ${backupCfgFile}
+    stop MTE
+    start MTE
+    [Teardown]
+
+Tear Down Verify Deletion Delay
+    [Arguments]    ${Updateflag}    ${backupCfgFile}    ${orgCfgFile}    ${MTETimeOffset}
+    [Documentation]    Remote Cfg File if the startOfDay time value is changed.
+    ...    Restore MTE Machine Time
+    Remote Cfg File    ${Updateflag}     ${backupCfgFile}    ${orgCfgFile}
+    Restore MTE Machine Time    ${MTETimeOffset}
+    [Teardown]
