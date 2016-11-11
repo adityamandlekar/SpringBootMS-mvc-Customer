@@ -297,17 +297,19 @@ Verify Deletion Delay
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${StartOfDayGMT}    ${Updateflag}    ${backupCfgFile}    ${orgCfgFile}    Get Start Time
+    ${StartOfDayTime}    ${backupCfgFile}    ${orgCfgFile}    Get Start Time
+    ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
+    ${Updateflag}    ${orgCfgFile}    ${StartOfDayGMTUpdate}    Set Start Time    ${orgCfgFile}    ${StartOfDayGMT}
     ${MTETimeOffset}=    Get MTE Machine Time Offset
     Drop ric    ${ric}    ${domain}    ${serviceName}
     Comment    Stopping EventScheduler elimintates extra processing that is done at each start of day and many FMSClient:SocketException messages. We are only interested in the deletion delay change.    This will be restarted during case teardown.
     ${result}=    Run Commander    process    stop EventScheduler
-    : FOR    ${daysLeft}    IN RANGE    5    0    -1
+    :FOR    ${daysLeft}    IN RANGE    5    0    -1
     \    ${ricFields}=    Get All Fields For RIC From Cache    ${ric}    ${domain}
     \    Should Be Equal    ${ricFields['PUBLISHABLE']}    FALSE
     \    Should Be Equal As Integers    ${ricFields['DELETION_DELAY_DAYS_REMAINING']}    ${daysLeft}
     \    Should Be True    ${ricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
-    \    Rollover MTE Start Date    ${StartOfDayGMT}
+    \    Rollover MTE Start Date    ${StartOfDayGMTUpdate}
     Verify RIC Not In MTE Cache    ${ric}    ${domain}
     [Teardown]    Tear Down Verify Deletion Delay    ${Updateflag}    ${backupCfgFile}    ${orgCfgFile}    ${MTETimeOffset}
 
@@ -495,35 +497,26 @@ Get Start Time
     ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${mteConfigFile}=    Get MTE Config File
     ${StartOfDayTime}=    get MTE config value    ${mteConfigFile}    StartOfDayTime
-    ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
-    ${Updateflag}    Run Keyword if    '${StartOfDayGMT}' == '00:00'    set variable    1
-    ...    ELSE    set variable    0
-    Run Keyword if    '${Updateflag}' == '1'    Set Start Time    ${StartOfDayGMT}    ${orgCfgFile}
-    [Return]    ${StartOfDayGMT}    ${Updateflag}    ${backupCfgFile}    ${orgCfgFile}
+    [Return]    ${StartOfDayTime}    ${backupCfgFile}    ${orgCfgFile}
 
 Set Start Time
-    [Arguments]    ${StartOfDayGMT}    ${orgCfgFile}
-    [Documentation]    Set StartofDay Time more one minute when the startoftimeGMT == 00:00
-    ${StartOfDayGMT} =    Split String    ${StartOfDayGMT}    :
-    ${StartOfDayGMT} =    Add Time To Time    ${StartOfDayGMT[0]} hours ${StartOfDayGMT[1]} minutes    00:01:00    timer    exclude_mills= yes
-    ${StartOfDayGMT} =    Get Substring    ${StartOfDayGMT}    \    5
-    set value in MTE cfg    ${orgCfgFile}    StartOfDayTime    ${StartOfDayGMT}
+    [Arguments]    ${orgCfgFile}    ${StartOfDayGMT}
+    [Documentation]    Set StartofDay Time == 00:01 and Updateflag == 1 if when the startoftimeGMT == 00:00 from MTE config otherwise Updateflag == 0
+    ...
+    ...    Updateflag is used to lable if the MET config is updated in order to decide to need to restore remote config file.
+    ${Updateflag}    Run Keyword if    '${StartOfDayGMT}' == '00:00'    set variable    1
+    ...    ELSE    set variable    0
+    ${StartOfDayGMTUpdate}    Run Keyword if    '${Updateflag}' == '1'    set variable    00:01
+    ...    ELSE    set variable    ${StartOfDayGMT}
+    Run Keyword if    '${Updateflag}' == '1'    set value in MTE cfg    ${orgCfgFile}    StartOfDayTime    '00:01'
     Stop MTE
     Start MTE
-    [Return]    ${StartOfDayGMT}    ${orgCfgFile}
-
-Remote Cfg File
-    [Arguments]    ${Updateflag}    ${backupCfgFile}    ${orgCfgFile}
-    [Documentation]    Restore MTE config file after startOfDay time is updated
-    Run Keyword if    '${Updateflag}' == '1'    restore remote cfg file    ${orgCfgFile}    ${backupCfgFile}
-    stop MTE
-    start MTE
-    [Teardown]
+    [Return]    ${Updateflag}    ${orgCfgFile}    ${StartOfDayGMTUpdate}
 
 Tear Down Verify Deletion Delay
     [Arguments]    ${Updateflag}    ${backupCfgFile}    ${orgCfgFile}    ${MTETimeOffset}
-    [Documentation]    Remote Cfg File if the startOfDay time value is changed.
+    [Documentation]    Restore Remote Cfg File if the startOfDay time value is changed.
     ...    Restore MTE Machine Time
-    Remote Cfg File    ${Updateflag}     ${backupCfgFile}    ${orgCfgFile}
+    Run Keyword if    '${Updateflag}' == '1'    restore remote cfg file    ${orgCfgFile}    ${backupCfgFile}
     Restore MTE Machine Time    ${MTETimeOffset}
     [Teardown]
