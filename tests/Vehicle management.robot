@@ -508,7 +508,6 @@ Set Start Time
     ${StartOfDayGMTUpdate}    set variable    00:01
     ${Updateflag}    set variable    1
     set value in MTE cfg    ${orgCfgFile}    StartOfDayTime    ${StartOfDayGMTUpdate}
-    log    ${Updateflag}
     Stop MTE
     Start MTE
     [Return]    ${Updateflag}    ${StartOfDayGMTUpdate}    ${orgCfgFile}
