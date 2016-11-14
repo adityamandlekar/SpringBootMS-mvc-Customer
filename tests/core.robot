@@ -751,43 +751,6 @@ Send TRWF2 Refresh Request No Blank FIDs
     Remove Files    ${labelfile}    ${updatedlabelfile}
     [Return]    ${res}
 
-Send TRWF2 Refresh Request And Save To File
-    [Arguments]    ${ric}    ${domain}    ${outputFile}    @{optargs}
-    [Documentation]    Start DataView to capture all TRWF2 MTE update, then start playback, stop DataView when playback done.
-    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2104
-    ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
-    Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
-    ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
-    get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
-    ${updatedlabelfile}=    set variable    ${LOCAL_TMP_DIR}/updated_reqLabel.xml
-    remove_xinclude_from_labelfile    ${labelfile}    ${updatedlabelfile}
-    @{labelIDs}=    Get Label IDs
-    ${pid}=    set variable    ${EMPTY}
-    : FOR    ${labelID}    IN    @{labelIDs}
-    \    ${reqMsgMultcastAddres}=    get multicast address from label file    ${updatedlabelfile}    ${labelID}
-    \    ${lineID}=    get_stat_block_field    ${MTE}    multicast-${labelID}    publishedLineId
-    \    ${multcastAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    multicastOutputAddress
-    \    ${interfaceAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    primaryOutputAddress
-    \    @{multicastIPandPort}=    Split String    ${multcastAddres}    :    1
-    \    @{interfaceIPandPort}=    Split String    ${interfaceAddres}    :    1
-    \    ${length} =    Get Length    ${multicastIPandPort}
-    \    Should Be Equal As Integers    ${length}    2
-    \    ${length} =    Get Length    ${interfaceIPandPort}
-    \    Should Be Equal As Integers    ${length}    2
-    \    Comment    ${res}=    Run Dataview Noblanks    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]
-    \    ...    @{multicastIPandPort}[1]    ${lineID}    ${ric}    ${domain}    -REF
-    \    ...    -IMSG ${reqMsgMultcastAddres[0]}    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10    @{optargs}
-    \    Comment    ${resLength} =    Get Length    ${res}
-    \    ${pid}=    Run Dataview SaveToFile    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]
-    \    ...    ${lineID}    ${ric}    ${domain}    ${outputFile}    -REF
-    \    ...    -IMSG ${reqMsgMultcastAddres[0]}    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10    @{optargs}
-    \    sleep    3
-    \    ${res}    count remote lines    ${outputFile}
-    \    ${linecount}    Convert To Integer    ${res}
-    \    log    ${linecount}
-    \    Exit For Loop If    ${linecount} > 1
-    [Return]    ${linecount}
-
 Set 24x7 Feed And Trade Time And No Holidays
     [Documentation]    Udate EXL files to define feed time and trade time to always be open and no holidays. This KW does not load the EXL files, just modifies them. Start MTE KW loads the EXL files.
     ...    For all trade time RICs:
@@ -939,9 +902,9 @@ Start Capture MTE Output
     @{IpAndPort}=    get outputAddress and port for mte    ${labelIDsUse}
     start capture packets    ${filename}    ${interfaceName}    ${IpAndPort}
 
-Start Capture MTE Output By DataView And Save To File
-    [Arguments]    ${ric}    ${domain}    ${outputFile}    @{optargs}
-    [Documentation]    Start DataView to capture all TRWF2 MTE update, then start playback, stop DataView when playback done.
+Start Capture MTE Output By DataView
+    [Arguments]    ${ric}    ${domain}    ${labelID}    ${outputFile}    @{optargs}
+    [Documentation]    Start DataView to capture TRWF2 MTE update.
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2104
     ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
     Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
@@ -949,28 +912,18 @@ Start Capture MTE Output By DataView And Save To File
     get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
     ${updatedlabelfile}=    set variable    ${LOCAL_TMP_DIR}/updated_reqLabel.xml
     remove_xinclude_from_labelfile    ${labelfile}    ${updatedlabelfile}
-    @{labelIDs}=    Get Label IDs
-    log    @{labelIDs}
-    ${pid}=    set variable    ${EMPTY}
-    : FOR    ${labelID}    IN    @{labelIDs}
-    \    ${reqMsgMultcastAddres}=    get multicast address from label file    ${updatedlabelfile}    ${labelID}
-    \    ${lineID}=    get_stat_block_field    ${MTE}    multicast-${labelID}    publishedLineId
-    \    ${multcastAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    multicastOutputAddress
-    \    ${interfaceAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    primaryOutputAddress
-    \    @{multicastIPandPort}=    Split String    ${multcastAddres}    :    1
-    \    @{interfaceIPandPort}=    Split String    ${interfaceAddres}    :    1
-    \    ${length} =    Get Length    ${multicastIPandPort}
-    \    Should Be Equal As Integers    ${length}    2
-    \    ${length} =    Get Length    ${interfaceIPandPort}
-    \    Should Be Equal As Integers    ${length}    2
-    \    ${res}=    Run Dataview Noblanks    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]
-    \    ...    ${lineID}    ${ric}    ${domain}    -REF    -IMSG ${reqMsgMultcastAddres[0]}
-    \    ...    -PMSG ${reqMsgMultcastAddres[1]}    -S 0    -EXITDELAY 10    @{optargs}
-    \    ${resLength} =    Get Length    ${res}
-    \    ${pid}=    Run Keyword If    ${resLength} > 0    Run Dataview SaveToFile    TRWF2    @{multicastIPandPort}[0]
-    \    ...    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]    ${lineID}    ${ric}    ${domain}
-    \    ...    ${outputFile}    @{optargs}
-    \    Exit For Loop If    ${resLength} > 0
+    ${reqMsgMultcastAddres}=    get multicast address from label file    ${updatedlabelfile}    ${labelID}
+    ${lineID}=    get_stat_block_field    ${MTE}    multicast-${labelID}    publishedLineId
+    ${multcastAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    multicastOutputAddress
+    ${interfaceAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    primaryOutputAddress
+    @{multicastIPandPort}=    Split String    ${multcastAddres}    :    1
+    @{interfaceIPandPort}=    Split String    ${interfaceAddres}    :    1
+    ${length} =    Get Length    ${multicastIPandPort}
+    Should Be Equal As Integers    ${length}    2
+    ${length} =    Get Length    ${interfaceIPandPort}
+    Should Be Equal As Integers    ${length}    2
+    ${pid}=    Start Dataview    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]    ${lineID}
+    ...    ${ric}    ${domain}    ${outputFile}    @{optargs}
     [Return]    ${pid}
 
 Start MTE
