@@ -11,6 +11,7 @@ Verify Sync Pulse Missed QoS
     ...
     ...    Test Case - Verify Sync Pulse Missed QoS by blocking sync pulse publiscation port and check the missing statistic by SCWCli
     [Tags]    Peer
+    [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     ${ddnpublishersLabelfilepaths}=    Get CHE Config Filepaths    ddnPublishers.xml
@@ -34,21 +35,42 @@ Verify Sync Pulse Missed QoS
     \    unblock_dataflow
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     \    sleep    5
+    Comment    Restore DDNB
+    :FOR    ${labelID}    IN    @{labelIDs}
+    \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
+    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
+    \    Disable NIC    DDNB
+    \    sleep    10
+    \    Enable NIC    DDNB
+    \    sleep    10
+    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
+    \    lists Should Be Equal    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     Comment    Blocking Live Side OUTPUT
     Switch to TD Box    ${CHE_A_IP}
     @{labelIDs}=    Get Label IDs
     get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
     : FOR    ${labelID}    IN    @{labelIDs}
-    \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
     \    block dataflow by port protocol    OUTPUT    UDP    @{multicastIPandPort}[1]
     \    sleep    5
     \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
     \    unblock_dataflow
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
+    Comment    Restore DDNA
+    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
+    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    Switch to TD Box    ${CHE_A_IP}
+    :FOR    ${labelID}    IN    @{labelIDs}
+    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
+    \    Disable NIC    DDNA
+    \    sleep    10
+    \    Enable NIC    DDNA
+    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
+    \    lists Should Be Equal    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     [Teardown]    Run Keywords    Unblock Dataflow
-    ...    AND    Case Teardown    ${modifyLabelFile}    ${labelfile_local}
+    ...    AND    Case Teardown    QoS Case Teardown    ${modifyLabelFile}    ${labelfile_local}
 
 Verify QoS Failover for Critical Process Failure
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1762 to verify QOS CritProcessFail will increase and failover happen if critical process is shutdown.
@@ -248,154 +270,6 @@ Watchdog QOS - FMS NIC
     Enable NIC    DB_P_FM
     Verify QOS for FMS NIC    100    100    A    ${master_ip}
     [Teardown]    QoS Case Teardown
-
-LindaVerify Sync Pulse Missed QoS
-    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
-    ...
-    ...    Test Case - Verify Sync Pulse Missed QoS by blocking sync pulse publiscation port and check the missing statistic by SCWCli
-    [Tags]    Peer
-    [Setup]    QoS Case Setup
-    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
-    ${master_ip}    get master box ip    ${ip_list}
-    ${ddnpublishersLabelfilepaths}=    Get CHE Config Filepaths    ddnPublishers.xml
-    ${ddnpublishersLabelfilepath}=    Get From List    ${ddnpublishersLabelfilepaths}    0
-    ${labelfile_local}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishers.xml
-    ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
-    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
-    Verify MTE State IN Specific Box    ${CHE_A_IP}    LIVE
-    Verify MTE State IN Specific Box    ${CHE_B_IP}    STANDBY
-    Comment    Blocking Standby Side INPUT
-    Switch to TD Box    ${CHE_B_IP}
-    @{labelIDs}=    Get Label IDs
-    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
-    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
-    :FOR    ${labelID}    IN    @{labelIDs}
-    \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
-    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
-    \    block dataflow by port protocol    INPUT    UDP    @{multicastIPandPort}[1]
-    \    sleep    5
-    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
-    \    comment    restore DDNB
-    \    Disable NIC    DDNB
-    \    Enable NIC    DDNB
-    \    Sleep    5
-    \    @{syncPulseCountAfterNIC}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
-    \    unblock_dataflow
-    \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
-    \    verify sync pulse missed Qos byChangingNIC    @{syncPulseCountAfterNIC}    @{syncPulseCountAfter}
-    \    comment    restore DDNB
-    \    Disable NIC    DDNB
-    \    Enable NIC    DDNB
-    \    @{syncPulseCountAfterNIC}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
-    \    verify sync pulse missed Qos byChangingNIC    @{syncPulseCountAfterNIC}    @{syncPulseCountAfter}
-    \    sleep    5
-    Comment    Blocking Live Side OUTPUT
-    Switch to TD Box    ${CHE_A_IP}
-    @{labelIDs}=    Get Label IDs
-    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
-    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
-    :FOR    ${labelID}    IN    @{labelIDs}
-    \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
-    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
-    \    block dataflow by port protocol    OUTPUT    UDP    @{multicastIPandPort}[1]
-    \    sleep    5
-    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
-    \    unblock_dataflow
-    \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
-    [Teardown]    Run Keywords    Unblock Dataflow
-    ...    AND    Case Teardown    QoS Case Teardown    ${modifyLabelFile}    ${labelfile_local}
-
-Watchdog QOS - MTE Egress NIC_linda
-    [Documentation]    Test the QOS value and MTE failover when disabling MTE Egress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1966
-    ...
-    ...    1. Disable DDNA NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNA NIC. \ Verify QOS returns to 100 and MTE recovers to STANDBY.
-    ...    2. Disable DDNB NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNB NIC. \ Verify QOS returns to 100 and MTE recovers to STANDBY.
-    ...    3. Disable DDNA NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNA NIC. \ Verify QOS returns to 100.
-    ...    4. Disable DDNB NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNB NIC. \ Verify QOS returns to 100.
-    ...    5. Disable both DDNA and DDNB on STANDBY MTE box. \ VerifyQOS EgressNIC:0, Total QOS:0. \ Enable both DDNA and DDNB. \ Verify QOS returns to 100.
-    [Tags]    Peer
-    [Setup]    QoS Case Setup
-    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
-    ${master_ip}    get master box ip    ${ip_list}
-    Comment    Disable DDNA on LIVE box, MTE should failover
-    Switch To TD Box    ${CHE_A_IP}
-    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
-    Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
-    Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    Verify QOS for Egress NIC    100    100    A    ${master_ip}
-    Disable NIC    DDNA
-    Sleep    10
-    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
-    Enable NIC    DDNA
-    Sleep    10
-    Comment    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
-    [Teardown]    QoS Case Teardown
-
-LindaVerify Sync Pulse Missed QoS1
-    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
-    ...
-    ...    Test Case - Verify Sync Pulse Missed QoS by blocking sync pulse publiscation port and check the missing statistic by SCWCli
-    [Tags]    Peer
-    [Setup]    QoS Case Setup
-    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
-    ${master_ip}    get master box ip    ${ip_list}
-    ${ddnpublishersLabelfilepaths}=    Get CHE Config Filepaths    ddnPublishers.xml
-    ${ddnpublishersLabelfilepath}=    Get From List    ${ddnpublishersLabelfilepaths}    0
-    ${labelfile_local}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishers.xml
-    ${modifyLabelFile}=    set variable    ${LOCAL_TMP_DIR}/ddnPublishersModify.xml
-    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
-    Verify MTE State IN Specific Box    ${CHE_A_IP}    LIVE
-    Verify MTE State IN Specific Box    ${CHE_B_IP}    STANDBY
-    Comment    Blocking Standby Side INPUT
-    Comment    Switch to TD Box    ${CHE_B_IP}
-    Comment    @{labelIDs}=    Get Label IDs
-    Comment    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
-    Comment    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
-    Comment    :FOR    ${labelID}    IN    @{labelIDs}
-    Comment    \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
-    Comment    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
-    Comment    \    block dataflow by port protocol    INPUT    UDP    @{multicastIPandPort}[1]
-    Comment    \    sleep    5
-    Comment    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
-    Comment    \    unblock_dataflow
-    Comment    \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
-    Comment    \    sleep    5
-    Comment    comment    restore DDNB
-    Comment    :FOR    ${labelID}    IN    @{labelIDs}
-    Comment    \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
-    Comment    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
-    Comment    \    Disable NIC    DDNB
-    Comment    \    sleep    10
-    Comment    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
-    Comment    \    Enable NIC    DDNB
-    Comment    \    sleep    10
-    Comment    \    verify sync pulse missed Qos byRestoreNIC    ${syncPulseCountBefore}    ${syncPulseCountAfter}
-    Comment    \    sleep    5
-    Comment    Blocking Live Side OUTPUT
-    Switch to TD Box    	${CHE_A_IP}
-    @{labelIDs}=    Get Label IDs
-    get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
-    remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
-    Comment    :FOR    ${labelID}    IN    @{labelIDs}
-    Comment    \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
-    Comment    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
-    Comment    \    block dataflow by port protocol    OUTPUT    UDP    @{multicastIPandPort}[1]
-    Comment    \    sleep    10
-    Comment    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
-    Comment    \    unblock_dataflow
-    Comment    \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
-    Comment    \    Sleep    5
-    :FOR    ${labelID}    IN    @{labelIDs}
-    \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
-    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
-    \    Disable NIC    DDNA
-    \    sleep    10
-    \    Enable NIC    DDNA
-    \    Comment    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
-    \    Comment    @{syncPulseCountAfter}    get SyncPulseMissed    ${master_ip}
-    \    Comment    verify sync pulse missed Qos byRestoreNIC    ${syncPulseCountBefore}    ${syncPulseCountAfter}
-    [Teardown]    Run Keywords    Unblock Dataflow
-    ...    AND    Case Teardown    QoS Case Teardown    ${modifyLabelFile}    ${labelfile_local}
 
 *** Keywords ***
 Disable NIC
