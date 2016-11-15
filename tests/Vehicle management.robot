@@ -299,7 +299,7 @@ Verify Deletion Delay
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     ${StartOfDayTime}    ${backupCfgFile}    ${orgCfgFile}    Get Start Time
     ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
-    ${Updateflag}    ${StartOfDayGMTUpdate}    ${orgCfgFile}    Set Start Time    ${orgCfgFile}    ${StartOfDayGMT}
+    ${Updateflag}    ${StartOfDayGMTUpdate}    Set Start Time    ${orgCfgFile}    ${StartOfDayGMT}
     ${MTETimeOffset}=    Get MTE Machine Time Offset
     Drop ric    ${ric}    ${domain}    ${serviceName}
     Comment    Stopping EventScheduler elimintates extra processing that is done at each start of day and many FMSClient:SocketException messages. We are only interested in the deletion delay change.    This will be restarted during case teardown.
@@ -503,14 +503,14 @@ Set Start Time
     [Arguments]    ${orgCfgFile}    ${StartOfDayGMT}
     [Documentation]    Set StartofDay Time == 00:01 and Updateflag == 1 if when the startoftimeGMT == 00:00 from MTE config otherwise Updateflag == 0
     ...
-    ...    Updateflag is used to lable if the MET config is updated in order to decide to need to restore remote config file.
-    Return From Keyword if    '${StartOfDayGMT}' != '00:00'    0    ${StartOfDayGMT}    ${orgCfgFile}
+    ...    Updateflag is used to label if the MTE config is updated in order to decide to need to restore remote config file.
+    Return From Keyword if    '${StartOfDayGMT}' != '00:00'    0    ${StartOfDayGMT}
     ${StartOfDayGMTUpdate}    set variable    00:01
     ${Updateflag}    set variable    1
     set value in MTE cfg    ${orgCfgFile}    StartOfDayTime    ${StartOfDayGMTUpdate}
     Stop MTE
     Start MTE
-    [Return]    ${Updateflag}    ${StartOfDayGMTUpdate}    ${orgCfgFile}
+    [Return]    ${Updateflag}    ${StartOfDayGMTUpdate}
 
 Tear Down Verify Deletion Delay
     [Arguments]    ${Updateflag}    ${backupCfgFile}    ${orgCfgFile}    ${MTETimeOffset}
