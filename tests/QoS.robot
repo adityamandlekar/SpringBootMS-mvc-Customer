@@ -35,15 +35,7 @@ Verify Sync Pulse Missed QoS
     \    unblock_dataflow
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     \    sleep    5
-    Comment    Restore DDNB
-    :FOR    ${labelID}    IN    @{labelIDs}
-    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
-    \    Disable NIC    DDNB
-    \    sleep    10
-    \    Enable NIC    DDNB
-    \    sleep    10
-    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
-    \    lists Should Be Equal    ${syncPulseCountBefore}    ${syncPulseCountAfter}
+    \    Verify Sync Pulse Restored    ${master_ip}
     Comment    Blocking Live Side OUTPUT
     Switch to TD Box    ${CHE_A_IP}
     @{labelIDs}=    Get Label IDs
@@ -57,18 +49,8 @@ Verify Sync Pulse Missed QoS
     \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
     \    unblock_dataflow
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
-    Comment    Restore DDNA
-    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
-    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
-    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
-    Switch to TD Box    ${CHE_A_IP}
-    :FOR    ${labelID}    IN    @{labelIDs}
-    \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
-    \    Disable NIC    DDNA
-    \    sleep    10
-    \    Enable NIC    DDNA
-    \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
-    \    lists Should Be Equal    ${syncPulseCountBefore}    ${syncPulseCountAfter}
+    \    Sleep    5
+    \    Verify Sync Pulse Restored    ${master_ip}
     [Teardown]    Run Keywords    Unblock Dataflow
     ...    AND    Case Teardown    QoS Case Teardown    ${modifyLabelFile}    ${labelfile_local}
 
@@ -207,6 +189,7 @@ Watchdog QOS - MTE Egress NIC
     Enable NIC    DDNA
     Enable NIC    DDNB
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
+    Verify Sync Pulse Restored    ${master_ip}
     [Teardown]    QoS Case Teardown
 
 Watchdog QOS - SFH Ingress NIC
@@ -363,3 +346,12 @@ Verify QOS for FMS NIC
     [Documentation]    Check whether the FMS QOS and Total QOS are equal to the given value
     Wait For QOS    ${node}    FMSNIC    ${FMSQOS}    ${master_ip}
     Verify QOS Equal To Specific Value    ${node}    Total QOS    ${TotalQOS}    ${master_ip}
+
+Verify Sync Pulse Restored
+    [Arguments]    ${master_ip}
+    [Documentation]    Check whether the SyncPulseMissed count has changed after restore DDNA and DDNB.
+    ...    Prospect result: No change.
+    @{syncPulseCountBefore}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
+    Sleep    5
+    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
+    lists Should Be Equal    ${syncPulseCountBefore}    ${syncPulseCountAfter}    *ERROR* Sync Pulse Missed Count has increased after restored NIC (Before ${syncPulseCountBefore}, After ${syncPulseCountAfter})
