@@ -172,7 +172,7 @@ def start_dataview(dataType, multicastIP, interfaceIP, multicastPort, LineID, RI
     print '*INFO* start Dataview:' + cmd
     _start_command(cmd)
     
-    cmd = "ps -ef | grep -i 'dataview' | grep -v grep |grep -v pipefail"
+    cmd = "ps -ef | grep -i 'dataview' | grep -v grep |grep -v pipefail |grep %s"%RIC
     stdout, stderr, rc = _exec_command(cmd)
     pattern = re.compile(r'\w\s+(\d+)')
     pid =''
@@ -189,18 +189,9 @@ def stop_dataview(pidDataView):
         Return: None
     """
     stdout, stderr, rc = _exec_command('kill -SIGINT %s'%pidDataView)
-    procList = ['%s dataview'%pidDataView]
-    resCheck = _check_process(procList)
-    if len(resCheck[0]) > 0:
-        import time
-        time.sleep(2)
-        stdout, stderr, rc = _exec_command('kill -SIGINT %s'%pidDataView)
-        resCheck = _check_process(procList)
-    if len(resCheck[1]) > 0:
-        print '*INFO* stop dataview successfully'
-
     if rc != 0:
         raise AssertionError('*ERROR* %s' %stderr)
+    wait_for_process_to_not_exist(' %s '%pidDataView)
 
 def verify_mangling_from_dataview_response(dataview_response,expected_pe,expected_ricname):
     """ Based on the DataView response to check if the expected Ric could be retrieved from MTE and having expected PE value
