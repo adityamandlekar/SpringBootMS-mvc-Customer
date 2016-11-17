@@ -165,14 +165,12 @@ def start_dataview(dataType, multicastIP, interfaceIP, multicastPort, LineID, RI
     cmd = 'pkill DataView'
     _exec_command(cmd)
 
-    # use pipefail to detect failure of a command within a pipeline
-    # remove non-printable chars; dataview COMP_NAME output contains binary characters that can cause utf-8 decode problems
-    cmd = 'set -o pipefail; %s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s -O %s' % (utilpath.DATAVIEW, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain, outputfile)
+    cmd = '%s -%s -IM %s -IH %s -PM %s -L %s -R \'%s\' -D %s -O %s' % (utilpath.DATAVIEW, dataType, multicastIP, interfaceIP, multicastPort, LineID, RIC, domain, outputfile)
     cmd = cmd + ' ' + ' '.join( map(str, optArgs))
     print '*INFO* start Dataview:' + cmd
     _start_command(cmd)
     
-    cmd = "ps -ef | grep -i 'dataview' | grep -v grep |grep -v pipefail |grep %s"%RIC
+    cmd = "ps -ef | grep -i 'dataview' | grep -v grep |grep %s"%RIC
     stdout, stderr, rc = _exec_command(cmd)
     pattern = re.compile(r'\w\s+(\d+)')
     pid =''
