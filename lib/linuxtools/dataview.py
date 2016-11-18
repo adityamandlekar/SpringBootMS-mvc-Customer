@@ -170,7 +170,7 @@ def start_dataview(dataType, multicastIP, interfaceIP, multicastPort, LineID, RI
     print '*INFO* start Dataview:' + cmd
     _start_command(cmd)
     
-    cmd = "ps -ef | grep -i 'dataview' | grep -v grep |grep %s"%RIC
+    cmd = "ps -ef | grep -i 'dataview' | grep -v grep |grep '%s'"%RIC
     stdout, stderr, rc = _exec_command(cmd)
     pattern = re.compile(r'\w\s+(\d+)')
     pid =''
