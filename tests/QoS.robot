@@ -35,7 +35,7 @@ Verify Sync Pulse Missed QoS
     \    unblock_dataflow
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     \    sleep    5
-    \    Verify Sync Pulse Restored    ${master_ip}
+    \    Verify Sync Pulse Received    ${master_ip}
     Comment    Blocking Live Side OUTPUT
     Switch to TD Box    ${CHE_A_IP}
     @{labelIDs}=    Get Label IDs
@@ -50,9 +50,10 @@ Verify Sync Pulse Missed QoS
     \    unblock_dataflow
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     \    Sleep    5
-    \    Verify Sync Pulse Restored    ${master_ip}
+    \    Verify Sync Pulse Received    ${master_ip}
     [Teardown]    Run Keywords    Unblock Dataflow
-    ...    AND    Case Teardown    QoS Case Teardown    ${modifyLabelFile}    ${labelfile_local}
+    ...    AND    QoS Case Teardown
+    ...    AND    Case Teardown    ${modifyLabelFile}    ${labelfile_local}
 
 Verify QoS Failover for Critical Process Failure
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1762 to verify QOS CritProcessFail will increase and failover happen if critical process is shutdown.
@@ -144,11 +145,15 @@ Verify QoS Failover for TCP-FTP Feed Line Down
 Watchdog QOS - MTE Egress NIC
     [Documentation]    Test the QOS value and MTE failover when disabling MTE Egress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1966
     ...
-    ...    1. Disable DDNA NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNA NIC. \ Verify QOS returns to 100 and MTE recovers to STANDBY.
-    ...    2. Disable DDNB NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNB NIC. \ Verify QOS returns to 100 and MTE recovers to STANDBY.
-    ...    3. Disable DDNA NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNA NIC. \ Verify QOS returns to 100.
-    ...    4. Disable DDNB NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNB NIC. \ Verify QOS returns to 100.
-    ...    5. Disable both DDNA and DDNB on STANDBY MTE box. \ VerifyQOS EgressNIC:0, Total QOS:0. \ Enable both DDNA and DDNB. \ Verify QOS returns to 100.
+    ...    1. Disable DDNA NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNA NIC. \ Verify QOS returns to 100.\ Standby is receiving Sync Pulses.\ and MTE recovers to STANDBY.
+    ...
+    ...    2. Disable DDNB NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNB NIC. \ Verify QOS returns to 100. \Standby is receiving Sync Pulses. \ and MTE recovers to STANDBY. \ Standby is receiving Sync Pulses.
+    ...
+    ...    3. Disable DDNA NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNA NIC. \ Verify QOS returns to 100.\ Standby is receiving Sync Pulses.
+    ...
+    ...    4. Disable DDNB NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNB NIC. \ Verify QOS returns to 100. \ Standby is receiving Sync Pulses.
+    ...
+    ...    5. Disable both DDNA and DDNB on STANDBY MTE box. \ VerifyQOS EgressNIC:0, Total QOS:0. \ Enable both DDNA and DDNB. \ Verify QOS returns to 100. \ Standby is receiving Sync Pulses.
     [Tags]    Peer
     [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
@@ -165,6 +170,8 @@ Watchdog QOS - MTE Egress NIC
     Enable NIC    DDNA
     Verify QOS for Egress NIC    100    100    A    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    Sleep    10
+    Verify Sync Pulse Received    ${master_ip}
     Comment    Disable DDNB on LIVE box, MTE should failover
     Switch To TD Box    ${CHE_B_IP}
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
@@ -174,22 +181,27 @@ Watchdog QOS - MTE Egress NIC
     Enable NIC    DDNB
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
+    Sleep    10
+    Verify Sync Pulse Received    ${master_ip}
     Comment    Disable NICs on STANDBY
     Disable NIC    DDNA
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Enable NIC    DDNA
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
+    Verify Sync Pulse Received    ${master_ip}
     Disable NIC    DDNB
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Enable NIC    DDNB
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
+    Verify Sync Pulse Received    ${master_ip}
     Disable NIC    DDNA
     Disable NIC    DDNB
-    Verify QOS for Egress NIC    0    0    B    ${master_ip}
+    Verify QOS for Egress NIC    ${Empty}    0    B    ${master_ip}
     Enable NIC    DDNA
     Enable NIC    DDNB
+    Sleep    10
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
-    Verify Sync Pulse Restored    ${master_ip}
+    Verify Sync Pulse Received    ${master_ip}
     [Teardown]    QoS Case Teardown
 
 Watchdog QOS - SFH Ingress NIC
@@ -347,7 +359,7 @@ Verify QOS for FMS NIC
     Wait For QOS    ${node}    FMSNIC    ${FMSQOS}    ${master_ip}
     Verify QOS Equal To Specific Value    ${node}    Total QOS    ${TotalQOS}    ${master_ip}
 
-Verify Sync Pulse Restored
+Verify Sync Pulse Received
     [Arguments]    ${master_ip}
     [Documentation]    Check whether the SyncPulseMissed count has changed after restore DDNA and DDNB.
     ...    Prospect result: No change.
