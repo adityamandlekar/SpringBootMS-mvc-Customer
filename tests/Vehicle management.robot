@@ -350,6 +350,45 @@ Verify Drop and Undrop from FMSCmd
     verify_all_response_message_num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
+Verify both RIC and SIC rename handled correctly
+    [Documentation]    Verify both RIC and SIC rename appeared in the cache dump file at the same by SRC file
+    ...
+    Comment    //Setup variables for test
+    ${domain}=    Get Preferred Domain
+    ${serviceName}=    Get FMS Service Name
+    ${RIC_Before_Rename}    ${Published_RIC}    Get RIC From MTE Cache    ${domain}
+    ${result}=    get RIC fields from cache    1    ${domain}    ${EMPTY}
+    ${SIC_Before_Rename} =    set variable    ${result[0]['SIC']}
+    ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${RIC_Before_Rename}
+    ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
+    ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
+    Copy File    ${EXLfullpath}    ${LocalEXLfullpath}
+    ${RIC_After_Rename}    ${SIC_After_Rename}    create_SRC_file    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${LOCAL_TMP_DIR}    ${LocalEXLfullpath}
+    ${srcFilefullPath}    set variable    ${LOCAL_TMP_DIR}/ChangeSicRic.src
+    Set RIC in EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC_Before_Rename}    ${domain}    ${RIC_After_Rename}
+    Set Symbol In EXL    ${LocalEXLfullpath}    ${LocalEXLfullpath}    ${RIC_After_Rename}    ${domain}    ${SIC_After_Rename}
+    Start Capture MTE Output
+    Comment    Both SIC and RIC rename in SRC file
+    Load SRC file into Signal Exl file    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    ${srcFilefullPath}
+    Wait For FMS Reorg
+    Verify RIC NOT In MTE Cache    ${RIC_Before_Rename}    ${domain}
+    ${RIC_After_Rename}    ${Published_RIC_After_Rename}    Get RIC From MTE Cache    ${domain}
+    ${RIC_After_Rename}    ${Published_RIC_After_Rename}    Verify RIC In MTE Cache    ${RIC_After_Rename}    ${domain}
+    Send TRWF2 Refresh Request    ${Published_RIC_After_Rename}    ${domain}
+    Wait For Persist File Update    5    60
+    Stop Capture MTE Output
+    Start Capture MTE Output
+    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
+    Wait For FMS Reorg
+    ${RIC_Before_Rename}    ${Published_RIC_Before_Rename}    Verify RIC In MTE Cache    ${RIC_Before_Rename}    ${domain}
+    ${StartOfDayGMT}    Get Start GMT Time
+    Purge ric    ${RIC_After_Rename}    ${domain}    ${serviceName}
+    Verify RIC Not In MTE Cache    ${RIC_After_Rename}    ${domain}
+    Send TRWF2 Refresh Request    ${Published_RIC_Before_Rename}    ${domain}
+    Wait For Persist File Update    5    60
+    Stop Capture MTE Output
+    [Teardown]    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/ChangeSicRic.src
+
 *** Keywords ***
 Calculate UpdateSince for REORG
     [Arguments]    ${exlFile}
@@ -492,6 +531,20 @@ Restore MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
     ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
 
+Load SRC file into Signal Exl file
+    [Arguments]    ${exlFile}    ${service}    ${headendIP}    ${srcFile}    @{optargs}
+    [Documentation]    Loads a single EXL file using FMSCMD. The EXL file must be on the local machine. Inputs for this keyword are the EXL Filename including the path, the FMS service and the headend's IP.
+    ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${headendIP}    Process    --Services ${service}
+    ...    --InputFile "${exlFile}"    --AllowSICChange true    --AllowRICChange true    --SRCFile "${srcFile}"    @{optargs}
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+
+Purge ric
+    [Arguments]    ${ric}    ${domain}    ${serviceName}
+    ${currDateTime}    get date and time
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    drop    --RIC ${ric}
+    ...    --Domain ${domain}    --HandlerName ${MTE}    --HandlerDropType Purge
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+    wait smf log message after time    Drop    ${currDateTime}
 Get Start Time
     [Documentation]    Get startOfday time from MTE config file
     ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
