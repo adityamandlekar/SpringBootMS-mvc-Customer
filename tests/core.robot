@@ -1083,3 +1083,13 @@ Wait For Persist File Update
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
     wait for file update    ${res[0]}    ${waittime}    ${timeout}
+
+Purge RIC
+    [Arguments]    ${ric}    ${domain}    ${serviceName}
+    [Documentation]    Purge a RIC by FMSCmd.
+    ...    HandlerDropType: \ Purge
+    ${currDateTime}    get date and time
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    drop    --RIC ${ric}
+    ...    --Domain ${domain}    --HandlerName ${MTE}    --HandlerDropType Purge
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+    wait smf log message after time    Drop    ${currDateTime}
