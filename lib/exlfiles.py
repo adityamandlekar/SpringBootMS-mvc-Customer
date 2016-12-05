@@ -1,11 +1,11 @@
 ﻿from __future__ import with_statement
 import codecs
+import datetime
 import os
 import os.path
 import re
 from subprocess import Popen, PIPE
 import string
-import datetime
 import xml
 import xml.dom.minidom
 from xml.dom.minidom import Document
@@ -195,18 +195,16 @@ def build_LXL_file (exlFileNeedToRemove):
 
 def create_RIC_SIC_rename_file(oldRic, oldSic, srcPath, exlfile):
     """ Create src flie dynamically to rename both RIC and SIC:
-        Argument : exlfile: get full path of exlfile in local from fmscmd (eg. /nasmf_a.exl)
-            oldRic: old ric name
-            oldSic: old sic name
-            srcPath: path for src file and exl file
-            
+        Argument :oldRic: old ric name 
+             oldSic: old sic name
+             srcPath: path for src file and exl file  (e.g. /ChangeSicRic.src)
+             exlfile: get full path of exlfile in local from fmscmd (e.g. /nasmf_a.exl)
         return : New Ric and Sic name
         
     """ 
-       
-    srcFile = srcPath + '//''' + 'ChangeSicRic.src'
-    if os.path.exists(srcFile):
-        os.remove(srcFile)
+    
+    if os.path.exists(srcPath):
+        os.remove(srcPath)
         
     srcDoc = Document()
     src = srcDoc.createElement('SRC') #set root element
@@ -254,7 +252,7 @@ def create_RIC_SIC_rename_file(oldRic, oldSic, srcPath, exlfile):
     orNode.appendChild(orNode_txt)
     bothNode.appendChild(orNode)
     
-    newRic = oldRic + datetime.datetime.now().strftime("%Y%m%d%H%M%S")+ 'TestRIC'
+    newRic = 'Test' + oldRic + datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     nrNode = srcDoc.createElement('nr')
     nrNode_txt = srcDoc.createTextNode(newRic)
     nrNode.appendChild(nrNode_txt)
@@ -271,7 +269,7 @@ def create_RIC_SIC_rename_file(oldRic, oldSic, srcPath, exlfile):
     nsNode.appendChild(nsNode_txt)
     bothNode.appendChild(nsNode)
     
-    fileHandle = open(srcPath+ '\\''' + 'ChangeSicRic.src', 'w') 
+    fileHandle = open(srcPath, 'w') 
     srcDoc.writexml(fileHandle, indent='\t', addindent='\t', newl='\n', encoding="utf-8")
     return newRic, newSic
 

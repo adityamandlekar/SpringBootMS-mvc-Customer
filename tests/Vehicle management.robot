@@ -352,8 +352,7 @@ Verify Drop and Undrop from FMSCmd
 
 Verify both RIC and SIC rename handled correctly
     [Documentation]    Rename both RIC and SIC.
-    ...    Verify that the old RIC is no longer in cache. \
-    ...    Verify the new RIC and SIC are in cache.
+    ...    Verify that the old RIC is no longer in cache. \ Verify the new RIC and SIC are in cache.
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2149
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
@@ -364,19 +363,38 @@ Verify both RIC and SIC rename handled correctly
     ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
     ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
     Copy File    ${EXLfullpath}    ${LocalEXLfullpath}
-    ${RIC_After_Rename}    ${SIC_After_Rename}    create_RIC_SIC_rename_file    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${LOCAL_TMP_DIR}    ${LocalEXLfullpath}
     ${srcFilefullPath}    set variable    ${LOCAL_TMP_DIR}/ChangeSicRic.src
+    ${RIC_After_Rename}    ${SIC_After_Rename}    create_RIC_SIC_rename_file    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${srcFilefullPath}    ${LocalEXLfullpath}
+    ${contextIDs}=    Get Ric Fields from EXL    ${EXLfullpath}    ${RIC_Before_Rename}    CONTEXT_ID
+    Get FIDFilter File
+    ${constituent_list}=    Get Constituents From FidFilter    ${contextIDs[0]}
+    Start Capture MTE Output
     Set RIC in EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC_Before_Rename}    ${domain}    ${RIC_After_Rename}
     Set Symbol In EXL    ${LocalEXLfullpath}    ${LocalEXLfullpath}    ${RIC_After_Rename}    ${domain}    ${SIC_After_Rename}
     Comment    Both SIC and RIC rename in SRC file
     Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    --SRCFile ${srcFilefullPath}
+    Wait For FMS Reorg
     Verify RIC NOT In MTE Cache    ${RIC_Before_Rename}    ${domain}
     ${RIC_After_Rename}    ${Published_RIC_After_Rename}    Verify RIC In MTE Cache    ${RIC_After_Rename}    ${domain}
-    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
-    ${RIC_Before_Rename}    ${Published_RIC_Before_Rename}    Verify RIC In MTE Cache    ${RIC_Before_Rename}    ${domain}
+    Send TRWF2 Refresh Request    ${Published_RIC_After_Rename}    ${domain}
+    Wait For Persist File Update    5    60
+    Stop Capture MTE Output
+    Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_2.pcap
+    verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${Published_RIC_After_Rename}    ${domain}    ${constituent_list}
+    Verfiy Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
+    Start Capture MTE Output
     Purge RIC    ${RIC_After_Rename}    ${domain}    ${serviceName}
+    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
+    Wait For FMS Reorg
+    ${RIC_Before_Rename}    ${Published_RIC_Before_Rename}    Verify RIC In MTE Cache    ${RIC_Before_Rename}    ${domain}
     Verify RIC Not In MTE Cache    ${RIC_After_Rename}    ${domain}
-    [Teardown]    case teardown    ${LocalEXLfullpath}    ${srcFilefullPath}
+    Send TRWF2 Refresh Request    ${Published_RIC_Before_Rename}    ${domain}
+    Wait For Persist File Update    5    60
+    Stop Capture MTE Output
+    Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
+    Verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${Published_RIC_Before_Rename}    ${domain}    ${constituent_list}
+    Verfiy Item Persisted    ${RIC_After_Rename}    ${SIC_Before_Rename}    ${domain}
+    [Teardown]    case teardown    ${LocalEXLfullpath}    ${srcFilefullPath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 *** Keywords ***
 Calculate UpdateSince for REORG

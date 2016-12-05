@@ -637,6 +637,16 @@ Persist File Should Exist
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
     Comment    Currently, GATS does not provide the Venue name, so the pattern matching Keywords must be used. If GATS provides the Venue name, then "remote file should not exist" Keywords could be used here.
 
+Purge RIC
+    [Arguments]    ${ric}    ${domain}    ${serviceName}
+    [Documentation]    Purge a RIC by FMSCmd.
+    ...    HandlerDropType: \ Purge
+    ${currDateTime}    get date and time
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    drop    --RIC ${ric}
+    ...    --Domain ${domain}    --HandlerName ${MTE}    --HandlerDropType Purge
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+    wait smf log message after time    Drop    ${currDateTime}
+
 Reset Sequence Numbers
     [Arguments]    @{mach_ip_list}
     [Documentation]    Reset the FH, GRS, and MTE sequence numbers on each specified machine (default is current machine).
@@ -1083,13 +1093,3 @@ Wait For Persist File Update
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
     wait for file update    ${res[0]}    ${waittime}    ${timeout}
-
-Purge RIC
-    [Arguments]    ${ric}    ${domain}    ${serviceName}
-    [Documentation]    Purge a RIC by FMSCmd.
-    ...    HandlerDropType: \ Purge
-    ${currDateTime}    get date and time
-    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    drop    --RIC ${ric}
-    ...    --Domain ${domain}    --HandlerName ${MTE}    --HandlerDropType Purge
-    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
-    wait smf log message after time    Drop    ${currDateTime}
