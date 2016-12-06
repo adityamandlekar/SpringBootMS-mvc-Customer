@@ -393,7 +393,8 @@ Verify both RIC and SIC rename handled correctly
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
     Verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${Published_RIC_Before_Rename}    ${domain}    ${constituent_list}
-    Verfiy Item Persisted    ${RIC_After_Rename}    ${SIC_Before_Rename}    ${domain}
+    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    Verfiy Item Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
     [Teardown]    case teardown    ${LocalEXLfullpath}    ${srcFilefullPath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 *** Keywords ***

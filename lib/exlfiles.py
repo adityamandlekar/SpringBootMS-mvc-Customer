@@ -252,7 +252,7 @@ def create_RIC_SIC_rename_file(oldRic, oldSic, srcPath, exlfile):
     orNode.appendChild(orNode_txt)
     bothNode.appendChild(orNode)
     
-    newRic = 'Test' + oldRic + datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    newRic = ('TEST' + oldRic + datetime.datetime.now().strftime("%Y%m%d%H%M%S"))[0:32]
     nrNode = srcDoc.createElement('nr')
     nrNode_txt = srcDoc.createTextNode(newRic)
     nrNode.appendChild(nrNode_txt)
