@@ -395,7 +395,9 @@ Verify both RIC and SIC rename handled correctly
     Verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${Published_RIC_Before_Rename}    ${domain}    ${constituent_list}
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
     Verfiy Item Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
-    [Teardown]    case teardown    ${LocalEXLfullpath}    ${srcFilefullPath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
+    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
+    ...    AND    case teardown    ${LocalEXLfullpath}    ${srcFilefullPath}    ${modifiedFeedEXLFiles}    ${LOCAL_TMP_DIR}/capture_local_2.pcap
+    ...    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 *** Keywords ***
 Calculate UpdateSince for REORG
