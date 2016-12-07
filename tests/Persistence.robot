@@ -147,6 +147,21 @@ Verify Realtime MARKET_PRICE Persistence
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    @{modifiedFeedEXLFiles}
 
+Verify Persist File By damaging dat and restort MTE
+    [Documentation]    Verify persistence file by Persist.dat file is damaged and restart MTE
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2147
+    [Setup]
+    Comment    /BackUp Persist file(.dat and .lat.loaded)
+    Delete Persist Backup
+    ${serviceName}=    Get FMS Service Name
+    ${currDateTime}=    get date and time
+    ${exlFiles}    ${modifiedExlFiles}    Go Into End Feed Time    ${serviceName}
+    Wait SMF Log Message After Time    ${MTE}.*Creating Snapshot of Persister Database    ${currDateTime}    waittime=10    timeout=120
+    @{existingPersistBackupFiles}=    wait for search file    ${VENUE_DIR}    PERSIST_${MTE}_*.DAT    2    180
+    Comment    Delete Persist Backup
+    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${exlFiles}
+    ...    AND    Case Teardown    @{modifiedExlFiles}
+
 Persistence file FIDs existence check
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
     ...    Make sure below fids don’t exist in the dumped persistence file:
