@@ -943,6 +943,30 @@ Start Capture MTE Output
     @{IpAndPort}=    get outputAddress and port for mte    ${labelIDsUse}
     start capture packets    ${filename}    ${interfaceName}    ${IpAndPort}
 
+Start Capture MTE Output By DataView
+    [Arguments]    ${ric}    ${domain}    ${labelID}    ${outputFile}    @{optargs}
+    [Documentation]    Start DataView to capture TRWF2 MTE update.
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2104
+    ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
+    Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
+    ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
+    get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
+    ${updatedlabelfile}=    set variable    ${LOCAL_TMP_DIR}/updated_reqLabel.xml
+    remove_xinclude_from_labelfile    ${labelfile}    ${updatedlabelfile}
+    ${reqMsgMultcastAddres}=    get multicast address from label file    ${updatedlabelfile}    ${labelID}
+    ${lineID}=    get_stat_block_field    ${MTE}    multicast-${labelID}    publishedLineId
+    ${multcastAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    multicastOutputAddress
+    ${interfaceAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    primaryOutputAddress
+    @{multicastIPandPort}=    Split String    ${multcastAddres}    :    1
+    @{interfaceIPandPort}=    Split String    ${interfaceAddres}    :    1
+    ${length} =    Get Length    ${multicastIPandPort}
+    Should Be Equal As Integers    ${length}    2
+    ${length} =    Get Length    ${interfaceIPandPort}
+    Should Be Equal As Integers    ${length}    2
+    ${pid}=    Start Dataview    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]    ${lineID}
+    ...    ${ric}    ${domain}    ${outputFile}    @{optargs}
+    [Return]    ${pid}
+
 Start MTE
     [Documentation]    Start the MTE and wait for initialization to complete.
     ...    Then load the state EXL files (that were modified by suite setup to set 24x7 feed and trade time).
