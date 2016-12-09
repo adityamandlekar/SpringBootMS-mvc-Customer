@@ -455,27 +455,6 @@ Create Fid Value Pair
     \    Set To Dictionary    ${fidnumvalue}    ${fidNum}    1${value}
     [Return]    ${fidnamevalue}    ${fidnumvalue}
 
-Get MTE Machine Time Offset
-    [Documentation]    Get the offset from GMT for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal GMT time.
-    ${currDateTime}=    get date and time
-    ${localTime}=    Get Current Date    exclude_millis=True
-    ${MTEtime}=    Convert Date    ${currDateTime[0]}-${currDateTime[1]}-${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    result_format=datetime
-    ${MTETimeOffset}=    Subtract Date From Date    ${MTEtime}    ${localTime}
-    [Return]    ${MTETimeOffset}
-
-Restore MTE Machine Time
-    [Arguments]    ${MTETimeOffset}
-    [Documentation]    To correct Linux time and restart SMF, restart SMF because currently FMS client have a bug now, if we change the MTE Machine time when SMF running, FMS client start to report exception like below, and in this case we can't use FMS client correclty:
-    ...    FMSClient:SocketException - ClientImpl::connect:connect (111); /ThomsonReuters/EventScheduler/EventScheduler; 18296; 18468; 0000235f; 07:00:00;
-    ...
-    ...    In addition, on a vagrant VirtualBox, restore the VirtualBox Guest Additions service, which includes clock sync with the host.
-    stop smf
-    ${RIDEMachineTime}=    Get Current Date    result_format=datetime    exclude_millis=True
-    ${MTEMachineTime}=    Add Time To Date    ${RIDEMachineTime}    ${MTETimeOffset}    result_format=datetime
-    set date and time    ${MTEMachineTime.year}    ${MTEMachineTime.month}    ${MTEMachineTime.day}    ${MTEMachineTime.hour}    ${MTEMachineTime.minute}    ${MTEMachineTime.second}
-    Restore MTE Clock Sync
-    start smf
-
 Undrop ric
     [Arguments]    ${ric}    ${domain}    ${serviceName}
     ${currDateTime}    get date and time
@@ -484,13 +463,6 @@ Undrop ric
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
     wait smf log message after time    Undrop    ${currDateTime}
 
-Disable MTE Clock Sync
-    [Documentation]    If running on a vagrant VirtualBox, disable the VirtualBox Guest Additions service. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
-    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service stop; fi
-
-Restore MTE Clock Sync
-    [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
-    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
 
 Get Start Time
     [Documentation]    Get startOfday time from MTE config file

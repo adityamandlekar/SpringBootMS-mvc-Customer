@@ -37,3 +37,14 @@ LOCAL_FMS_DIR    = 'D:\\tools\\FMSCMD\\config\\DataFiles\\Groups'
 LOCAL_FMS_BIN    = 'D:\\tools\\FMSCMD\\bin'
 LOCAL_SCWCLI_BIN = 'D:\\tools\\SCWatchdog_v1.7.0'
 LOCAL_TMP_DIR    = 'D:\\temp'
+
+#Check smf log pattern
+CheckLogDict = {'StartOfDayTime':['%s.*StartOfDay time occurred'%MTE, '%s.*handleStartOfDayInstrumentUpdate.*Ending' %MTE], \
+        'EndOfDayTime':['%s.*EndOfDay time occurred'%MTE], \
+        'CacheRolloverTime': ['%s.*CacheRollover time occurred'%MTE], \
+        'JnlRollTime': ['%s.*JournalRollover time occurred'%MTE], \
+        'RolloverTime': ['%s.*RolloverReset time occurred'%MTE], \
+        'StartOfConnect':['%s.*StartOfConnect time occurred'%MTE], \
+        'EndOfConnect':['%s.*EndOfConnect time occurred'%MTE], \
+        'StartOfHighActivity':['%s.*StartOfHighActivity time occurred'%MTE], \
+        'EndOfHighActivity':['%s.*EndOfHighActivity time occurred'%MTE]}

@@ -827,3 +827,42 @@ def set_value_in_MTE_cfg(mtecfgfile, tagName, value):
     stdout, stderr, rc = _exec_command(cmd_match_tag_only)
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_only,rc,stdout,stderr)) 
+
+def convert_localtime_to_gmt(timestr,offset):
+    import datetime
+    offset = float(offset)/3600
+    tempTime = timestr
+    #print tempTime
+    retTime = (datetime.datetime.strptime(tempTime, '%Y-%m-%d %H:%M:%S') - datetime.timedelta(hours = offset)).strftime("%Y-%m-%d %H:%M:%S")
+    print retTime
+    return retTime
+        
+def Get_All_Times_Dict(configNameList,configValueList, GMTOffset, currentDateTime):
+    """Sort all event times and convert them to GMT times
+    Argument : 
+    configNameList  : config names list
+    configValueList : config values list which get from MTE config file
+    GMTOffset :  GMT offset in second like -18000(GMT-5)
+    currentDateTime : date time get from TD box
+        
+    Returns : Dictionary which the time is the key, value is list of the config names like
+    {'2016-12-06 12:00:00': [u'StartOfDayTime'], '2016-12-07 03:30:00': [u'EndOfDayTime'], '2016-12-06 05:00:00': [u'RolloverTime', u'CacheRolloverTime', u'JnlRollTime', u'CacheRollover']}
+    """
+    configValueOrginList = configValueList
+    retDict = {}
+
+    index = 0
+    for timepoint in configValueList:
+        if timepoint.lower() == 'not found':
+            #timepoint = '00:00'
+            index += 1
+            continue
+        timestr = '%4d-%02d-%02d %s:00'%(int(currentDateTime[0]),int(currentDateTime[1]),int(currentDateTime[2]),timepoint)
+        timeGMT = convert_localtime_to_gmt(timestr,float(GMTOffset)-3600*48)  #forward 2 days
+        if timeGMT not in retDict.keys():
+            retDict[timeGMT] = []
+        retDict[timeGMT].append(configNameList[index])
+        index += 1
+
+    return retDict
+    

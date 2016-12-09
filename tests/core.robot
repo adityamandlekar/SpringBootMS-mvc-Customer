@@ -68,6 +68,10 @@ Dictionary of Dictionaries Should Be Equal
     Should Be Equal    ${keys1}    ${keys2}
     : FOR    ${key}    IN    @{keys1}
     \    Dictionaries Should Be Equal    ${dict1['${key}']}    ${dict2['${key}']}
+    
+Disable MTE Clock Sync
+    [Documentation]    If running on a vagrant VirtualBox, disable the VirtualBox Guest Additions service. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
+    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service stop; fi
 
 Dump Persist File To Text
     [Arguments]    @{optargs}
@@ -344,6 +348,26 @@ Get MTE Config File
     get remote file    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    ${localFile}
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${localFile}
     [Return]    ${localFile}
+
+Get Configure Values
+    [Arguments]    @{configList}
+    [Documentation]    Get configure items value from MTE config file like StartOfDayTime, EndOfDayTime, RolloverTime....
+    ...    Returns a array with configure item value, and backup config file, original config file.
+    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${mteConfigFile}=    Get MTE Config File
+    ${retArray}=    Create List
+    : FOR    ${configName}    IN    @{configList}
+    \    ${configValue}=    get MTE config value    ${mteConfigFile}    ${configName}
+    \    Append To List    ${retArray}    ${configValue}
+    [Return]    ${retArray}    ${backupCfgFile}    ${orgCfgFile}
+
+Get MTE Machine Time Offset
+    [Documentation]    Get the offset from GMT for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal GMT time.
+    ${currDateTime}=    get date and time
+    ${localTime}=    Get Current Date    exclude_millis=True
+    ${MTEtime}=    Convert Date    ${currDateTime[0]}-${currDateTime[1]}-${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    result_format=datetime
+    ${MTETimeOffset}=    Subtract Date From Date    ${MTEtime}    ${localTime}
+    [Return]    ${MTETimeOffset}
 
 Get Playback NIC For PCAP File
     [Arguments]    ${pcapFile}
@@ -678,6 +702,23 @@ Restore EXL Changes
     \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
 
+Restore MTE Machine Time
+    [Arguments]    ${MTETimeOffset}
+    [Documentation]    To correct Linux time and restart SMF, restart SMF because currently FMS client have a bug now, if we change the MTE Machine time when SMF running, FMS client start to report exception like below, and in this case we can't use FMS client correclty:
+    ...    FMSClient:SocketException - ClientImpl::connect:connect (111); /ThomsonReuters/EventScheduler/EventScheduler; 18296; 18468; 0000235f; 07:00:00;
+    ...
+    ...    In addition, on a vagrant VirtualBox, restore the VirtualBox Guest Additions service, which includes clock sync with the host.
+    stop smf
+    ${RIDEMachineTime}=    Get Current Date    result_format=datetime    exclude_millis=True
+    ${MTEMachineTime}=    Add Time To Date    ${RIDEMachineTime}    ${MTETimeOffset}    result_format=datetime
+    set date and time    ${MTEMachineTime.year}    ${MTEMachineTime.month}    ${MTEMachineTime.day}    ${MTEMachineTime.hour}    ${MTEMachineTime.minute}    ${MTEMachineTime.second}
+    Restore MTE Clock Sync
+    start smf
+
+Restore MTE Clock Sync
+    [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
+    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
+    
 Rewrite PCAP File
     [Arguments]    ${inputFile}    @{optargs}
     remote file should exist    ${inputFile}
@@ -901,30 +942,6 @@ Start Capture MTE Output
     ...    ELSE    Create List    @{labelID}
     @{IpAndPort}=    get outputAddress and port for mte    ${labelIDsUse}
     start capture packets    ${filename}    ${interfaceName}    ${IpAndPort}
-
-Start Capture MTE Output By DataView
-    [Arguments]    ${ric}    ${domain}    ${labelID}    ${outputFile}    @{optargs}
-    [Documentation]    Start DataView to capture TRWF2 MTE update.
-    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2104
-    ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
-    Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
-    ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
-    get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
-    ${updatedlabelfile}=    set variable    ${LOCAL_TMP_DIR}/updated_reqLabel.xml
-    remove_xinclude_from_labelfile    ${labelfile}    ${updatedlabelfile}
-    ${reqMsgMultcastAddres}=    get multicast address from label file    ${updatedlabelfile}    ${labelID}
-    ${lineID}=    get_stat_block_field    ${MTE}    multicast-${labelID}    publishedLineId
-    ${multcastAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    multicastOutputAddress
-    ${interfaceAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    primaryOutputAddress
-    @{multicastIPandPort}=    Split String    ${multcastAddres}    :    1
-    @{interfaceIPandPort}=    Split String    ${interfaceAddres}    :    1
-    ${length} =    Get Length    ${multicastIPandPort}
-    Should Be Equal As Integers    ${length}    2
-    ${length} =    Get Length    ${interfaceIPandPort}
-    Should Be Equal As Integers    ${length}    2
-    ${pid}=    Start Dataview    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]    ${lineID}
-    ...    ${ric}    ${domain}    ${outputFile}    @{optargs}
-    [Return]    ${pid}
 
 Start MTE
     [Documentation]    Start the MTE and wait for initialization to complete.
