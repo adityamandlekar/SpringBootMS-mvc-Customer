@@ -78,13 +78,21 @@ def rollover_MTE_time(GMTSysTime):
     return currTimeArray
 
 def Rollover_Time_Check_SMF_log(AllTimesDict):
+    toCheckLogDict = {'StartOfDayTime':['%s.*StartOfDay time occurred'%MTE, '%s.*handleStartOfDayInstrumentUpdate.*Ending' %MTE], \
+        'EndOfDayTime':['%s.*EndOfDay time occurred'%MTE], \
+        'CacheRolloverTime': ['%s.*CacheRollover time occurred'%MTE], \
+        'RolloverTime': ['%s.*RolloverReset time occurred'%MTE], \
+        'StartOfConnect':['%s.*StartOfConnect time occurred'%MTE], \
+        'EndOfConnect':['%s.*EndOfConnect time occurred'%MTE], \
+        'StartOfHighActivity':['%s.*StartOfHighActivity time occurred'%MTE], \
+        'EndOfHighActivity':['%s.*EndOfHighActivity time occurred'%MTE]}
     sortList = AllTimesDict.keys()
     sortList.sort()
     for timepoint in sortList:
         currTimeArray = rollover_MTE_time(timepoint)
         for eventname in AllTimesDict[timepoint]:
-            if CheckLogDict.has_key(eventname):
-                logsToCheck = CheckLogDict[eventname]
+            if toCheckLogDict.has_key(eventname):
+                logsToCheck = toCheckLogDict[eventname]
                 for log in logsToCheck:
                     print '*INFO* check log: %s'%log
                     logfiles.wait_smf_log_message_after_time(log, currTimeArray)

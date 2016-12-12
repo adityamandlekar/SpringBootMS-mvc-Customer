@@ -165,6 +165,17 @@ Generate PCAP File Name
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
 
+Get Configure Values
+    [Arguments]    @{configList}
+    [Documentation]    Get configure items value from MTE config file like StartOfDayTime, EndOfDayTime, RolloverTime....
+    ...    Returns a array with configure item value.
+    ${mteConfigFile}=    Get MTE Config File
+    ${retArray}=    Create List
+    : FOR    ${configName}    IN    @{configList}
+    \    ${configValue}=    get MTE config value    ${mteConfigFile}    ${configName}
+    \    Append To List    ${retArray}    ${configValue}
+    [Return]    ${retArray}
+    
 Get ConnectTimesIdentifier
     [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
     [Documentation]    get the ConnectTimesIdentifier (feed times RIC) from venue config file.
@@ -348,18 +359,6 @@ Get MTE Config File
     get remote file    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    ${localFile}
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${localFile}
     [Return]    ${localFile}
-
-Get Configure Values
-    [Arguments]    @{configList}
-    [Documentation]    Get configure items value from MTE config file like StartOfDayTime, EndOfDayTime, RolloverTime....
-    ...    Returns a array with configure item value, and backup config file, original config file.
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    ${mteConfigFile}=    Get MTE Config File
-    ${retArray}=    Create List
-    : FOR    ${configName}    IN    @{configList}
-    \    ${configValue}=    get MTE config value    ${mteConfigFile}    ${configName}
-    \    Append To List    ${retArray}    ${configValue}
-    [Return]    ${retArray}    ${backupCfgFile}    ${orgCfgFile}
 
 Get MTE Machine Time Offset
     [Documentation]    Get the offset from GMT for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal GMT time.
@@ -701,6 +700,10 @@ Restore EXL Changes
     : FOR    ${file}    IN    @{exlFiles}
     \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
+    
+Restore MTE Clock Sync
+    [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
+    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
 
 Restore MTE Machine Time
     [Arguments]    ${MTETimeOffset}
@@ -715,10 +718,6 @@ Restore MTE Machine Time
     Restore MTE Clock Sync
     start smf
 
-Restore MTE Clock Sync
-    [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
-    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
-    
 Rewrite PCAP File
     [Arguments]    ${inputFile}    @{optargs}
     remote file should exist    ${inputFile}

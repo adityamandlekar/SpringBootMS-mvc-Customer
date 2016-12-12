@@ -7,6 +7,7 @@ from sets import Set
 import string
 import xml
 import xml.etree.ElementTree as ET
+from robot.libraries.DateTime import add_time_to_date
 
 from LinuxFSUtilities import LinuxFSUtilities
 from utils.ssh import _exec_command, _search_file
@@ -827,29 +828,24 @@ def set_value_in_MTE_cfg(mtecfgfile, tagName, value):
     stdout, stderr, rc = _exec_command(cmd_match_tag_only)
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_only,rc,stdout,stderr)) 
-
-def convert_localtime_to_gmt(timestr,offset):
-    import datetime
-    offset = float(offset)/3600
-    tempTime = timestr
-    #print tempTime
-    retTime = (datetime.datetime.strptime(tempTime, '%Y-%m-%d %H:%M:%S') - datetime.timedelta(hours = offset)).strftime("%Y-%m-%d %H:%M:%S")
-    print retTime
-    return retTime
         
-def Get_All_Times_Dict(configNameList,configValueList, GMTOffset, currentDateTime):
-    """Sort all event times and convert them to GMT times
+def Get_future_config_times(configNameList,configValueList, GMTOffset, currentDateTime):
+    """Convert all event times to future GMT time and return one dictionary
+    
     Argument : 
     configNameList  : config names list
     configValueList : config values list which get from MTE config file
     GMTOffset :  GMT offset in second like -18000(GMT-5)
-    currentDateTime : date time get from TD box
+    currentDateTime : date time get from TD box (GMT)
         
     Returns : Dictionary which the time is the key, value is list of the config names like
     {'2016-12-06 12:00:00': [u'StartOfDayTime'], '2016-12-07 03:30:00': [u'EndOfDayTime'], '2016-12-06 05:00:00': [u'RolloverTime', u'CacheRolloverTime', u'JnlRollTime', u'CacheRollover']}
+    Examples :
+          | get future config times | ${configNameList} | ${configValueList} | 28800 | ${currentDateTime}
     """
     configValueOrginList = configValueList
     retDict = {}
+    currentDateTimeStr = '%4d-%02d-%02d %02d:%02d:00'%(int(currentDateTime[0]),int(currentDateTime[1]),int(currentDateTime[2]),int(currentDateTime[3]),int(currentDateTime[4]))
 
     index = 0
     for timepoint in configValueList:
@@ -858,7 +854,15 @@ def Get_All_Times_Dict(configNameList,configValueList, GMTOffset, currentDateTim
             index += 1
             continue
         timestr = '%4d-%02d-%02d %s:00'%(int(currentDateTime[0]),int(currentDateTime[1]),int(currentDateTime[2]),timepoint)
-        timeGMT = convert_localtime_to_gmt(timestr,float(GMTOffset)-3600*48)  #forward 2 days
+        
+        # local--> GMT time, should minus GMToffset
+        timeGMT = add_time_to_date(timestr,'-%s seconds'%GMTOffset)
+        #if the GMT time is previous currentDateTime, add one day
+        count = 0
+        while timeGMT < currentDateTimeStr and count < 5:
+            timeGMT = add_time_to_date(timeGMT,'%s seconds'%str(3600*24))
+            count += 1
+
         if timeGMT not in retDict.keys():
             retDict[timeGMT] = []
         retDict[timeGMT].append(configNameList[index])
