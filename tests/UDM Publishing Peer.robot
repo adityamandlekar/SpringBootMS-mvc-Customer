@@ -2,6 +2,7 @@
 Documentation     Demo Suit for Peer Related Test Cases
 Suite Setup       Suite Setup Two TD Boxes
 Suite Teardown    Suite Teardown
+Force Tags        Peer
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
@@ -11,7 +12,6 @@ Verify Live Instance Publishing
     ...
     ...    1. Checking if LIVE Box has output
     ...    2. Checking if STANDBY Box has NO output
-    [Tags]    Peer
     [Setup]
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
