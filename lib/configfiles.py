@@ -7,7 +7,7 @@ from sets import Set
 import string
 import xml
 import xml.etree.ElementTree as ET
-from robot.libraries.DateTime import add_time_to_date
+from robot.libraries.DateTime import subtract_time_from_date,add_time_to_date
 
 from LinuxFSUtilities import LinuxFSUtilities
 from utils.ssh import _exec_command, _search_file
@@ -850,16 +850,14 @@ def Get_future_config_times(configNameList,configValueList, GMTOffset, currentDa
     index = 0
     for timepoint in configValueList:
         if timepoint.lower() == 'not found':
-            #timepoint = '00:00'
             index += 1
             continue
         timestr = '%4d-%02d-%02d %s:00'%(int(currentDateTime[0]),int(currentDateTime[1]),int(currentDateTime[2]),timepoint)
-        
         # local--> GMT time, should minus GMToffset
-        timeGMT = add_time_to_date(timestr,'-%s seconds'%GMTOffset)
+        timeGMT = subtract_time_from_date(timestr,'%s seconds'%GMTOffset)
         #if the GMT time is previous currentDateTime, add one day
         count = 0
-        while timeGMT < currentDateTimeStr and count < 5:
+        while timeGMT < currentDateTimeStr and count < 2:
             timeGMT = add_time_to_date(timeGMT,'%s seconds'%str(3600*24))
             count += 1
 

@@ -374,7 +374,7 @@ Run Feed Time Test
     \    ${dstRicName}    Set Variable    ${contents[1]}
     \    ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${dstRicName}
     \    Go Into Time    ${type}    ${feedTimeExlFile}    ${feedTimeRic}    ${feedTimeStatField}    ${connectTimesIdentifier}
-    \    ...    ${feedTimeRic}    ${localVenueDateTime}    True    1 minute
+    \    ...    ${feedTimeRic}    ${localVenueDateTime}
     \    Go Outside Time    ${type}    ${feedTimeExlFile}    ${feedTimeRic}    ${feedTimeStatField}    ${connectTimesIdentifier}
     \    ...    ${feedTimeRic}    ${localVenueDateTime}    True    1 minute
     \    Go Into Time    ${type}    ${feedTimeExlFile}    ${feedTimeRic}    ${feedTimeStatField}    ${connectTimesIdentifier}
@@ -406,7 +406,7 @@ Run Trade Time Test
     ${dstRicName}    Set Variable    ${contents[1]}
     ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${dstRicName}
     Go Into Time    ${type}    ${feedTimeExlFile}    ${feedTimeRic}    ${feedTimeStatField}    ${connectTimesIdentifier}    ${feedTimeRic}
-    ...    ${localVenueDateTime}    True    1 minute
+    ...    ${localVenueDateTime}
     Go Outside All Times    Trade Time    ${tradeTimeStatField}    ${highactTimesIdentifier}    ${tradeTimeRicsDict}    ${tradeTimeRics}
     Comment    Trade Time Test
     ${type}    Set Variable    Trade Time
@@ -416,7 +416,7 @@ Run Trade Time Test
     ${dstRicName}    Set Variable    ${contents[1]}
     ${tdBoxDateTime}    ${localVenueDateTime}    Get Venue Local Datetime From MTE    ${dstRicName}
     Go Into Time    ${type}    ${tradeTimeExlFile}    ${tradeTimeRic}    ${tradeTimeStatField}    ${highactTimesIdentifier}    ${tradeTimeRic}
-    ...    ${localVenueDateTime}    True    1 minute
+    ...    ${localVenueDateTime}
     Check ConfigurationStatsBlock    ${tradeTimeStatField}    1
     Go Outside Time    ${type}    ${tradeTimeExlFile}    ${tradeTimeRic}    ${tradeTimeStatField}    ${highactTimesIdentifier}    ${tradeTimeRic}
     ...    ${localVenueDateTime}    True    1 minute
