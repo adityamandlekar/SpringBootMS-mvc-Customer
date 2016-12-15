@@ -1082,6 +1082,16 @@ Verfiy Item Persisted
     Verify Item in Persist Dump File    ${pmatDumpfile}    ${ric}    ${sic}    ${cacheDomainName}
     Remove Files    ${pmatDumpfile}
 
+Verfiy Item Not Persisted
+    [Arguments]    ${ric}=${EMPTY}    ${sic}=${EMPTY}    ${domain}=${EMPTY}
+    [Documentation]    Dump persist file to XML and check if ric, sic and/or domain items not exist in MTE persist file.
+    ${cacheDomainName}=    Remove String    ${domain}    _
+    ${pmatDomain}=    Run Keyword If    '${cacheDomainName}'!='${EMPTY}'    Map to PMAT Numeric Domain    ${cacheDomainName}
+    @{pmatOptargs}=    Gen Pmat Cmd Args    ${ric}    ${sic}    ${pmatDomain}
+    ${pmatDumpfile}=    Dump Persist File To XML    @{pmatOptargs}
+    verify_item_not_in_persist_dump_file    ${pmatDumpfile}    ${ric}    ${sic}
+    Remove Files    ${pmatDumpfile}
+
 Wait For FMS Reorg
     [Arguments]    ${waittime}=5    ${timeout}=600
     [Documentation]    Wait for the MTE to complete the FMS reorg.

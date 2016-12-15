@@ -353,6 +353,7 @@ Verify Drop and Undrop from FMSCmd
 Verify both RIC and SIC rename handled correctly
     [Documentation]    Rename both RIC and SIC.
     ...    Verify that the old RIC is no longer in cache. \ Verify the new RIC and SIC are in cache.
+    ...    Verify persisted file and published message.
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2149
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
@@ -365,9 +366,8 @@ Verify both RIC and SIC rename handled correctly
     Copy File    ${EXLfullpath}    ${LocalEXLfullpath}
     ${srcFilefullPath}    set variable    ${LOCAL_TMP_DIR}/ChangeSicRic.src
     ${RIC_After_Rename}    ${SIC_After_Rename}    create_RIC_SIC_rename_file    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${srcFilefullPath}    ${LocalEXLfullpath}
-    ${contextIDs}=    Get Ric Fields from EXL    ${EXLfullpath}    ${RIC_Before_Rename}    CONTEXT_ID
     Get FIDFilter File
-    ${constituent_list}=    Get Constituents From FidFilter    ${contextIDs[0]}
+    ${constituent_list}=    Get Constituents From FidFilter    ${result[0]['CONTEXT_ID']}
     Start Capture MTE Output
     Set RIC in EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC_Before_Rename}    ${domain}    ${RIC_After_Rename}
     Set Symbol In EXL    ${LocalEXLfullpath}    ${LocalEXLfullpath}    ${RIC_After_Rename}    ${domain}    ${SIC_After_Rename}
@@ -395,6 +395,7 @@ Verify both RIC and SIC rename handled correctly
     Verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${Published_RIC_Before_Rename}    ${domain}    ${constituent_list}
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
     Verfiy Item Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
+    Verfiy Item Not Persisted    ${RIC_After_Rename}    ${SIC_After_Rename}    ${domain}
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    case teardown    ${LocalEXLfullpath}    ${srcFilefullPath}    ${modifiedFeedEXLFiles}    ${LOCAL_TMP_DIR}/capture_local_2.pcap
     ...    ${LOCAL_TMP_DIR}/capture_local_3.pcap
