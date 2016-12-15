@@ -38,7 +38,7 @@ def rollover_MTE_start_date(GMTStartTime):
     return nil
     
     Examples:
-                Rollover MTE Start Date  |  09:00 |
+               | Rollover MTE Start Date  |  09:00 |
     """  
 
     secondsBeforeStartTime = timedelta(seconds = 5)
@@ -68,7 +68,7 @@ def rollover_MTE_time(GMTSysTime):
     Return: the set time array like ['2016', '11', '02', '08', '59', '55']
     
     Examples:
-        Rollover MTE time  | 2016-11-02 09:00 |
+        | Rollover MTE time  | 2016-11-02 09:00 |
     """ 
     secondsBeforeStartTime = timedelta(seconds = 5)
     newDateTime = datetime(int(GMTSysTime[0:4]),int(GMTSysTime[5:7]),int(GMTSysTime[8:10]),int(GMTSysTime[11:13]),int(GMTSysTime[14:16])) - secondsBeforeStartTime
@@ -78,26 +78,25 @@ def rollover_MTE_time(GMTSysTime):
     return currTimeArray
 
 def Rollover_Time_Check_SMF_log(AllTimesDict):
-    toCheckLogDict = {'StartOfDayTime':['%s.*StartOfDay time occurred'%MTE, '%s.*handleStartOfDayInstrumentUpdate.*Ending' %MTE], \
-        'EndOfDayTime':['%s.*EndOfDay time occurred'%MTE], \
-        'CacheRolloverTime': ['%s.*CacheRollover time occurred'%MTE], \
-        'RolloverTime': ['%s.*RolloverReset time occurred'%MTE], \
-        'StartOfConnect':['%s.*StartOfConnect time occurred'%MTE], \
-        'EndOfConnect':['%s.*EndOfConnect time occurred'%MTE], \
-        'StartOfHighActivity':['%s.*StartOfHighActivity time occurred'%MTE], \
-        'EndOfHighActivity':['%s.*EndOfHighActivity time occurred'%MTE]}
+    """Change the MTE machine date to a few seconds before the configured time.
+               
+    Argument:
+        AllTimesDict : Dictionary which the time is the key, value is list of the config names like
+    {'2016-12-06 12:00:00': [u'StartOfDayTime'], '2016-12-07 03:30:00': [u'EndOfDayTime'], '2016-12-06 05:00:00': [u'RolloverTime', u'CacheRolloverTime', u'JnlRollTime', u'CacheRollover']}
+    Normally returned by Get_future_config_times.
+    
+    Return: no
+    
+    Examples:
+        | Rollover time check smf log | ${allTimesDict} |
+    """ 
     sortList = AllTimesDict.keys()
     sortList.sort()
     for timepoint in sortList:
         currTimeArray = rollover_MTE_time(timepoint)
         for eventname in AllTimesDict[timepoint]:
-            if toCheckLogDict.has_key(eventname):
-                logsToCheck = toCheckLogDict[eventname]
-                for log in logsToCheck:
-                    print '*INFO* check log: %s'%log
-                    logfiles.wait_smf_log_message_after_time(log, currTimeArray)
-    
-    
+            check_logfile_for_event(eventname, currTimeArray)
+
 def start_smf():
     """Start the Server Management Foundation process.
 

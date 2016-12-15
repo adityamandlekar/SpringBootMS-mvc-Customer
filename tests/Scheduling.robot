@@ -238,17 +238,6 @@ Scheduling Variables
     ${modifiedExlFilesDic}    Create Dictionary
     Set Suite Variable    ${modifiedExlFilesDic}
     Set Suite Variable    ${ricDomain}    ${statRicDomain}
-    ${CheckLogDict}    Create Dictionary
-    Set Suite Variable    ${CheckLogDict}
-    ${SOCLogList}    create list    ${MTE}.*StartOfConnect time occurred    ${MTE}.*handleStartOfDayInstrumentUpdate.*Ending
-    Set To Dictionary    ${CheckLogDict}    StartOfConnect    ${SOCLogList}
-    ${EOCLogList}    create list    ${MTE}.*EndOfConnect time occurred
-    Set To Dictionary    ${CheckLogDict}    EndOfConnect    ${EOCLogList}
-    ${SOHLogList}    create list    ${MTE}.*StartOfHighActivity time occurred
-    Set To Dictionary    ${CheckLogDict}    StartOfHighActivity    ${SOHLogList}
-    ${EOHLogList}    create list    ${MTE}.*EndOfHighActivity time occurred
-    Set To Dictionary    ${CheckLogDict}    EndOfHighActivity    ${EOHLogList}
-    
 
 Scheduling Mapping
     [Documentation]    1. Getting Feed Time and Trade Time related information
@@ -611,9 +600,9 @@ Go Into Time
     @{tdBoxDateTime}=    run keyword if    '${advOffset}'!='${Empty}'    Get Date and Time
     run keyword if    '${advOffset}'!='${Empty}'    Sleep    30s
     Run Keyword If    '${isCheckStat}'=='True'    Check InputPortStatsBlock    ${identifierFieldName}    ${identifierValue}    ${statFieldName}    1
-    ${logToCheck}    Run Keyword If    '${type}' == 'Feed Time'    set variable    ${CheckLogDict['StartOfConnect']}
-    ...    ELSE    set variable    ${CheckLogDict['StartOfHighActivity']}
-    run keyword if    '${advOffset}'!='${Empty}'    wait smf log message after time    ${logToCheck[0]}    ${tdBoxDateTime}    waittime=5    timeout=120
+    ${eventName}    Run Keyword If    '${type}' == 'Feed Time'    set variable    StartOfConnect
+    ...    ELSE    set variable    StartOfHighActivity
+    run keyword if    '${advOffset}'!='${Empty}'    check logfile for event    ${eventName}    ${tdBoxDateTime}
     [Return]    ${exlFileModified}
 
 Set Times For OUT State
@@ -665,9 +654,9 @@ Go Outside Time
     @{tdBoxDateTime}=    run keyword if    '${advOffset}'!='${Empty}'    Get Date and Time
     run keyword if    '${advOffset}'!='${Empty}'    Sleep    30s
     Run Keyword If    '${isCheckStat}'=='True'    Check InputPortStatsBlock    ${identifierFieldName}    ${identifierValue}    ${statFieldName}    0
-    ${logToCheck}    Run Keyword If    '${type}' == 'Feed Time'    set variable    ${CheckLogDict['EndOfConnect']}
-    ...    ELSE    set variable    ${CheckLogDict['EndOfHighActivity']}
-    run keyword if    '${advOffset}'!='${Empty}'    wait smf log message after time    ${logToCheck[0]}    ${tdBoxDateTime}    waittime=5    timeout=120
+    ${eventName}    Run Keyword If    '${type}' == 'Feed Time'    set variable    EndOfConnect
+    ...    ELSE    set variable    EndOfHighActivity
+    run keyword if    '${advOffset}'!='${Empty}'    check logfile for event    ${eventName}    ${tdBoxDateTime}
     [Return]    ${exlFileModified}
 
 Set Datetimes For IN State
