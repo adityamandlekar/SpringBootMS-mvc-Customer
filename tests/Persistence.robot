@@ -147,30 +147,36 @@ Verify Realtime MARKET_PRICE Persistence
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    @{modifiedFeedEXLFiles}
 
-Verify Persist File By damaging dat_loaded and restort MTE
+Verify Persistence File By Loading Damaging File
     [Documentation]    Verify persistence file by Persist.dat file is damaged and restart MTE
+    ...    by comparing two dump cathe files. Recovery Persist.dat and Persist.dat.loaded and delete persistence backup files.
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2147
     [Setup]
-    Comment    /BackUp Persist file(.dat and .lat.loaded)
+    Stop MTE
     Delete Persist Backup
+    Delete Persist Files
+    Start MTE
     ${serviceName}=    Get FMS Service Name
-    ${currDateTime}=    get date and time
-    ${exlFiles}    ${modifiedExlFiles}    Go Into End Feed Time    ${serviceName}
-    @{existingPersistBackupFiles}=    wait for search file    ${VENUE_DIR}    PERSIST_${MTE}_*.DAT    2    180
-    @{existingPersistLoadedBackupFiles}=    wait for search file    ${VENUE_DIR}    PERSIST_${MTE}.DAT.LOADED    2    180
-    ${fileList}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT
-    ${fileList1}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT.LOADED
-    Comment    dump persist dat.loaded to local disk persist_xxx_1.txt
-    ${PathPersistedFile}    Fetch From Left    @{existingPersistBackupFiles}    PERSIST_${MTE}
-    ${PersistFileLoaded}    Dump Persist Files To Txt_DatLoaded
-    ${PersistFile}    Dump Persist File To Text
+    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    Wait For Persist File Update
+    ${fileList_DAT}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT
+    ${fileList_DATLOADED}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT.LOADED
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_before.csv
     Stop MTE
     Create Remote File Content    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT    //file 12345 by Scripts
     Start MTE
-    Comment    Force Persist File Write    ${serviceName}
-    ${PersistFileLoaded}    Dump Persist Files To Txt_DatLoaded
-    ${PersistFileNew}    Dump Persist File To Text
-    [Teardown]
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_after.csv
+    ${removeFMSREORGTIMESTAMP}    Create Dictionary    .*CHE%FMSREORGTIMESTAMP.*=${EMPTY}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_before.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_after.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
+    Comment    //Recover to original files (PERSIST_XXX.DAT AND PERSIST_XXX.DATA.LOADE) in order to run next test case Because now both are damaged files.    //Delete Persist backup file
+    Stop MTE
+    Delete Persist Backup
+    Delete Persist Files
+    Start MTE
+    Wait For Persist File Update
+    [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
 Persistence file FIDs existence check
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
@@ -192,14 +198,6 @@ Persistence file FIDs existence check
     List Should Contain Value    ${fidsSet}    5357
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    ${pmatDumpfile}    @{modifiedFeedEXLFiles}
-
-test
-    ${serviceName}=    Get FMS Service Name
-    Comment    Get content of Persist file before injection
-    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
-    Comment    ${persistDump}=    Dump Persist File to Text
-    Comment    Load All EXL Files    ${serviceName}    ${CHE_IP}
-    Comment    Set 24x7 Feed And Trade Time And No Holidays
 
 *** Keywords ***
 Delete Persist Backup
@@ -236,18 +234,3 @@ Go Into EndOfDay time
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
     ${configFileLocal}=    Get MTE Config File
     [Teardown]
-
-Dump Persist Files To Txt_DatLoaded
-    [Arguments]    @{optargs}
-    ${localPersistFile}=    set variable    ${LOCAL_TMP_DIR}${/}local_persist.dat.loaded
-    Comment    ${remotePersist}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    ${True}
-    ${remotePersist_loaded}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT.LOADED    ${True}
-    Comment    Should Be True    len(${remotePersist}) ==1
-    Should Be True    len(${remotePersist_loaded}) ==1
-    Comment    get remote file    ${remotePersist[0]}    ${localPersistFile}
-    get remote file    ${remotePersist_loaded[0]}    ${localPersistFile}
-    ${random}=    Generate Random String    4    [NUMBERS]
-    ${pmatDumpfile}=    set variable    ${LOCAL_TMP_DIR}${/}pmatDumpLoaded${random}.txt
-    Run PMAT    dump    --dll Schema_v6.dll    --db ${localPersistFile}    --oformat text    --outf ${pmatDumpfile}    @{optargs}
-    Remove Files    ${localPersistFile}
-    [Return]    ${pmatDumpfile}
