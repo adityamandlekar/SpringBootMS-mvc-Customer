@@ -199,6 +199,7 @@ test
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
     Comment    ${persistDump}=    Dump Persist File to Text
     Comment    Load All EXL Files    ${serviceName}    ${CHE_IP}
+    Comment    Set 24x7 Feed And Trade Time And No Holidays
 
 *** Keywords ***
 Delete Persist Backup
