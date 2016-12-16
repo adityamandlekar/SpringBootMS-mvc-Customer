@@ -171,7 +171,7 @@ Delete Persist Backup
 Get Backup Keep Days
     [Documentation]    Return the tag value of <NumberOfDailyBackupsToKeep> in MTE config file
     ${mteConfigFile}=    Get MTE Config File
-    ${keepDays}=    get MTE config value    ${mteConfigFile}    DDS    NumberOfDailyBackupsToKeep
+    ${keepDays}=    get MTE config value    ${mteConfigFile}    Persistence    DDS    NumberOfDailyBackupsToKeep
     [Teardown]
     [Return]    ${keepDays}
 

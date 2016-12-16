@@ -199,7 +199,7 @@ Verify Reconcile of Cache
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1848
     ...    To verify whether a new RIC can be added and a old RIC can be dropped via reconcile
     ${mteConfigFile}=    Get MTE Config File
-    ${SendRefreshForFullReorg}    Get MTE Config Value    ${mteConfigFile}    SendRefreshForFullReorg
+    ${SendRefreshForFullReorg}    Get MTE Config Value    ${mteConfigFile}    FMS    SendRefreshForFullReorg
     Should Be True    ${SendRefreshForFullReorg} != '1'    SendRefreshForFullReorg should be disabled
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name

@@ -95,13 +95,3 @@ Restart MTE With GRS Recovery
     Delete Persist Files
     Start MTE
     Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
-
-Modify MTE config and Injection pcap Port Info
-    [Arguments]    ${orgCfgFile}    ${pcapFile}
-    ${mteConfigFile}=    Get MTE Config File
-    ${portstr}=    get MTE config value    ${mteConfigFile}    Inputs    ${FH}    FHRealtimeLine    ServiceName
-    ${portNum}=    Convert to Integer    ${portstr}
-    ${portNumNew}=    Set Variable    ${portNum+ 1}
-    ${modifiedPCAP}=    Rewrite PCAP File    ${pcapFile}    --portmap=${portNum}:${portNumNew}
-    Set value in MTE cfg    ${orgCfgFile}    ServiceName    ${portNumNew}
-    [Return]    ${modifiedPCAP}

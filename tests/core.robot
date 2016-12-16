@@ -539,7 +539,7 @@ MTE Machine Setup
 MTE or FTE
     [Documentation]    Determine if this venue has an MTE or FTE.
     ...    Return either 'MTE' or 'FTE'.
-    ...    Fail if neither MTD nor FTE is found.
+    ...    Fail if neither MTE nor FTE is found.
     ${result}=    find processes by pattern    FTE -c ${MTE}
     Return From Keyword If    len(${result}    FTE
     ${result}=    find processes by pattern    MTE -c ${MTE}
@@ -713,7 +713,7 @@ Set Common Suite Variables
     ...    MTE_CONFIG - MTE config file name
     ...    REMOTE_MTE_CONFIG_DIR - path to directory containing the MTE config file on Thunderdome box.
     Set Suite Variable    ${CHE_IP}    ${ip}
-    ${MTE_CONFIG}=    convert to lowercase    ${MTE}.xml
+    ${MTE_CONFIG}=    convert to lowercase    ${MTE}.json
     Set Suite Variable    ${MTE_CONFIG}
     ${fileList}=    search remote files    ${VENUE_DIR}    ${MTE_CONFIG}    recurse=${True}
     Length Should Be    ${fileList}    1    ${MTE_CONFIG} file not found (or multiple files found).
