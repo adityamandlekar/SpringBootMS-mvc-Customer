@@ -147,23 +147,17 @@ Verify Realtime MARKET_PRICE Persistence
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    @{modifiedFeedEXLFiles}
 
-Verify Persistence File By Loading Damaging File
-    [Documentation]    Verify persistence file by Persist.dat file is damaged and restart MTE
-    ...    by comparing two dump cathe files. Recovery Persist.dat and Persist.dat.loaded and delete persistence backup files.
+Verify Recover if Persist File is Damaged
+    [Documentation]    Verify the the backup persist file (PERSIST.DAT.LOADED) is loaded if the normal persist file (PERSIST.DAT) is invalid by comparing two dump cathe files.
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2147
     [Setup]
-    Stop MTE
     Delete Persist Backup
-    Delete Persist Files
-    Start MTE
     ${serviceName}=    Get FMS Service Name
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
-    Wait For Persist File Update
     ${fileList_DAT}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT
-    ${fileList_DATLOADED}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT.LOADED
     Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_before.csv
     Stop MTE
-    Create Remote File Content    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT    //file 12345 by Scripts
+    Create Remote File Content    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT    //file 12345
     Start MTE
     Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_after.csv
     ${removeFMSREORGTIMESTAMP}    Create Dictionary    .*CHE%FMSREORGTIMESTAMP.*=${EMPTY}
@@ -171,10 +165,7 @@ Verify Persistence File By Loading Damaging File
     Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_after.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ${removeFMSREORGTIMESTAMP}    ${False}
     verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
     Comment    //Recover to original files (PERSIST_XXX.DAT AND PERSIST_XXX.DATA.LOADE) in order to run next test case Because now both are damaged files.    //Delete Persist backup file
-    Stop MTE
-    Delete Persist Backup
-    Delete Persist Files
-    Start MTE
+    restore_remote_cfg_file    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT.backup
     Wait For Persist File Update
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
