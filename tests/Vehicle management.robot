@@ -397,8 +397,7 @@ Verify both RIC and SIC rename handled correctly
     Verfiy Item Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
     Verfiy Item Not Persisted    ${RIC_After_Rename}    ${SIC_After_Rename}    ${domain}
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
-    ...    AND    case teardown    ${LocalEXLfullpath}    ${srcFilefullPath}    ${modifiedFeedEXLFiles}    ${LOCAL_TMP_DIR}/capture_local_2.pcap
-    ...    ${LOCAL_TMP_DIR}/capture_local_3.pcap
+    ...    AND    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 *** Keywords ***
 Calculate UpdateSince for REORG

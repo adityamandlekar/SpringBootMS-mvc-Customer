@@ -666,6 +666,40 @@ def verify_key_compression_in_message(pcapfile, ric):
     for delFile in outputxmlfilelist:
         os.remove(delFile)
 
+def verify_item_status_in_response (pcapfile, ric, domain,constituent_list,expectedStreamState):
+    """ verify the RIC status in MTE output pcap message
+        Argument : pcapfile : MTE output capture pcap file fullpath
+                   ric : published RIC
+                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
+                   constituent_list: list contains all possible constituents 
+        return : Nil
+    """           
+
+    #Check if pcap file exist
+    if (os.path.exists(pcapfile) == False):
+        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)
+    
+    # create filter string for each constituent to get the message fids set
+    outputfileprefix = 'streamState_pcap'
+    filterDomain = 'TRWF_TRDM_DMT_'+ domain
+    for constnum in constituent_list:
+        filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_ITEM_STATUS&quot;, AND(ItemStatus_itemSeqNum != &quot;0&quot;, ItemStatus_constitNum = &quot;%s&quot;,ItemStatus_StreamState = &quot;%s&quot;))))'%(filterDomain,ric,constnum,expectedStreamState)
+        outputxmlfilelist = get_xml_from_pcap(pcapfile, filterstring, outputfileprefix)                
+            
+        for exist_file in outputxmlfilelist:
+            os.remove(exist_file)
+    
+    messageNode = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
+    
+    for msgkey in messageNode[0].getiterator('ItemState'):
+        element = msgkey.find('StreamState')
+        if (element != None):
+            if element.get('value') != expectedStreamState:
+                raise AssertionError('*ERROR* The set id in message is %s does not equal the expected %s' % (element.text, expectedStreamState))
+            
+    for delFile in outputxmlfilelist:
+        os.remove(delFile)
+
 def verify_message_fids_are_in_FIDfilter(localPcap, ric, domain, contextId):
     '''
      verify that message's fids set from pcap for the ric, with domain, contextId is the subset of the fids set defined in FidFilter file for a particular constituent under the context id

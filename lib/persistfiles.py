@@ -114,33 +114,33 @@ def verify_item_not_in_persist_dump_file(persist_dump_file, ric, sic):
     sic_path = './/DatabaseEntry/SIC'
 
     if ric != '' and ric != None:
-        ric_Noexist = True
+        ric_exist = False
         ric_nodes = root.findall(ric_path)
         if ric_nodes is None:
             raise AssertionError('*ERROR*  Missing RIC element under %s from file: %s' %(ric_path, persist_dump_file))
 
         for val in ric_nodes:
             if val.text == ric:
-                ric_Noexist = False
+                ric_exist = True
                 break
             
-        if not ric_Noexist:  
+        if ric_exist:  
             raise AssertionError('*ERROR* ric %s is found in persist file %s' %(ric, persist_dump_file))  
 
         print '*INFO* RIC %s is not found in persist file %s' %(ric, persist_dump_file)
 
     if sic != '' and sic != None:
-        sic_Noexist = True
+        sic_exist = False
         sic_nodes = root.findall(sic_path)
         if sic_nodes is None:
             raise AssertionError('*ERROR*  Missing SIC element under %s from file: %s' %(sic_path, persist_dump_file))
 
         for val in sic_nodes:
             if val.text != sic:
-                sic_Noexist = False
+                sic_exist = True
                 break
             
-        if not sic_Noexist:  
+        if sic_exist:  
             raise AssertionError('*ERROR* sic %s is found in persist file %s' %(sic, persist_dump_file))  
 
         print '*INFO* SIC %s is not found in persist file %s' %(sic, persist_dump_file)
