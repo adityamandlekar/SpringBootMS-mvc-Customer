@@ -147,7 +147,7 @@ Verify Realtime MARKET_PRICE Persistence
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    @{modifiedFeedEXLFiles}
 
-Verify Recover if Persist File is Damaged
+Verify Recovery if Persist File is Damaged
     [Documentation]    Verify the the backup persist file (PERSIST.DAT.LOADED) is loaded if the normal persist file (PERSIST.DAT) is invalid by comparing two dump cathe files.
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2147
     [Setup]
@@ -164,7 +164,6 @@ Verify Recover if Persist File is Damaged
     Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_before.csv    ${removeFMSREORGTIMESTAMP}    ${False}
     Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_after.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ${removeFMSREORGTIMESTAMP}    ${False}
     verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
-    Comment    //Recover to original files (PERSIST_XXX.DAT AND PERSIST_XXX.DATA.LOADE) in order to run next test case Because now both are damaged files.    //Delete Persist backup file
     restore_remote_cfg_file    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT.backup
     Wait For Persist File Update
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
