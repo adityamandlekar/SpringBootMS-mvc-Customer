@@ -38,9 +38,7 @@ Validate Item Sequence Numbering on Failover
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     Switch To TD Box    ${CHE_B_IP}
     ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
-    ${configFileLocal}=    Get MTE Config File
-    Set Value in MTE Cfg    ${configFileLocal}    FailoverPublishRate    500    add    BackgroundRebuild
+    Set Value in MTE Cfg    ${orgCfgFile}    FailoverPublishRate    500    add    BackgroundRebuild
     Comment    Inject PCAP1 and get the RIC list of the injected PCAP1
     Reset Sequence Numbers    ${CHE_A_IP}    ${CHE_B_IP}
     Switch To TD Box    ${CHE_A_IP}
@@ -74,7 +72,5 @@ Validate Item Sequence Number Logic on Failover Teardown
     [Documentation]    Restore MTE config file on standby machine
     Switch To TD Box    ${CHE_B_IP}
     restore remote cfg file    ${orgCfgFile}    ${backupCfgFile}
-    Remove Files    ${LOCAL_MTE_CONFIG_FILE}
-    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
     Stop MTE
     Start MTE

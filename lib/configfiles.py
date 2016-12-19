@@ -85,16 +85,16 @@ def get_context_ids_from_config_file(venueConfigFile):
     | get_context_ids_from_config_file | E:\\temp\\hkf02m.xml |
     """
 
-    context_id_set = Set()
+    context_id_list = []
 
     match = []
     match = get_MTE_config_key_list(venueConfigFile,'Transforms')
 
     for m in match:
         if m[0].lower() == 'c':
-            context_id_set.add(m[1:])
+            context_id_list.append(m[1:])
 
-    return context_id_set
+    return context_id_list
 
 def get_context_ids_from_fms_filter_string(fms_filter_string): 
     """Returns a set of context_ids appeared in the fms filter string.
@@ -217,7 +217,7 @@ def get_MTE_config_key_list(venueConfigFile, *path):
         else:
             raise AssertionError('*ERROR*  Missing [%s] element from venue config file: %s' %(p, venueConfigFile))
         
-    if type(node) == 'dict':
+    if isinstance(node,dict):
         return node.keys()
     else:
         return []
@@ -511,12 +511,13 @@ def verify_filterString_contains_configured_context_ids(filter_string,venueConfi
 def _get_matching_values_from_dict(node, tag):
     values = []
     for key,val in node.items():
-        if type(val) == 'dict':
-            values.extend(_get_matching_values(val,tag))
-        elif type(val) == 'list':
-            values.extend(val)
-        else:
-            values.add(val)
+        if isinstance(val,dict):
+            values.extend(_get_matching_values_from_dict(val,tag))
+        if key == tag:
+            if isinstance(val,list):
+                values.extend(val)
+            else:
+                values.append(val)
     return values
 
 def _search_MTE_config_file(venueConfigFile,*path):
@@ -534,9 +535,9 @@ def _search_MTE_config_file(venueConfigFile,*path):
             node = node[p]
         else:
             return []
-    if type(node) == 'list':
+    if isinstance(node,list):
          return node
-    elif type(node) == 'dict':
+    elif isinstance(node,dict):
         return keys(node)
     else:
         return [node]
