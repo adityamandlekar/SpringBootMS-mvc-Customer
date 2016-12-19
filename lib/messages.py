@@ -667,7 +667,7 @@ def verify_key_compression_in_message(pcapfile, ric):
         os.remove(delFile)
 
 def verify_item_status_in_response (pcapfile, ric, domain,constituent_list,expectedStreamState):
-    """ verify the RIC status in MTE output pcap message
+    """ verify the RIC stream status in MTE output pcap message
         Argument : pcapfile : MTE output capture pcap file fullpath
                    ric : published RIC
                    domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
@@ -683,20 +683,16 @@ def verify_item_status_in_response (pcapfile, ric, domain,constituent_list,expec
     outputfileprefix = 'streamState_pcap'
     filterDomain = 'TRWF_TRDM_DMT_'+ domain
     for constnum in constituent_list:
-        filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_ITEM_STATUS&quot;, AND(ItemStatus_itemSeqNum != &quot;0&quot;, ItemStatus_constitNum = &quot;%s&quot;,ItemStatus_StreamState = &quot;%s&quot;))))'%(filterDomain,ric,constnum,expectedStreamState)
+        filterstring =  'AND(Domain = &quot;%s&quot;, AND(MsgClass = &quot;TRWF_MSG_MC_ITEM_STATUS&quot; AND(MsgKeyName = &quot;%s&quot;, AND(StreamState = &quot;%s&quot;, ConstituentNum = &quot;%s&quot;))))'%(filterDomain, ric, expectedStreamState, constnum)
         outputxmlfilelist = get_xml_from_pcap(pcapfile, filterstring, outputfileprefix)                
-            
-        for exist_file in outputxmlfilelist:
-            os.remove(exist_file)
+        messageNode = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
+        for msgkey in messageNode[0].getiterator('ItemState'):
+            element = msgkey.find('StreamState')
+            print element
+            if (element != None):
+                if element.get('value') != '4':  #TRWF_MSG_SST_CLOSED
+                    raise AssertionError('*ERROR* The set id in message is %s does not equal the expected %s' % (element.text, expectedStreamState))
     
-    messageNode = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
-    
-    for msgkey in messageNode[0].getiterator('ItemState'):
-        element = msgkey.find('StreamState')
-        if (element != None):
-            if element.get('value') != expectedStreamState:
-                raise AssertionError('*ERROR* The set id in message is %s does not equal the expected %s' % (element.text, expectedStreamState))
-            
     for delFile in outputxmlfilelist:
         os.remove(delFile)
 

@@ -354,6 +354,7 @@ Verify both RIC and SIC rename handled correctly
     [Documentation]    Rename both RIC and SIC.
     ...    Verify that the old RIC is no longer in cache. \ Verify the new RIC and SIC are in cache.
     ...    Verify persisted file and published message.
+    ...    Verify item status in pcap file should be "TRWF_MSG_SST_CLOSED" of stream state.
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2149
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
@@ -382,6 +383,7 @@ Verify both RIC and SIC rename handled correctly
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_2.pcap
     verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${Published_RIC_After_Rename}    ${domain}    ${constituent_list}
     Verfiy Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
+    Verify Item Status In Response    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${RIC_Before_Rename}    ${domain}    ${constituent_list}    TRWF_MSG_SST_CLOSED
     Start Capture MTE Output
     Purge RIC    ${RIC_After_Rename}    ${domain}    ${serviceName}
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
@@ -396,8 +398,12 @@ Verify both RIC and SIC rename handled correctly
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
     Verfiy Item Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
     Verfiy Item Not Persisted    ${RIC_After_Rename}    ${SIC_After_Rename}    ${domain}
+    Verify Item Status In Response    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${RIC_Before_Rename}    ${domain}    ${constituent_list}    TRWF_MSG_SST_CLOSED
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
+
+test
+    Verify Item Status In Response    ${LOCAL_TMP_DIR}/capture_local_2.pcap    AAADX.O    MARKET_PRICE    ['1', '0']    TRWF_MSG_SST_CLOSED
 
 *** Keywords ***
 Calculate UpdateSince for REORG
