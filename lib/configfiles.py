@@ -88,7 +88,7 @@ def get_context_ids_from_config_file(venueConfigFile):
     context_id_set = Set()
 
     match = []
-    match = get_MTE_config_tag_list(venueConfigFile,'Transforms')
+    match = get_MTE_config_key_list(venueConfigFile,'Transforms')
 
     for m in match:
         if m[0].lower() == 'c':
@@ -170,180 +170,145 @@ def get_Label_ID_For_Context_ID(venueConfigFile, contextId):
     Return : Label ID of the input Context ID
 
     Examples :
-    | ${labelID}= | Get Label ID For Context ID | venue_config_file | 1688 |
+    | ${labelID}= | Get Label ID For Context ID | venue_config_file | 1577 |
 
     Venue config file example:
-    <Transforms>
-      <C1688>
-        <OutputLabel>8070</OutputLabel>
-         ...
-      <C1690>
-        <OutputLabel>8070</OutputLabel>
-         ...
-    </Tramsforms>
+   "Transforms": {
+       "C1577": {
+          "OutputLabel": "7092",
+             ...
+        }
+       "C1578": {
+          "OutputLabel": "7092",
+             ...
+         }
+    }
     """
 
-    foundLabelId = None
-    contextIdLength = len(contextId)
-    if contextIdLength < 1:
-        raise AssertionError('*ERROR*  Need to provide Context ID to look up.')
+    foundLabelId = get_MTE_config_value(venueConfigFile, 'Transforms', 'C'+contextId, 'OutputLabel')
+    if foundLabelId == 'NOT FOUND':
+        raise AssertionError('*ERROR*  Fail to find Label ID for Context ID %s from venue config file: %s' %(contextId, venueConfigFile))
+    return foundLabelId
 
+def get_MTE_config_key_list(venueConfigFile, *path):
+    """ Get the list of key values under the specified path from venue config file
+
+    Argument : venueConfigFile : local path of venue config file
+               path : one or more node names that identify the path to use
+
+    Return : list of keys
+
+    Examples :
+    | ${keyList}= | get MTE config key list | venue_config_file | Transforms |
+    """
+
+    if len(path) < 1:
+        raise AssertionError('*ERROR*  Need to provide path to look up.')
+        
     if not os.path.exists(venueConfigFile):
         raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
     
     with open (venueConfigFile, "r") as myfile:
-        linesRead = myfile.readlines()
-
-    # Note that the following workaround is needed to make the venue config file a valid XML file.
-    linesRead = "<GATS>" + ''.join(linesRead) + "</GATS>"
-
-    root = ET.fromstring(linesRead)
-    xmlPathString = './/Transforms/C' + contextId + '/OutputLabel'
-
-    foundNode = root.find(xmlPathString)
-    if foundNode is None:
-        raise AssertionError('*ERROR*  Fail to find Label ID for Context ID %s from venue config file: %s' %(contextId, venueConfigFile))
-
-    foundLabelId = foundNode.text
-    return foundLabelId
-
-def get_MTE_config_list_by_path(venueConfigFile,*xmlPath):
+        node = json.load(myfile)
+    
+    for p in path:
+        if p in node:
+            node = node[p]
+        else:
+            raise AssertionError('*ERROR*  Missing [%s] element from venue config file: %s' %(p, venueConfigFile))
+        
+    if type(node) == 'dict':
+        return node.keys()
+    else:
+        return []
+    
+def get_MTE_config_list_by_path(venueConfigFile,*path):
     """ Gets value(s) from venue config file
         http://www.iajira.amers.ime.reuters.com/browse/CATF-1798
         
         params : venueConfigFile - full path to local copy of venue configuration file
-                 xmlPath - one or more node names that identify the XML path
+                 path - one or more node names that identify the node path
 
-        return : list containing value(s) of given xmlPath, if found. Otherwise, returns empty list
+        return : list containing value(s) of given path, if found. Otherwise, returns empty list
         
         Examples :
-        | ${domainList}= | get MTE config list | ${LOCAL_TMP_DIR}/venue_config.xml | FMS | MFDS | Domain | Z |
+        | ${domainList}= | get MTE config list | ${LOCAL_TMP_DIR}/venue_config.xml | FMS | MFDS | Domain |
 
         Venue config file example:
-        <FMS>
-          <Services type="multistring">
-            <Z>MFDS</Z>
-          </Services>
-          <MFDS>
-            <Domain type="multistring">
-              <Z>MARKET_PRICE</Z>
-              <Z>MARKET_BY_PRICE</Z>
-            </Domain>
-            <FilterString>CONTEXT_ID = 1052 OR CONTEXT_ID = 1053</FilterString>
-          </MFDS>
-        </FMS>
+           "FMS": {
+              "Enabled": 1,
+              "EnableInboundJournaling": 0,
+              "EnableOutboundJournaling": 0,
+              "ReorgTimeoutInSeconds": 1200,
+              "ReorgTimeoutMode": "None",
+              "ResendFM": 1,
+              "SendRefreshForFullReorg": 0,
+              "Services": ["HK-HKF"],
+              "HK-HKF": {
+                 "Domain": ["MARKET_PRICE","MARKET_BY_PRICE", "MARKET_BY_ORDER"],
+                 "FilterString": "CONTEXT_ID = 1577 OR CONTEXT_ID = 1578 OR CONTEXT_ID = 2299 OR CONTEXT_ID = 2861 OR CONTEXT_ID = 2862 OR CONTEXT_ID = 2863 OR CONTEXT_ID = 2865 OR CONTEXT_ID =     3213 OR CONTEXT_ID = 1662 OR CONTEXT_ID = 3200",
+                 "NDAFilterValue": 1
+              }
+           }
     """ 
     
-    foundConfigValues = _search_MTE_config_file(venueConfigFile,*xmlPath)
-    
-    if len(foundConfigValues) == 0:
-        return []
-    else:
-        return foundConfigValues
+    return _search_MTE_config_file(venueConfigFile,*path)
 
 def get_MTE_config_list_by_section(venueConfigFile, section, tag):
-    """ Gets value(s) from venue config file based on the venue config file section node name and subelement node name (tag)
+    """ Gets value(s) from venue config file based on the venue config file section node name and subelement node name (tag).
+        There may be one or more nodes between the specified section name and the subelement name.  All intermediate nodes are searched.
         Argument : venueConfigFile : full path to local copy of venue configuration file
                  section : top section node in venueConfigFile
                  tag : subelement node name under section appeared in venueConfigFile
-        Return : value list of given node name, if found. Otherwise, returns 'Not Found'.
+        Return : value list of given node name, if found. Otherwise, returns empty list.
         Examples :
         | ${labelIDs}= | get MTE config value list| venue_config_file| Publishing | LabelID |
          
     """ 
     if not os.path.exists(venueConfigFile):
         raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
-     
+    
     with open (venueConfigFile, "r") as myfile:
-        linesRead = myfile.readlines()
-    # Note that the following workaround is needed to make the venue config file a valid XML file.
-    linesRead = "<GATS>" + ''.join(linesRead) + "</GATS>"
-    root = ET.fromstring(linesRead)
-    sectionNode = root.find(section)
-    if sectionNode is None:
+        node = json.load(myfile)
+        
+    if section not in node:
         raise AssertionError('*ERROR*  Missing [%s] element from venue config file: %s' %(section, venueConfigFile))
         
-    labelIDNode = sectionNode.findall('.//%s'%tag)
-    if labelIDNode is None:
-        raise AssertionError('*ERROR*  Missing %s element under section %s from venue config file: %s' %(tag, section, venueConfigFile))
-    
-    LabelIdList = []
-    for val in labelIDNode:
-        if val.text:
-            LabelIdList.append(val.text)
-            
-    if not len(LabelIdList):  
-        raise AssertionError('*ERROR*  Missing %s element text from venue config file: %s' %(tag, venueConfigFile))
-    
-    return LabelIdList
+    values = []
+    values.extend(_get_matching_values_from_dict(node[section], tag))
+    return values
 
-def get_MTE_config_tag_list(venueConfigFile, *xmlPath):
-    """ Get tag from venue config file
-
-    Argument : venueConfigFile : local path of venue config file
-               xmlPath : one or more node names that identify the XML path
-
-    Return : list of tag
-
-    Examples :
-    | ${tagList}= | get MTE config tag list | venue_config_file | Transforms |
-    """
-
-    foundConfigTags = []
-
-    xmlPathLength = len(xmlPath)
-    if xmlPathLength < 1:
-        raise AssertionError('*ERROR*  Need to provide xmlPath to look up.')
-    elif xmlPathLength > 1:
-        xmlPathString = '/'.join(map(str, xmlPath))
-    else:
-        xmlPathString = str(xmlPath[0])
-        
-    if not os.path.exists(venueConfigFile):
-        raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
-    
-    with open (venueConfigFile, "r") as myfile:
-        linesRead = myfile.readlines()
-
-    # Note that the following workaround is needed to make the venue config file a valid XML file.
-    linesRead = "<GATS>" + ''.join(linesRead) + "</GATS>"
-    
-    root = ET.fromstring(linesRead)
-    
-    for foundNode in root.iterfind(".//" + xmlPathString + '/*'):
-            foundConfigTags.append(foundNode.tag)
-        
-    return foundConfigTags
-
-def get_MTE_config_value(venueConfigFile,*xmlPath):
+def get_MTE_config_value(venueConfigFile,*path):
     """ Gets value from venue config file
         http://www.iajira.amers.ime.reuters.com/browse/CATF-1736
         
         params : venueConfigFile - full path to local copy of venue configuration file
-                 xmlPath - one or more node names that identify the XML path
+                 path - one or more node names that identify the XML path
 
-        return : value of given xmlPath, if found. If multiple values found, will assert an error. Otherwise, returns "NOT FOUND" if nothing found.
+        return : value of given field, if found. If multiple values found, will assert an error. Otherwise, returns "NOT FOUND" if nothing found.
         
-        Examples :
-        | ${filterString}= | get MTE config value | FMS | MFDS | FilterString |
-        | ${connectTimesRIC}= | get MTE config value | ConnectTimesRIC |
+        Example :
+        | ${filterString}= | get MTE config value | FMS | HK-HKF | FilterString |
         
         Venue config file example:
-        <FMS>
-          <Services type="multistring">
-            <Z>MFDS</Z>
-          </Services>
-          <MFDS>
-            <Domain type="multistring">
-              <Z>MARKET_PRICE</Z>
-              <Z>MARKET_BY_PRICE</Z>
-            </Domain>
-            <FilterString>CONTEXT_ID = 1052 OR CONTEXT_ID = 1053</FilterString>
-          </MFDS>
-        </FMS>
+           "FMS": {
+              "Enabled": 1,
+              "EnableInboundJournaling": 0,
+              "EnableOutboundJournaling": 0,
+              "ReorgTimeoutInSeconds": 1200,
+              "ReorgTimeoutMode": "None",
+              "ResendFM": 1,
+              "SendRefreshForFullReorg": 0,
+              "Services": ["HK-HKF"],
+              "HK-HKF": {
+                 "Domain": ["MARKET_PRICE","MARKET_BY_PRICE", "MARKET_BY_ORDER"],
+                 "FilterString": "CONTEXT_ID = 1577 OR CONTEXT_ID = 1578 OR CONTEXT_ID = 2299 OR CONTEXT_ID = 2861 OR CONTEXT_ID = 2862 OR CONTEXT_ID = 2863 OR CONTEXT_ID = 2865 OR CONTEXT_ID =     3213 OR CONTEXT_ID = 1662 OR CONTEXT_ID = 3200",
+                 "NDAFilterValue": 1
+              }
+           }
     """ 
     
-    foundConfigValues = _search_MTE_config_file(venueConfigFile,*xmlPath)
+    foundConfigValues = _search_MTE_config_file(venueConfigFile,*path)
     
     if len(foundConfigValues) == 0:
         return "NOT FOUND"
@@ -518,28 +483,6 @@ def set_mangling_rule_parition_value(rule,contextIDs,configFileLocalFullPath):
             xmlutilities.set_xml_tag_attributes_value_with_conditions(configFileLocalFullPath,conditions,attribute,False,xPath)
             conditions.clear()
 
-def set_MTE_config_tag_value(xmlFileLocalFullPath,tagValue,tagAttributes,addTagIfNotExist=True,*xPath):
-    """set tag value in venue config xml file
-    
-    xmlFileLocalFullPath : full path of xml file
-    tagValue : target tag value
-    tagAttributes : target tag attributes string value (e.g. "type=\"ul\""). 
-                    This is only use if addTagIfNotExist is True, and for node creation in the leaf node if the xPath not exist, not for searching. 
-    addTagIfNotExist: If addTagIfNotExist is True, add the non-exists nodes; else assert if the tag is not found. 
-    xPath : a list contain the xPath for the node
-
-    Returns : Nil
-
-    Examples:
-    | set MTE config tag value | C:/tmp/venue_config.xml | 500 | type=\"ul\" | ${True} | BackgroundRebuild | FailoverPublishRate
-        The above example means:
-        Add the following tag to the general setting in MTE config file, if not exist.
-        Modify the FailoverPublishRate value if it already existed.
-        <BackgroundRebuild>
-            <FailoverPublishRate type="ul">500</FailoverPublishRate>
-        </BackgroundRebuild>
-    """
-
     xmlutilities.set_xml_tag_value(xmlFileLocalFullPath,xPath,tagValue,tagAttributes,True,addTagIfNotExist)
 
 def verify_filterString_contains_configured_context_ids(filter_string,venueConfigFile):
@@ -565,33 +508,39 @@ def verify_filterString_contains_configured_context_ids(filter_string,venueConfi
     else:
         raise AssertionError('*ERROR* venue context ids define in Transforms section %s is not equal to the context ids from fms FilterString %s' %(venueConfig_context_id_set, filterString_context_id_set))
 
-def _search_MTE_config_file(venueConfigFile,*xmlPath):
-    foundConfigValues = []
-    
-    xmlPathLength = len(xmlPath)
-    if xmlPathLength < 1:
-        raise AssertionError('*ERROR*  Need to provide xmlPath to look up.')
-    elif xmlPathLength > 1:
-        xmlPathString = '/'.join(map(str, xmlPath))
-    else:
-        xmlPathString = str(xmlPath[0])
+def _get_matching_values_from_dict(node, tag):
+    values = []
+    for key,val in node.items():
+        if type(val) == 'dict':
+            values.extend(_get_matching_values(val,tag))
+        elif type(val) == 'list':
+            values.extend(val)
+        else:
+            values.add(val)
+    return values
+
+def _search_MTE_config_file(venueConfigFile,*path):
+    if len(path) < 1:
+        raise AssertionError('*ERROR*  Need to provide path to look up.')
         
     if not os.path.exists(venueConfigFile):
         raise AssertionError('*ERROR*  %s is not available' %venueConfigFile)
     
     with open (venueConfigFile, "r") as myfile:
-        linesRead = myfile.readlines()
-
-    # Note that the following workaround is needed to make the venue config file a valid XML file.
-    linesRead = "<GATS>" + ''.join(linesRead) + "</GATS>"
-    
-    root = ET.fromstring(linesRead)
-    
-    for foundNode in root.iterfind(".//" + xmlPathString):
-        foundConfigValues.append(foundNode.text)
+        node = json.load(myfile)
         
-    return foundConfigValues
-
+    for p in path:
+        if p in node:
+            node = node[p]
+        else:
+            return []
+    if type(node) == 'list':
+         return node
+    elif type(node) == 'dict':
+        return keys(node)
+    else:
+        return [node]
+    
 #############################################################################
 # Keywords that use remote configuration files
 #############################################################################
@@ -741,19 +690,22 @@ def restore_remote_cfg_file(cfgfile,backupfile):
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))                
 
-def set_value_in_MTE_cfg(mtecfgfile, tagName, value):
-    """change tag value in ${MTE}.xml
+def set_value_in_MTE_cfg(mtecfgfile, tagName, value, actionIfNotPresent='skip', *tagPath):
+    """change tag value in MTE config file
     
-        params : searchdir - path where search for mte config file
-                 mtecfgfile - filename of mte config file
-                 tagName - target tagName
-                 value - required value
+        params : searchdir          - path where search for mte config file
+                 mtecfgfile         - filename of mte config file
+                 tagName            - target tagName
+                 value              - required value
+                 actionIfNotPresent - "skip" : only INFO indicate the tagName not found in config file
+                                      "fail" : raise assertion if tagName not found
+                                      "add"  " added the tagName to config file
+                 tagPath            -  path of the section where the tag is located (excluding the tagName)
                 
         return : N/A
         
         Examples :
           | set value in_MTE cfg | jsda01.xml | NumberOfDailyBackupsToKeep | 5 |
-
           Would change a config file containing:
              <Persistence>
                <DDS>
@@ -761,7 +713,6 @@ def set_value_in_MTE_cfg(mtecfgfile, tagName, value):
                 <NumberOfDailyBackupsToKeep type="ul">3</NumberOfDailyBackupsToKeep>
               </DDS>
              </Persistence>
-
           To
              <Persistence>
               <DDS>
@@ -770,27 +721,35 @@ def set_value_in_MTE_cfg(mtecfgfile, tagName, value):
               </DDS>
              </Persistence>
              
-    """         
-    #Find configuration file
-    LinuxFSUtilities().remote_file_should_exist(mtecfgfile)
-
-    #Check if <PE> tag exist
-    searchKeyWord = "</%s>"%tagName
-    foundlines = LinuxFSUtilities().grep_remote_file(mtecfgfile, searchKeyWord)
-    if (len(foundlines) == 0):
-        raise AssertionError('*ERROR* <%s> tag is missing in %s' %(tagName, mtecfgfile))
-
-    # match tags with attributes, e.g.
-    # <NumberOfDailyBackupsToKeep type="ul">3</NumberOfDailyBackupsToKeep>
-    cmd_match_tag_with_attributes = "sed -i 's/\(<%s [^>]*>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value) + mtecfgfile
-    # match exact tag name, e.g.
-    #<TransformConfig>C4652_OB.tconf</TransformConfig> but not  <TransformConfigOptimized>true</TransformConfigOptimized>
-    cmd_match_tag_only = "sed -i 's/\(<%s>\)[^<]*\(.*\)/\\1%s\\2/' "%(tagName,value) + mtecfgfile
+    """
+    if actionIfNotPresent != 'skip' and actionIfNotPresent != 'fail' and actionIfNotPresent != 'add':
+        raise AssertionError("*ERROR* Invalid value %s for actionIfNotPresent, valid values are 'skip', 'fail', and 'add'" %actionIfNotPresent)
+                             
+    cfgContent = LinuxFSUtilities().read_remote_file(mtecfgfile)
+    jsonDict = json.load(cfgContent)
+    node = jsonDict
     
-    stdout, stderr, rc = _exec_command(cmd_match_tag_with_attributes)
-    if rc !=0 or stderr !='':
-        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_with_attributes,rc,stdout,stderr))   
-    
-    stdout, stderr, rc = _exec_command(cmd_match_tag_only)
-    if rc !=0 or stderr !='':
-        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_only,rc,stdout,stderr)) 
+    for t in tagPath:
+        if t in node:
+            node = node[t]
+        elif actionIfNotPresent == "fail":
+            raise AssertionError('*ERROR* Intermediate node %s is missing' %t)
+        elif actionIfNotPresent == "skip":
+            print '*INFO*  <%s> Intermediate node %s is missing, tag %s will not be added'%(t, tagName)
+            return
+        elif actionIfNotPresent == "add":
+            node[t] = {}
+            node = node[t]
+              
+    if tagName in node:
+        node[tagName] = value
+    elif actionIfNotPresent == "fail":
+        raise AssertionError('*ERROR* Tag %s is missing from node %s' %(t, '->'.join(tagPath)))
+    elif actionIfNotPresent == "skip":
+        print '*INFO* Tag is missing from node %s, will not be added'%(t, '->'.join(tagPath))
+        return
+    elif(actionIfNotPresent == "add"):
+        node[tagName] = value
+
+    print 'DEBUG', json.dumps(jsonDict)
+    LinusFSUtilities().create_remote_file_content(mtecfgfile, json.dumps(jsonDict))

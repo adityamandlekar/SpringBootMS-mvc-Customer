@@ -154,7 +154,7 @@ Get Domain Names
     [Documentation]    get the Domain names from venue config file.
     ...    returns a list of Domain names.
     ${serviceName}    Get FMS Service Name
-    ${domainList}    get MTE config list by path    ${mteConfigFile}    FMS    ${serviceName}    Domain    Z
+    ${domainList}    get MTE config list by path    ${mteConfigFile}    FMS    ${serviceName}    Domain
     [Return]    @{domainList}
 
 Get FID Values From Refresh Request
@@ -242,7 +242,7 @@ Get Mangling Config File
     [Return]    ${localFile}
 
 Get MTE Config File
-    [Documentation]    Get the MTE config file (MTE.xml) from the remote machine and save it as a local file.
+    [Documentation]    Get the MTE config file from the remote machine and save it as a local file.
     ...    If we already have the local file, just return the file name without copying the remote file again.
     ${localFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
     Return From Keyword If    '${localFile}' != 'None'    ${localFile}

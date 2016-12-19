@@ -39,6 +39,13 @@ class LinuxFSUtilities():
             G_SSHInstance.write_bare('%s\n' %content)
         G_SSHInstance.write_bare('END_OF_DATA\n')
     
+    def read_remote_file(self, path):
+        cmd = "cat '" + config + "'"
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        return stdout
+                    
     def remote_file_should_exist(self, path):
         G_SSHInstance.file_should_exist(path)
         
