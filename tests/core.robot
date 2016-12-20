@@ -175,7 +175,7 @@ Get FIDFilter File
     ...    1. The file will be saved at Control PC and only removed at Suite Teardown
     ...    2. Suite Variable ${LOCAL_FIDFILTER_FILE} has created to store the fullpath of the config file at Control PC
     ${localFile}=    Get Variable Value    ${LOCAL_FIDFILTER_FILE}
-    Return From Keyword If    '${localFile}' != 'None'    ${localFile}
+    Return From Keyword If    r'${localFile}' != 'None'    ${localFile}
     ${fidfilterFile}=    Set Variable    FIDFilter.txt
     Remote File Should Exist    ${REMOTE_MTE_CONFIG_DIR}/${fidfilterFile}
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${fidfilterFile}
@@ -233,7 +233,7 @@ Get Mangling Config File
     ...    1. The file will be saved at Control PC and only removed at Suite Teardown
     ...    2. Suite Variable ${LOCAL_MANGLING_CONFIG_FILE} has created to store the fullpath of the config file at Control PC
     ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
-    Return From Keyword If    '${localFile}' != 'None'    ${localFile}
+    Return From Keyword If    r'${localFile}' != 'None'    ${localFile}
     ${manglingFile}=    Set Variable    manglingConfiguration.xml
     Remote File Should Exist    ${REMOTE_MTE_CONFIG_DIR}/${manglingFile}
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${manglingFile}
@@ -245,7 +245,7 @@ Get MTE Config File
     [Documentation]    Get the MTE config file from the remote machine and save it as a local file.
     ...    If we already have the local file, just return the file name without copying the remote file again.
     ${localFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
-    Return From Keyword If    '${localFile}' != 'None'    ${localFile}
+    Return From Keyword If    r'${localFile}' != 'None'    ${localFile}
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${MTE_CONFIG}
     get remote file    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    ${localFile}
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${localFile}
@@ -924,11 +924,11 @@ Suite Teardown
     [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
     close all connections
     ${localCfgFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    Run Keyword If    r'${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
     ${localCfgFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    Run Keyword If    r'${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
     ${localCfgFile}=    Get Variable Value    ${LOCAL_FIDFILTER_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    Run Keyword If    r'${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
 
 Switch To TD Box
     [Arguments]    ${ip}
