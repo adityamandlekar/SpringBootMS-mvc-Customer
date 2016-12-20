@@ -516,7 +516,6 @@ def set_value_in_MTE_cfg(mtecfgfile, tagName, value, actionIfNotPresent='add', *
     with open(mtecfgfile) as f:   
         jsonDict = json.load(f)
     _update_config_dict(jsonDict, tagName, value, actionIfNotPresent, *tagPath)
-#     print 'DEBUG AFTER:\n', json.dumps(jsonDict, sort_keys=True, indent=2, ensure_ascii=True)
     with open(mtecfgfile, 'w') as f:      
         json.dump(jsonDict, f, sort_keys=True, indent=2, ensure_ascii=True)
 
