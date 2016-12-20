@@ -683,7 +683,7 @@ def verify_item_status_in_response (pcapfile, ric, domain,constituent_list,expec
     outputfileprefix = 'streamState_pcap'
     filterDomain = 'TRWF_TRDM_DMT_'+ domain
     for constnum in constituent_list:
-        filterstring =  'AND(Domain = &quot;%s&quot;, AND(MsgClass = &quot;TRWF_MSG_MC_ITEM_STATUS&quot; AND(MsgKeyName = &quot;%s&quot;, AND(StreamState = &quot;%s&quot;, ConstituentNum = &quot;%s&quot;))))'%(filterDomain, ric, expectedStreamState, constnum)
+        filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_ITEM_STATUS&quot;, AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(ItemStatus_itemState_streamState = &quot;%s&quot;, ItemStatus_constitNum = &quot;%s&quot;))))'%(filterDomain, ric, expectedStreamState, constnum)
         outputxmlfilelist = get_xml_from_pcap(pcapfile, filterstring, outputfileprefix)                
         messageNode = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfilelist[0], 'Message')
         for msgkey in messageNode[0].getiterator('ItemState'):
