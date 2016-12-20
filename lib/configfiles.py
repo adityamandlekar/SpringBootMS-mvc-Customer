@@ -217,7 +217,7 @@ def get_MTE_config_key_list(venueConfigFile, *path):
         else:
             raise AssertionError('*ERROR*  Missing [%s] element from venue config file: %s' %(p, venueConfigFile))
         
-    if isinstance(node,dict):
+    if isinstance(node, dict):
         return node.keys()
     else:
         return []
@@ -275,7 +275,7 @@ def get_MTE_config_list_by_section(venueConfigFile, section, tag):
         raise AssertionError('*ERROR*  Missing [%s] element from venue config file: %s' %(section, venueConfigFile))
         
     values = []
-    values.extend(_get_matching_values_from_dict(node[section], tag))
+    values += _get_matching_values_from_dict(node[section], tag)
     return values
 
 def get_MTE_config_value(venueConfigFile,*path):
@@ -485,6 +485,41 @@ def set_mangling_rule_parition_value(rule,contextIDs,configFileLocalFullPath):
 
     xmlutilities.set_xml_tag_value(xmlFileLocalFullPath,xPath,tagValue,tagAttributes,True,addTagIfNotExist)
 
+def set_value_in_MTE_cfg(mtecfgfile, tagName, value, actionIfNotPresent='add', *tagPath):
+    """change tag value in MTE config file
+    
+        params : mtecfgfile         - full path to local mte config file
+                 tagName            - target tagName
+                 value              - required value
+                 actionIfNotPresent - "skip" : only INFO indicate the tagName not found in config file
+                                      "fail" : raise assertion if tagName not found
+                                      "add"  " added the tagName to config file (default)
+                 tagPath            -  path of the section where the tag is located (excluding the tagName)
+                
+        return : N/A
+        
+        Examples :
+          | set value in_MTE cfg | jsda01.json | NumberOfDailyBackupsToKeep | 5 |
+          Would change a config file containing:
+            { "Persistence": {
+                "DDS": {
+                  "NumberOfDailyBackupsToKeep": 3,
+                  "MutexNameForStaggering": "HKF_Persistence_Mutex"
+                } } }
+          To
+            { "Persistence": {
+                "DDS": {
+                  "NumberOfDailyBackupsToKeep": 5,
+                  "MutexNameForStaggering": "HKF_Persistence_Mutex"
+                } } }
+    """
+    with open(mtecfgfile) as f:   
+        jsonDict = json.load(f)
+    _update_config_dict(jsonDict, tagName, value, actionIfNotPresent, *tagPath)
+#     print 'DEBUG AFTER:\n', json.dumps(jsonDict, sort_keys=True, indent=2, ensure_ascii=True)
+    with open(mtecfgfile, 'w') as f:      
+        json.dump(jsonDict, f, sort_keys=True, indent=2, ensure_ascii=True)
+
 def verify_filterString_contains_configured_context_ids(filter_string,venueConfigFile):
     """Get set of context id from FilterString and venue xml_config file
     and verify the context id set defined in Transforms section is equal to the context id set from fms FilterString
@@ -511,11 +546,11 @@ def verify_filterString_contains_configured_context_ids(filter_string,venueConfi
 def _get_matching_values_from_dict(node, tag):
     values = []
     for key,val in node.items():
-        if isinstance(val,dict):
-            values.extend(_get_matching_values_from_dict(val,tag))
+        if isinstance(val, dict):
+            values += _get_matching_values_from_dict(val,tag)
         if key == tag:
-            if isinstance(val,list):
-                values.extend(val)
+            if isinstance(val, list):
+                values += val
             else:
                 values.append(val)
     return values
@@ -535,13 +570,52 @@ def _search_MTE_config_file(venueConfigFile,*path):
             node = node[p]
         else:
             return []
-    if isinstance(node,list):
+    if isinstance(node, list):
          return node
-    elif isinstance(node,dict):
+    elif isinstance(node, dict):
         return keys(node)
     else:
         return [node]
     
+def _update_config_dict(node, tagName, value, actionIfNotPresent, *tagPath):
+    """ Recursive function to update tag values in a JSON dictionary
+    """
+    if actionIfNotPresent != 'skip' and actionIfNotPresent != 'fail' and actionIfNotPresent != 'add':
+        raise AssertionError("*ERROR* Invalid value %s for actionIfNotPresent, valid values are 'skip', 'fail', and 'add'" %actionIfNotPresent)
+                       
+    tagPath = list(tagPath)
+    while len(tagPath):
+        t = tagPath.pop(0)
+        if t == '*':
+            for key,val in node.items():
+                # update each sub-node that is a dictionary
+                if isinstance(val, dict):
+                    _update_config_dict(val, tagName, value, actionIfNotPresent, *tagPath)
+            return
+        elif t in node:
+            node = node[t]
+        elif actionIfNotPresent == "fail":
+            raise AssertionError('*ERROR* Intermediate node %s is missing' %t)
+        elif actionIfNotPresent == "skip":
+            print '*INFO* Intermediate node %s is missing, tag %s will not be added' %(t, tagName)
+            return
+        else: # actionIfNotPresent == "add"
+            print '*INFO* adding intermediate node %s' %t
+            node[t] = {}
+            node = node[t]
+    
+    if tagName in node:
+        print '*INFO* updating tag %s with value %s' %(tagName, value)
+        node[tagName] = value
+    elif actionIfNotPresent == "fail":
+        raise AssertionError('*ERROR* Tag %s is missing from node %s' %(tagName, '->'.join(tagPath)))
+    elif actionIfNotPresent == "skip":
+        print '*INFO* Tag %s is missing from node %s, will not be added'%(tagName, '->'.join(tagPath))
+        return
+    else: # actionIfNotPresent == "add"
+        print '*INFO* adding tag %s with value %s' %(tagName, value)
+        node[tagName] = value
+
 #############################################################################
 # Keywords that use remote configuration files
 #############################################################################
@@ -690,67 +764,3 @@ def restore_remote_cfg_file(cfgfile,backupfile):
     
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))                
-
-def set_value_in_MTE_cfg(mtecfgfile, tagName, value, actionIfNotPresent='skip', *tagPath):
-    """change tag value in MTE config file
-    
-        params : searchdir          - path where search for mte config file
-                 mtecfgfile         - filename of mte config file
-                 tagName            - target tagName
-                 value              - required value
-                 actionIfNotPresent - "skip" : only INFO indicate the tagName not found in config file
-                                      "fail" : raise assertion if tagName not found
-                                      "add"  " added the tagName to config file
-                 tagPath            -  path of the section where the tag is located (excluding the tagName)
-                
-        return : N/A
-        
-        Examples :
-          | set value in_MTE cfg | jsda01.xml | NumberOfDailyBackupsToKeep | 5 |
-          Would change a config file containing:
-             <Persistence>
-               <DDS>
-                 <MutexNameForStaggering>TDDS_Persistence_Mutex</MutexNameForStaggering>
-                <NumberOfDailyBackupsToKeep type="ul">3</NumberOfDailyBackupsToKeep>
-              </DDS>
-             </Persistence>
-          To
-             <Persistence>
-              <DDS>
-                 <MutexNameForStaggering>TDDS_Persistence_Mutex</MutexNameForStaggering>
-                 <NumberOfDailyBackupsToKeep type="ul">5</NumberOfDailyBackupsToKeep>
-              </DDS>
-             </Persistence>
-             
-    """
-    if actionIfNotPresent != 'skip' and actionIfNotPresent != 'fail' and actionIfNotPresent != 'add':
-        raise AssertionError("*ERROR* Invalid value %s for actionIfNotPresent, valid values are 'skip', 'fail', and 'add'" %actionIfNotPresent)
-                             
-    cfgContent = LinuxFSUtilities().read_remote_file(mtecfgfile)
-    jsonDict = json.load(cfgContent)
-    node = jsonDict
-    
-    for t in tagPath:
-        if t in node:
-            node = node[t]
-        elif actionIfNotPresent == "fail":
-            raise AssertionError('*ERROR* Intermediate node %s is missing' %t)
-        elif actionIfNotPresent == "skip":
-            print '*INFO*  <%s> Intermediate node %s is missing, tag %s will not be added'%(t, tagName)
-            return
-        elif actionIfNotPresent == "add":
-            node[t] = {}
-            node = node[t]
-              
-    if tagName in node:
-        node[tagName] = value
-    elif actionIfNotPresent == "fail":
-        raise AssertionError('*ERROR* Tag %s is missing from node %s' %(t, '->'.join(tagPath)))
-    elif actionIfNotPresent == "skip":
-        print '*INFO* Tag is missing from node %s, will not be added'%(t, '->'.join(tagPath))
-        return
-    elif(actionIfNotPresent == "add"):
-        node[tagName] = value
-
-    print 'DEBUG', json.dumps(jsonDict)
-    LinusFSUtilities().create_remote_file_content(mtecfgfile, json.dumps(jsonDict))
