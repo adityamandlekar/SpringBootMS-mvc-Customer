@@ -179,22 +179,23 @@ Get Backup Keep Days
 Go Into EndOfDay time
     [Documentation]    Force MTE go through EndOfDay event
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
-    ${mteConfigFile}=    Get MTE Config File
-    @{dstRic}=    get MTE config list by path    ${mteConfigFile}    CHE-TimeZoneForConfigTimes
+    ${localCfgFile}=    Get MTE Config File
+    @{dstRic}=    get MTE config list by path    ${localCfgFile}    CHE-TimeZoneForConfigTimes
     @{tdBoxDateTime}=    get date and time
     @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]    @{tdBoxDateTime}[3]
     ...    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
     ${offsetInSecond}=    set variable    300
     ${endOfDay}    add time to date    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]    ${offsetInSecond} second    result_format=%H:%M
-    ${orgFile}    ${backupFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    set value in MTE cfg    ${orgFile}    EndOfDayTime    ${endOfDay}
+    ${remoteCfgFile}    ${backupFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    set value in MTE cfg    ${localCfgFile}    EndOfDayTime    ${endOfDay}    fail
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     stop MTE
     start MTE
     sleep    ${offsetInSecond}
-    restore remote cfg file    ${orgFile}    ${backupFile}
+    restore remote cfg file    ${remoteCfgFile}    ${backupFile}
     stop MTE
     start MTE
     Comment    Revert changes in local venue config file
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
-    ${configFileLocal}=    Get MTE Config File
+    Get MTE Config File
     [Teardown]

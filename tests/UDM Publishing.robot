@@ -33,7 +33,10 @@ Empty Payload Detection with Blank TCONF
     ${rmtCfgPath}=    Replace String    ${rmtCfgPath}    \\    /
     ${remoteEmptyTconf}    set variable    ${rmtCfgPath}/emptyTconf.tconf
     Create Remote File Content    ${remoteEmptyTconf}    //empty file
-    Set Value in MTE cfg    ${remoteConfig}    TransformConfig    emptyTconf.tconf
+    ${localCfgFile}=    Get MTE Config File
+    Set Value in MTE cfg    ${localCfgFile}    TransformConfig    emptyTconf.tconf    fail    Transforms    *
+    ...    TransformContainer
+    Put Remote File    ${localCfgFile}    ${remoteConfig}
     Reset Sequence Numbers
     ${service}    Get FMS Service Name
     ${pcapFileName} =    Generate PCAP File Name    ${service}    General RIC Update

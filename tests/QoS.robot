@@ -310,24 +310,28 @@ Restore Feed Line Timeout
 Set UDP Feed Line Timeout
     [Arguments]    ${timeoutLimit}
     [Documentation]    Set the feed line timeout values (HiActTimeLimit and LoActTimeLimit) in MTE config file and restart dependent components.
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    set value in MTE cfg    ${orgCfgFile}    HiActTimeLimit    ${timeoutLimit}
-    set value in MTE cfg    ${orgCfgFile}    LoActTimeLimit    ${timeoutLimit}
+    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${localCfgFile}=    Get MTE Config File
+    set value in MTE cfg    ${localCfgFile}    HiActTimeLimit    ${timeoutLimit}
+    set value in MTE cfg    ${localCfgFile}    LoActTimeLimit    ${timeoutLimit}
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Stop SMF
     Start SMF
     Start MTE
-    [Return]    ${orgCfgFile}    ${backupCfgFile}
+    [Return]    ${remoteCfgFile}    ${backupCfgFile}
 
 Set TCP-FTP Feed Line Timeout
     [Arguments]    ${TimeOut}
     [Documentation]    Set the feed line timeout values (HiActTimeOut and LoActTimeOut) in MTE config file and restart dependent components.
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    set value in MTE cfg    ${orgCfgFile}    HiActTimeOut    ${TimeOut}
-    set value in MTE cfg    ${orgCfgFile}    LoActTimeOut    ${TimeOut}
+    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${localCfgFile}=    Get MTE Config File
+    set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${TimeOut}    Inputs    *    FHRealtimeLine
+    set value in MTE cfg    ${localCfgFile}    LoActTimeOut    ${TimeOut}    Inputs    *    FHRealtimeLine
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Stop SMF
     Start SMF
     Start MTE
-    [Return]    ${orgCfgFile}    ${backupCfgFile}
+    [Return]    ${remoteCfgFile}    ${backupCfgFile}
 
 Verify QoS for CritProcessFail
     [Arguments]    ${node}    ${master_ip}    ${CritProcessFailValue}    ${totalQoSValue}=${EMPTY}
