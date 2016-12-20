@@ -29,10 +29,10 @@ class LinuxFSUtilities():
     
     def create_remote_file_content(self, destination, content):
         G_SSHInstance.write_bare('cat > %s <<END_OF_DATA\n' %destination)
-        if type(content) == list:
+        if isinstance(content, list):
             for i in content:
                 G_SSHInstance.write_bare('%s\n' %i)
-        elif str(type(content)).find('dict') != -1:
+        elif isinstance(content, dict):
             for key,value in content.items():
                 G_SSHInstance.write_bare('%s=%s\n' %(key,value))
         else:
@@ -40,7 +40,7 @@ class LinuxFSUtilities():
         G_SSHInstance.write_bare('END_OF_DATA\n')
     
     def read_remote_file(self, path):
-        cmd = "cat '" + config + "'"
+        cmd = "cat '" + path + "'"
         stdout, stderr, rc = _exec_command(cmd)
         if rc !=0 or stderr !='':
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
