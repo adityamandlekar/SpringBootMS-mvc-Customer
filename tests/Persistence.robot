@@ -148,13 +148,14 @@ Verify Realtime MARKET_PRICE Persistence
     ...    AND    Case Teardown    @{modifiedFeedEXLFiles}
 
 Verify Recovery if Persist File is Damaged
-    [Documentation]    Verify the the backup persist file (PERSIST.DAT.LOADED) is loaded if the normal persist file (PERSIST.DAT) is invalid by comparing two dump cathe files.
+    [Documentation]    Verify the the backup persist file (PERSIST_XXX.DAT.LOADED) is loaded if the normal persist file (PERSIST_XXX.DAT) is invalid by comparing two dump cathe files. Restore PERSIST_XXX.DAT and PERSIST_XXX.DAT.LOADED files in the MTE finally.
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2147
     [Setup]
     Delete Persist Backup
     ${serviceName}=    Get FMS Service Name
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
     ${fileList_DAT}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT
+    ${fileList_DAT_LOADED}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT.LOADED
     Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_before.csv
     Stop MTE
     Create Remote File Content    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT    //file 12345
@@ -164,8 +165,8 @@ Verify Recovery if Persist File is Damaged
     Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_before.csv    ${removeFMSREORGTIMESTAMP}    ${False}
     Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_after.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ${removeFMSREORGTIMESTAMP}    ${False}
     verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
-    restore_remote_cfg_file    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT.backup
-    Wait For Persist File Update
+    restore_remote_cfg_file    ${fileList_DAT[0]}    ${fileList_DAT[1]}
+    restore_remote_cfg_file    ${fileList_DAT_LOADED[0]}    ${fileList_DAT_LOADED[1]}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
 Persistence file FIDs existence check
@@ -188,6 +189,9 @@ Persistence file FIDs existence check
     List Should Contain Value    ${fidsSet}    5357
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    ${pmatDumpfile}    @{modifiedFeedEXLFiles}
+
+Set 24x7 Feed And Trade Time And No Holidays
+    Set 24x7 Feed And Trade Time And No Holidays
 
 *** Keywords ***
 Delete Persist Backup
