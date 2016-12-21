@@ -85,16 +85,16 @@ def get_context_ids_from_config_file(venueConfigFile):
     | get_context_ids_from_config_file | E:\\temp\\hkf02m.xml |
     """
 
-    context_id_list = []
+    context_id_set = Set()
 
     match = []
     match = get_MTE_config_key_list(venueConfigFile,'Transforms')
 
     for m in match:
         if m[0].lower() == 'c':
-            context_id_list.append(m[1:])
+            context_id_set.add(m[1:])
 
-    return context_id_list
+    return context_id_set
 
 def get_context_ids_from_fms_filter_string(fms_filter_string): 
     """Returns a set of context_ids appeared in the fms filter string.
