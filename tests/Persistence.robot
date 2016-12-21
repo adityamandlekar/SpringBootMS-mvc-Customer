@@ -155,7 +155,6 @@ Verify Recovery if Persist File is Damaged
     ${serviceName}=    Get FMS Service Name
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
     ${fileList_DAT}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT
-    ${fileList_DAT_LOADED}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT.LOADED
     Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_before.csv
     Stop MTE
     Create Remote File Content    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT    //file 12345
@@ -165,9 +164,8 @@ Verify Recovery if Persist File is Damaged
     Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_before.csv    ${removeFMSREORGTIMESTAMP}    ${False}
     Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_after.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ${removeFMSREORGTIMESTAMP}    ${False}
     verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
-    restore_remote_cfg_file    ${fileList_DAT[0]}    ${fileList_DAT[1]}
-    restore_remote_cfg_file    ${fileList_DAT_LOADED[0]}    ${fileList_DAT_LOADED[1]}
-    [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
+    [Teardown]    Run Keywords    Restore Persistence File    ${fileList_DAT}
+    ...    AND    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
 Persistence file FIDs existence check
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
@@ -228,3 +226,11 @@ Go Into EndOfDay time
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
     ${configFileLocal}=    Get MTE Config File
     [Teardown]
+
+Restore Persistence File
+    [Arguments]    ${fileList_DAT}
+    [Documentation]    Restore Persistence File, Restart MTE in order to update Persist File in the cache.
+    Stop MTE
+    restore_remote_cfg_file    ${fileList_DAT[0]}    ${fileList_DAT[1]}
+    Start MTE
+    Wait For Persist File Update
