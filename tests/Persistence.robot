@@ -148,7 +148,7 @@ Verify Realtime MARKET_PRICE Persistence
     ...    AND    Case Teardown    @{modifiedFeedEXLFiles}
 
 Verify Recovery if Persist File is Damaged
-    [Documentation]    Verify the the backup persist file (PERSIST_XXX.DAT.LOADED) is loaded if the normal persist file (PERSIST_XXX.DAT) is invalid by comparing two dump cathe files. Restore PERSIST_XXX.DAT and PERSIST_XXX.DAT.LOADED files in the MTE finally.
+    [Documentation]    Verify the backup persist file (PERSIST_XXX.DAT.LOADED) is loaded if the normal persist file (PERSIST_XXX.DAT) is invalid by comparing two dump cathe files. Restore PERSIST_XXX.DAT and PERSIST_XXX.DAT.LOADED files in the MTE finally.
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2147
     [Setup]
     Delete Persist Backup
@@ -187,9 +187,6 @@ Persistence file FIDs existence check
     List Should Contain Value    ${fidsSet}    5357
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    ${pmatDumpfile}    @{modifiedFeedEXLFiles}
-
-Set 24x7 Feed And Trade Time And No Holidays
-    Set 24x7 Feed And Trade Time And No Holidays
 
 *** Keywords ***
 Delete Persist Backup
