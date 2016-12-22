@@ -1072,7 +1072,7 @@ Verify RIC Is Dropped In MTE Cache
     Should Be Equal    ${allricFields['PUBLISHABLE']}    FALSE
     Should Be True    ${allricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
 
-Verfiy Item Persisted
+Verify Item Persisted
     [Arguments]    ${ric}=${EMPTY}    ${sic}=${EMPTY}    ${domain}=${EMPTY}
     [Documentation]    Dump persist file to XML and check if ric, sic and/or domain items exist in MTE persist file.
     ${cacheDomainName}=    Remove String    ${domain}    _
@@ -1082,7 +1082,7 @@ Verfiy Item Persisted
     Verify Item in Persist Dump File    ${pmatDumpfile}    ${ric}    ${sic}    ${cacheDomainName}
     Remove Files    ${pmatDumpfile}
 
-Verfiy Item Not Persisted
+Verify Item Not Persisted
     [Arguments]    ${ric}=${EMPTY}    ${sic}=${EMPTY}    ${domain}=${EMPTY}
     [Documentation]    Dump persist file to XML and check if ric, sic and/or domain items not exist in MTE persist file.
     ${cacheDomainName}=    Remove String    ${domain}    _

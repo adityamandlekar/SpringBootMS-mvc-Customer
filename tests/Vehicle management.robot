@@ -27,7 +27,7 @@ Verify Long RIC handled correctly
     Stop Capture MTE Output    1    5
     ${newRic}    ${newPubRic}    Run Keyword And Continue On Failure    Verify RIC In MTE Cache    ${long_ric}    ${domain}
     Run Keyword And Continue On Failure    Verify RIC Published    ${remoteCapture}    ${localEXLfile}    ${newPubRic}    ${domain}
-    Run Keyword And Continue On Failure    Verfiy Item Persisted    ${long_ric}    ${EMPTY}    ${domain}
+    Run Keyword And Continue On Failure    Verify Item Persisted    ${long_ric}    ${EMPTY}    ${domain}
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     Wait For Persist File Update
     [Teardown]    case teardown    ${localEXLfile}
@@ -125,7 +125,7 @@ Verify RIC rename handled correctly
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_2.pcap
     verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${Published_RIC_After_Rename}    ${domain}    ${constituent_list}
-    Verfiy Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
+    Verify Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
     Comment    //Start test. Test 3: Check that the new RIC can be renamed back to the original name.
     Comment    //This also reverts the state back to as the begining of the test
     Start Capture MTE Output
@@ -138,7 +138,7 @@ Verify RIC rename handled correctly
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
     Verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${Published_RIC_Before_Rename}    ${domain}    ${constituent_list}
-    Verfiy Item Persisted    ${RIC_Before_Rename}    ${EMPTY}    ${domain}
+    Verify Item Persisted    ${RIC_Before_Rename}    ${EMPTY}    ${domain}
     [Teardown]    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 Verify FMS Rebuild
@@ -241,14 +241,14 @@ Verify SIC rename handled correctly
     ${SIC_1}=    set variable    ${ricFields['SIC']}
     Should Be Equal    ${SIC_1}    ${SIC_After_Rename}
     Wait For Persist File Update    5    60
-    Verfiy Item Persisted    ${EMPTY}    ${SIC_After_Rename}    ${domain}
+    Verify Item Persisted    ${EMPTY}    ${SIC_After_Rename}    ${domain}
     Comment    //fallback
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     ${ricFields}=    Get All Fields For RIC From Cache    ${RIC}    ${domain}
     ${SIC_2}=    set variable    ${ricFields['SIC']}
     Should Be Equal    ${SIC_2}    ${SIC_Before_Rename}
     Wait For Persist File Update    5    60
-    Verfiy Item Persisted    ${EMPTY}    ${SIC_Before_Rename}    ${domain}
+    Verify Item Persisted    ${EMPTY}    ${SIC_Before_Rename}    ${domain}
     [Teardown]    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
 
 Verify FMS Extract and Insert
@@ -354,7 +354,7 @@ Verify both RIC and SIC rename handled correctly
     [Documentation]    Rename both RIC and SIC.
     ...    Verify that the old RIC is no longer in cache. \ Verify the new RIC and SIC are in cache.
     ...    Verify persisted file and published message.
-    ...    Verify item status in pcap file should be "TRWF_MSG_SST_CLOSED" of stream state.
+    ...    Verify drop messages are published for the old RIC.
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2149
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
@@ -382,8 +382,8 @@ Verify both RIC and SIC rename handled correctly
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_2.pcap
     verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${Published_RIC_After_Rename}    ${domain}    ${constituent_list}
-    Verfiy Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
-    Verify Item Status In Response    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${RIC_Before_Rename}    ${domain}    ${constituent_list}    TRWF_MSG_SST_CLOSED
+    Verify Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
+    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${RIC_Before_Rename}    ${domain}
     Start Capture MTE Output
     Purge RIC    ${RIC_After_Rename}    ${domain}    ${serviceName}
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
@@ -394,10 +394,11 @@ Verify both RIC and SIC rename handled correctly
     Wait For Persist File Update    5    60
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
-    Verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${Published_RIC_Before_Rename}    ${domain}    ${constituent_list}
+    Comment    Verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${Published_RIC_Before_Rename}    ${domain}    ${constituent_list}
+    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${RIC_After_Rename}    ${domain}
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
-    Verfiy Item Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
-    Verfiy Item Not Persisted    ${RIC_After_Rename}    ${SIC_After_Rename}    ${domain}
+    Verify Item Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
+    Verify Item Not Persisted    ${RIC_After_Rename}    ${SIC_After_Rename}    ${domain}
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
