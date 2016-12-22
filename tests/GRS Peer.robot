@@ -2,6 +2,7 @@
 Documentation     Verify GRS functionality across peer machines
 Suite Setup       Suite Setup Two TD Boxes With Playback
 Suite Teardown    Suite Teardown
+Force Tags        Peer    Playback
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
@@ -10,7 +11,6 @@ Variables         ../lib/VenueVariables.py
 *** Test Cases ***
 GRS Peer Recovery SMF Restart
     [Documentation]    Verify that on SMF restart, the GRS recovers missed messages from its GRS peer and the MTE also receives the missed messages. \ This test uses a small replay file with about 10 RICs, and the injection completes before the GRS recovery starts. \ This test verifies the FID values for the changed RICs are the same between the two MTEs.
-    [Tags]    Peer
     ${service}=    Get FMS Service Name
     ${injectFile}=    Generate PCAP File Name    ${service}    General RIC Update
     Recovery Setup With SMF Standby Stop
