@@ -383,6 +383,7 @@ Verify both RIC and SIC rename handled correctly
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_2.pcap
     verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${Published_RIC_After_Rename}    ${domain}    ${constituent_list}
     Verify Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
+    Verify Item Not Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
     Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${RIC_Before_Rename}    ${domain}
     Start Capture MTE Output
     Purge RIC    ${RIC_After_Rename}    ${domain}    ${serviceName}
