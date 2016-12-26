@@ -72,8 +72,6 @@ Validate Downstream FID publication from Reconcile
     Start MTE
     Wait For FMS Reorg
     Stop Capture MTE Output
-    ${mteConfigFile}    Get MTE Config File
-    ${contextIds}    get context ids from config file    ${mteConfigFile}
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     Get FIDFilter File
     Verify FIDfilter FIDs Are In Message    ${LOCAL_TMP_DIR}/capture_local.pcap
