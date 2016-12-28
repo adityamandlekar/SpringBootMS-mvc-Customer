@@ -827,3 +827,31 @@ def set_value_in_MTE_cfg(mtecfgfile, tagName, value):
     stdout, stderr, rc = _exec_command(cmd_match_tag_only)
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_only,rc,stdout,stderr)) 
+
+def update_labelIDs_By_ddnPublisher(labelIDs, ddnLabels_Modifyfile):
+    """Update labellDs with "name = SCW" in ddnpublisher.xml
+    Argument : 
+    labellDs    : Arrary of LabelID from mte config file
+    ddnLabels_Modifyfile : full path of ddnpublish modify file
+        
+    Returns : update_LabelIDList
+
+    """ 
+    update_LabelIDList = []
+    
+    tree = ET.parse(ddnLabels_Modifyfile)
+    root = tree.getroot()
+    labelNodes = root.findall('.//label')
+    if not labelNodes:
+        raise AssertionError('*ERROR* label element does not exist in %s' % ddnLabels_Modifyfile)
+    for labelNode in labelNodes:
+        for labelID in labelIDs:
+            if labelNode.get('ID') == labelID:
+                providers = labelNode.findall('provider')
+                for provider in providers:
+                    if provider.get('NAME') == 'SCW':
+                        update_LabelIDList.append(labelID)                            
+    if not len(update_LabelIDList):  
+        raise AssertionError('*ERROR* There is no any available LabelID for SCW')
+    else:
+        return update_LabelIDList
