@@ -1,12 +1,14 @@
 ﻿from __future__ import with_statement
 import codecs
+import datetime
 import os
 import os.path
 import re
 from subprocess import Popen, PIPE
 import string
 import xml
-from xml.dom import minidom
+import xml.dom.minidom
+from xml.dom.minidom import Document
 
 from VenueVariables import *
     
@@ -190,6 +192,87 @@ def build_LXL_file (exlFileNeedToRemove):
             file_content = file_content + exlFilePathNew + exlFile + '\n'
 
     return file_content
+
+def create_RIC_SIC_rename_file(oldRic, oldSic, srcPath, exlfile):
+    """ Create src flie dynamically to rename both RIC and SIC:
+        Argument :oldRic: old ric name 
+             oldSic: old sic name
+             srcPath: path for src file and exl file  (e.g. /ChangeSicRic.src)
+             exlfile: get full path of exlfile in local from fmscmd (e.g. /nasmf_a.exl)
+        return : New Ric and Sic name
+        
+    """ 
+    
+    if os.path.exists(srcPath):
+        os.remove(srcPath)
+        
+    srcDoc = Document()
+    src = srcDoc.createElement('SRC') #set root element
+    src.setAttribute('xmlns', 'SrcSchema')
+    src.setAttribute('xmlns:it', 'DbIssueTypeSchema')
+    src.setAttribute('xmlns:xsi',"http://www.w3.org/2001/XMLSchema-instance")
+    src.setAttribute('xsi:schemaLocation','DbFieldsSchema AllFields.xsd SrcSchema SrcSchema.xsd')
+    srcDoc.appendChild(src)
+        
+    date = srcDoc.createElement ('date')
+    date_txt = srcDoc.createTextNode(datetime.datetime.now().strftime("%Y-%m-%d"))
+    date.appendChild(date_txt)
+    src.appendChild(date)
+    
+    action = srcDoc.createElement('action')
+    action_txt = srcDoc.createTextNode('BOTH')
+    action.appendChild(action_txt)
+    src.appendChild(action)
+        
+    dom = xml.dom.minidom.parse(exlfile)
+    root = dom.documentElement
+     #exlFileName,exchangeName,
+    exlFileName = root.getElementsByTagName('name')[0].firstChild.data
+    iteratorlist = dom.getElementsByTagName('it:EXCHANGE')
+    exchangeName = iteratorlist[0].firstChild.data
+    
+    exlFile = srcDoc.createElement('exlFile')
+    exlFile_txt = srcDoc.createTextNode(exlFileName)
+    exlFile.appendChild(exlFile_txt)
+    src.appendChild(exlFile)
+    
+    exchange = srcDoc.createElement('exchange')
+    exchange_txt = srcDoc.createTextNode(exchangeName)
+    exchange.appendChild(exchange_txt)
+    src.appendChild(exchange)
+    
+    kNode = srcDoc.createElement('k')
+    src.appendChild(kNode)
+    
+    bothNode = srcDoc.createElement('both')
+    kNode.appendChild(bothNode)
+    
+    orNode = srcDoc.createElement('or')
+    orNode_txt = srcDoc.createTextNode(oldRic)
+    orNode.appendChild(orNode_txt)
+    bothNode.appendChild(orNode)
+    
+    newRic = ('TEST' + oldRic + datetime.datetime.now().strftime("%Y%m%d%H%M%S"))[0:32]
+    nrNode = srcDoc.createElement('nr')
+    nrNode_txt = srcDoc.createTextNode(newRic)
+    nrNode.appendChild(nrNode_txt)
+    bothNode.appendChild(nrNode)
+    
+    osNode = srcDoc.createElement('os')
+    osNode_txt = srcDoc.createTextNode(oldSic[2:len(oldSic)] )
+    osNode.appendChild(osNode_txt)
+    bothNode.appendChild(osNode)
+    
+    newSic = oldSic[2:len(oldSic)] + 'TestSIC'
+    nsNode = srcDoc.createElement('ns')
+    nsNode_txt = srcDoc.createTextNode(newSic)
+    nsNode.appendChild(nsNode_txt)
+    bothNode.appendChild(nsNode)
+    
+    fileHandle = open(srcPath, 'w') 
+    srcDoc.writexml(fileHandle, indent='\t', addindent='\t', newl='\n', encoding="utf-8")
+    return newRic, newSic
+
 
 def get_DST_and_holiday_RICs_from_EXL(exlFile,ricName):
     """ Get DST RIC and holiday RIC from EXL
@@ -765,3 +848,4 @@ def _remove_exlobject(exlfilefullpath, RIC, Domain,keep, outputfile):
         raise AssertionError('*ERROR* %s' %e)
     
     return outputfile
+    
