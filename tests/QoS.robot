@@ -26,7 +26,7 @@ Verify Sync Pulse Missed QoS
     @{labelIDs}=    Get Label IDs
     get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
-    @{labelIDs}=    Update LabelIDs By DdnPublisher    ${labelIDs}    ${modifyLabelFile}
+    @{labelIDs}=    Get LabelIDs With Provider SCW    ${labelIDs}    ${modifyLabelFile}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
@@ -42,8 +42,8 @@ Verify Sync Pulse Missed QoS
     @{labelIDs}=    Get Label IDs
     get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
-    @{labelIDs}=    Update LabelIDs By DdnPublisher    ${labelIDs}    ${modifyLabelFile}
-    :FOR    ${labelID}    IN    @{labelIDs}
+    @{labelIDs}=    Get LabelIDs With Provider SCW    ${labelIDs}    ${modifyLabelFile}
+    : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
     \    block dataflow by port protocol    OUTPUT    UDP    @{multicastIPandPort}[1]
