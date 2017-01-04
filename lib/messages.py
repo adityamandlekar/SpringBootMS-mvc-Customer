@@ -1374,12 +1374,15 @@ def _verify_FID_value_in_dict(fidsAndValues,FID,newFIDValue):
         newFIDValue     : Expected value for the given FID no.
         return : Nil         
     """
-    refValue = newFIDValue
-    if (newFIDValue.isdigit() == False):
+    if isinstance(newFIDValue, (int, float, long)):
+        refValue = str(newFIDValue)
+    elif (isinstance(newFIDValue, str) and newFIDValue.isdigit() == False):
         refValue = ""
         for character in newFIDValue:
             refValue = refValue + (character.encode("hex")).upper()
         print '*INFO* FID value is string. Convert FID value from (%s) to Hex (%s)'%(newFIDValue,refValue)
+    else:
+        refValue = newFIDValue
                 
     if (fidsAndValues.has_key(FID)):                        
         if (fidsAndValues[FID] != refValue):

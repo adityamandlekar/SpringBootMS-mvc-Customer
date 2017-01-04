@@ -24,7 +24,7 @@ Persistence File Backup
 Persistence File Cleanup
     ${keepDays}=    Get Backup Keep Days
     Delete Persist Backup
-    ${keepDays}=    Run Keyword If    '${keepDays}' == 'NOT FOUND'    Set Variable    3
+    ${keepDays}=    Set Variable If    '${keepDays}' == 'NOT FOUND'    3    ${keepDays}
     generate persistence backup    ${keepDays}
     Go Into EndOfDay time
     verify persistence cleanup    ${keepDays}

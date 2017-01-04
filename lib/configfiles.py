@@ -332,12 +332,12 @@ def get_multicast_address_from_label_file(ddnLabels_file, labelID, mteName=""):
     if not labelNode: 
         raise AssertionError('*ERROR* label element does not exist in %s' % ddnLabels_file)
     
-    multTagText = ""
-    multicast_port_tag = ""
-    multicast_ip = ""
-    multicast_port = ""
+    multTagText = None
+    multicast_port_tag = None
+    multicast_ip = None
+    multicast_port = None
     for node in labelNode:
-        if node.get('ID') == labelID:
+        if str(node.get('ID')) == str(labelID):
             if (mteName != ""): #indicate checking ddnPublishers.xml
                 providers = node.findall('provider')
                 found = False
@@ -368,14 +368,10 @@ def get_multicast_address_from_label_file(ddnLabels_file, labelID, mteName=""):
         if node.get('ID') == multicast_port_tag:
             multicast_port = node.text
             
-    if (multicast_ip == None) or (multicast_port == ""): 
+    if (multicast_ip == None or multicast_port == None): 
         raise AssertionError('*ERROR* failed to get multicast address for LabelID %s' % labelID)
     
-    multicast_address = []        
-    multicast_address.append(multicast_ip)
-    multicast_address.append(multicast_port)
-    
-    return multicast_address
+    return [multicast_ip, multicast_port]        
 
 def get_sps_ric_name_from_label_file(ddnLabelFile, labelID):
     ''' Extract multicast IP and port from label file based on the labelID
@@ -482,8 +478,6 @@ def set_mangling_rule_parition_value(rule,contextIDs,configFileLocalFullPath):
             conditions = {'value' : contextID}
             xmlutilities.set_xml_tag_attributes_value_with_conditions(configFileLocalFullPath,conditions,attribute,False,xPath)
             conditions.clear()
-
-    xmlutilities.set_xml_tag_value(xmlFileLocalFullPath,xPath,tagValue,tagAttributes,True,addTagIfNotExist)
 
 def set_value_in_MTE_cfg(mtecfgfile, tagName, value, actionIfNotPresent='add', *tagPath):
     """change tag value in MTE config file
