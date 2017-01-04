@@ -846,17 +846,18 @@ def Get_future_config_times(configNameList,configValueList, GMTOffset, currentDa
     currentDateTimeStr = '%4d-%02d-%02d %02d:%02d:00'%(int(currentDateTime[0]),int(currentDateTime[1]),int(currentDateTime[2]),int(currentDateTime[3]),int(currentDateTime[4]))
 
     index = 0
+    from robot.libraries.DateTime import subtract_time_from_date,add_time_to_date
     for timepoint in configValueList:
         if timepoint.lower() == 'not found':
             index += 1
             continue
         timestr = '%4d-%02d-%02d %s:00'%(int(currentDateTime[0]),int(currentDateTime[1]),int(currentDateTime[2]),timepoint)
         # local--> GMT time, should minus GMToffset
-        timeGMT = robot.libraries.DateTime.subtract_time_from_date(timestr,'%s seconds'%GMTOffset)
+        timeGMT = subtract_time_from_date(timestr,'%s seconds'%GMTOffset)
         #if the GMT time is previous currentDateTime, add one day
         count = 0
         while timeGMT < currentDateTimeStr and count < 2:
-            timeGMT = robot.libraries.DateTime.add_time_to_date(timeGMT,'%s seconds'%str(3600*24))
+            timeGMT = add_time_to_date(timeGMT,'%s seconds'%str(3600*24))
             count += 1
 
         if timeGMT not in retDict.keys():
