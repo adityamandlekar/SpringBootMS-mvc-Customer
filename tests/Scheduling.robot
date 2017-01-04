@@ -560,7 +560,9 @@ Set Times For IN State
     ...
     ...    For end time, sets it to 23:59:59. the advOffset is to add some time in existing time
     ${startTime}=    Set Variable    ${hour}:${min}:${sec}
-    ${startTime}=    run keyword if    '${advOffset}'!='${Empty}'    add time to time    ${startTime}    ${advOffset}    exclude_millis=yes    ELSE    set variable    ${hour}:${min}:${sec}
+    ${startTime}=    run keyword if    '${advOffset}'!='${Empty}'    add time to time    ${startTime}    ${advOffset}    timer
+    ...    exclude_millis=yes
+    ...    ELSE    set variable    ${hour}:${min}:${sec}
     ${endTime}    set variable    23:59:59
     [Return]    ${startTime}    ${endTime}
 
@@ -612,7 +614,9 @@ Set Times For OUT State
     ...    For end time, uses values passed in.
     ${startTime}    set variable    00:00:00
     ${endTime}=    Set Variable    ${hour}:${min}:${sec}
-    ${endTime}    run keyword if    '${advOffset}'!='${Empty}'    add time to time    ${endTime}    ${advOffset}    exclude_millis=yes    ELSE    set variable    ${hour}:${min}:${sec}
+    ${endTime}    run keyword if    '${advOffset}'!='${Empty}'    add time to time    ${endTime}    ${advOffset}    timer
+    ...    exclude_millis=yes
+    ...    ELSE    set variable    ${hour}:${min}:${sec}
     [Return]    ${startTime}    ${endTime}
 
 Go Outside All Times

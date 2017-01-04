@@ -95,7 +95,7 @@ def Rollover_Time_Check_SMF_log(AllTimesDict):
     for timepoint in sortList:
         currTimeArray = rollover_MTE_time(timepoint)
         for eventname in AllTimesDict[timepoint]:
-            check_logfile_for_event(eventname, currTimeArray)
+            logfiles.check_logfile_for_event(eventname, currTimeArray)
 
 def start_smf():
     """Start the Server Management Foundation process.
