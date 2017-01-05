@@ -38,7 +38,7 @@ def rollover_MTE_start_date(GMTStartTime):
     return nil
     
     Examples:
-                Rollover MTE Start Date  |  09:00 |
+               | Rollover MTE Start Date  |  09:00 |
     """  
 
     secondsBeforeStartTime = timedelta(seconds = 5)
@@ -58,6 +58,44 @@ def rollover_MTE_start_date(GMTStartTime):
     logfiles.wait_smf_log_message_after_time('%s.*StartOfDay time occurred' %MTE, currTimeArray)
     logfiles.wait_smf_log_does_not_contain('dropped due to expiration' , waittime=5, timeout=300)
     logfiles.wait_smf_log_message_after_time('%s.*handleStartOfDayInstrumentUpdate.*Ending' %MTE, currTimeArray)
+
+def rollover_MTE_time(GMTSysTime):
+    """Change the MTE machine date to a few seconds before the configured time.
+               
+    Argument:         
+                GMTSysTime     : GMT time with format HH:MM.
+  
+    Return: the set time array like ['2016', '11', '02', '08', '59', '55']
+    
+    Examples:
+        | Rollover MTE time  | 2016-11-02 09:00 |
+    """ 
+    secondsBeforeStartTime = timedelta(seconds = 5)
+    newDateTime = datetime(int(GMTSysTime[0:4]),int(GMTSysTime[5:7]),int(GMTSysTime[8:10]),int(GMTSysTime[11:13]),int(GMTSysTime[14:16])) - secondsBeforeStartTime
+
+    LinuxCoreUtilities().set_date_and_time(newDateTime.year, newDateTime.month, newDateTime.day, newDateTime.hour, newDateTime.minute, newDateTime.second)
+    currTimeArray = newDateTime.strftime('%Y,%m,%d,%H,%M,%S').split(',')
+    return currTimeArray
+
+def Rollover_Time_Check_SMF_log(AllTimesDict):
+    """Change the MTE machine date to a few seconds before the configured time.
+               
+    Argument:
+        AllTimesDict : Dictionary which the time is the key, value is list of the config names like
+    {'2016-12-06 12:00:00': [u'StartOfDayTime'], '2016-12-07 03:30:00': [u'EndOfDayTime'], '2016-12-06 05:00:00': [u'RolloverTime', u'CacheRolloverTime', u'JnlRollTime', u'CacheRollover']}
+    Normally returned by Get_future_config_times.
+    
+    Return: no
+    
+    Examples:
+        | Rollover time check smf log | ${allTimesDict} |
+    """ 
+    sortList = AllTimesDict.keys()
+    sortList.sort()
+    for timepoint in sortList:
+        currTimeArray = rollover_MTE_time(timepoint)
+        for eventname in AllTimesDict[timepoint]:
+            logfiles.check_logfile_for_event(eventname, currTimeArray)
 
 def start_smf():
     """Start the Server Management Foundation process.

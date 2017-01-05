@@ -114,7 +114,7 @@ def wait_smf_log_message_after_time(message, timeRef, isCaseSensitive=False, wai
     timeout = int(timeout)
     waittime = int(waittime)
     maxtime = time.time() + float(timeout)
-    while time.time() <= maxtime:            
+    while time.time() <= maxtime:
         retMessages = LinuxFSUtilities().grep_remote_file(currentFile, message, isCaseSensitive=isCaseSensitive)
 #             print 'DEBUG retMessages: %s' %retMessages
         if (len(retMessages) > 0):
@@ -125,3 +125,29 @@ def wait_smf_log_message_after_time(message, timeRef, isCaseSensitive=False, wai
                     return retLogTimestamp
         time.sleep(waittime)
     raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smf log before timeout %ds' %(message, timeout))
+
+def check_logfile_for_event(eventName,currTimeArray):
+    """check one event log at specified datetime
+
+    Argument :
+        eventName : please see toCheckLogDict for all events
+        currTimeArray : UTC time message must be after. It is a list of values as returned by the get_date_and_time Keyword [year, month, day, hour, min, second]
+
+    Return : no
+
+    Examples:
+    | check logfile for event | ${eventName} | ${tdBoxDateTime} |
+    """
+    toCheckLogDict = {'StartOfDayTime':['%s.*StartOfDay time occurred'%MTE, '%s.*handleStartOfDayInstrumentUpdate.*Ending' %MTE], \
+        'EndOfDayTime':['%s.*EndOfDay time occurred'%MTE], \
+        'CacheRolloverTime': ['%s.*CacheRollover time occurred'%MTE], \
+        'RolloverTime': ['%s.*RolloverReset time occurred'%MTE], \
+        'StartOfConnect':['%s.*StartOfConnect time occurred'%MTE], \
+        'EndOfConnect':['%s.*EndOfConnect time occurred'%MTE], \
+        'StartOfHighActivity':['%s.*StartOfHighActivity time occurred'%MTE], \
+        'EndOfHighActivity':['%s.*EndOfHighActivity time occurred'%MTE]}
+    if toCheckLogDict.has_key(eventName):
+        logsToCheck = toCheckLogDict[eventName]
+        for log in logsToCheck:
+            #print '*INFO* check log: %s'%log
+            wait_smf_log_message_after_time(log, currTimeArray)

@@ -152,6 +152,23 @@ Verify Holiday RIC processing
     Run Holiday Test
     [Teardown]    Holiday Cleanup
 
+Verify MTE Events Times
+    [Documentation]    Rollover system time StartOfDayTime,EndOfDayTime,RolloverTime,CacheRolloverTime.\ Verify those events happened via check the SMF logs.
+    ...    Test Case - Verify MTE Events Times
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2142
+    [Setup]    Disable MTE Clock Sync
+    ${MTETimeOffset}=    Get MTE Machine Time Offset
+    @{configList}    Create List    StartOfDayTime    EndOfDayTime    RolloverTime    CacheRolloverTime
+    ${ConfigValuesList}    Get Configure Values    @{configList}
+    ${feedTimeRic}    Set Variable    ${feedTimeRics[0]}
+    ${contents}    Set Variable    ${feedTimeRicsDict['${feedTimeRic}']}
+    ${dstRicName}    Set Variable    ${contents[1]}
+    ${currentGmtOffset}    get stat block field    ${MTE}    ${dstRicName}    currentGMTOffset
+    @{tdBoxDateTime}=    get date and time
+    ${AllTimesDict}    get future config times    ${configList}    ${ConfigValuesList}    ${currentGmtOffset}    ${tdBoxDateTime}
+    Rollover Time Check SMF log    ${AllTimesDict}
+    [Teardown]    Restore MTE Machine Time    ${MTETimeOffset}
+
 Verify Trade Time processing
     [Documentation]    Verify Trade Time processing:
     ...
@@ -344,9 +361,9 @@ Run Feed Time Test
     \    Go Into Time    ${type}    ${feedTimeExlFile}    ${feedTimeRic}    ${feedTimeStatField}    ${connectTimesIdentifier}
     \    ...    ${feedTimeRic}    ${localVenueDateTime}
     \    Go Outside Time    ${type}    ${feedTimeExlFile}    ${feedTimeRic}    ${feedTimeStatField}    ${connectTimesIdentifier}
-    \    ...    ${feedTimeRic}    ${localVenueDateTime}
+    \    ...    ${feedTimeRic}    ${localVenueDateTime}    True    1 minute
     \    Go Into Time    ${type}    ${feedTimeExlFile}    ${feedTimeRic}    ${feedTimeStatField}    ${connectTimesIdentifier}
-    \    ...    ${feedTimeRic}    ${localVenueDateTime}
+    \    ...    ${feedTimeRic}    ${localVenueDateTime}    True    1 minute
 
 Feed Time Cleanup
     Comment    Restore all feed time
@@ -387,10 +404,10 @@ Run Trade Time Test
     ...    ${localVenueDateTime}
     Check ConfigurationStatsBlock    ${tradeTimeStatField}    1
     Go Outside Time    ${type}    ${tradeTimeExlFile}    ${tradeTimeRic}    ${tradeTimeStatField}    ${highactTimesIdentifier}    ${tradeTimeRic}
-    ...    ${localVenueDateTime}
+    ...    ${localVenueDateTime}    True    1 minute
     Check ConfigurationStatsBlock    ${tradeTimeStatField}    0
     Go Into Time    ${type}    ${tradeTimeExlFile}    ${tradeTimeRic}    ${tradeTimeStatField}    ${highactTimesIdentifier}    ${tradeTimeRic}
-    ...    ${localVenueDateTime}
+    ...    ${localVenueDateTime}    True    1 minute
     Check ConfigurationStatsBlock    ${tradeTimeStatField}    1
 
 Trade Time Cleanup
@@ -461,7 +478,7 @@ Run Re-schedule ClosingRun Test
     Append to list    ${closingRunExlFiles}    ${closingRunExlFile}
     Load Single EXL File    ${closingRunExlfileModified}    ${serviceName}    ${CHE_IP}
     remove files    ${closingRunExlfileModified}
-    sleep    1 minutes 20 seconds
+    Sleep    1 minutes 20 seconds
     wait smf log message after time    ClosingRunEventHandler for [0-9]*.*?TRIGGERING    ${tdBoxDateTime}    waittime=5    timeout=120
 
 Re-schedule ClosingRun Cleanup
@@ -534,11 +551,14 @@ Check ConfigurationStatsBlock
     wait for statBlock    ${MTE}    ConfigurationStatsBlock    ${statFieldName}    ${statValue}    waittime=2    timeout=300
 
 Set Times For IN State
-    [Arguments]    ${hour}    ${min}    ${sec}
+    [Arguments]    ${hour}    ${min}    ${sec}    ${advOffset}=${EMPTY}
     [Documentation]    For start time, uses values passed in.
     ...
-    ...    For end time, sets it to 23:59:59.
-    ${startTime}    set variable    ${hour}:${min}:${sec}
+    ...    For end time, sets it to 23:59:59. the advOffset is to add some time in existing time
+    ${startTime}=    Set Variable    ${hour}:${min}:${sec}
+    ${startTime}=    run keyword if    '${advOffset}'!='${Empty}'    add time to time    ${startTime}    ${advOffset}    timer
+    ...    exclude_millis=yes
+    ...    ELSE    set variable    ${hour}:${min}:${sec}
     ${endTime}    set variable    23:59:59
     [Return]    ${startTime}    ${endTime}
 
@@ -560,7 +580,7 @@ Go Into All Times
 
 Go Into Time
     [Arguments]    ${type}    ${exlFile}    ${ricName}    ${statFieldName}    ${identifierFieldName}    ${identifierValue}
-    ...    ${localVenueDateTime}    ${isCheckStat}=True
+    ...    ${localVenueDateTime}    ${isCheckStat}=True    ${advOffset}=${EMPTY}
     [Documentation]    Go into specific feed time or trade time
     Comment    Check if EXLs has been modified before, we would keep using same modified file within one test case
     ${processedExls}    Get Dictionary Keys    ${modifiedExlFilesDic}
@@ -569,22 +589,30 @@ Go Into Time
     ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}\\${exlFilename}_modified.exl
     ${exlFileUse}    Set Variable If    ${count} > 0    ${exlFileModified}    ${exlFile}
     ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    ${startTime}    ${endTime}    Set times for IN state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
+    ${startTime}    ${endTime}    Set times for IN state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}    ${advOffset}
     Run Keyword If    '${type}' == 'Feed Time'    Set Feed Time In EXL    ${exlFileUse}    ${exlFileModified}    ${ricName}    ${statRicDomain}
     ...    ${startTime}    ${endTime}    ${weekDay}
     Run Keyword If    '${type}' == 'Trade Time'    Set Trade Time In EXL    ${exlFileUse}    ${exlFileModified}    ${ricName}    ${statRicDomain}
     ...    ${startTime}    ${endTime}    ${weekDay}
-    Load EXL and Check Stat    ${exlFileModified}    ${serviceName}    ${identifierFieldName}    ${identifierValue}    ${statFieldName}    1
-    ...    ${isCheckStat}
+    Load Single EXL File    ${exlFileModified}    ${serviceName}    ${CHE_IP}
+    @{tdBoxDateTime}=    run keyword if    '${advOffset}'!='${Empty}'    Get Date and Time
+    run keyword if    '${advOffset}'!='${Empty}'    Sleep    30s
+    Run Keyword If    '${isCheckStat}'=='True'    Check InputPortStatsBlock    ${identifierFieldName}    ${identifierValue}    ${statFieldName}    1
+    ${eventName}    Run Keyword If    '${type}' == 'Feed Time'    set variable    StartOfConnect
+    ...    ELSE    set variable    StartOfHighActivity
+    run keyword if    '${advOffset}'!='${Empty}'    check logfile for event    ${eventName}    ${tdBoxDateTime}
     [Return]    ${exlFileModified}
 
 Set Times For OUT State
-    [Arguments]    ${hour}    ${min}    ${sec}
+    [Arguments]    ${hour}    ${min}    ${sec}    ${advOffset}=${EMPTY}
     [Documentation]    For start time, sets it to 00:00:00.
     ...
     ...    For end time, uses values passed in.
     ${startTime}    set variable    00:00:00
-    ${endTime}    set variable    ${hour}:${min}:${sec}
+    ${endTime}=    Set Variable    ${hour}:${min}:${sec}
+    ${endTime}    run keyword if    '${advOffset}'!='${Empty}'    add time to time    ${endTime}    ${advOffset}    timer
+    ...    exclude_millis=yes
+    ...    ELSE    set variable    ${hour}:${min}:${sec}
     [Return]    ${startTime}    ${endTime}
 
 Go Outside All Times
@@ -606,7 +634,7 @@ Go Outside All Times
 
 Go Outside Time
     [Arguments]    ${type}    ${exlFile}    ${ricName}    ${statFieldName}    ${identifierFieldName}    ${identifierValue}
-    ...    ${localVenueDateTime}    ${isCheckStat}=True
+    ...    ${localVenueDateTime}    ${isCheckStat}=True    ${advOffset}=${EMPTY}
     [Documentation]    Go outside specific feed time or trade time
     Comment    Check if EXLs has been modified before, we would keep using same modified file within one test case
     ${processedExls}    Get Dictionary Keys    ${modifiedExlFilesDic}
@@ -615,13 +643,20 @@ Go Outside Time
     ${exlFileModified}    Set Variable    ${LOCAL_TMP_DIR}\\${exlFilename}_modified.exl
     ${exlFileUse}    Set Variable If    ${count} > 0    ${exlFileModified}    ${exlFile}
     ${weekDay}    get day of week from date    ${localVenueDateTime[0]}    ${localVenueDateTime[1]}    ${localVenueDateTime[2]}
-    ${startTime}    ${endTime}    Set times for OUT state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}
+    ${startTime}    ${endTime}    Set times for OUT state    ${localVenueDateTime[3]}    ${localVenueDateTime[4]}    ${localVenueDateTime[5]}    ${advOffset}
     Run Keyword If    '${type}' == 'Feed Time'    Set Feed Time In EXL    ${exlFileUse}    ${exlFileModified}    ${ricName}    ${statRicDomain}
     ...    ${startTime}    ${endTime}    ${weekDay}
     Run Keyword If    '${type}' == 'Trade Time'    Set Trade Time In EXL    ${exlFileUse}    ${exlFileModified}    ${ricName}    ${statRicDomain}
     ...    ${startTime}    ${endTime}    ${weekDay}
-    Load EXL and Check Stat    ${exlFileModified}    ${serviceName}    ${identifierFieldName}    ${identifierValue}    ${statFieldName}    0
-    ...    ${isCheckStat}
+    Comment    Load EXL and Check Stat    ${exlFileModified}    ${serviceName}    ${identifierFieldName}    ${identifierValue}    ${statFieldName}
+    ...    0    ${isCheckStat}
+    Load Single EXL File    ${exlFileModified}    ${serviceName}    ${CHE_IP}
+    @{tdBoxDateTime}=    run keyword if    '${advOffset}'!='${Empty}'    Get Date and Time
+    run keyword if    '${advOffset}'!='${Empty}'    Sleep    30s
+    Run Keyword If    '${isCheckStat}'=='True'    Check InputPortStatsBlock    ${identifierFieldName}    ${identifierValue}    ${statFieldName}    0
+    ${eventName}    Run Keyword If    '${type}' == 'Feed Time'    set variable    EndOfConnect
+    ...    ELSE    set variable    EndOfHighActivity
+    run keyword if    '${advOffset}'!='${Empty}'    check logfile for event    ${eventName}    ${tdBoxDateTime}
     [Return]    ${exlFileModified}
 
 Set Datetimes For IN State
@@ -638,7 +673,7 @@ Set Datetimes For IN State
 
 Go Into Datetime
     [Arguments]    ${type}    ${statField}    ${exlFile}    ${ricName}    ${identifier}    ${identifierValue}
-    ...    ${startDatetime}={EMPTY}    ${endDatetime}=${EMPTY}
+    ...    ${startDatetime}=${EMPTY}    ${endDatetime}=${EMPTY}
     [Documentation]    Go into holiday or DST dateime
     ...
     ...    If ${startDatetime} or ${endDatetime} is not specified, it will call KW 'Set Datetims FOR IN State' to get the start time and end time.

@@ -68,6 +68,10 @@ Dictionary of Dictionaries Should Be Equal
     Should Be Equal    ${keys1}    ${keys2}
     : FOR    ${key}    IN    @{keys1}
     \    Dictionaries Should Be Equal    ${dict1['${key}']}    ${dict2['${key}']}
+    
+Disable MTE Clock Sync
+    [Documentation]    If running on a vagrant VirtualBox, disable the VirtualBox Guest Additions service. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
+    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service stop; fi
 
 Dump Persist File To Text
     [Arguments]    @{optargs}
@@ -161,6 +165,17 @@ Generate PCAP File Name
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
 
+Get Configure Values
+    [Arguments]    @{configList}
+    [Documentation]    Get configure items value from MTE config file like StartOfDayTime, EndOfDayTime, RolloverTime....
+    ...    Returns a array with configure item value.
+    ${mteConfigFile}=    Get MTE Config File
+    ${retArray}=    Create List
+    : FOR    ${configName}    IN    @{configList}
+    \    ${configValue}=    get MTE config value    ${mteConfigFile}    ${configName}
+    \    Append To List    ${retArray}    ${configValue}
+    [Return]    ${retArray}
+    
 Get ConnectTimesIdentifier
     [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
     [Documentation]    get the ConnectTimesIdentifier (feed times RIC) from venue config file.
@@ -344,6 +359,14 @@ Get MTE Config File
     get remote file    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    ${localFile}
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${localFile}
     [Return]    ${localFile}
+
+Get MTE Machine Time Offset
+    [Documentation]    Get the offset from local machine for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal real time. this local time can be not GMT time, since the only offset will be used, if local machine time is real life time, then MTE machine time can be restored to real life time by the offset. 
+    ${currDateTime}=    get date and time
+    ${localTime}=    Get Current Date    exclude_millis=True
+    ${MTEtime}=    Convert Date    ${currDateTime[0]}-${currDateTime[1]}-${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    result_format=datetime
+    ${MTETimeOffset}=    Subtract Date From Date    ${MTEtime}    ${localTime}
+    [Return]    ${MTETimeOffset}
 
 Get Playback NIC For PCAP File
     [Arguments]    ${pcapFile}
@@ -687,6 +710,23 @@ Restore EXL Changes
     : FOR    ${file}    IN    @{exlFiles}
     \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
+    
+Restore MTE Clock Sync
+    [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
+    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
+
+Restore MTE Machine Time
+    [Arguments]    ${MTETimeOffset}
+    [Documentation]    To correct Linux time and restart SMF, restart SMF because currently FMS client have a bug now, if we change the MTE Machine time when SMF running, FMS client start to report exception like below, and in this case we can't use FMS client correclty:
+    ...    FMSClient:SocketException - ClientImpl::connect:connect (111); /ThomsonReuters/EventScheduler/EventScheduler; 18296; 18468; 0000235f; 07:00:00;
+    ...
+    ...    In addition, on a vagrant VirtualBox, restore the VirtualBox Guest Additions service, which includes clock sync with the host.
+    stop smf
+    ${RIDEMachineTime}=    Get Current Date    result_format=datetime    exclude_millis=True
+    ${MTEMachineTime}=    Add Time To Date    ${RIDEMachineTime}    ${MTETimeOffset}    result_format=datetime
+    set date and time    ${MTEMachineTime.year}    ${MTEMachineTime.month}    ${MTEMachineTime.day}    ${MTEMachineTime.hour}    ${MTEMachineTime.minute}    ${MTEMachineTime.second}
+    Restore MTE Clock Sync
+    start smf
 
 Rewrite PCAP File
     [Arguments]    ${inputFile}    @{optargs}
