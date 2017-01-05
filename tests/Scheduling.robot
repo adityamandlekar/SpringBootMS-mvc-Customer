@@ -14,7 +14,6 @@ Verify Daylight Savings Time processing
     [Documentation]    Verify Daylight Savings Time processing:
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1643
-    [Tags]    CATF-1643
     [Setup]
     Run DST Test
     [Teardown]    DST Cleanup
@@ -23,7 +22,6 @@ Verify Feed Time processing
     [Documentation]    Verify Feed Time processing:
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1644
-    [Tags]    CATF-1644
     [Setup]
     Run Feed Time Test
     [Teardown]    Feed Time Cleanup
@@ -150,7 +148,6 @@ Verify Holiday RIC processing
     [Documentation]    Verify Holiday RIC processing:
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1640
-    [Tags]    CATF-1640
     [Setup]
     Run Holiday Test
     [Teardown]    Holiday Cleanup
@@ -176,7 +173,6 @@ Verify Trade Time processing
     [Documentation]    Verify Trade Time processing:
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1644
-    [Tags]    CATF-1644
     [Setup]
     Run Trade Time Test
     [Teardown]    Trade Time Cleanup

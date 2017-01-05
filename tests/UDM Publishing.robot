@@ -1,6 +1,7 @@
 *** Settings ***
 Suite Setup       Suite Setup with Playback
 Suite Teardown    Suite Teardown
+Force Tags        Playback
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
@@ -73,7 +74,7 @@ Validate Downstream FID publication from Reconcile
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     Get FIDFilter File
-    verify FIDfilter FIDs are in message    ${LOCAL_TMP_DIR}/capture_local.pcap
+    Verify FIDfilter FIDs Are In Message    ${LOCAL_TMP_DIR}/capture_local.pcap
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify Outbound Heartbeats

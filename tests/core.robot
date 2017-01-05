@@ -660,6 +660,16 @@ Persist File Should Exist
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
     Comment    Currently, GATS does not provide the Venue name, so the pattern matching Keywords must be used. If GATS provides the Venue name, then "remote file should not exist" Keywords could be used here.
 
+Purge RIC
+    [Arguments]    ${ric}    ${domain}    ${serviceName}
+    [Documentation]    Purge a RIC by FMSCmd.
+    ...    HandlerDropType: \ Purge
+    ${currDateTime}    get date and time
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    drop    --RIC ${ric}
+    ...    --Domain ${domain}    --HandlerName ${MTE}    --HandlerDropType Purge
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+    wait smf log message after time    Drop    ${currDateTime}
+
 Reset Sequence Numbers
     [Arguments]    @{mach_ip_list}
     [Documentation]    Reset the FH, GRS, and MTE sequence numbers on each specified machine (default is current machine).
@@ -1102,7 +1112,7 @@ Verify RIC Is Dropped In MTE Cache
     Should Be Equal    ${allricFields['PUBLISHABLE']}    FALSE
     Should Be True    ${allricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
 
-Verfiy Item Persisted
+Verify Item Persisted
     [Arguments]    ${ric}=${EMPTY}    ${sic}=${EMPTY}    ${domain}=${EMPTY}
     [Documentation]    Dump persist file to XML and check if ric, sic and/or domain items exist in MTE persist file.
     ${cacheDomainName}=    Remove String    ${domain}    _
@@ -1110,6 +1120,16 @@ Verfiy Item Persisted
     @{pmatOptargs}=    Gen Pmat Cmd Args    ${ric}    ${sic}    ${pmatDomain}
     ${pmatDumpfile}=    Dump Persist File To XML    @{pmatOptargs}
     Verify Item in Persist Dump File    ${pmatDumpfile}    ${ric}    ${sic}    ${cacheDomainName}
+    Remove Files    ${pmatDumpfile}
+
+Verify Item Not Persisted
+    [Arguments]    ${ric}=${EMPTY}    ${sic}=${EMPTY}    ${domain}=${EMPTY}
+    [Documentation]    Dump persist file to XML and check if ric, sic and/or domain items not exist in MTE persist file.
+    ${cacheDomainName}=    Remove String    ${domain}    _
+    ${pmatDomain}=    Run Keyword If    '${cacheDomainName}'!='${EMPTY}'    Map to PMAT Numeric Domain    ${cacheDomainName}
+    @{pmatOptargs}=    Gen Pmat Cmd Args    ${ric}    ${sic}    ${pmatDomain}
+    ${pmatDumpfile}=    Dump Persist File To XML    @{pmatOptargs}
+    verify_item_not_in_persist_dump_file    ${pmatDumpfile}    ${ric}    ${sic}
     Remove Files    ${pmatDumpfile}
 
 Wait For FMS Reorg
