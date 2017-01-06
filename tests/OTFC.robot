@@ -102,7 +102,7 @@ OTFC Setup
     Comment    Remove all items from MTE cache and stop MTE getting Ric information from FMS server (if exist)
     Delete Persist Files
     ${localCfgFile}=    Get MTE Config File
-    set value in MTE cfg    ${localCfgFile}    ResendFM    0    add    FMS
+    set value in MTE cfg    ${localCfgFile}    ResendFM    ${0}    add    FMS
     Comment    Enable OTFC for MTE
     set value in MTE cfg    ${localCfgFile}    EnableOTFC    true    add
     Put Remote File    ${localCfgFile}    ${remoteCfgFile}

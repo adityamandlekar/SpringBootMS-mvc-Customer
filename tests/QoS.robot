@@ -95,7 +95,7 @@ Verify QoS Failover for UDP Feed Line Down
     [Tags]    Peer
     Pass Execution If    '${PROTOCOL}' !='UDP'    Venue Protocol ${PROTOCOL} is not UDP
     Switch To TD Box    ${CHE_A_IP}
-    ${timeoutLimit}=    Set Variable    200
+    ${timeoutLimit}=    Set Variable    ${200}
     ${orgCfgFile}    ${backupCfgFile}    Set UDP Feed Line Timeout    ${timeoutLimit}
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -118,7 +118,7 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     [Tags]    Peer
     Pass Execution If    '${PROTOCOL}' == 'UDP'    Venue Protocol ${PROTOCOL} is not TCP or FTP
     Switch To TD Box    ${CHE_A_IP}
-    ${TimeOut}=    Set Variable    200
+    ${TimeOut}=    Set Variable    ${200}
     ${orgCfgFile}    ${backupCfgFile}    Set TCP-FTP Feed Line Timeout    ${TimeOut}
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}

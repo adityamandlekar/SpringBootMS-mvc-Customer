@@ -39,7 +39,7 @@ Validate Item Sequence Numbering on Failover
     Switch To TD Box    ${CHE_B_IP}
     ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${localCfgFile}=    Get MTE Config File
-    Set Value in MTE Cfg    ${localCfgFile}    FailoverPublishRate    500    add    BackgroundRebuild
+    Set Value in MTE Cfg    ${localCfgFile}    FailoverPublishRate    ${500}    add    BackgroundRebuild
     Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Comment    Inject PCAP1 and get the RIC list of the injected PCAP1
     Reset Sequence Numbers    ${CHE_A_IP}    ${CHE_B_IP}
