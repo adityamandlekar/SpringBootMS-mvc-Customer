@@ -1,6 +1,7 @@
 *** Settings ***
 Suite Setup       Suite Setup with Playback
 Suite Teardown    Suite Teardown
+Force Tags        Playback
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 

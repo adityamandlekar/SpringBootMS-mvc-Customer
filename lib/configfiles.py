@@ -7,7 +7,6 @@ from sets import Set
 import string
 import xml
 import xml.etree.ElementTree as ET
-
 from LinuxFSUtilities import LinuxFSUtilities
 from utils.ssh import _exec_command, _search_file
 import xmlutilities
@@ -111,6 +110,74 @@ def get_context_ids_from_fms_filter_string(fms_filter_string):
             context_id_set.add(n[1].strip())
         
     return context_id_set
+
+def Get_future_config_times(configNameList,configValueList, GMTOffset, currentDateTime):
+    """Convert all event times to future GMT time and return one dictionary
+    
+    Argument : 
+    configNameList  : config names list
+    configValueList : config values list which get from MTE config file
+    GMTOffset :  GMT offset in second like -18000(GMT-5)
+    currentDateTime : date time get from TD box (GMT)
+        
+    Returns : Dictionary which the time is the key, value is list of the config names like
+    {'2016-12-06 12:00:00': [u'StartOfDayTime'], '2016-12-07 03:30:00': [u'EndOfDayTime'], '2016-12-06 05:00:00': [u'RolloverTime', u'CacheRolloverTime', u'JnlRollTime', u'CacheRollover']}
+    Examples :
+          | get future config times | ${configNameList} | ${configValueList} | 28800 | ${currentDateTime}
+    """
+    configValueOrginList = configValueList
+    retDict = {}
+    currentDateTimeStr = '%4d-%02d-%02d %02d:%02d:00'%(int(currentDateTime[0]),int(currentDateTime[1]),int(currentDateTime[2]),int(currentDateTime[3]),int(currentDateTime[4]))
+
+    index = 0
+    from robot.libraries.DateTime import subtract_time_from_date,add_time_to_date
+    for timepoint in configValueList:
+        if timepoint.lower() == 'not found':
+            index += 1
+            continue
+        timestr = '%4d-%02d-%02d %s:00'%(int(currentDateTime[0]),int(currentDateTime[1]),int(currentDateTime[2]),timepoint)
+        # local--> GMT time, should minus GMToffset
+        timeGMT = subtract_time_from_date(timestr,'%s seconds'%GMTOffset)
+        #if the GMT time is previous currentDateTime, add one day
+        count = 0
+        while timeGMT < currentDateTimeStr and count < 2:
+            timeGMT = add_time_to_date(timeGMT,'%s seconds'%str(3600*24))
+            count += 1
+
+        if timeGMT not in retDict.keys():
+            retDict[timeGMT] = []
+        retDict[timeGMT].append(configNameList[index])
+        index += 1
+
+    return retDict
+    
+def get_LabelIDs_with_provider_SCW(labelIDs, ddnLabels_Modifyfile):
+    """For a given list of labelIDs, return the subset that only have an entry for provider "SCW" in ddnPublishers.xml
+    Argument : 
+    labellDs    : Arrary of LabelID from MTE config file
+    ddnLabels_Modifyfile : full path of ddnpublish modify file
+        
+    Returns : the sub-list of labelIDs that have provider "SCW"
+
+    """ 
+    update_LabelIDList = []
+    
+    tree = ET.parse(ddnLabels_Modifyfile)
+    root = tree.getroot()
+    labelNodes = root.findall('.//label')
+    if not labelNodes:
+        raise AssertionError('*ERROR* label element does not exist in %s' % ddnLabels_Modifyfile)
+    for labelNode in labelNodes:
+        for labelID in labelIDs:
+            if labelNode.get('ID') == labelID:
+                providers = labelNode.findall('provider')
+                for provider in providers:
+                    if provider.get('NAME') == 'SCW':
+                        update_LabelIDList.append(labelID)                            
+    if not len(update_LabelIDList):  
+        raise AssertionError('*ERROR* There is no any available LabelID for SCW')
+    else:
+        return update_LabelIDList
 
 def modify_GRS_config_feed_item_value(grs_config_file, itemName, newValue):
     """update the item value from grs config files
@@ -735,7 +802,7 @@ def get_FID_Name_by_FIDId(FidId):
             return elements[0]
         else:
             raise AssertionError('*ERROR* The FID can not be found')
-    
+
 def restore_remote_cfg_file(cfgfile,backupfile):
     """restore config file by rename backupfile to cfgfile
     Argument : 
@@ -757,3 +824,4 @@ def restore_remote_cfg_file(cfgfile,backupfile):
     
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))                
+

@@ -1,6 +1,7 @@
 *** Settings ***
 Suite Setup       Suite Setup Two TD Boxes With Playback
 Suite Teardown    Suite Teardown
+Force Tags        Peer    Playback
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
@@ -28,7 +29,6 @@ Validate Item Sequence Numbering on Failover
     ...    - The number of C1 messages (include response and update) received should be >= 2
     ...
     ...    Teardown: Restore FailoverPublishRate to 0 on standby MTE config
-    [Tags]    Peer
     [Setup]
     Comment    Change the MTE config FailoverPublishRate to 500 on standby MTE B, to increase the failover rebuild publish rate
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}

@@ -603,14 +603,13 @@ def verify_FIDfilter_FIDs_are_in_message(pcapfile):
     # Dictionary with key = ric name and content = context ID
     # Captured during verify constit=1 response message and used for verify constit=0 response message
     ricsDict = dict({})
-            
     #Check if pcap file exist
     if (os.path.exists(pcapfile) == False):
         raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)    
     
     #Get the fidfilter file contents
     fidfilter = fidfilterfile.parse_local_fidfilter_file()                   
-    
+
     #[ConstitNum = 1]
     #Convert pcap file to xml
     filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_constitNum = &quot;1&quot;)'
@@ -1421,11 +1420,13 @@ def _verify_FIDfilter_FIDs_in_single_message(messageNode,fidfilter, ricsDict):
     fidsAndValues = xmlutilities.xml_parse_get_fidsAndValues_for_messageNode(messageNode)
     constit = xmlutilities.xml_parse_get_field_for_messageNode(messageNode,'ConstitNum')
     ricname = xmlutilities.xml_parse_get_field_from_MsgKey(messageNode,'Name')
+    domainType = xmlutilities.xml_parse_get_field_from_MsgKey(messageNode,'DomainType')
     contextId = "-1"
-           
+    ric_domainType = ricname + domainType
+    
     if (len(fidsAndValues) == 0):           
         raise AssertionError('*ERROR* Empty payload found in response message for Ric=%s' %ricname) 
-            
+               
     if (constit == '1'):
         #Get Context ID from FID 5357
         if (fidsAndValues.has_key(FID_CONTEXTID) == True):
@@ -1433,18 +1434,18 @@ def _verify_FIDfilter_FIDs_in_single_message(messageNode,fidfilter, ricsDict):
             if (fidfilter.has_key(contextId) == True):
                 for fid in fidfilter[contextId][constit]:
                     if (fidsAndValues.has_key(fid) == False):                                        
-                        raise AssertionError('*ERROR* Missing FID=%s in MTE response output for context ID = %s, Ric = %s' %(fid,contextId,ricname))
-                ricsDict[ricname] = contextId
+                        raise AssertionError('*ERROR* constit = 1 Missing FID=%s in MTE response output for context ID = %s, Ric = %s, DomainType = %s' %(fid,contextId,ricname,domainType))
+                ricsDict[ric_domainType] = contextId
             else:
                 raise AssertionError('*ERROR* Context ID (FID %s) = %s found in MTE response output is missing from FIDFilter.txt' %(FID_CONTEXTID,contextId))
                         
     elif (constit == '0'):
-        if (ricsDict.has_key(ricname)):
-            contextId = ricsDict[ricname]
+        if (ricsDict.has_key(ric_domainType)):
+            contextId = ricsDict[ric_domainType]
             if (fidfilter.has_key(contextId) == True):
                 for fid in fidfilter[contextId][constit]:
                     if (fidsAndValues.has_key(fid) == False):                                        
-                        raise AssertionError('*ERROR* Missing FID=%s in MTE response output for context ID = %s, Ric = %s' %(fid,contextId,ricname))
+                        raise AssertionError('*ERROR* constit = 0 Missing FID=%s in MTE response output for context ID = %s, Ric = %s, DomainType = %s' %(fid,contextId,ricname,domainType))
             else:
                 raise AssertionError('*ERROR* Context ID (FID %s) = %s found in MTE response output is missing from FIDFilter.txt' %(FID_CONTEXTID,contextId))
 

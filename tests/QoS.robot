@@ -2,6 +2,7 @@
 Documentation     Verify QoS value when disable the NIC
 Suite Setup       Suite Setup Two TD Boxes
 Suite Teardown    Suite Teardown
+Force Tags        Peer
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
@@ -10,7 +11,6 @@ Verify Sync Pulse Missed QoS
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
     ...
     ...    Test Case - Verify Sync Pulse Missed QoS by blocking sync pulse publiscation port and check the missing statistic by SCWCli
-    [Tags]    Peer
     [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -26,6 +26,7 @@ Verify Sync Pulse Missed QoS
     @{labelIDs}=    Get Label IDs
     get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
+    @{labelIDs}=    Get LabelIDs With Provider SCW    ${labelIDs}    ${modifyLabelFile}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
@@ -41,6 +42,7 @@ Verify Sync Pulse Missed QoS
     @{labelIDs}=    Get Label IDs
     get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
+    @{labelIDs}=    Get LabelIDs With Provider SCW    ${labelIDs}    ${modifyLabelFile}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
@@ -63,7 +65,6 @@ Verify QoS Failover for Critical Process Failure
     ...    3. Verify CritProcessFail count indicates the number of critical processes that are down.
     ...    4. Restart the components.
     ...    5. Verify CritProcessFail count goes back to zero and Total QoS goes back to 100.
-    [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
@@ -92,7 +93,6 @@ Verify QoS Failover for UDP Feed Line Down
     ...    Promote MTE A to LIVE.
     ...    Wait for feed line down timeout interval.
     ...    Verify that failover occurred and MTE B is now LIVE.
-    [Tags]    Peer
     Pass Execution If    '${PROTOCOL}' !='UDP'    Venue Protocol ${PROTOCOL} is not UDP
     Switch To TD Box    ${CHE_A_IP}
     ${timeoutLimit}=    Set Variable    ${200}
@@ -115,7 +115,6 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     ...    Promote MTE A to LIVE.
     ...    Wait for feed line down timeout interval.
     ...    Verify that failover occurred and MTE B is now LIVE.
-    [Tags]    Peer
     Pass Execution If    '${PROTOCOL}' == 'UDP'    Venue Protocol ${PROTOCOL} is not TCP or FTP
     Switch To TD Box    ${CHE_A_IP}
     ${TimeOut}=    Set Variable    ${200}
@@ -143,7 +142,6 @@ Watchdog QOS - Egress NIC
     ...    4. Disable DDNB NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNB NIC. \ Verify QOS returns to 100. \ Standby is receiving Sync Pulses.
     ...
     ...    5. Disable both DDNA and DDNB on STANDBY MTE box. \ VerifyQOS EgressNIC:0, Total QOS:0. \ Enable both DDNA and DDNB. \ Verify QOS returns to 100. \ Standby is receiving Sync Pulses.
-    [Tags]    Peer
     [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -204,7 +202,6 @@ Watchdog QOS - Ingress NIC
     ...    5. Enable EXCHIPB, IngressNIC:100, Total QOS:100
     ...    6. Disable both EXCHIPA and EXCHIPB, IngressNIC:0, Total QOS:0
     ...    7. Enable both EXCHIPA and EXCHIPB, IngressNIC:100, Total QOS:100
-    [Tags]    Peer
     [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -238,7 +235,6 @@ Watchdog QOS - FMS NIC
     ...    4. Verify FMS NIC:0, Total QOS:0
     ...    5. Enable FMS NIC
     ...    6. Verify FMS NIC:100, Total QOS:100
-    [Tags]    Peer
     [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}

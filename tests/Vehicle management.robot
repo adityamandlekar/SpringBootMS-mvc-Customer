@@ -27,7 +27,7 @@ Verify Long RIC handled correctly
     Stop Capture MTE Output    1    5
     ${newRic}    ${newPubRic}    Run Keyword And Continue On Failure    Verify RIC In MTE Cache    ${long_ric}    ${domain}
     Run Keyword And Continue On Failure    Verify RIC Published    ${remoteCapture}    ${localEXLfile}    ${newPubRic}    ${domain}
-    Run Keyword And Continue On Failure    Verfiy Item Persisted    ${long_ric}    ${EMPTY}    ${domain}
+    Run Keyword And Continue On Failure    Verify Item Persisted    ${long_ric}    ${EMPTY}    ${domain}
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     Wait For Persist File Update
     [Teardown]    case teardown    ${localEXLfile}
@@ -125,7 +125,7 @@ Verify RIC rename handled correctly
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_2.pcap
     verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${Published_RIC_After_Rename}    ${domain}    ${constituent_list}
-    Verfiy Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
+    Verify Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
     Comment    //Start test. Test 3: Check that the new RIC can be renamed back to the original name.
     Comment    //This also reverts the state back to as the begining of the test
     Start Capture MTE Output
@@ -138,7 +138,7 @@ Verify RIC rename handled correctly
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
     Verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${Published_RIC_Before_Rename}    ${domain}    ${constituent_list}
-    Verfiy Item Persisted    ${RIC_Before_Rename}    ${EMPTY}    ${domain}
+    Verify Item Persisted    ${RIC_Before_Rename}    ${EMPTY}    ${domain}
     [Teardown]    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 Verify FMS Rebuild
@@ -241,14 +241,14 @@ Verify SIC rename handled correctly
     ${SIC_1}=    set variable    ${ricFields['SIC']}
     Should Be Equal    ${SIC_1}    ${SIC_After_Rename}
     Wait For Persist File Update    5    60
-    Verfiy Item Persisted    ${EMPTY}    ${SIC_After_Rename}    ${domain}
+    Verify Item Persisted    ${EMPTY}    ${SIC_After_Rename}    ${domain}
     Comment    //fallback
     Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     ${ricFields}=    Get All Fields For RIC From Cache    ${RIC}    ${domain}
     ${SIC_2}=    set variable    ${ricFields['SIC']}
     Should Be Equal    ${SIC_2}    ${SIC_Before_Rename}
     Wait For Persist File Update    5    60
-    Verfiy Item Persisted    ${EMPTY}    ${SIC_Before_Rename}    ${domain}
+    Verify Item Persisted    ${EMPTY}    ${SIC_Before_Rename}    ${domain}
     [Teardown]    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
 
 Verify FMS Extract and Insert
@@ -350,6 +350,58 @@ Verify Drop and Undrop from FMSCmd
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     verify_all_response_message_num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
+
+Verify both RIC and SIC rename handled correctly
+    [Documentation]    Rename both RIC and SIC.
+    ...    Verify that the old RIC is no longer in cache. \ Verify the new RIC and SIC are in cache.
+    ...    Verify persisted file and published message.
+    ...    Verify drop messages are published for the old RIC.
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2149
+    ${domain}=    Get Preferred Domain
+    ${serviceName}=    Get FMS Service Name
+    ${result}=    get RIC fields from cache    1    ${domain}    ${EMPTY}
+    ${RIC_Before_Rename}    set variable    ${result[0]['RIC']}
+    ${SIC_Before_Rename} =    set variable    ${result[0]['SIC']}
+    ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${RIC_Before_Rename}
+    ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
+    ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
+    Copy File    ${EXLfullpath}    ${LocalEXLfullpath}
+    ${srcFilefullPath}    set variable    ${LOCAL_TMP_DIR}/ChangeSicRic.src
+    ${RIC_After_Rename}    ${SIC_After_Rename}    create_RIC_SIC_rename_file    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${srcFilefullPath}    ${LocalEXLfullpath}
+    Get FIDFilter File
+    ${constituent_list}=    Get Constituents From FidFilter    ${result[0]['CONTEXT_ID']}
+    Start Capture MTE Output
+    Set RIC in EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC_Before_Rename}    ${domain}    ${RIC_After_Rename}
+    Set Symbol In EXL    ${LocalEXLfullpath}    ${LocalEXLfullpath}    ${RIC_After_Rename}    ${domain}    ${SIC_After_Rename}
+    Comment    Both SIC and RIC rename in SRC file
+    Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    --SRCFile ${srcFilefullPath}
+    Wait For FMS Reorg
+    Verify RIC NOT In MTE Cache    ${RIC_Before_Rename}    ${domain}
+    ${RIC_After_Rename}    ${Published_RIC_After_Rename}    Verify RIC In MTE Cache    ${RIC_After_Rename}    ${domain}
+    Send TRWF2 Refresh Request    ${Published_RIC_After_Rename}    ${domain}
+    Wait For Persist File Update    5    60
+    Stop Capture MTE Output
+    Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_2.pcap
+    verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${Published_RIC_After_Rename}    ${domain}    ${constituent_list}
+    Verify Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
+    Verify Item Not Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
+    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${RIC_Before_Rename}    ${domain}
+    Start Capture MTE Output
+    Purge RIC    ${RIC_After_Rename}    ${domain}    ${serviceName}
+    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
+    Wait For FMS Reorg
+    ${RIC_Before_Rename}    ${Published_RIC_Before_Rename}    Verify RIC In MTE Cache    ${RIC_Before_Rename}    ${domain}
+    Verify RIC Not In MTE Cache    ${RIC_After_Rename}    ${domain}
+    Send TRWF2 Refresh Request    ${Published_RIC_Before_Rename}    ${domain}
+    Wait For Persist File Update    5    60
+    Stop Capture MTE Output
+    Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
+    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${RIC_After_Rename}    ${domain}
+    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    Verify Item Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
+    Verify Item Not Persisted    ${RIC_After_Rename}    ${SIC_After_Rename}    ${domain}
+    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
+    ...    AND    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 *** Keywords ***
 Calculate UpdateSince for REORG
@@ -456,27 +508,6 @@ Create Fid Value Pair
     \    Set To Dictionary    ${fidnumvalue}    ${fidNum}    1${value}
     [Return]    ${fidnamevalue}    ${fidnumvalue}
 
-Get MTE Machine Time Offset
-    [Documentation]    Get the offset from GMT for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal GMT time.
-    ${currDateTime}=    get date and time
-    ${localTime}=    Get Current Date    exclude_millis=True
-    ${MTEtime}=    Convert Date    ${currDateTime[0]}-${currDateTime[1]}-${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    result_format=datetime
-    ${MTETimeOffset}=    Subtract Date From Date    ${MTEtime}    ${localTime}
-    [Return]    ${MTETimeOffset}
-
-Restore MTE Machine Time
-    [Arguments]    ${MTETimeOffset}
-    [Documentation]    To correct Linux time and restart SMF, restart SMF because currently FMS client have a bug now, if we change the MTE Machine time when SMF running, FMS client start to report exception like below, and in this case we can't use FMS client correclty:
-    ...    FMSClient:SocketException - ClientImpl::connect:connect (111); /ThomsonReuters/EventScheduler/EventScheduler; 18296; 18468; 0000235f; 07:00:00;
-    ...
-    ...    In addition, on a vagrant VirtualBox, restore the VirtualBox Guest Additions service, which includes clock sync with the host.
-    stop smf
-    ${RIDEMachineTime}=    Get Current Date    result_format=datetime    exclude_millis=True
-    ${MTEMachineTime}=    Add Time To Date    ${RIDEMachineTime}    ${MTETimeOffset}    result_format=datetime
-    set date and time    ${MTEMachineTime.year}    ${MTEMachineTime.month}    ${MTEMachineTime.day}    ${MTEMachineTime.hour}    ${MTEMachineTime.minute}    ${MTEMachineTime.second}
-    Restore MTE Clock Sync
-    start smf
-
 Undrop ric
     [Arguments]    ${ric}    ${domain}    ${serviceName}
     ${currDateTime}    get date and time
@@ -485,13 +516,6 @@ Undrop ric
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
     wait smf log message after time    Undrop    ${currDateTime}
 
-Disable MTE Clock Sync
-    [Documentation]    If running on a vagrant VirtualBox, disable the VirtualBox Guest Additions service. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
-    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service stop; fi
-
-Restore MTE Clock Sync
-    [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
-    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
 
 Get Start Time
     [Documentation]    Get startOfday time from MTE config file
