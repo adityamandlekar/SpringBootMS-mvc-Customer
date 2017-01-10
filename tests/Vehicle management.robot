@@ -354,7 +354,7 @@ Verify Drop with Purge from FMSCmd
     [Documentation]    Verify Drop with Purge from FMSCmd
     ...    1) Verify MTE is running.
     ...    2) Start output capture.
-    ...    3) Generate Drop from FMSCmd,
+    ...    3) Generate Drop from FMSCmd with drop type 'Purge'.
     ...    4) Verify item is dropped in MTE cache.
     ...    5) Stop output capture
     ...    6) Verify an Item Drop was published (MsgClass: \ TRWF_MSG_MC_ITEM_STATUS, StreamState: TRWF_MSG_SST_CLOSED)
@@ -366,25 +366,19 @@ Verify Drop with Purge from FMSCmd
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${exlFile}=    get EXL for RIC    ${domain}    ${serviceName}    ${ric}
     ${mteConfigFile}=    Get MTE Config File
     ${currDateTime}    get date and time
     Get FIDFilter File
     Start Capture MTE Output
     Drop ric    ${ric}    ${domain}    ${serviceName}    Purge
     wait smf log message after time    Drop message sent    ${currDateTime}
-    Verify RIC Is Dropped In MTE Cache    ${ric}    ${domain}
     Stop Capture MTE Output
+    Verify RIC Not In MTE Cache    ${ric}    ${domain}
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     verify DROP message in itemstatus messages    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
-    ${riclist}    create list    ${pubRic}
-    ${ricsDict}    Get FID Values From Refresh Request    ${riclist}    ${domain}
-    ${emptyDict}    create dictionary
-    Dictionaries Should Be Equal    ${ricsDict[${ric}]}    ${emptyDict}
-    Comment    //fallback
-    ${exlFile}=    get EXL for RIC    ${domain}    ${serviceName}    ${ric}
-    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
-    Wait For Persist File Update    5    60
-    Verify Item Persisted    ${ric}    ${EMPTY}    ${domain}
+    ${res}=    Send TRWF2 Refresh Request    ${ric}    ${domain}
+    Should Be Empty    ${res}
     [Teardown]    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
 
 Verify both RIC and SIC rename handled correctly
