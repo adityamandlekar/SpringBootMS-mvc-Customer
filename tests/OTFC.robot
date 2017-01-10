@@ -1,6 +1,7 @@
 *** Settings ***
 Suite Setup       Suite Setup with Playback
 Suite Teardown    Suite Teardown
+Force Tags        Playback
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
@@ -95,13 +96,15 @@ OTFC Setup
     ...    1. Enable OTFC
     ...    2. Disable ResendFM so that No Ric will be created from FMS Server provided EXL files.
     ...    (This actual empty the cache of MTE so that making OTFC easier)
-    ${orgFile}    ${backupFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${remoteCfgFile}    ${backupFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     Set Suite Variable    ${mtecfgfile_backup}    ${backupFile}
-    Set Suite Variable    ${mtecfgfile_org}    ${orgFile}
+    Set Suite Variable    ${mtecfgfile_org}    ${remoteCfgFile}
     Stop MTE
     Comment    Remove all items from MTE cache and stop MTE getting Ric information from FMS server (if exist)
     Delete Persist Files
-    set value in MTE cfg    ${mtecfgfile_org}    ResendFM    0
+    ${localCfgFile}=    Get MTE Config File
+    set value in MTE cfg    ${localCfgFile}    ResendFM    ${0}    add    FMS
     Comment    Enable OTFC for MTE
-    set value in MTE cfg    ${mtecfgfile_org}    EnableOTFC    true
+    set value in MTE cfg    ${localCfgFile}    EnableOTFC    true    add
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Start MTE for OTFC

@@ -2,6 +2,7 @@
 Documentation     Verify QoS value when disable the NIC
 Suite Setup       Suite Setup Two TD Boxes
 Suite Teardown    Suite Teardown
+Force Tags        Peer
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
@@ -10,7 +11,7 @@ Verify Sync Pulse Missed QoS
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
     ...
     ...    Test Case - Verify Sync Pulse Missed QoS by blocking sync pulse publiscation port and check the missing statistic by SCWCli
-    [Tags]    Peer
+    [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     ${ddnpublishersLabelfilepaths}=    Get CHE Config Filepaths    ddnPublishers.xml
@@ -25,6 +26,7 @@ Verify Sync Pulse Missed QoS
     @{labelIDs}=    Get Label IDs
     get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
+    @{labelIDs}=    Get LabelIDs With Provider SCW    ${labelIDs}    ${modifyLabelFile}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
@@ -34,11 +36,13 @@ Verify Sync Pulse Missed QoS
     \    unblock_dataflow
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
     \    sleep    5
+    \    Verify Sync Pulse Received    ${master_ip}
     Comment    Blocking Live Side OUTPUT
     Switch to TD Box    ${CHE_A_IP}
     @{labelIDs}=    Get Label IDs
     get remote file    ${ddnpublishersLabelfilepath}    ${labelfile_local}
     remove xinclude from labelfile    ${labelfile_local}    ${modifyLabelFile}
+    @{labelIDs}=    Get LabelIDs With Provider SCW    ${labelIDs}    ${modifyLabelFile}
     : FOR    ${labelID}    IN    @{labelIDs}
     \    @{multicastIPandPort}    get multicast address from label file    ${modifyLabelFile}    ${labelID}    ${MTE}
     \    @{syncPulseCountBefore}    get SyncPulseMissed    ${master_ip}
@@ -47,7 +51,10 @@ Verify Sync Pulse Missed QoS
     \    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
     \    unblock_dataflow
     \    verify sync pulse missed Qos    ${syncPulseCountBefore}    ${syncPulseCountAfter}
+    \    Sleep    5
+    \    Verify Sync Pulse Received    ${master_ip}
     [Teardown]    Run Keywords    Unblock Dataflow
+    ...    AND    QoS Case Teardown
     ...    AND    Case Teardown    ${modifyLabelFile}    ${labelfile_local}
 
 Verify QoS Failover for Critical Process Failure
@@ -58,7 +65,6 @@ Verify QoS Failover for Critical Process Failure
     ...    3. Verify CritProcessFail count indicates the number of critical processes that are down.
     ...    4. Restart the components.
     ...    5. Verify CritProcessFail count goes back to zero and Total QoS goes back to 100.
-    [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
@@ -87,10 +93,9 @@ Verify QoS Failover for UDP Feed Line Down
     ...    Promote MTE A to LIVE.
     ...    Wait for feed line down timeout interval.
     ...    Verify that failover occurred and MTE B is now LIVE.
-    [Tags]    Peer
     Pass Execution If    '${PROTOCOL}' !='UDP'    Venue Protocol ${PROTOCOL} is not UDP
     Switch To TD Box    ${CHE_A_IP}
-    ${timeoutLimit}=    Set Variable    200
+    ${timeoutLimit}=    Set Variable    ${200}
     ${orgCfgFile}    ${backupCfgFile}    Set UDP Feed Line Timeout    ${timeoutLimit}
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -110,10 +115,9 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     ...    Promote MTE A to LIVE.
     ...    Wait for feed line down timeout interval.
     ...    Verify that failover occurred and MTE B is now LIVE.
-    [Tags]    Peer
     Pass Execution If    '${PROTOCOL}' == 'UDP'    Venue Protocol ${PROTOCOL} is not TCP or FTP
     Switch To TD Box    ${CHE_A_IP}
-    ${TimeOut}=    Set Variable    200
+    ${TimeOut}=    Set Variable    ${200}
     ${orgCfgFile}    ${backupCfgFile}    Set TCP-FTP Feed Line Timeout    ${TimeOut}
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -129,12 +133,15 @@ Verify QoS Failover for TCP-FTP Feed Line Down
 Watchdog QOS - Egress NIC
     [Documentation]    Test the QOS value and MTE failover when disabling the Egress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1966
     ...
-    ...    1. Disable DDNA NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNA NIC. \ Verify QOS returns to 100 and MTE recovers to STANDBY.
-    ...    2. Disable DDNB NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNB NIC. \ Verify QOS returns to 100 and MTE recovers to STANDBY.
-    ...    3. Disable DDNA NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNA NIC. \ Verify QOS returns to 100.
-    ...    4. Disable DDNB NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNB NIC. \ Verify QOS returns to 100.
-    ...    5. Disable both DDNA and DDNB on STANDBY MTE box. \ VerifyQOS EgressNIC:0, Total QOS:0. \ Enable both DDNA and DDNB. \ Verify QOS returns to 100.
-    [Tags]    Peer
+    ...    1. Disable DDNA NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNA NIC. \ Verify QOS returns to 100.\ Standby is receiving Sync Pulses.\ and MTE recovers to STANDBY.
+    ...
+    ...    2. Disable DDNB NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNB NIC. \ Verify QOS returns to 100. \Standby is receiving Sync Pulses. \ and MTE recovers to STANDBY. \ Standby is receiving Sync Pulses.
+    ...
+    ...    3. Disable DDNA NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNA NIC. \ Verify QOS returns to 100.\ Standby is receiving Sync Pulses.
+    ...
+    ...    4. Disable DDNB NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNB NIC. \ Verify QOS returns to 100. \ Standby is receiving Sync Pulses.
+    ...
+    ...    5. Disable both DDNA and DDNB on STANDBY MTE box. \ VerifyQOS EgressNIC:0, Total QOS:0. \ Enable both DDNA and DDNB. \ Verify QOS returns to 100. \ Standby is receiving Sync Pulses.
     [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -150,6 +157,8 @@ Watchdog QOS - Egress NIC
     Enable NIC    DDNA
     Verify QOS for Egress NIC    100    100    A    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    Sleep    10
+    Verify Sync Pulse Received    ${master_ip}
     Comment    Disable DDNB on LIVE box, MTE should failover
     Switch To TD Box    ${CHE_B_IP}
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
@@ -159,21 +168,27 @@ Watchdog QOS - Egress NIC
     Enable NIC    DDNB
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
+    Sleep    10
+    Verify Sync Pulse Received    ${master_ip}
     Comment    Disable NICs on STANDBY
     Disable NIC    DDNA
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Enable NIC    DDNA
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
+    Verify Sync Pulse Received    ${master_ip}
     Disable NIC    DDNB
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Enable NIC    DDNB
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
+    Verify Sync Pulse Received    ${master_ip}
     Disable NIC    DDNA
     Disable NIC    DDNB
-    Verify QOS for Egress NIC    0    0    B    ${master_ip}
+    Verify QOS for Egress NIC    ${Empty}    0    B    ${master_ip}
     Enable NIC    DDNA
     Enable NIC    DDNB
+    Sleep    10
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
+    Verify Sync Pulse Received    ${master_ip}
     [Teardown]    QoS Case Teardown
 
 Watchdog QOS - Ingress NIC
@@ -187,7 +202,6 @@ Watchdog QOS - Ingress NIC
     ...    5. Enable EXCHIPB, IngressNIC:100, Total QOS:100
     ...    6. Disable both EXCHIPA and EXCHIPB, IngressNIC:0, Total QOS:0
     ...    7. Enable both EXCHIPA and EXCHIPB, IngressNIC:100, Total QOS:100
-    [Tags]    Peer
     [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -221,7 +235,6 @@ Watchdog QOS - FMS NIC
     ...    4. Verify FMS NIC:0, Total QOS:0
     ...    5. Enable FMS NIC
     ...    6. Verify FMS NIC:100, Total QOS:100
-    [Tags]    Peer
     [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -293,24 +306,28 @@ Restore Feed Line Timeout
 Set UDP Feed Line Timeout
     [Arguments]    ${timeoutLimit}
     [Documentation]    Set the feed line timeout values (HiActTimeLimit and LoActTimeLimit) in MTE config file and restart dependent components.
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    set value in MTE cfg    ${orgCfgFile}    HiActTimeLimit    ${timeoutLimit}
-    set value in MTE cfg    ${orgCfgFile}    LoActTimeLimit    ${timeoutLimit}
+    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${localCfgFile}=    Get MTE Config File
+    set value in MTE cfg    ${localCfgFile}    HiActTimeLimit    ${timeoutLimit}
+    set value in MTE cfg    ${localCfgFile}    LoActTimeLimit    ${timeoutLimit}
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Stop SMF
     Start SMF
     Start MTE
-    [Return]    ${orgCfgFile}    ${backupCfgFile}
+    [Return]    ${remoteCfgFile}    ${backupCfgFile}
 
 Set TCP-FTP Feed Line Timeout
     [Arguments]    ${TimeOut}
     [Documentation]    Set the feed line timeout values (HiActTimeOut and LoActTimeOut) in MTE config file and restart dependent components.
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    set value in MTE cfg    ${orgCfgFile}    HiActTimeOut    ${TimeOut}
-    set value in MTE cfg    ${orgCfgFile}    LoActTimeOut    ${TimeOut}
+    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${localCfgFile}=    Get MTE Config File
+    set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${TimeOut}    Inputs    *    FHRealtimeLine
+    set value in MTE cfg    ${localCfgFile}    LoActTimeOut    ${TimeOut}    Inputs    *    FHRealtimeLine
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Stop SMF
     Start SMF
     Start MTE
-    [Return]    ${orgCfgFile}    ${backupCfgFile}
+    [Return]    ${remoteCfgFile}    ${backupCfgFile}
 
 Verify QoS for CritProcessFail
     [Arguments]    ${node}    ${master_ip}    ${CritProcessFailValue}    ${totalQoSValue}=${EMPTY}
@@ -336,3 +353,12 @@ Verify QOS for FMS NIC
     [Documentation]    Check whether the FMS QOS and Total QOS are equal to the given value
     Wait For QOS    ${node}    FMSNIC    ${FMSQOS}    ${master_ip}
     Verify QOS Equal To Specific Value    ${node}    Total QOS    ${TotalQOS}    ${master_ip}
+
+Verify Sync Pulse Received
+    [Arguments]    ${master_ip}
+    [Documentation]    Check whether the SyncPulseMissed count has changed after restore DDNA and DDNB.
+    ...    Prospect result: No change.
+    @{syncPulseCountBefore}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
+    Sleep    5
+    @{syncPulseCountAfter}    Run Keyword And Continue On Failure    get SyncPulseMissed    ${master_ip}
+    lists Should Be Equal    ${syncPulseCountBefore}    ${syncPulseCountAfter}    *ERROR* Sync Pulse Missed Count has increased after restored NIC (Before ${syncPulseCountBefore}, After ${syncPulseCountAfter})

@@ -57,7 +57,7 @@ def get_outputAddress_and_port_for_mte(labelIDs):
         ipAndPortList = []
         for labelID in labelIDs:
             ipAndPort = []
-            statblockNameCheck = "multicast-" + labelID
+            statblockNameCheck = "multicast-" + str(labelID)
             for statblockName in statblockNames:
                 if (statblockName == statblockNameCheck):
                     ipAndPort = get_stat_block_field(MTE, statblockName, field + 'OutputAddress').strip().split(':')

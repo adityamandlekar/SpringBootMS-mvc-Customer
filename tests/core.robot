@@ -57,6 +57,10 @@ Dictionary of Dictionaries Should Be Equal
     Should Be Equal    ${keys1}    ${keys2}
     : FOR    ${key}    IN    @{keys1}
     \    Dictionaries Should Be Equal    ${dict1['${key}']}    ${dict2['${key}']}
+    
+Disable MTE Clock Sync
+    [Documentation]    If running on a vagrant VirtualBox, disable the VirtualBox Guest Additions service. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
+    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service stop; fi
 
 Dump Persist File To Text
     [Arguments]    @{optargs}
@@ -116,6 +120,17 @@ Generate PCAP File Name
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
 
+Get Configure Values
+    [Arguments]    @{configList}
+    [Documentation]    Get configure items value from MTE config file like StartOfDayTime, EndOfDayTime, RolloverTime....
+    ...    Returns a array with configure item value.
+    ${mteConfigFile}=    Get MTE Config File
+    ${retArray}=    Create List
+    : FOR    ${configName}    IN    @{configList}
+    \    ${configValue}=    get MTE config value    ${mteConfigFile}    ${configName}
+    \    Append To List    ${retArray}    ${configValue}
+    [Return]    ${retArray}
+    
 Get ConnectTimesIdentifier
     [Documentation]    Get the combined list of ConnectTimesIdentifier (feed times RIC) from all of the InputPortStatsBlock_* blocks.
     ...
@@ -154,7 +169,7 @@ Get Domain Names
     [Documentation]    get the Domain names from venue config file.
     ...    returns a list of Domain names.
     ${serviceName}    Get FMS Service Name
-    ${domainList}    get MTE config list by path    ${mteConfigFile}    FMS    ${serviceName}    Domain    Z
+    ${domainList}    get MTE config list by path    ${mteConfigFile}    FMS    ${serviceName}    Domain
     [Return]    @{domainList}
 
 Get FID Values From Refresh Request
@@ -175,7 +190,7 @@ Get FIDFilter File
     ...    1. The file will be saved at Control PC and only removed at Suite Teardown
     ...    2. Suite Variable ${LOCAL_FIDFILTER_FILE} has created to store the fullpath of the config file at Control PC
     ${localFile}=    Get Variable Value    ${LOCAL_FIDFILTER_FILE}
-    Return From Keyword If    '${localFile}' != 'None'    ${localFile}
+    Return From Keyword If    r'${localFile}' != 'None'    ${localFile}
     ${fidfilterFile}=    Set Variable    FIDFilter.txt
     Remote File Should Exist    ${REMOTE_MTE_CONFIG_DIR}/${fidfilterFile}
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${fidfilterFile}
@@ -233,7 +248,7 @@ Get Mangling Config File
     ...    1. The file will be saved at Control PC and only removed at Suite Teardown
     ...    2. Suite Variable ${LOCAL_MANGLING_CONFIG_FILE} has created to store the fullpath of the config file at Control PC
     ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
-    Return From Keyword If    '${localFile}' != 'None'    ${localFile}
+    Return From Keyword If    r'${localFile}' != 'None'    ${localFile}
     ${manglingFile}=    Set Variable    manglingConfiguration.xml
     Remote File Should Exist    ${REMOTE_MTE_CONFIG_DIR}/${manglingFile}
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${manglingFile}
@@ -242,14 +257,22 @@ Get Mangling Config File
     [Return]    ${localFile}
 
 Get MTE Config File
-    [Documentation]    Get the MTE config file (MTE.xml) from the remote machine and save it as a local file.
+    [Documentation]    Get the MTE config file from the remote machine and save it as a local file.
     ...    If we already have the local file, just return the file name without copying the remote file again.
     ${localFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
-    Return From Keyword If    '${localFile}' != 'None'    ${localFile}
+    Return From Keyword If    r'${localFile}' != 'None'    ${localFile}
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${MTE_CONFIG}
     get remote file    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    ${localFile}
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${localFile}
     [Return]    ${localFile}
+
+Get MTE Machine Time Offset
+    [Documentation]    Get the offset from local machine for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal real time. this local time can be not GMT time, since the only offset will be used, if local machine time is real life time, then MTE machine time can be restored to real life time by the offset. 
+    ${currDateTime}=    get date and time
+    ${localTime}=    Get Current Date    exclude_millis=True
+    ${MTEtime}=    Convert Date    ${currDateTime[0]}-${currDateTime[1]}-${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    result_format=datetime
+    ${MTETimeOffset}=    Subtract Date From Date    ${MTEtime}    ${localTime}
+    [Return]    ${MTETimeOffset}
 
 Get Playback NIC For PCAP File
     [Arguments]    ${pcapFile}
@@ -539,7 +562,7 @@ MTE Machine Setup
 MTE or FTE
     [Documentation]    Determine if this venue has an MTE or FTE.
     ...    Return either 'MTE' or 'FTE'.
-    ...    Fail if neither MTD nor FTE is found.
+    ...    Fail if neither MTE nor FTE is found.
     ${result}=    find processes by pattern    FTE -c ${MTE}
     Return From Keyword If    len(${result}    FTE
     ${result}=    find processes by pattern    MTE -c ${MTE}
@@ -550,6 +573,16 @@ Persist File Should Exist
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
     Comment    Currently, GATS does not provide the Venue name, so the pattern matching Keywords must be used. If GATS provides the Venue name, then "remote file should not exist" Keywords could be used here.
+
+Purge RIC
+    [Arguments]    ${ric}    ${domain}    ${serviceName}
+    [Documentation]    Purge a RIC by FMSCmd.
+    ...    HandlerDropType: \ Purge
+    ${currDateTime}    get date and time
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    drop    --RIC ${ric}
+    ...    --Domain ${domain}    --HandlerName ${MTE}    --HandlerDropType Purge
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+    wait smf log message after time    Drop    ${currDateTime}
 
 Reset Sequence Numbers
     [Arguments]    @{mach_ip_list}
@@ -586,6 +619,23 @@ Restore EXL Changes
     : FOR    ${file}    IN    @{exlFiles}
     \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
+    
+Restore MTE Clock Sync
+    [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
+    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
+
+Restore MTE Machine Time
+    [Arguments]    ${MTETimeOffset}
+    [Documentation]    To correct Linux time and restart SMF, restart SMF because currently FMS client have a bug now, if we change the MTE Machine time when SMF running, FMS client start to report exception like below, and in this case we can't use FMS client correclty:
+    ...    FMSClient:SocketException - ClientImpl::connect:connect (111); /ThomsonReuters/EventScheduler/EventScheduler; 18296; 18468; 0000235f; 07:00:00;
+    ...
+    ...    In addition, on a vagrant VirtualBox, restore the VirtualBox Guest Additions service, which includes clock sync with the host.
+    stop smf
+    ${RIDEMachineTime}=    Get Current Date    result_format=datetime    exclude_millis=True
+    ${MTEMachineTime}=    Add Time To Date    ${RIDEMachineTime}    ${MTETimeOffset}    result_format=datetime
+    set date and time    ${MTEMachineTime.year}    ${MTEMachineTime.month}    ${MTEMachineTime.day}    ${MTEMachineTime.hour}    ${MTEMachineTime.minute}    ${MTEMachineTime.second}
+    Restore MTE Clock Sync
+    start smf
 
 Rewrite PCAP File
     [Arguments]    ${inputFile}    @{optargs}
@@ -713,7 +763,7 @@ Set Common Suite Variables
     ...    MTE_CONFIG - MTE config file name
     ...    REMOTE_MTE_CONFIG_DIR - path to directory containing the MTE config file on Thunderdome box.
     Set Suite Variable    ${CHE_IP}    ${ip}
-    ${MTE_CONFIG}=    convert to lowercase    ${MTE}.xml
+    ${MTE_CONFIG}=    convert to lowercase    ${MTE}.json
     Set Suite Variable    ${MTE_CONFIG}
     ${fileList}=    search remote files    ${VENUE_DIR}    ${MTE_CONFIG}    recurse=${True}
     Length Should Be    ${fileList}    1    ${MTE_CONFIG} file not found (or multiple files found).
@@ -810,6 +860,30 @@ Start Capture MTE Output
     @{IpAndPort}=    get outputAddress and port for mte    ${labelIDsUse}
     start capture packets    ${filename}    ${interfaceName}    ${IpAndPort}
 
+Start Capture MTE Output By DataView
+    [Arguments]    ${ric}    ${domain}    ${labelID}    ${outputFile}    @{optargs}
+    [Documentation]    Start DataView to capture TRWF2 MTE update.
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2104
+    ${ddnreqLabelfilepath}=    search remote files    ${BASE_DIR}    ddnReqLabels.xml    recurse=${True}
+    Length Should Be    ${ddnreqLabelfilepath}    1    ddnReqLabels.xml file not found (or multiple files found).
+    ${labelfile}=    set variable    ${LOCAL_TMP_DIR}/reqLabel.xml
+    get remote file    ${ddnreqLabelfilepath[0]}    ${labelfile}
+    ${updatedlabelfile}=    set variable    ${LOCAL_TMP_DIR}/updated_reqLabel.xml
+    remove_xinclude_from_labelfile    ${labelfile}    ${updatedlabelfile}
+    ${reqMsgMultcastAddres}=    get multicast address from label file    ${updatedlabelfile}    ${labelID}
+    ${lineID}=    get_stat_block_field    ${MTE}    multicast-${labelID}    publishedLineId
+    ${multcastAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    multicastOutputAddress
+    ${interfaceAddres}=    get_stat_block_field    ${MTE}    multicast-${LabelID}    primaryOutputAddress
+    @{multicastIPandPort}=    Split String    ${multcastAddres}    :    1
+    @{interfaceIPandPort}=    Split String    ${interfaceAddres}    :    1
+    ${length} =    Get Length    ${multicastIPandPort}
+    Should Be Equal As Integers    ${length}    2
+    ${length} =    Get Length    ${interfaceIPandPort}
+    Should Be Equal As Integers    ${length}    2
+    ${pid}=    Start Dataview    TRWF2    @{multicastIPandPort}[0]    @{interfaceIPandPort}[0]    @{multicastIPandPort}[1]    ${lineID}
+    ...    ${ric}    ${domain}    ${outputFile}    @{optargs}
+    [Return]    ${pid}
+
 Start MTE
     [Documentation]    Start the MTE and wait for initialization to complete.
     ...    Then load the state EXL files (that were modified by suite setup to set 24x7 feed and trade time).
@@ -900,11 +974,11 @@ Suite Teardown
     [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
     close all connections
     ${localCfgFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    Run Keyword If    r'${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
     ${localCfgFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    Run Keyword If    r'${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
     ${localCfgFile}=    Get Variable Value    ${LOCAL_FIDFILTER_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    Run Keyword If    r'${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
 
 Switch To TD Box
     [Arguments]    ${ip}
@@ -946,7 +1020,7 @@ Verify RIC Is Dropped In MTE Cache
     Should Be Equal    ${allricFields['PUBLISHABLE']}    FALSE
     Should Be True    ${allricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
 
-Verfiy Item Persisted
+Verify Item Persisted
     [Arguments]    ${ric}=${EMPTY}    ${sic}=${EMPTY}    ${domain}=${EMPTY}
     [Documentation]    Dump persist file to XML and check if ric, sic and/or domain items exist in MTE persist file.
     ${cacheDomainName}=    Remove String    ${domain}    _
@@ -954,6 +1028,16 @@ Verfiy Item Persisted
     @{pmatOptargs}=    Gen Pmat Cmd Args    ${ric}    ${sic}    ${pmatDomain}
     ${pmatDumpfile}=    Dump Persist File To XML    @{pmatOptargs}
     Verify Item in Persist Dump File    ${pmatDumpfile}    ${ric}    ${sic}    ${cacheDomainName}
+    Remove Files    ${pmatDumpfile}
+
+Verify Item Not Persisted
+    [Arguments]    ${ric}=${EMPTY}    ${sic}=${EMPTY}    ${domain}=${EMPTY}
+    [Documentation]    Dump persist file to XML and check if ric, sic and/or domain items not exist in MTE persist file.
+    ${cacheDomainName}=    Remove String    ${domain}    _
+    ${pmatDomain}=    Run Keyword If    '${cacheDomainName}'!='${EMPTY}'    Map to PMAT Numeric Domain    ${cacheDomainName}
+    @{pmatOptargs}=    Gen Pmat Cmd Args    ${ric}    ${sic}    ${pmatDomain}
+    ${pmatDumpfile}=    Dump Persist File To XML    @{pmatOptargs}
+    verify_item_not_in_persist_dump_file    ${pmatDumpfile}    ${ric}    ${sic}
     Remove Files    ${pmatDumpfile}
 
 Wait For FMS Reorg

@@ -1,6 +1,7 @@
 *** Settings ***
 Suite Setup       Suite Setup with Playback
 Suite Teardown    Suite Teardown
+Force Tags        Playback
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
@@ -33,7 +34,10 @@ Empty Payload Detection with Blank TCONF
     ${rmtCfgPath}=    Replace String    ${rmtCfgPath}    \\    /
     ${remoteEmptyTconf}    set variable    ${rmtCfgPath}/emptyTconf.tconf
     Create Remote File Content    ${remoteEmptyTconf}    //empty file
-    Set Value in MTE cfg    ${remoteConfig}    TransformConfig    emptyTconf.tconf
+    ${localCfgFile}=    Get MTE Config File
+    Set Value in MTE cfg    ${localCfgFile}    TransformConfig    emptyTconf.tconf    fail    Transforms    *
+    ...    TransformContainer
+    Put Remote File    ${localCfgFile}    ${remoteConfig}
     Reset Sequence Numbers
     ${service}    Get FMS Service Name
     ${pcapFileName} =    Generate PCAP File Name    ${service}    General RIC Update
@@ -73,7 +77,7 @@ Validate Downstream FID publication from Reconcile
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     Get FIDFilter File
-    verify FIDfilter FIDs are in message    ${LOCAL_TMP_DIR}/capture_local.pcap
+    Verify FIDfilter FIDs Are In Message    ${LOCAL_TMP_DIR}/capture_local.pcap
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify Outbound Heartbeats
