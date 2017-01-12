@@ -150,34 +150,6 @@ def Get_future_config_times(configNameList,configValueList, GMTOffset, currentDa
         index += 1
 
     return retDict
-    
-def get_LabelIDs_with_provider_SCW(labelIDs, ddnLabels_Modifyfile):
-    """For a given list of labelIDs, return the subset that only have an entry for provider "SCW" in ddnPublishers.xml
-    Argument : 
-    labellDs    : Arrary of LabelID from MTE config file
-    ddnLabels_Modifyfile : full path of ddnpublish modify file
-        
-    Returns : the sub-list of labelIDs that have provider "SCW"
-
-    """ 
-    update_LabelIDList = []
-    
-    tree = ET.parse(ddnLabels_Modifyfile)
-    root = tree.getroot()
-    labelNodes = root.findall('.//label')
-    if not labelNodes:
-        raise AssertionError('*ERROR* label element does not exist in %s' % ddnLabels_Modifyfile)
-    for labelNode in labelNodes:
-        for labelID in labelIDs:
-            if labelNode.get('ID') == labelID:
-                providers = labelNode.findall('provider')
-                for provider in providers:
-                    if provider.get('NAME') == 'SCW':
-                        update_LabelIDList.append(labelID)                            
-    if not len(update_LabelIDList):  
-        raise AssertionError('*ERROR* There is no any available LabelID for SCW')
-    else:
-        return update_LabelIDList
 
 def modify_GRS_config_feed_item_value(grs_config_file, itemName, newValue):
     """update the item value from grs config files
