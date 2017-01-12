@@ -113,7 +113,7 @@ Verify New Item Added to Persist File via FMS
     add ric to exl file    ${EXLfullpath}    ${localRicEXLFile}    ${newRic}    ${None}    ${domain}
     Load Single EXL File    ${localRicEXLFile}    ${serviceName}    ${CHE_IP}
     Wait For Persist File Update
-    Verfiy Item Persisted    ${newRic}    ${EMPTY}    ${domain}
+    Verify Item Persisted    ${newRic}    ${EMPTY}    ${domain}
     [Teardown]    Case Teardown    ${localRicEXLFile}
 
 Verify Realtime MARKET_PRICE Persistence
