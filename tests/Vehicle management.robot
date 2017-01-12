@@ -350,6 +350,37 @@ Verify Drop and Undrop from FMSCmd
     verify_all_response_message_num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
+Verify Drop with Purge from FMSCmd
+    [Documentation]    Verify Drop with Purge from FMSCmd
+    ...    1) Verify MTE is running.
+    ...    2) Start output capture.
+    ...    3) Generate Drop from FMSCmd with drop type 'Purge'.
+    ...    4) Verify item is dropped in MTE cache.
+    ...    5) Stop output capture
+    ...    6) Verify an Item Drop was published (MsgClass: \ TRWF_MSG_MC_ITEM_STATUS, StreamState: TRWF_MSG_SST_CLOSED)
+    ...    7) Verify item cannot be requested by Dataview.
+    ...    8) fallback with load the exl so the ric is processed
+    ...
+    ...    Test Case - Verify Drop/Undrop form FMSCmd
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2352 [MTE] Handling of FMS purge, no deletion delay logic, drop sent to downstream
+    ${domain}    Get Preferred Domain
+    ${serviceName}    Get FMS Service Name
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${exlFile}=    get EXL for RIC    ${domain}    ${serviceName}    ${ric}
+    ${mteConfigFile}=    Get MTE Config File
+    ${currDateTime}    get date and time
+    Get FIDFilter File
+    Start Capture MTE Output
+    Drop ric    ${ric}    ${domain}    ${serviceName}    Purge
+    wait smf log message after time    Drop message sent    ${currDateTime}
+    Stop Capture MTE Output
+    Verify RIC Not In MTE Cache    ${ric}    ${domain}
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    verify DROP message in itemstatus messages    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
+    ${res}=    Send TRWF2 Refresh Request    ${ric}    ${domain}
+    Should Be Empty    ${res}
+    [Teardown]    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
+
 Verify both RIC and SIC rename handled correctly
     [Documentation]    Rename both RIC and SIC.
     ...    Verify that the old RIC is no longer in cache. \ Verify the new RIC and SIC are in cache.
@@ -451,10 +482,10 @@ rebuild ric
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
 Drop ric
-    [Arguments]    ${ric}    ${domain}    ${serviceName}
+    [Arguments]    ${ric}    ${domain}    ${serviceName}    ${dropType}=DEFAULT
     ${currDateTime}    get date and time
     ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    drop    --RIC ${ric}
-    ...    --Domain ${domain}    --HandlerName ${MTE}
+    ...    --Domain ${domain}    --HandlerName ${MTE}    --HandlerDropType ${dropType}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
     wait smf log message after time    Drop    ${currDateTime}
 
