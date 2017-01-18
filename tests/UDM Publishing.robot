@@ -268,13 +268,13 @@ Verify DDS RIC is published
     ...    6463    6468    6464
     ${dataTypeList}=    Create List    UInt    UInt    UInt    Buffer    UInt
     ...    Integer    Integer    Time
-    ${valuesList}=    Create List    ${None}    ${None}    ${None}    ${hostname}    0,1,2
+    ${valuesList}=    Create List    ${None}    ${None}    ${None}    ${hostname[-12:]}    0,1,2
     ...    ${None}    ${None}    0
     : FOR    ${labelID}    IN    @{labelIDs}
     \    ${published_DDS_ric}=    Get DDS RIC    ${labelID}    ${instance}
     \    ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     \    Comment    Update the expected current time range of FID 6464
-    \    ${timeThreshold}=    set variable    10
+    \    ${timeThreshold}=    set variable    20
     \    ${timeBeforeMidnight}=    Get Time Before Midnight In Seconds
     \    Comment    To handle the boundary case of running test pass through midnight, sleep a few seconds to avoid the time wrap around to 0.
     \    Run Keyword If    ${timeThreshold} > ${timeBeforeMidnight}    Sleep    ${timeBeforeMidnight}
@@ -409,12 +409,13 @@ Get DDS RIC
     ${mteLeadingHyphens}=    Get Substring    ${fiveHyphens}    0    ${mteLeadingOffSet}
     ${mteTrailingHyphens}=    Get Substring    ${fiveHyphens}    0    ${mteTrailingOffSet}
     ${hyphenPaddedMte}=    Catenate    SEPARATOR=    ${mteLeadingHyphens}    ${MTE}    ${mteTrailingHyphens}
-    ${labelLength}=    Get Length    ${labelID}
+    ${labelIDstring}=    Convert To String    ${labelID}
+    ${labelLength}=    Get Length    ${labelIDstring}
     Should Be True    ${labelLength} > 0 and ${labelLength} <= 4    Length of label ID should be greater than 0 and less than or equal to 4
     ${fourZeros}=    Set Variable    0000
     ${labelOffSet}=    Evaluate    4 - ${labelLength}
     ${zeroPaddedLabelID}=    Get Substring    ${fourZeros}    0    ${labelOffSet}
-    ${zeroPaddedLabelID}=    Catenate    SEPARATOR=    ${zeroPaddedLabelID}    ${labelID}
+    ${zeroPaddedLabelID}=    Catenate    SEPARATOR=    ${zeroPaddedLabelID}    ${labelIDstring}
     ${publishedDDSRic}=    Set Variable    .[${hyphenPaddedMte}${instance}${zeroPaddedLabelID}
     [Return]    ${publishedDDSRic}
 

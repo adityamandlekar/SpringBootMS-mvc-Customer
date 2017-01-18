@@ -431,8 +431,9 @@ def get_sps_ric_name_from_label_file(ddnLabelFile, labelID):
     if not labelNodes: 
         raise AssertionError('*ERROR* label element does not exist in %s' % ddnLabelFile)
     
+    spsText = None
     for labelNode in labelNodes:
-        if labelNode.get('ID') == labelID:
+        if str(labelNode.get('ID')) == str(labelID):
             providerNodes = labelNode.findall('provider')
             for providerNode in providerNodes:
                 if providerNode.get('NAME') == MTE:
@@ -440,7 +441,7 @@ def get_sps_ric_name_from_label_file(ddnLabelFile, labelID):
                     return spsText
             break
     
-    if not spsText:
+    if spsText == None:
         raise AssertionError('*ERROR* could not find sps ric text for labelID %s' % labelID)
 
 def remove_xinclude_from_labelfile(ddnLabels_file, updated_ddnLabels_file):
