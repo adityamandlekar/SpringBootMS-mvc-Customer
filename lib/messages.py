@@ -35,7 +35,6 @@ def count_messages_in_capture(pcapfile, domain):
     try:    
         outputxmlfilelist = get_xml_from_pcap(pcapfile, filterstring, outputfileprefix)
     except AssertionError:
-        print 'DEBUG no messages found'
         return 0
 
     parentName  = 'Message'
@@ -1329,7 +1328,7 @@ def _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, FID, newDataTyp
                 convertedValueList.append(splitRefValue)
 
             if (not dataTypeValueList[1].upper() in convertedValueList):
-                print '*ERROR* FID (%s) value in message (%s) is not belong to one of the expected valuse in the list (%s)' %(FID, dataTypeValueList[1], convertedValueList)
+                print '*ERROR* FID (%s) value in message (%s) is not in expected values list (%s)' %(FID, dataTypeValueList[1], convertedValueList)
                 return False
     else:
         print '*ERROR* Missing FID (%s) in message '%FID
