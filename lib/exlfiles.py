@@ -438,6 +438,54 @@ def get_ric_fields_from_EXL(exlFile,ricName,*fieldnames):
 
     return retList
 
+def get_SicDomain_in_AllExl_by_ContextID(service, contextID_List):
+    """ Get sic, domain from EXL by contextID.
+       Argument:
+           service :  FMS service name             
+           contextID_List : context id list from MTE config file 
+       Return : a dictionary with contextID: set(sic|domain) 
+       
+    """    
+    sicDomainByContxtID_Dir = {}
+    exlFilesFullPath = _get_EXL_for_Service(service)
+    fieldNames = ['CONTEXT_ID']
+      
+    for exlFile in exlFilesFullPath:
+        dom = xml.dom.minidom.parse(exlFile)
+        root = dom.documentElement
+        result = _get_EXL_header_values(dom, fieldNames)
+        exlFileName = root.getElementsByTagName('name')[0].firstChild.data
+        if 'CONTEXT_ID' in result:
+            context_id = result['CONTEXT_ID'].encode("utf-8")
+            if result['CONTEXT_ID'] in contextID_List:
+                iteratorlist = dom.getElementsByTagName('exlObject')
+                for node_ExlObject in iteratorlist:  #signal exlObject
+                    iterNum = 0
+                    for subnode_ExlObject in node_ExlObject.childNodes:
+                        if subnode_ExlObject.nodeType == node_ExlObject.ELEMENT_NODE and subnode_ExlObject.nodeName == 'it:RIC':
+                            ric  = subnode_ExlObject.firstChild.data.encode("utf-8")
+                        if subnode_ExlObject.nodeType == node_ExlObject.ELEMENT_NODE and subnode_ExlObject.nodeName == 'it:SYMBOL':
+                            symbol = subnode_ExlObject.firstChild.data.encode("utf-8")
+                            iterNum +=1
+                        elif subnode_ExlObject.nodeType == node_ExlObject.ELEMENT_NODE and subnode_ExlObject.nodeName == 'it:DOMAIN':
+                            domain = subnode_ExlObject.firstChild.data.encode("utf-8")
+                            iterNum +=1
+                        elif iterNum == 2:
+                            break
+                    
+                    if iterNum != 2:
+                        raise AssertionError("'*ERROR* The RIC %s is missing SYMBOL or DOMAIN node in the EXL %s'" %(ric, exlFileName))    
+                    else:
+                        newSicDomain_string = symbol+'|'+domain                            
+                        if context_id not in sicDomainByContxtID_Dir:
+                            sicDomainByContxtID_Dir[context_id] = {newSicDomain_string}
+                        else:
+                            sicDomainByContxtID_Dir[context_id].add(newSicDomain_string)            
+    if len(sicDomainByContxtID_Dir) == 0:
+        raise AssertionError("*ERROR* There are no RICs/SICs for context ids [%s] in the EXL files" %', '.join(map(str, contextID_List)))
+    else:
+        return sicDomainByContxtID_Dir
+
 def get_state_EXL_file(ricName,domainName,service,fileType):
     """ Get EXL file from given RIC, domain, and service:
         http://www.iajira.amers.ime.reuters.com/browse/CATF-1737
@@ -583,7 +631,7 @@ def remove_specified_exlobject(exlfilefullpath, RIC, Domain, outputfile):
     """
     keep=False
     return _remove_exlobject(exlfilefullpath, RIC, Domain, keep, outputfile)
-
+ 
 def _get_EXL_files(fileType):
     """ Get EXL file(s) for fileType:
         http://www.iajira.amers.ime.reuters.com/browse/CATF-1687
@@ -625,6 +673,26 @@ def _get_EXL_files(fileType):
     if len(exlFiles) < 1 or exlFiles[0].lower() == "file not found" or exlFiles[0] == '':
         raise AssertionError('*ERROR* Search returned no results for: %s' %cmdstr)
     return exlFiles
+
+def _get_EXL_for_Service(service):
+    """ Find the EXL file with service
+        Argument: 
+            service: The service name        
+        return :  a list of EXL file names.
+    """ 
+    exFiles_service = []
+    exlFiles = _get_EXL_files("All")
+    fieldNames = ['SERVICE']
+    for exlFile in exlFiles:
+        dom = xml.dom.minidom.parse(exlFile)     
+        # skip file if service does not match
+        result = _get_EXL_header_values(dom,fieldNames)
+        if 'SERVICE' in result and result['SERVICE'] == service:
+            exFiles_service.append(exlFile)
+    if len(exFiles_service) == 0:
+        raise AssertionError('*ERROR* service %s not found in any EXL file:' %(service))
+    else:
+        return exFiles_service
 
 def _get_EXL_header_values(dom,fieldnames):
     """ Get field value(s) from EXL Header

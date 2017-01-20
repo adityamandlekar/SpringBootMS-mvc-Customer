@@ -169,6 +169,24 @@ Persistence file FIDs existence check
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    ${pmatDumpfile}    @{modifiedFeedEXLFiles}
 
+Verify ALL SICs are valid in Persistence file
+    [Documentation]    Verify All SICs are available in Persistence file compare to EXL file by CONTEXTID in MTE config file.
+    ...
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2277
+    ${domain}=    Get Preferred Domain
+    ${serviceName}=    Get FMS Service Name
+    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    ${cacheDomainName}=    Remove String    ${domain}    _
+    ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
+    ${pmatDumpfile}=    Dump Persist File To Text    --domain ${pmatDomain}    --fids 5357
+    ${mteConfigFile}    Get MTE Config File
+    ${contextIds}    get context ids from config file    ${mteConfigFile}
+    ${sicDomain_EXL}    get_SicDomain_in_AllExl_by_ContextID    ${serviceName}    ${contextIds}
+    ${sicDomain_persist}    get_SicDomain_in_DumpPersistFile_Txt    ${pmatDumpfile}
+    verify_all_sics_in_persistFile    ${sicDomain_persist}    ${sicDomain_EXL}
+    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
+    ...    AND    Case Teardown    ${pmatDumpfile}
+
 *** Keywords ***
 Delete Persist Backup
     [Documentation]    Delete all persist backup files in Thunderdome box
