@@ -164,9 +164,11 @@ Watchdog QOS - MTE Egress NIC
     Verify QOS for Egress NIC    50    0    A    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
     Enable NIC    DDNA
+    Comment    Restart MTE/FTE as a workaround for ERTCADVAMT-1175, which won't be fixed.
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    A    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
-    Sleep    10
     Verify Sync Pulse Received    ${master_ip}
     Comment    Disable DDNB on LIVE box, MTE should failover
     Switch To TD Box    ${CHE_B_IP}
@@ -175,19 +177,27 @@ Watchdog QOS - MTE Egress NIC
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Enable NIC    DDNB
+    Comment    Restart MTE/FTE workaround again
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    Sleep    10
     Verify Sync Pulse Received    ${master_ip}
     Comment    Disable NICs on STANDBY
     Disable NIC    DDNA
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Enable NIC    DDNA
+    Comment    Restart MTE/FTE workaround again
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify Sync Pulse Received    ${master_ip}
     Disable NIC    DDNB
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Enable NIC    DDNB
+    Comment    Restart MTE/FTE workaround again
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify Sync Pulse Received    ${master_ip}
     Disable NIC    DDNA
@@ -195,7 +205,9 @@ Watchdog QOS - MTE Egress NIC
     Verify QOS for Egress NIC    ${Empty}    0    B    ${master_ip}
     Enable NIC    DDNA
     Enable NIC    DDNB
-    Sleep    10
+    Comment    Restart MTE/FTE workaround again
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify Sync Pulse Received    ${master_ip}
     [Teardown]    QoS Case Teardown
