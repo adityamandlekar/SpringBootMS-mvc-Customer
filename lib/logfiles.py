@@ -3,7 +3,7 @@
 from LinuxCoreUtilities import LinuxCoreUtilities
 from LinuxFSUtilities import LinuxFSUtilities
 from utils.ssh import _exec_command
-
+from utils.ssh import G_SSHInstance
 from VenueVariables import *
 
 SMFLOGDIR = BASE_DIR + '/smf/log/'
@@ -125,6 +125,24 @@ def wait_smf_log_message_after_time(message, timeRef, isCaseSensitive=False, wai
                     return retLogTimestamp
         time.sleep(waittime)
     raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smf log before timeout %ds' %(message, timeout))
+
+def wait_for_persist_load_to_start(timeout=60):
+    """Wait for the MTE/FTE to begin loading from the PERSIST file.
+    Argument:
+    timeout : the maximum time to wait, in seconds
+    
+    1. This is not a generic function to search for a message from the log file.
+    2. Using read_until() or read_until_regexp() is problematic if there is a lot of output
+    3. To restrict the amount of output the routine grep's for only lines containing 'Persistence'
+    """
+    dt = LinuxCoreUtilities().get_date_and_time()
+    currentFile = '%s/smf-log-files.%s%s%s.txt' %(SMFLOGDIR, dt[0], dt[1], dt[2])
+    orig_timeout = G_SSHInstance.get_connection().timeout
+    G_SSHInstance.set_client_configuration(timeout='%s seconds' %timeout)
+    G_SSHInstance.write('tail --lines=0 -f %s | grep Persistence' %currentFile)
+    G_SSHInstance.read_until_regexp('Persistence: Loading.*complete')
+    G_SSHInstance.set_client_configuration(timeout=orig_timeout)
+    LinuxCoreUtilities().kill_processes('tail')
 
 def check_logfile_for_event(eventName,currTimeArray):
     """check one event log at specified datetime
