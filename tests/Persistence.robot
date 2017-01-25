@@ -169,7 +169,7 @@ Persistence file FIDs existence check
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    ${pmatDumpfile}    @{modifiedFeedEXLFiles}
 
-Rollover of Persistence Fill Following MTE Failure during Initial Serialization
+Rollover of Persistence File Following MTE Failure during Initial Serialization
     [Documentation]    The backup persist file should not be overwritten by a blank persist file during MTE startup. This is to protect against the situation where we have consecutive MTE process failures overwriting the persist file because it hasn't had time to load the original from disk and write it out again after loading before the process fails again.
     ...
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2216
@@ -177,7 +177,6 @@ Rollover of Persistence Fill Following MTE Failure during Initial Serialization
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
     Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_before.csv
     Stop MTE
-    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    ResendFM    0
     @{foundFiles}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT.LOADED    ${TRUE}
     Run Keyword if    len(${foundFiles})    Delete Remote Files    @{foundFiles}
     Run Commander    process    start ${MTE}
@@ -189,7 +188,8 @@ Rollover of Persistence Fill Following MTE Failure during Initial Serialization
     Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_before.csv    ${removeFMSREORGTIMESTAMP}    ${False}
     Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_after.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ${removeFMSREORGTIMESTAMP}    ${False}
     verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
-    [Teardown]    Load All EXL Files    ${servicename}    ${CHE_IP}
+    [Teardown]    Run Keywords    Load All EXL Files    ${servicename}    ${CHE_IP}
+    ...    AND    Case Teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
 *** Keywords ***
 Delete Persist Backup
