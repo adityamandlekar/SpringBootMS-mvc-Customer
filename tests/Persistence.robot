@@ -169,7 +169,7 @@ Persistence file FIDs existence check
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    ${pmatDumpfile}    @{modifiedFeedEXLFiles}
 
-Rollover of Persistence File Following MTE Failure during Initial Serialization
+Process failure while loading Persist file
     [Documentation]    The backup persist file should not be overwritten by a blank persist file during MTE startup. This is to protect against the situation where we have consecutive MTE process failures overwriting the persist file because it hasn't had time to load the original from disk and write it out again after loading before the process fails again.
     ...
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2216
