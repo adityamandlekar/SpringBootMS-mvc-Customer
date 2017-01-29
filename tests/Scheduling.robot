@@ -197,6 +197,29 @@ Verify Manual ClosingRun
     Manual ClosingRun for the EXL File including target Ric    ${sampleRic}    ${publishKey}    ${domain}
     Manual ClosingRun for ClosingRun Rics    ${serviceName}
 
+Verify ES persists State Processing RICs
+    [Documentation]    Verify the EventScheduler persists the list of state processing RICs and on restart loads all of the saved RICs even if they are removed from FMS.
+    ...
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2506
+    ${servicename}    Get FMS Service Name
+    ${stateRicList}=    Get All State Processing RICs
+    @{stateFiles}=    Get All State EXL Files
+    ${savedStateFiles}=    Rename Files    .exl    .exl.txt    @{stateFiles}
+    ${orgFile}    ${backupFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    set value in MTE cfg    ${orgFile}    ResendFM    0
+    Stop SMF
+    Start SMF
+    ${remoteRicListFile}=    set variable    ${BASE_DIR}/EventScheduler/dump_ric.txt
+    ${fileContent}=    Execute Command    cat ${remoteRicListFile}
+    ${ricsFromFile}=    Split To Lines    ${fileContent}
+    Remove Values From List    ${ricsFromFile}    ${EMPTY}
+    Sort List    ${stateRicList}
+    Sort List    ${ricsFromFile}
+    Lists Should Be Equal    ${stateRicList}    ${ricsFromFile}
+    [Teardown]    Run Keywords    Restore Files    ${StateFiles}    ${savedStateFiles}
+    ...    AND    Load All EXL Files    ${servicename}    ${CHE_IP}
+    ...    AND    Restore remote cfg file    ${orgFile}    ${backupFile}
+
 *** Keywords ***
 Scheduling Setup
     [Documentation]    1. Calling KW : Suite Setup

@@ -165,6 +165,15 @@ Generate PCAP File Name
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
 
+Get All State Processing RICs
+    ${closingrunRicList}=    Get RIC List From StatBlock    Closing Run
+    ${DSTRicList}=    Get RIC List From StatBlock    DST
+    ${feedTimeRicList}=    Get RIC List From StatBlock    Feed Time
+    ${holidayRicList}=    Get RIC List From StatBlock    Holiday
+    ${tradeTimeRicList}=    Get RIC List From StatBlock    Trade Time
+    ${StateProcessRicList}    Combine Lists    ${closingrunRicList}    ${DSTRicList}    ${feedTimeRicList}    ${holidayRicList}    ${tradeTimeRicList}
+    [Return]    ${StateProcessRicList}
+
 Get Configure Values
     [Arguments]    @{configList}
     [Documentation]    Get configure items value from MTE config file like StartOfDayTime, EndOfDayTime, RolloverTime....
@@ -669,6 +678,15 @@ Purge RIC
     ...    --Domain ${domain}    --HandlerName ${MTE}    --HandlerDropType Purge
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
     wait smf log message after time    Drop    ${currDateTime}
+
+Rename Files
+    [Arguments]    ${oldstring}    ${newstring}    @{files}
+    ${newFileList}=    Create List
+    :FOR    ${file}    IN    @{files}
+    \    ${newfile}=    Replace String    ${file}    ${oldstring}    ${newstring}
+    \    Move File    ${file}    ${newfile}
+    \    Append To List    ${newFileList}    ${newfile}
+    [Return]    @{newFileList}
 
 Reset Sequence Numbers
     [Arguments]    @{mach_ip_list}
