@@ -57,7 +57,7 @@ Dictionary of Dictionaries Should Be Equal
     Should Be Equal    ${keys1}    ${keys2}
     : FOR    ${key}    IN    @{keys1}
     \    Dictionaries Should Be Equal    ${dict1['${key}']}    ${dict2['${key}']}
-    
+
 Disable MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, disable the VirtualBox Guest Additions service. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
     ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service stop; fi
@@ -130,7 +130,7 @@ Get Configure Values
     \    ${configValue}=    get MTE config value    ${mteConfigFile}    ${configName}
     \    Append To List    ${retArray}    ${configValue}
     [Return]    ${retArray}
-    
+
 Get ConnectTimesIdentifier
     [Documentation]    Get the combined list of ConnectTimesIdentifier (feed times RIC) from all of the InputPortStatsBlock_* blocks.
     ...
@@ -267,7 +267,7 @@ Get MTE Config File
     [Return]    ${localFile}
 
 Get MTE Machine Time Offset
-    [Documentation]    Get the offset from local machine for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal real time. this local time can be not GMT time, since the only offset will be used, if local machine time is real life time, then MTE machine time can be restored to real life time by the offset. 
+    [Documentation]    Get the offset from local machine for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal real time. this local time can be not GMT time, since the only offset will be used, if local machine time is real life time, then MTE machine time can be restored to real life time by the offset.
     ${currDateTime}=    get date and time
     ${localTime}=    Get Current Date    exclude_millis=True
     ${MTEtime}=    Convert Date    ${currDateTime[0]}-${currDateTime[1]}-${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    result_format=datetime
@@ -447,14 +447,6 @@ Inject PCAP File on UDP
     \    Run Keyword    ${cmd}    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'
     [Teardown]    Switch Connection    ${host}
 
-Inject PCAP File on UDP at MTE Box
-    [Arguments]    ${intfName}    @{pcapFileList}
-    [Documentation]    Start injection of the specified PCAP files on UDP transport with PCapPlybk tool at MTE box
-    : FOR    ${pcapFile}    IN    @{pcapFileList}
-    \    remote file should exist    ${pcapFile}
-    \    ${stdout}    ${rc}    execute_command    PCapPlybk -ifile ${pcapFile} -intf ${intfName} -pps ${PLAYBACK_PPS}    return_rc=True
-    \    Should Be Equal As Integers    ${rc}    0
-
 Insert ICF
     [Arguments]    ${insertFile}    ${serviceName}
     ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    insert    --InputFile ${insertFile}
@@ -619,7 +611,7 @@ Restore EXL Changes
     : FOR    ${file}    IN    @{exlFiles}
     \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
-    
+
 Restore MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
     ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
@@ -1039,6 +1031,31 @@ Verify Item Not Persisted
     ${pmatDumpfile}=    Dump Persist File To XML    @{pmatOptargs}
     verify_item_not_in_persist_dump_file    ${pmatDumpfile}    ${ric}    ${sic}
     Remove Files    ${pmatDumpfile}
+
+Verify Peers Match
+    [Arguments]    ${remoteCapture}    ${deleteRemoteCapture}=${True}
+    [Documentation]    For each RIC in the remote capture file, verify the FID values match between A and B instances.
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    ${domain}=    Get Preferred Domain
+    Switch To TD Box    ${CHE_A_IP}
+    ${ricList}=    Get RIC List From Remote PCAP    ${remoteCapture}    ${domain}
+    ${remoteRicFile}=    Set Variable    ${REMOTE_TMP_DIR}/ricList.txt
+    Create Remote File Content    ${remoteRicFile}    ${ricList}
+    Comment    Make sure A is LIVE before running Dataview on A.
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    verify MTE state    LIVE
+    ${A_FIDs}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
+    Run Keyword If    ${deleteRemoteCapture}==${True}    Delete Remote Files    ${remoteCapture}
+    Delete Remote Files    ${remoteRicFile}
+    Comment    Make B LIVE before running Dataview on B.
+    Switch To TD Box    ${CHE_B_IP}
+    Create Remote File Content    ${remoteRicFile}    ${ricList}
+    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
+    verify MTE state    LIVE
+    ${B_FIDs}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
+    Dictionary of Dictionaries Should Be Equal    ${A_FIDs}    ${B_FIDs}
+    Delete Remote Files    ${remoteRicFile}
 
 Wait For FMS Reorg
     [Arguments]    ${waittime}=5    ${timeout}=600
