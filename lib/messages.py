@@ -259,10 +259,10 @@ def validate_messages_against_DVT_rules(pcapfile,rulefile):
             if foundErrorHearderLine == 1:
                 errors.append(line)
 
-    if len(errors) != 0:
-        for str in errors:
-            print '*ERROR* DVT Violation: %s' %str
-        raise AssertionError('*ERROR* Found DVT violation')
+    if len(errors) > 20:
+        raise AssertionError('*ERROR* Found %d DVT violation(s), here are the first 10 and last 10 lines:\n%s\n...\n%s' %(len(errors), '\n'.join(errors[:10]), '\n'.join(errors[-10:])))
+    elif len(errors) != 0:
+        raise AssertionError('*ERROR* Found %d DVT violation(s):\n%s' %(len(errors), '\n'.join(errors)))
     os.remove(outputfile)
 
 def verify_all_response_message_num(pcapfile,ricname,domain):
@@ -1291,7 +1291,7 @@ def _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, FID, newDataTyp
         #check if dataType is same as expected value
         if (newDataType != None):          
             if (dataTypeValueList[0].upper() != newDataType.upper()):            
-                print '*ERROR* FID (%s) Data Type in message (%s) is not equal to (%s)' %(FID, dataTypeValueList[0], newDataType)
+                print 'FID (%s) Data Type in message (%s) is not equal to (%s)' %(FID, dataTypeValueList[0], newDataType)
                 return False
 
         #check if FID value is same as expected values (support range of numbers or muliple values split by ',')
@@ -1309,7 +1309,7 @@ def _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, FID, newDataTyp
 
                 if not isFailToConvertInt:
                     if (actIntVal < lowerLimit or actIntVal > upperLimit):
-                        print '*ERROR* FID (%s) value in message (%s) is not within the range of integer values (%s, %s)' %(FID, actIntVal, lowerLimit, upperLimit)
+                        print 'FID (%s) value in message (%s) is not within the range of integer values (%s, %s)' %(FID, actIntVal, lowerLimit, upperLimit)
                         return False
                     return True
 
@@ -1328,10 +1328,10 @@ def _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, FID, newDataTyp
                 convertedValueList.append(splitRefValue)
 
             if (not dataTypeValueList[1].upper() in convertedValueList):
-                print '*ERROR* FID (%s) value in message (%s) is not in expected values list (%s)' %(FID, dataTypeValueList[1], convertedValueList)
+                print 'FID (%s) value in message (%s) is not in expected values list (%s)' %(FID, dataTypeValueList[1], convertedValueList)
                 return False
     else:
-        print '*ERROR* Missing FID (%s) in message '%FID
+        print 'Missing FID (%s) in message '%FID
         return False
     return True
 
