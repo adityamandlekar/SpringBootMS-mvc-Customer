@@ -682,7 +682,7 @@ Purge RIC
 Rename Files
     [Arguments]    ${oldstring}    ${newstring}    @{files}
     ${newFileList}=    Create List
-    :FOR    ${file}    IN    @{files}
+    : FOR    ${file}    IN    @{files}
     \    ${newfile}=    Replace String    ${file}    ${oldstring}    ${newstring}
     \    Move File    ${file}    ${newfile}
     \    Append To List    ${newFileList}    ${newfile}
@@ -728,6 +728,12 @@ Restore EXL Changes
     : FOR    ${file}    IN    @{exlFiles}
     \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
+
+Restore Files
+    [Arguments]    ${origFiles}    ${currFiles}
+    ${numFiles}=    Get Length    ${currFiles}
+    : FOR    ${i}    IN RANGE    ${numFiles}
+    \    Move File    ${currFiles[${i}]}    ${origFiles[${i}]}
 
 Restore MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
