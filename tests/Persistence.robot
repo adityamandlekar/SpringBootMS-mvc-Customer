@@ -148,6 +148,26 @@ Verify Realtime MARKET_PRICE Persistence
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    @{modifiedFeedEXLFiles}
 
+Verify Recovery if Persist File is Damaged
+    [Documentation]    Verify the backup persist file (PERSIST_XXX.DAT.LOADED) is loaded if the normal persist file (PERSIST_XXX.DAT) is invalid by comparing two dump cathe files. Restore PERSIST_XXX.DAT and PERSIST_XXX.DAT.LOADED files in the MTE finally.
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2147
+    [Setup]
+    Delete Persist Backup
+    ${serviceName}=    Get FMS Service Name
+    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    ${fileList_DAT}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_before.csv
+    Stop MTE
+    Create Remote File Content    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT    //file 12345
+    Start MTE
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_after.csv
+    ${removeFMSREORGTIMESTAMP}    Create Dictionary    .*CHE%FMSREORGTIMESTAMP.*=${EMPTY}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_before.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_after.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
+    [Teardown]    Run Keywords    Restore Persistence File    ${fileList_DAT}
+    ...    AND    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
+
 Persistence file FIDs existence check
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
     ...    Make sure below fids don’t exist in the dumped persistence file:
@@ -244,3 +264,11 @@ Go Into EndOfDay time
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
     ${configFileLocal}=    Get MTE Config File
     [Teardown]
+
+Restore Persistence File
+    [Arguments]    ${fileList_DAT}
+    [Documentation]    Restore Persistence File, Restart MTE in order to update Persist File in the cache.
+    Stop MTE
+    restore_remote_cfg_file    ${fileList_DAT[0]}    ${fileList_DAT[1]}
+    Start MTE
+    Wait For Persist File Update
