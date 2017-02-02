@@ -187,6 +187,28 @@ Verify ALL SICs are valid in Persistence file
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    ${pmatDumpfile}
 
+Process failure while loading Persist file
+    [Documentation]    The backup persist file should not be overwritten by a blank persist file during MTE startup. This is to protect against the situation where we have consecutive MTE process failures overwriting the persist file because it hasn't had time to load the original from disk and write it out again after loading before the process fails again.
+    ...
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2216
+    ${serviceName}=    Get FMS Service Name
+    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_before.csv
+    Stop MTE
+    @{foundFiles}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT.LOADED    ${TRUE}
+    Run Keyword if    len(${foundFiles})    Delete Remote Files    @{foundFiles}
+    Run Commander    process    start ${MTE}
+    Wait for Persist Load to Start
+    Kill Processes    MTE    FTE
+    Start MTE
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_after.csv
+    ${removeFMSREORGTIMESTAMP}    Create Dictionary    .*CHE%FMSREORGTIMESTAMP.*=${EMPTY}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_before.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_after.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
+    [Teardown]    Run Keywords    Load All EXL Files    ${servicename}    ${CHE_IP}
+    ...    AND    Case Teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
+
 *** Keywords ***
 Delete Persist Backup
     [Documentation]    Delete all persist backup files in Thunderdome box
