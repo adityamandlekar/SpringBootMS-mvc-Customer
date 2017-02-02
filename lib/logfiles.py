@@ -4,6 +4,7 @@ from LinuxCoreUtilities import LinuxCoreUtilities
 from LinuxFSUtilities import LinuxFSUtilities
 from utils.ssh import _exec_command
 from utils.ssh import G_SSHInstance
+
 from VenueVariables import *
 
 SMFLOGDIR = BASE_DIR + '/smf/log/'

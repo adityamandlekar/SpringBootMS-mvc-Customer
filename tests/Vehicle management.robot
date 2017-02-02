@@ -546,6 +546,7 @@ Undrop ric
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
     wait smf log message after time    Undrop    ${currDateTime}
 
+
 Get Start Time
     [Documentation]    Get startOfday time from MTE config file
     ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
