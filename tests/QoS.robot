@@ -139,7 +139,7 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
     [Teardown]    Run Keyword If    '${PROTOCOL}' != 'UDP'    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
 
-Watchdog QOS - MTE Egress NIC
+Watchdog QOS - Egress NIC
     [Documentation]    Test the QOS value and MTE failover when disabling MTE Egress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1966
     ...
     ...    1. Disable DDNA NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNA NIC. \ Verify QOS returns to 100.\ Standby is receiving Sync Pulses.\ and MTE recovers to STANDBY.
@@ -212,7 +212,7 @@ Watchdog QOS - MTE Egress NIC
     Verify Sync Pulse Received    ${master_ip}
     [Teardown]    QoS Case Teardown
 
-Watchdog QOS - SFH Ingress NIC
+Watchdog QOS - Ingress NIC
     [Documentation]    Test the QOS value when disable SFH Ingress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1968
     ...
     ...    Test Steps
