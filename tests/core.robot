@@ -68,7 +68,7 @@ Dictionary of Dictionaries Should Be Equal
     Should Be Equal    ${keys1}    ${keys2}
     : FOR    ${key}    IN    @{keys1}
     \    Dictionaries Should Be Equal    ${dict1['${key}']}    ${dict2['${key}']}
-
+    
 Disable MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, disable the VirtualBox Guest Additions service. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
     ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service stop; fi
@@ -175,7 +175,7 @@ Get Configure Values
     \    ${configValue}=    get MTE config value    ${mteConfigFile}    ${configName}
     \    Append To List    ${retArray}    ${configValue}
     [Return]    ${retArray}
-
+    
 Get ConnectTimesIdentifier
     [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
     [Documentation]    get the ConnectTimesIdentifier (feed times RIC) from venue config file.
@@ -361,7 +361,7 @@ Get MTE Config File
     [Return]    ${localFile}
 
 Get MTE Machine Time Offset
-    [Documentation]    Get the offset from local machine for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal real time. this local time can be not GMT time, since the only offset will be used, if local machine time is real life time, then MTE machine time can be restored to real life time by the offset.
+    [Documentation]    Get the offset from local machine for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal real time. this local time can be not GMT time, since the only offset will be used, if local machine time is real life time, then MTE machine time can be restored to real life time by the offset. 
     ${currDateTime}=    get date and time
     ${localTime}=    Get Current Date    exclude_millis=True
     ${MTEtime}=    Convert Date    ${currDateTime[0]}-${currDateTime[1]}-${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    result_format=datetime
@@ -710,7 +710,7 @@ Restore EXL Changes
     : FOR    ${file}    IN    @{exlFiles}
     \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
-
+    
 Restore MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
     ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi

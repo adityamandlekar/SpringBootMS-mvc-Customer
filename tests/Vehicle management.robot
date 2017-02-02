@@ -381,25 +381,6 @@ Verify Drop with Purge from FMSCmd
     Should Be Empty    ${res}
     [Teardown]    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
 
-Verify Undrop by OTFC Reference Message
-    [Documentation]    http://jirag.int.thomsonreuters.com/browse/CATF-2206
-    ${serviceName}=    Get FMS Service Name
-    ${preferredDomain}=    Get Preferred Domain
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${preferredDomain}
-    ${EXLfullpath}=    Get EXL For RIC    ${preferredDomain}    ${serviceName}    ${ric}
-    ${EXLfile}=    Fetch From Right    ${EXLfullpath}    \\
-    ${localEXLfile}=    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
-    ${remoteCapture}=    set variable    ${LOCAL_TMP_DIR}/capture_local.pcap
-    ${currDateTime}    get date and time
-    Start Capture MTE Output    ${remoteCapture}
-    Purge RIC    ${ric}    ${preferredDomain}    ${serviceName}
-    wait smf log message after time    Drop message sent    ${currDateTime}
-    Verify RIC Not In MTE Cache    ${ric}    ${preferredDomain}
-    Stop Capture MTE Output
-    Comment    Run Keyword And Continue On Failure    Verify RIC Published    ${remoteCapture}    ${localEXLfile}    ${pubRic}    ${preferredDomain}
-    verify DROP message in itemstatus messages    ${remoteCapture}    ${pubRic}    ${preferredDomain}
-    Start Capture MTE Output    ${remoteCapture}
-
 Verify both RIC and SIC rename handled correctly
     [Documentation]    Rename both RIC and SIC.
     ...    Verify that the old RIC is no longer in cache. \ Verify the new RIC and SIC are in cache.
@@ -564,6 +545,7 @@ Undrop ric
     ...    --Domain ${domain}    --HandlerName ${MTE}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
     wait smf log message after time    Undrop    ${currDateTime}
+
 
 Get Start Time
     [Documentation]    Get startOfday time from MTE config file
