@@ -17,6 +17,7 @@ Verify Frame Packing is Enabled
     [Setup]
     ${mteConfigFile}=    Get MTE Config File
     @{flushBufferList}=    get MTE config list by section    ${mteConfigFile}    Publishing    FlushBufferThreshold
+    Should Not Be Empty    ${flushBufferList}    "FlushBufferThreshold" must be defined in Publishing section of FTE/MTE config file with value greater than 1
     : FOR    ${flushBuffer}    IN    @{flushBufferList}
     \    ${flushBufferNum}=    Convert to Integer    ${flushBuffer}
-    \    Should Be True    ${flushBufferNum} > 1    "FlushBufferThreshold" value in MTE config file should be greater than 1
+    \    Should Be True    ${flushBufferNum} > 1    "FlushBufferThreshold" value in FTE/MTE config file must be greater than 1
