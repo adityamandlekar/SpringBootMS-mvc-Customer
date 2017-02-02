@@ -56,6 +56,24 @@ Persistence File Loading
     verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
+Verify ALL SICs are valid in Persistence file
+    [Documentation]    Verify All SICs are available in Persistence file compare to EXL file by CONTEXTID in MTE config file.
+    ...
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2277
+    ${domain}=    Get Preferred Domain
+    ${serviceName}=    Get FMS Service Name
+    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    ${cacheDomainName}=    Remove String    ${domain}    _
+    ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
+    ${pmatDumpfile}=    Dump Persist File To Text    --domain ${pmatDomain}    --fids 5357
+    ${mteConfigFile}    Get MTE Config File
+    ${contextIds}    get context ids from config file    ${mteConfigFile}
+    ${sicDomain_EXL}    get_SicDomain_in_AllExl_by_ContextID    ${serviceName}    ${contextIds}
+    ${sicDomain_persist}    get_SicDomain_in_DumpPersistFile_Txt    ${pmatDumpfile}
+    verify_all_sics_in_persistFile    ${sicDomain_persist}    ${sicDomain_EXL}
+    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
+    ...    AND    Case Teardown    ${pmatDumpfile}
+
 Verify Cache Contains Only Configured Context IDs
     [Documentation]    Verify that all context ids in the MTE cache are listed in <Transforms> section \ in the MTE xml configuration file.
     Stop MTE
@@ -169,23 +187,27 @@ Persistence file FIDs existence check
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    Case Teardown    ${pmatDumpfile}    @{modifiedFeedEXLFiles}
 
-Verify ALL SICs are valid in Persistence file
-    [Documentation]    Verify All SICs are available in Persistence file compare to EXL file by CONTEXTID in MTE config file.
+Process failure while loading Persist file
+    [Documentation]    The backup persist file should not be overwritten by a blank persist file during MTE startup. This is to protect against the situation where we have consecutive MTE process failures overwriting the persist file because it hasn't had time to load the original from disk and write it out again after loading before the process fails again.
     ...
-    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2277
-    ${domain}=    Get Preferred Domain
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2216
     ${serviceName}=    Get FMS Service Name
     ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
-    ${cacheDomainName}=    Remove String    ${domain}    _
-    ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
-    ${pmatDumpfile}=    Dump Persist File To Text    --domain ${pmatDomain}    --fids 5357
-    ${mteConfigFile}    Get MTE Config File
-    ${contextIds}    get context ids from config file    ${mteConfigFile}
-    ${sicDomain_EXL}    get_SicDomain_in_AllExl_by_ContextID    ${serviceName}    ${contextIds}
-    ${sicDomain_persist}    get_SicDomain_in_DumpPersistFile_Txt    ${pmatDumpfile}
-    verify_all_sics_in_persistFile    ${sicDomain_persist}    ${sicDomain_EXL}
-    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
-    ...    AND    Case Teardown    ${pmatDumpfile}
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_before.csv
+    Stop MTE
+    @{foundFiles}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT.LOADED    ${TRUE}
+    Run Keyword if    len(${foundFiles})    Delete Remote Files    @{foundFiles}
+    Run Commander    process    start ${MTE}
+    Wait for Persist Load to Start
+    Kill Processes    MTE    FTE
+    Start MTE
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_after.csv
+    ${removeFMSREORGTIMESTAMP}    Create Dictionary    .*CHE%FMSREORGTIMESTAMP.*=${EMPTY}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_before.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_after.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
+    [Teardown]    Run Keywords    Load All EXL Files    ${servicename}    ${CHE_IP}
+    ...    AND    Case Teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
 *** Keywords ***
 Delete Persist Backup
