@@ -111,6 +111,12 @@ Dump Persist File To XML
     Remove Files    ${localPersistFile}
     [Return]    ${pmatXmlDumpfile}
 
+Extract ICF
+    [Arguments]    ${ric}    ${domain}    ${extractFile}    ${serviceName}
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    extract    --RIC ${ric}
+    ...    --Domain ${domain}    --ExcludeNullFields true    --HandlerName ${MTE}    --OutputFile ${extractFile}    --Services ${serviceName}
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+
 Force Persist File Write
     [Arguments]    ${serviceName}
     [Documentation]    Force the MTE to write all updates to the Persist file.
