@@ -438,6 +438,23 @@ def get_ric_fields_from_EXL(exlFile,ricName,*fieldnames):
 
     return retList
 
+def get_all_state_EXL_files():
+    """ Get EXL file from given RIC, domain, and service:
+        http://jirag.int.thomsonreuters.com/browse/CATF-2506
+
+        fileType options: ['Closing Run', 'DST', 'Feed Time', 'Holiday', 'OTFC', 'Trade Time']
+        
+        return : Full path name of EXL file, if found. 
+                 If multiple files or none found, will raise an error.
+    """
+    exlFiles_list = []
+    fileType_list = ['closing run','dst', 'feed time', 'holiday', 'trade time']
+
+    for fileType in fileType_list:
+        exlFiles = _get_EXL_files(fileType)
+        exlFiles_list.extend(exlFiles)
+    return exlFiles_list
+
 def get_SicDomain_in_AllExl_by_ContextID(service, contextID_List):
     """ Get sic, domain from EXL by contextID.
        Argument:
