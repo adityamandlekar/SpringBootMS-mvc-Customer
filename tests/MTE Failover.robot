@@ -1,6 +1,7 @@
 *** Settings ***
 Suite Setup       Suite Setup Two TD Boxes With Playback
 Suite Teardown    Suite Teardown
+Force Tags        Peer    Playback
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
@@ -21,7 +22,6 @@ Valid Manual State Changes
     ...    Switch Live to Locked Standby
     ...    Switch Standby to Locked_Live when other instance is already Locked_Live
     ...    Switch a Locked_Live to Locked_Standby (without first unlocking)
-    [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
@@ -82,7 +82,6 @@ Invalid Manual State Changes
     ...    The following invalid state transitions are tested:
     ...    Promote from Locked_Standby
     ...    Demote from Locked_Live
-    [Tags]    Peer
     ${sleeptime}=    Set Variable    60
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -113,7 +112,6 @@ Critical Message Logging - MTE State change
     ...    2 Switch A to Live
     ...    3 Switch A to Standby
     ...    4 Verify log in EventLogAdapterGMILog.txt
-    [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     Switch To TD Box    ${master_ip}
@@ -131,7 +129,6 @@ Verify STANDBY Handles Sync Pulse
     [Documentation]    Verify the STANDBY MTE clears its message buffer based on the Sync Pulse it receives from the LIVE MTE. \ Inject messages, then failover to the STANDBY and verify that STANDBY does not re-publish the messages when it goes LIVE.
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1759
-    [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     ${service}=    Get FMS Service Name

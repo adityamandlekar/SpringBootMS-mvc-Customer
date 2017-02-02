@@ -3,6 +3,7 @@
 from LinuxCoreUtilities import LinuxCoreUtilities
 from LinuxFSUtilities import LinuxFSUtilities
 from utils.ssh import _exec_command
+from utils.ssh import G_SSHInstance
 
 from VenueVariables import *
 
@@ -114,7 +115,7 @@ def wait_smf_log_message_after_time(message, timeRef, isCaseSensitive=False, wai
     timeout = int(timeout)
     waittime = int(waittime)
     maxtime = time.time() + float(timeout)
-    while time.time() <= maxtime:            
+    while time.time() <= maxtime:
         retMessages = LinuxFSUtilities().grep_remote_file(currentFile, message, isCaseSensitive=isCaseSensitive)
 #             print 'DEBUG retMessages: %s' %retMessages
         if (len(retMessages) > 0):
@@ -125,3 +126,47 @@ def wait_smf_log_message_after_time(message, timeRef, isCaseSensitive=False, wai
                     return retLogTimestamp
         time.sleep(waittime)
     raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smf log before timeout %ds' %(message, timeout))
+
+def wait_for_persist_load_to_start(timeout=60):
+    """Wait for the MTE/FTE to begin loading from the PERSIST file.
+    Argument:
+    timeout : the maximum time to wait, in seconds
+    
+    1. This is not a generic function to search for a message from the log file.
+    2. Using read_until() or read_until_regexp() is problematic if there is a lot of output
+    3. To restrict the amount of output the routine grep's for only lines containing 'Persistence'
+    """
+    dt = LinuxCoreUtilities().get_date_and_time()
+    currentFile = '%s/smf-log-files.%s%s%s.txt' %(SMFLOGDIR, dt[0], dt[1], dt[2])
+    orig_timeout = G_SSHInstance.get_connection().timeout
+    G_SSHInstance.set_client_configuration(timeout='%s seconds' %timeout)
+    G_SSHInstance.write('tail --lines=0 -f %s | grep Persistence' %currentFile)
+    G_SSHInstance.read_until_regexp('Persistence: Loading.*complete')
+    G_SSHInstance.set_client_configuration(timeout=orig_timeout)
+    LinuxCoreUtilities().kill_processes('tail')
+
+def check_logfile_for_event(eventName,currTimeArray):
+    """check one event log at specified datetime
+
+    Argument :
+        eventName : please see toCheckLogDict for all events
+        currTimeArray : UTC time message must be after. It is a list of values as returned by the get_date_and_time Keyword [year, month, day, hour, min, second]
+
+    Return : no
+
+    Examples:
+    | check logfile for event | ${eventName} | ${tdBoxDateTime} |
+    """
+    toCheckLogDict = {'StartOfDayTime':['%s.*StartOfDay time occurred'%MTE, '%s.*handleStartOfDayInstrumentUpdate.*Ending' %MTE], \
+        'EndOfDayTime':['%s.*EndOfDay time occurred'%MTE], \
+        'CacheRolloverTime': ['%s.*CacheRollover time occurred'%MTE], \
+        'RolloverTime': ['%s.*RolloverReset time occurred'%MTE], \
+        'StartOfConnect':['%s.*StartOfConnect time occurred'%MTE], \
+        'EndOfConnect':['%s.*EndOfConnect time occurred'%MTE], \
+        'StartOfHighActivity':['%s.*StartOfHighActivity time occurred'%MTE], \
+        'EndOfHighActivity':['%s.*EndOfHighActivity time occurred'%MTE]}
+    if toCheckLogDict.has_key(eventName):
+        logsToCheck = toCheckLogDict[eventName]
+        for log in logsToCheck:
+            #print '*INFO* check log: %s'%log
+            wait_smf_log_message_after_time(log, currTimeArray)

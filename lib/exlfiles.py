@@ -1,12 +1,14 @@
 ﻿from __future__ import with_statement
 import codecs
+import datetime
 import os
 import os.path
 import re
 from subprocess import Popen, PIPE
 import string
 import xml
-from xml.dom import minidom
+import xml.dom.minidom
+from xml.dom.minidom import Document
 
 from VenueVariables import *
     
@@ -191,6 +193,87 @@ def build_LXL_file (exlFileNeedToRemove):
 
     return file_content
 
+def create_RIC_SIC_rename_file(oldRic, oldSic, srcPath, exlfile):
+    """ Create src flie dynamically to rename both RIC and SIC:
+        Argument :oldRic: old ric name 
+             oldSic: old sic name
+             srcPath: path for src file and exl file  (e.g. /ChangeSicRic.src)
+             exlfile: get full path of exlfile in local from fmscmd (e.g. /nasmf_a.exl)
+        return : New Ric and Sic name
+        
+    """ 
+    
+    if os.path.exists(srcPath):
+        os.remove(srcPath)
+        
+    srcDoc = Document()
+    src = srcDoc.createElement('SRC') #set root element
+    src.setAttribute('xmlns', 'SrcSchema')
+    src.setAttribute('xmlns:it', 'DbIssueTypeSchema')
+    src.setAttribute('xmlns:xsi',"http://www.w3.org/2001/XMLSchema-instance")
+    src.setAttribute('xsi:schemaLocation','DbFieldsSchema AllFields.xsd SrcSchema SrcSchema.xsd')
+    srcDoc.appendChild(src)
+        
+    date = srcDoc.createElement ('date')
+    date_txt = srcDoc.createTextNode(datetime.datetime.now().strftime("%Y-%m-%d"))
+    date.appendChild(date_txt)
+    src.appendChild(date)
+    
+    action = srcDoc.createElement('action')
+    action_txt = srcDoc.createTextNode('BOTH')
+    action.appendChild(action_txt)
+    src.appendChild(action)
+        
+    dom = xml.dom.minidom.parse(exlfile)
+    root = dom.documentElement
+     #exlFileName,exchangeName,
+    exlFileName = root.getElementsByTagName('name')[0].firstChild.data
+    iteratorlist = dom.getElementsByTagName('it:EXCHANGE')
+    exchangeName = iteratorlist[0].firstChild.data
+    
+    exlFile = srcDoc.createElement('exlFile')
+    exlFile_txt = srcDoc.createTextNode(exlFileName)
+    exlFile.appendChild(exlFile_txt)
+    src.appendChild(exlFile)
+    
+    exchange = srcDoc.createElement('exchange')
+    exchange_txt = srcDoc.createTextNode(exchangeName)
+    exchange.appendChild(exchange_txt)
+    src.appendChild(exchange)
+    
+    kNode = srcDoc.createElement('k')
+    src.appendChild(kNode)
+    
+    bothNode = srcDoc.createElement('both')
+    kNode.appendChild(bothNode)
+    
+    orNode = srcDoc.createElement('or')
+    orNode_txt = srcDoc.createTextNode(oldRic)
+    orNode.appendChild(orNode_txt)
+    bothNode.appendChild(orNode)
+    
+    newRic = ('TEST' + oldRic + datetime.datetime.now().strftime("%Y%m%d%H%M%S"))[0:32]
+    nrNode = srcDoc.createElement('nr')
+    nrNode_txt = srcDoc.createTextNode(newRic)
+    nrNode.appendChild(nrNode_txt)
+    bothNode.appendChild(nrNode)
+    
+    osNode = srcDoc.createElement('os')
+    osNode_txt = srcDoc.createTextNode(oldSic[2:len(oldSic)] )
+    osNode.appendChild(osNode_txt)
+    bothNode.appendChild(osNode)
+    
+    newSic = oldSic[2:len(oldSic)] + 'TestSIC'
+    nsNode = srcDoc.createElement('ns')
+    nsNode_txt = srcDoc.createTextNode(newSic)
+    nsNode.appendChild(nsNode_txt)
+    bothNode.appendChild(nsNode)
+    
+    fileHandle = open(srcPath, 'w') 
+    srcDoc.writexml(fileHandle, indent='\t', addindent='\t', newl='\n', encoding="utf-8")
+    return newRic, newSic
+
+
 def get_DST_and_holiday_RICs_from_EXL(exlFile,ricName):
     """ Get DST RIC and holiday RIC from EXL
         http://www.iajira.amers.ime.reuters.com/browse/CATF-1735
@@ -355,6 +438,71 @@ def get_ric_fields_from_EXL(exlFile,ricName,*fieldnames):
 
     return retList
 
+def get_all_state_EXL_files():
+    """ Get EXL file from given RIC, domain, and service:
+        http://jirag.int.thomsonreuters.com/browse/CATF-2506
+
+        fileType options: ['Closing Run', 'DST', 'Feed Time', 'Holiday', 'OTFC', 'Trade Time']
+        
+        return : Full path name of EXL file, if found. 
+                 If multiple files or none found, will raise an error.
+    """
+    exlFiles_list = []
+    fileType_list = ['closing run','dst', 'feed time', 'holiday', 'trade time']
+
+    for fileType in fileType_list:
+        exlFiles = _get_EXL_files(fileType)
+        exlFiles_list.extend(exlFiles)
+    return exlFiles_list
+
+def get_SicDomain_in_AllExl_by_ContextID(service, contextID_List):
+    """ Get sic, domain from EXL by contextID.
+       Argument:
+           service :  FMS service name             
+           contextID_List : context id list from MTE config file 
+       Return : a dictionary with contextID: set(sic|domain) 
+       
+    """    
+    sicDomainByContxtID_Dir = {}
+    exlFilesFullPath = _get_EXL_for_Service(service)
+    fieldNames = ['CONTEXT_ID']
+      
+    for exlFile in exlFilesFullPath:
+        dom = xml.dom.minidom.parse(exlFile)
+        root = dom.documentElement
+        result = _get_EXL_header_values(dom, fieldNames)
+        exlFileName = root.getElementsByTagName('name')[0].firstChild.data
+        if 'CONTEXT_ID' in result:
+            context_id = result['CONTEXT_ID'].encode("utf-8")
+            if result['CONTEXT_ID'] in contextID_List:
+                iteratorlist = dom.getElementsByTagName('exlObject')
+                for node_ExlObject in iteratorlist:  #signal exlObject
+                    iterNum = 0
+                    for subnode_ExlObject in node_ExlObject.childNodes:
+                        if subnode_ExlObject.nodeType == node_ExlObject.ELEMENT_NODE and subnode_ExlObject.nodeName == 'it:RIC':
+                            ric  = subnode_ExlObject.firstChild.data.encode("utf-8")
+                        if subnode_ExlObject.nodeType == node_ExlObject.ELEMENT_NODE and subnode_ExlObject.nodeName == 'it:SYMBOL':
+                            symbol = subnode_ExlObject.firstChild.data.encode("utf-8")
+                            iterNum +=1
+                        elif subnode_ExlObject.nodeType == node_ExlObject.ELEMENT_NODE and subnode_ExlObject.nodeName == 'it:DOMAIN':
+                            domain = subnode_ExlObject.firstChild.data.encode("utf-8")
+                            iterNum +=1
+                        elif iterNum == 2:
+                            break
+                    
+                    if iterNum != 2:
+                        raise AssertionError("'*ERROR* The RIC %s is missing SYMBOL or DOMAIN node in the EXL %s'" %(ric, exlFileName))    
+                    else:
+                        newSicDomain_string = symbol+'|'+domain                            
+                        if context_id not in sicDomainByContxtID_Dir:
+                            sicDomainByContxtID_Dir[context_id] = {newSicDomain_string}
+                        else:
+                            sicDomainByContxtID_Dir[context_id].add(newSicDomain_string)            
+    if len(sicDomainByContxtID_Dir) == 0:
+        raise AssertionError("*ERROR* There are no RICs/SICs for context ids [%s] in the EXL files" %', '.join(map(str, contextID_List)))
+    else:
+        return sicDomainByContxtID_Dir
+
 def get_state_EXL_file(ricName,domainName,service,fileType):
     """ Get EXL file from given RIC, domain, and service:
         http://www.iajira.amers.ime.reuters.com/browse/CATF-1737
@@ -500,7 +648,7 @@ def remove_specified_exlobject(exlfilefullpath, RIC, Domain, outputfile):
     """
     keep=False
     return _remove_exlobject(exlfilefullpath, RIC, Domain, keep, outputfile)
-
+ 
 def _get_EXL_files(fileType):
     """ Get EXL file(s) for fileType:
         http://www.iajira.amers.ime.reuters.com/browse/CATF-1687
@@ -542,6 +690,26 @@ def _get_EXL_files(fileType):
     if len(exlFiles) < 1 or exlFiles[0].lower() == "file not found" or exlFiles[0] == '':
         raise AssertionError('*ERROR* Search returned no results for: %s' %cmdstr)
     return exlFiles
+
+def _get_EXL_for_Service(service):
+    """ Find the EXL file with service
+        Argument: 
+            service: The service name        
+        return :  a list of EXL file names.
+    """ 
+    exFiles_service = []
+    exlFiles = _get_EXL_files("All")
+    fieldNames = ['SERVICE']
+    for exlFile in exlFiles:
+        dom = xml.dom.minidom.parse(exlFile)     
+        # skip file if service does not match
+        result = _get_EXL_header_values(dom,fieldNames)
+        if 'SERVICE' in result and result['SERVICE'] == service:
+            exFiles_service.append(exlFile)
+    if len(exFiles_service) == 0:
+        raise AssertionError('*ERROR* service %s not found in any EXL file:' %(service))
+    else:
+        return exFiles_service
 
 def _get_EXL_header_values(dom,fieldnames):
     """ Get field value(s) from EXL Header
@@ -765,3 +933,4 @@ def _remove_exlobject(exlfilefullpath, RIC, Domain,keep, outputfile):
         raise AssertionError('*ERROR* %s' %e)
     
     return outputfile
+    

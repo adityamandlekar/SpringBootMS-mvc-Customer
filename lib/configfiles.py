@@ -7,7 +7,6 @@ from sets import Set
 import string
 import xml
 import xml.etree.ElementTree as ET
-
 from LinuxFSUtilities import LinuxFSUtilities
 from utils.ssh import _exec_command, _search_file
 import xmlutilities
@@ -751,7 +750,7 @@ def get_FID_Name_by_FIDId(FidId):
             return elements[0]
         else:
             raise AssertionError('*ERROR* The FID can not be found')
-    
+
 def restore_remote_cfg_file(cfgfile,backupfile):
     """restore config file by rename backupfile to cfgfile
     Argument : 
@@ -827,3 +826,44 @@ def set_value_in_MTE_cfg(mtecfgfile, tagName, value):
     stdout, stderr, rc = _exec_command(cmd_match_tag_only)
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd_match_tag_only,rc,stdout,stderr)) 
+        
+def Get_future_config_times(configNameList,configValueList, GMTOffset, currentDateTime):
+    """Convert all event times to future GMT time and return one dictionary
+    
+    Argument : 
+    configNameList  : config names list
+    configValueList : config values list which get from MTE config file
+    GMTOffset :  GMT offset in second like -18000(GMT-5)
+    currentDateTime : date time get from TD box (GMT)
+        
+    Returns : Dictionary which the time is the key, value is list of the config names like
+    {'2016-12-06 12:00:00': [u'StartOfDayTime'], '2016-12-07 03:30:00': [u'EndOfDayTime'], '2016-12-06 05:00:00': [u'RolloverTime', u'CacheRolloverTime', u'JnlRollTime', u'CacheRollover']}
+    Examples :
+          | get future config times | ${configNameList} | ${configValueList} | 28800 | ${currentDateTime}
+    """
+    configValueOrginList = configValueList
+    retDict = {}
+    currentDateTimeStr = '%4d-%02d-%02d %02d:%02d:00'%(int(currentDateTime[0]),int(currentDateTime[1]),int(currentDateTime[2]),int(currentDateTime[3]),int(currentDateTime[4]))
+
+    index = 0
+    from robot.libraries.DateTime import subtract_time_from_date,add_time_to_date
+    for timepoint in configValueList:
+        if timepoint.lower() == 'not found':
+            index += 1
+            continue
+        timestr = '%4d-%02d-%02d %s:00'%(int(currentDateTime[0]),int(currentDateTime[1]),int(currentDateTime[2]),timepoint)
+        # local--> GMT time, should minus GMToffset
+        timeGMT = subtract_time_from_date(timestr,'%s seconds'%GMTOffset)
+        #if the GMT time is previous currentDateTime, add one day
+        count = 0
+        while timeGMT < currentDateTimeStr and count < 2:
+            timeGMT = add_time_to_date(timeGMT,'%s seconds'%str(3600*24))
+            count += 1
+
+        if timeGMT not in retDict.keys():
+            retDict[timeGMT] = []
+        retDict[timeGMT].append(configNameList[index])
+        index += 1
+
+    return retDict
+    

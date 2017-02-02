@@ -2,6 +2,7 @@
 Documentation     Verify QoS value when disable the NIC
 Suite Setup       Suite Setup Two TD Boxes
 Suite Teardown    Suite Teardown
+Force Tags        Peer
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 
@@ -10,7 +11,6 @@ Verify Sync Pulse Missed QoS
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1763
     ...
     ...    Test Case - Verify Sync Pulse Missed QoS by blocking sync pulse publiscation port and check the missing statistic by SCWCli
-    [Tags]    Peer
     [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -63,7 +63,6 @@ Verify QoS Failover for Critical Process Failure
     ...    3. Verify CritProcessFail count indicates the number of critical processes that are down.
     ...    4. Restart the components.
     ...    5. Verify CritProcessFail count goes back to zero and Total QoS goes back to 100.
-    [Tags]    Peer
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
@@ -103,7 +102,6 @@ Verify QoS Failover for UDP Feed Line Down
     ...    Promote MTE A to LIVE.
     ...    Wait for feed line down timeout interval.
     ...    Verify that failover occurred and MTE B is now LIVE.
-    [Tags]    Peer
     Pass Execution If    '${PROTOCOL}' !='UDP'    Venue Protocol ${PROTOCOL} is not UDP
     Switch To TD Box    ${CHE_A_IP}
     ${timeoutLimit}=    Set Variable    200
@@ -126,7 +124,6 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     ...    Promote MTE A to LIVE.
     ...    Wait for feed line down timeout interval.
     ...    Verify that failover occurred and MTE B is now LIVE.
-    [Tags]    Peer
     Pass Execution If    '${PROTOCOL}' == 'UDP'    Venue Protocol ${PROTOCOL} is not TCP or FTP
     Switch To TD Box    ${CHE_A_IP}
     ${TimeOut}=    Set Variable    200
@@ -142,7 +139,7 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
     [Teardown]    Run Keyword If    '${PROTOCOL}' != 'UDP'    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
 
-Watchdog QOS - MTE Egress NIC
+Watchdog QOS - Egress NIC
     [Documentation]    Test the QOS value and MTE failover when disabling MTE Egress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1966
     ...
     ...    1. Disable DDNA NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNA NIC. \ Verify QOS returns to 100.\ Standby is receiving Sync Pulses.\ and MTE recovers to STANDBY.
@@ -154,7 +151,6 @@ Watchdog QOS - MTE Egress NIC
     ...    4. Disable DDNB NIC on STANDBY MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Enable DDNB NIC. \ Verify QOS returns to 100. \ Standby is receiving Sync Pulses.
     ...
     ...    5. Disable both DDNA and DDNB on STANDBY MTE box. \ VerifyQOS EgressNIC:0, Total QOS:0. \ Enable both DDNA and DDNB. \ Verify QOS returns to 100. \ Standby is receiving Sync Pulses.
-    [Tags]    Peer
     [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -168,9 +164,11 @@ Watchdog QOS - MTE Egress NIC
     Verify QOS for Egress NIC    50    0    A    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
     Enable NIC    DDNA
+    Comment    Restart MTE/FTE as a workaround for ERTCADVAMT-1175, which won't be fixed.
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    A    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
-    Sleep    10
     Verify Sync Pulse Received    ${master_ip}
     Comment    Disable DDNB on LIVE box, MTE should failover
     Switch To TD Box    ${CHE_B_IP}
@@ -179,19 +177,27 @@ Watchdog QOS - MTE Egress NIC
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Enable NIC    DDNB
+    Comment    Restart MTE/FTE workaround again
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    Sleep    10
     Verify Sync Pulse Received    ${master_ip}
     Comment    Disable NICs on STANDBY
     Disable NIC    DDNA
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Enable NIC    DDNA
+    Comment    Restart MTE/FTE workaround again
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify Sync Pulse Received    ${master_ip}
     Disable NIC    DDNB
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Enable NIC    DDNB
+    Comment    Restart MTE/FTE workaround again
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify Sync Pulse Received    ${master_ip}
     Disable NIC    DDNA
@@ -199,12 +205,14 @@ Watchdog QOS - MTE Egress NIC
     Verify QOS for Egress NIC    ${Empty}    0    B    ${master_ip}
     Enable NIC    DDNA
     Enable NIC    DDNB
-    Sleep    10
+    Comment    Restart MTE/FTE workaround again
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify Sync Pulse Received    ${master_ip}
     [Teardown]    QoS Case Teardown
 
-Watchdog QOS - SFH Ingress NIC
+Watchdog QOS - Ingress NIC
     [Documentation]    Test the QOS value when disable SFH Ingress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1968
     ...
     ...    Test Steps
@@ -215,7 +223,6 @@ Watchdog QOS - SFH Ingress NIC
     ...    5. Enable EXCHIPB, IngressNIC:100, Total QOS:100
     ...    6. Disable both EXCHIPA and EXCHIPB, IngressNIC:0, Total QOS:0
     ...    7. Enable both EXCHIPA and EXCHIPB, IngressNIC:100, Total QOS:100
-    [Tags]    Peer
     [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -249,7 +256,6 @@ Watchdog QOS - FMS NIC
     ...    4. Verify FMS NIC:0, Total QOS:0
     ...    5. Enable FMS NIC
     ...    6. Verify FMS NIC:100, Total QOS:100
-    [Tags]    Peer
     [Setup]    QoS Case Setup
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}

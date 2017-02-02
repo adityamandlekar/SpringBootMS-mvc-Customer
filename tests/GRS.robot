@@ -2,6 +2,7 @@
 Documentation     Verify GRS functionality on single machine
 Suite Setup       Suite Setup With Playback
 Suite Teardown    Suite Teardown
+Force Tags        Playback
 Resource          core.robot
 Variables         ../lib/VenueVariables.py
 

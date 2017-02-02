@@ -69,6 +69,10 @@ Dictionary of Dictionaries Should Be Equal
     : FOR    ${key}    IN    @{keys1}
     \    Dictionaries Should Be Equal    ${dict1['${key}']}    ${dict2['${key}']}
 
+Disable MTE Clock Sync
+    [Documentation]    If running on a vagrant VirtualBox, disable the VirtualBox Guest Additions service. \ This will allow the test to change the clock on the VM. \ Otherwise, VirtualBox will immediately reset the VM clock to keep it in sync with the host machine time.
+    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service stop; fi
+
 Dump Persist File To Text
     [Arguments]    @{optargs}
     [Documentation]    Run PMAT on control PC and return the \ persist text dump file.
@@ -154,6 +158,26 @@ Generate PCAP File Name
     ${pcapFileName} =    Catenate    SEPARATOR=    ${PLAYBACK_PCAP_DIR}    ${pcapFileName}    .pcap
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
+
+Get All State Processing RICs
+    ${closingrunRicList}=    Get RIC List From StatBlock    Closing Run
+    ${DSTRicList}=    Get RIC List From StatBlock    DST
+    ${feedTimeRicList}=    Get RIC List From StatBlock    Feed Time
+    ${holidayRicList}=    Get RIC List From StatBlock    Holiday
+    ${tradeTimeRicList}=    Get RIC List From StatBlock    Trade Time
+    ${StateProcessRicList}    Combine Lists    ${closingrunRicList}    ${DSTRicList}    ${feedTimeRicList}    ${holidayRicList}    ${tradeTimeRicList}
+    [Return]    ${StateProcessRicList}
+
+Get Configure Values
+    [Arguments]    @{configList}
+    [Documentation]    Get configure items value from MTE config file like StartOfDayTime, EndOfDayTime, RolloverTime....
+    ...    Returns a array with configure item value.
+    ${mteConfigFile}=    Get MTE Config File
+    ${retArray}=    Create List
+    : FOR    ${configName}    IN    @{configList}
+    \    ${configValue}=    get MTE config value    ${mteConfigFile}    ${configName}
+    \    Append To List    ${retArray}    ${configValue}
+    [Return]    ${retArray}
 
 Get ConnectTimesIdentifier
     [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
@@ -338,6 +362,14 @@ Get MTE Config File
     get remote file    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    ${localFile}
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${localFile}
     [Return]    ${localFile}
+
+Get MTE Machine Time Offset
+    [Documentation]    Get the offset from local machine for the current time on the MTE machine. Recon changes the machine time to start of feed time, so MTE machine time may not equal real time. this local time can be not GMT time, since the only offset will be used, if local machine time is real life time, then MTE machine time can be restored to real life time by the offset.
+    ${currDateTime}=    get date and time
+    ${localTime}=    Get Current Date    exclude_millis=True
+    ${MTEtime}=    Convert Date    ${currDateTime[0]}-${currDateTime[1]}-${currDateTime[2]} ${currDateTime[3]}:${currDateTime[4]}:${currDateTime[5]}    result_format=datetime
+    ${MTETimeOffset}=    Subtract Date From Date    ${MTEtime}    ${localTime}
+    [Return]    ${MTETimeOffset}
 
 Get Playback NIC For PCAP File
     [Arguments]    ${pcapFile}
@@ -631,6 +663,25 @@ Persist File Should Exist
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
     Comment    Currently, GATS does not provide the Venue name, so the pattern matching Keywords must be used. If GATS provides the Venue name, then "remote file should not exist" Keywords could be used here.
 
+Purge RIC
+    [Arguments]    ${ric}    ${domain}    ${serviceName}
+    [Documentation]    Purge a RIC by FMSCmd.
+    ...    HandlerDropType: \ Purge
+    ${currDateTime}    get date and time
+    ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    drop    --RIC ${ric}
+    ...    --Domain ${domain}    --HandlerName ${MTE}    --HandlerDropType Purge
+    Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
+    wait smf log message after time    Drop    ${currDateTime}
+
+Rename Files
+    [Arguments]    ${oldstring}    ${newstring}    @{files}
+    ${newFileList}=    Create List
+    : FOR    ${file}    IN    @{files}
+    \    ${newfile}=    Replace String    ${file}    ${oldstring}    ${newstring}
+    \    Move File    ${file}    ${newfile}
+    \    Append To List    ${newFileList}    ${newfile}
+    [Return]    @{newFileList}
+
 Reset Sequence Numbers
     [Arguments]    @{mach_ip_list}
     [Documentation]    Reset the FH, GRS, and MTE sequence numbers on each specified machine (default is current machine).
@@ -671,6 +722,29 @@ Restore EXL Changes
     : FOR    ${file}    IN    @{exlFiles}
     \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
+
+Restore Files
+    [Arguments]    ${origFiles}    ${currFiles}
+    ${numFiles}=    Get Length    ${currFiles}
+    : FOR    ${i}    IN RANGE    ${numFiles}
+    \    Move File    ${currFiles[${i}]}    ${origFiles[${i}]}
+
+Restore MTE Clock Sync
+    [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
+    ${result}=    Execute Command    if [ -f /etc/init.d/vboxadd-service ]; then service vboxadd-service start; fi
+
+Restore MTE Machine Time
+    [Arguments]    ${MTETimeOffset}
+    [Documentation]    To correct Linux time and restart SMF, restart SMF because currently FMS client have a bug now, if we change the MTE Machine time when SMF running, FMS client start to report exception like below, and in this case we can't use FMS client correclty:
+    ...    FMSClient:SocketException - ClientImpl::connect:connect (111); /ThomsonReuters/EventScheduler/EventScheduler; 18296; 18468; 0000235f; 07:00:00;
+    ...
+    ...    In addition, on a vagrant VirtualBox, restore the VirtualBox Guest Additions service, which includes clock sync with the host.
+    stop smf
+    ${RIDEMachineTime}=    Get Current Date    result_format=datetime    exclude_millis=True
+    ${MTEMachineTime}=    Add Time To Date    ${RIDEMachineTime}    ${MTETimeOffset}    result_format=datetime
+    set date and time    ${MTEMachineTime.year}    ${MTEMachineTime.month}    ${MTEMachineTime.day}    ${MTEMachineTime.hour}    ${MTEMachineTime.minute}    ${MTEMachineTime.second}
+    Restore MTE Clock Sync
+    start smf
 
 Rewrite PCAP File
     [Arguments]    ${inputFile}    @{optargs}
@@ -1056,7 +1130,7 @@ Verify RIC Is Dropped In MTE Cache
     Should Be Equal    ${allricFields['PUBLISHABLE']}    FALSE
     Should Be True    ${allricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
 
-Verfiy Item Persisted
+Verify Item Persisted
     [Arguments]    ${ric}=${EMPTY}    ${sic}=${EMPTY}    ${domain}=${EMPTY}
     [Documentation]    Dump persist file to XML and check if ric, sic and/or domain items exist in MTE persist file.
     ${cacheDomainName}=    Remove String    ${domain}    _
@@ -1064,6 +1138,16 @@ Verfiy Item Persisted
     @{pmatOptargs}=    Gen Pmat Cmd Args    ${ric}    ${sic}    ${pmatDomain}
     ${pmatDumpfile}=    Dump Persist File To XML    @{pmatOptargs}
     Verify Item in Persist Dump File    ${pmatDumpfile}    ${ric}    ${sic}    ${cacheDomainName}
+    Remove Files    ${pmatDumpfile}
+
+Verify Item Not Persisted
+    [Arguments]    ${ric}=${EMPTY}    ${sic}=${EMPTY}    ${domain}=${EMPTY}
+    [Documentation]    Dump persist file to XML and check if ric, sic and/or domain items not exist in MTE persist file.
+    ${cacheDomainName}=    Remove String    ${domain}    _
+    ${pmatDomain}=    Run Keyword If    '${cacheDomainName}'!='${EMPTY}'    Map to PMAT Numeric Domain    ${cacheDomainName}
+    @{pmatOptargs}=    Gen Pmat Cmd Args    ${ric}    ${sic}    ${pmatDomain}
+    ${pmatDumpfile}=    Dump Persist File To XML    @{pmatOptargs}
+    verify_item_not_in_persist_dump_file    ${pmatDumpfile}    ${ric}    ${sic}
     Remove Files    ${pmatDumpfile}
 
 Wait For FMS Reorg
