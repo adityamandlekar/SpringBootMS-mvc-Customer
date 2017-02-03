@@ -120,6 +120,15 @@ Generate PCAP File Name
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
 
+Get All State Processing RICs
+    ${closingrunRicList}=    Get RIC List From StatBlock    Closing Run
+    ${DSTRicList}=    Get RIC List From StatBlock    DST
+    ${feedTimeRicList}=    Get RIC List From StatBlock    Feed Time
+    ${holidayRicList}=    Get RIC List From StatBlock    Holiday
+    ${tradeTimeRicList}=    Get RIC List From StatBlock    Trade Time
+    ${StateProcessRicList}    Combine Lists    ${closingrunRicList}    ${DSTRicList}    ${feedTimeRicList}    ${holidayRicList}    ${tradeTimeRicList}
+    [Return]    ${StateProcessRicList}
+
 Get Configure Values
     [Arguments]    @{configList}
     [Documentation]    Get configure items value from MTE config file like StartOfDayTime, EndOfDayTime, RolloverTime....
@@ -576,6 +585,15 @@ Purge RIC
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
     wait smf log message after time    Drop    ${currDateTime}
 
+Rename Files
+    [Arguments]    ${oldstring}    ${newstring}    @{files}
+    ${newFileList}=    Create List
+    : FOR    ${file}    IN    @{files}
+    \    ${newfile}=    Replace String    ${file}    ${oldstring}    ${newstring}
+    \    Move File    ${file}    ${newfile}
+    \    Append To List    ${newFileList}    ${newfile}
+    [Return]    @{newFileList}
+
 Reset Sequence Numbers
     [Arguments]    @{mach_ip_list}
     [Documentation]    Reset the FTE sequence numbers on each specified machine (default is current machine).
@@ -611,6 +629,12 @@ Restore EXL Changes
     : FOR    ${file}    IN    @{exlFiles}
     \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
+
+Restore Files
+    [Arguments]    ${origFiles}    ${currFiles}
+    ${numFiles}=    Get Length    ${currFiles}
+    : FOR    ${i}    IN RANGE    ${numFiles}
+    \    Move File    ${currFiles[${i}]}    ${origFiles[${i}]}
 
 Restore MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.

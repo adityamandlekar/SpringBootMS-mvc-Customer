@@ -228,10 +228,10 @@ Verify DDS RIC is published
     ...    1. FID: 1080, DataType: UInt
     ...    2. FID: 3263, DataType: UInt
     ...    3. FID: 6401, DataType: UInt
-    ...    4. FID: 6461, DataType: Buffer, Value: hostname of TD
+    ...    4. FID: 6461, DataType: Buffer, Value: last 12 chars of TD hostname
     ...    5. FID: 6462, DataType: UInt, Value: 0, 1 or 2
     ...    6. FID: 6463, DataType: Integer
-    ...    7. FID: 6464, DataType: Time, Value: within the range of TD Local System Time +10 sec as threshold
+    ...    7. FID: 6464, DataType: Time, Value: within the range of TD Local System Time +20 sec as threshold
     ...    8. FID: 6468, DataType: Integer
     ...
     ...    Verify DDS RIC is published test fails because it does not conform to DUDT DN
