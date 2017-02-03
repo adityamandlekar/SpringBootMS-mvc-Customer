@@ -370,9 +370,9 @@ Verify both RIC and SIC rename handled correctly
     ${RIC_After_Rename}    ${SIC_After_Rename}    create_RIC_SIC_rename_file    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${srcFilefullPath}    ${LocalEXLfullpath}
     Get FIDFilter File
     ${constituent_list}=    Get Constituents From FidFilter    ${result[0]['CONTEXT_ID']}
-    Start Capture MTE Output
     Set RIC in EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC_Before_Rename}    ${domain}    ${RIC_After_Rename}
     Set Symbol In EXL    ${LocalEXLfullpath}    ${LocalEXLfullpath}    ${RIC_After_Rename}    ${domain}    ${SIC_After_Rename}
+    Start Capture MTE Output
     Comment    Both SIC and RIC rename in SRC file
     Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    --SRCFile ${srcFilefullPath}
     Wait For FMS Reorg
@@ -397,11 +397,9 @@ Verify both RIC and SIC rename handled correctly
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
     Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${RIC_After_Rename}    ${domain}
-    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
     Verify Item Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
     Verify Item Not Persisted    ${RIC_After_Rename}    ${SIC_After_Rename}    ${domain}
-    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
-    ...    AND    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
+    [Teardown]    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 *** Keywords ***
 Calculate UpdateSince for REORG
@@ -515,7 +513,6 @@ Undrop ric
     ...    --Domain ${domain}    --HandlerName ${MTE}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
     wait smf log message after time    Undrop    ${currDateTime}
-
 
 Get Start Time
     [Documentation]    Get startOfday time from MTE config file
