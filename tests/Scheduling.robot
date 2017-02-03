@@ -141,8 +141,10 @@ Verify ES persists State Processing RICs
     ${stateRicList}=    Get All State Processing RICs
     @{stateFiles}=    Get All State EXL Files
     ${savedStateFiles}=    Rename Files    .exl    .exl.txt    @{stateFiles}
-    ${orgFile}    ${backupFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    set value in MTE cfg    ${orgFile}    ResendFM    0
+    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${localCfgFile}=    Get MTE Config File
+    Set Value in MTE cfg    ${localCfgFile}    ResendFM    ${0}    add    FMS
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Stop SMF
     Start SMF
     ${remoteRicListFile}=    set variable    ${BASE_DIR}/EventScheduler/dump_ric.txt
@@ -154,7 +156,7 @@ Verify ES persists State Processing RICs
     Lists Should Be Equal    ${stateRicList}    ${ricsFromFile}
     [Teardown]    Run Keywords    Restore Files    ${StateFiles}    ${savedStateFiles}
     ...    AND    Load All EXL Files    ${servicename}    ${CHE_IP}
-    ...    AND    Restore remote cfg file    ${orgFile}    ${backupFile}
+    ...    AND    Restore remote cfg file    ${remoteCfgFile}    ${backupCfgFile}
 
 *** Keywords ***
 Scheduling Setup

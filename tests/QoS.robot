@@ -331,8 +331,10 @@ Set TCP-FTP Feed Line Timeout
     [Documentation]    Set the feed line timeout values (HiActTimeOut and LoActTimeOut) in MTE config file and restart dependent components.
     ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${localCfgFile}=    Get MTE Config File
-    set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${TimeOut}    Inputs    *    FHRealtimeLine
-    set value in MTE cfg    ${localCfgFile}    LoActTimeOut    ${TimeOut}    Inputs    *    FHRealtimeLine
+    set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${TimeOut}    fail    Inputs    *
+    ...    FHRealtimeLine
+    set value in MTE cfg    ${localCfgFile}    LoActTimeOut    ${TimeOut}    fail    Inputs    *
+    ...    FHRealtimeLine
     Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Stop SMF
     Start SMF
