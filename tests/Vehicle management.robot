@@ -262,7 +262,7 @@ Verify FMS Extract and Insert
     ${beforeLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localBefore.pcap
     ${afterLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localAfter.pcap
     Extract ICF    ${ric}    ${domain}    ${beforeExtractFile}    ${serviceName}
-    ${FidList}    get REAL Fids in icf file    ${beforeExtractFile}    1
+    ${FidList}    get REAL Fids in icf file    ${beforeExtractFile}    3
     ${newFidNameValue}    ${newFidNumValue}    Create Fid Value Pair    ${FidList}
     ${iniFidNameValue}    ${iniFidNumValue}    Create Fid Value Pair    ${FidList}
     Comment    //set FID 'before' values
