@@ -153,9 +153,11 @@ Watchdog QOS - Egress NIC
     Verify QOS for Egress NIC    50    0    A    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
     Enable NIC    DDNA
+    Comment    Restart MTE/FTE as a workaround for ERTCADVAMT-1175, which won't be fixed.
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    A    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
-    Sleep    10
     Verify Sync Pulse Received    ${master_ip}
     Comment    Disable DDNB on LIVE box, MTE should failover
     Switch To TD Box    ${CHE_B_IP}
@@ -164,19 +166,27 @@ Watchdog QOS - Egress NIC
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Enable NIC    DDNB
+    Comment    Restart MTE/FTE workaround again
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
-    Sleep    10
     Verify Sync Pulse Received    ${master_ip}
     Comment    Disable NICs on STANDBY
     Disable NIC    DDNA
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Enable NIC    DDNA
+    Comment    Restart MTE/FTE workaround again
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify Sync Pulse Received    ${master_ip}
     Disable NIC    DDNB
     Verify QOS for Egress NIC    50    0    B    ${master_ip}
     Enable NIC    DDNB
+    Comment    Restart MTE/FTE workaround again
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify Sync Pulse Received    ${master_ip}
     Disable NIC    DDNA
@@ -184,7 +194,9 @@ Watchdog QOS - Egress NIC
     Verify QOS for Egress NIC    ${Empty}    0    B    ${master_ip}
     Enable NIC    DDNA
     Enable NIC    DDNB
-    Sleep    10
+    Comment    Restart MTE/FTE workaround again
+    Stop MTE
+    Start MTE
     Verify QOS for Egress NIC    100    100    B    ${master_ip}
     Verify Sync Pulse Received    ${master_ip}
     [Teardown]    QoS Case Teardown
@@ -319,8 +331,10 @@ Set TCP-FTP Feed Line Timeout
     [Documentation]    Set the feed line timeout values (HiActTimeOut and LoActTimeOut) in MTE config file and restart dependent components.
     ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${localCfgFile}=    Get MTE Config File
-    set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${TimeOut}    Inputs    *    FHRealtimeLine
-    set value in MTE cfg    ${localCfgFile}    LoActTimeOut    ${TimeOut}    Inputs    *    FHRealtimeLine
+    set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${TimeOut}    fail    Inputs    *
+    ...    FHRealtimeLine
+    set value in MTE cfg    ${localCfgFile}    LoActTimeOut    ${TimeOut}    fail    Inputs    *
+    ...    FHRealtimeLine
     Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Stop SMF
     Start SMF

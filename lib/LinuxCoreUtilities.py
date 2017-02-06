@@ -326,24 +326,33 @@ class LinuxCoreUtilities():
         | ${res} | kill processes | dataview | rdtplybk |
         """
         stdout = _return_pslist()
-        pat=re.compile(r'\d+')
+        pat=re.compile(r'\w+')
+        psDict = {}
         PIDlist = []
         not_found_list = []
+        # build mapping of process name to the list of associated process ids.
+        # the pslist process name is currently limited to display first 15 chars, so we will compare only 15 chars
+        for ps in stdout.splitlines():
+            psInfo = ps.split()
+            if len(psInfo) < 2:
+                continue
+            # get just the process name, remove everything after first non-alphanumeric
+            psProcessName = re.match(pat,psInfo[1]).group()
+            if psProcessName != None:
+                psCompareProcessName = psProcessName.lower()[:15]
+                if psCompareProcessName in psDict:
+                    psDict[psCompareProcessName].append(psInfo[0])
+                else:
+                    psDict[psCompareProcessName] = [psInfo[0]]
         for process in list(Proc):
-            findflag =0
-            for ps in stdout.split('\n'):
-                if ps != '':
-                    #the pslist proces name is limited to display first 15 chars
-                    psCompareProcessName = ps.split().lower()[-1][:15]
-                    compareProcessName = process.lower()[:15]
-                    if psCompareProcessName == compareProcessName or psCompareProcessName.endswith('/' + compareProcessName):
-                        PIDlist.append(re.findall(pat,ps)[0])
-                        findflag =1
-            if findflag == 0:
+            compareProcessName = process.lower()[:15]
+            if compareProcessName in psDict:
+                PIDlist.extend(psDict[compareProcessName])
+            else:
                 not_found_list.append(process)
-        if PIDlist != []:
+        if len(PIDlist):
             _kill_process(PIDlist)
-        if len(not_found_list) != 0:
+        if len(not_found_list):
             return [12,not_found_list]
         else:
             return [0, []]

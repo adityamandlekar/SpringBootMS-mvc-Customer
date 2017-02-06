@@ -1,11 +1,12 @@
-﻿from datetime import datetime, timedelta
+﻿from __future__ import with_statement
+from datetime import datetime, timedelta
 import os
 import os.path
 from sets import Set
 import string
 import xml
 import xml.etree.ElementTree as ET
-
+from cache import _convert_cachedomain_to_normal_format
 from LinuxFSUtilities import LinuxFSUtilities
 from LinuxCoreUtilities import LinuxCoreUtilities
 from utils.ssh import _exec_command
@@ -29,6 +30,32 @@ def get_all_fids_from_PersistXml(xmlfile):
     
     return fidsSet
 
+def get_SicDomain_in_DumpPersistFile_Txt(PersistFile_TXT):
+    """ A dump of the persist file with columns RIC, SIC, META, DOMAIN, CONTEXT_ID.
+          (e.g produced by 'Dump Persist File To Text    --domain ${domain}    --fids 5357')
+       Argument:
+           PersistFile_TXT :  Dump cache Persist file             
+       Return : a dictionary with contextID: set(sic|domain) 
+    """    
+    sicDomainByContxtID_Dir = {}
+    with open(PersistFile_TXT) as dumPersistFile:
+        line = dumPersistFile.readline() #ignore title line
+        for line in dumPersistFile:
+            list_line = line.strip().split('|')
+            newDomain = _convert_cachedomain_to_normal_format(list_line[3])
+            contextID = list_line[8]
+            newSicDomain = list_line[1] + '|' + newDomain
+            if contextID !=  "":  #there is contextID value is empty
+                if contextID in sicDomainByContxtID_Dir: 
+                    sicDomainByContxtID_Dir[contextID].add(newSicDomain)
+                else:
+                    sicDomainByContxtID_Dir[contextID] = {newSicDomain}
+                
+    if len(sicDomainByContxtID_Dir) == 0:
+        raise AssertionError("'*ERROR* The dump cache persist file is null")
+    else:
+        return sicDomainByContxtID_Dir
+    
 def verify_item_in_persist_dump_file(persist_dump_file, ric, sic, domain):
     ''' Check if ric, sic and/or domain appeared in the persist_dump_file. 
         persist_dump_file usually contains RIC, SIC and/or Domain if user applies RIC, SIC and/or Domain filter in running PMAT dump.
@@ -144,6 +171,22 @@ def verify_item_not_in_persist_dump_file(persist_dump_file, ric, sic):
             raise AssertionError('*ERROR* sic %s is found in persist file %s' %(sic, persist_dump_file))  
 
         print '*INFO* SIC %s is not found in persist file %s' %(sic, persist_dump_file)
+
+def verify_all_sics_in_persistFile(sicDomain_persist ,sicDomain_exl):
+     
+     """ Verify SICs in persist file are available compare to exl files.
+       Argument:
+           sicDomain_persist: dictionary {contextID:set {(sic|domain)}} from Persist file
+           sicDomain_exl: dictionary {contextID:set {(sic|domain)}} from exl
+    """
+     for contextID in sicDomain_exl:
+        if contextID not in sicDomain_persist:
+            raise AssertionError("*ERROR* No entries in Persist file for context id %s" %contextID)
+        else:
+            missing = sicDomain_exl[contextID] - sicDomain_persist[contextID]
+            if len(missing):
+                raise AssertionError("*ERROR* The following SIC|domain entries are missing from Persist file for context id %s: %s"%(contextID,','.join(str(self) for self in missing)))
+
 #############################################################################
 # Keywords that use remote PERSIST files
 #############################################################################

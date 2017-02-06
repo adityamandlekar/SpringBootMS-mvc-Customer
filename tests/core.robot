@@ -120,6 +120,15 @@ Generate PCAP File Name
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
     [Return]    ${pcapFileName}
 
+Get All State Processing RICs
+    ${closingrunRicList}=    Get RIC List From StatBlock    Closing Run
+    ${DSTRicList}=    Get RIC List From StatBlock    DST
+    ${feedTimeRicList}=    Get RIC List From StatBlock    Feed Time
+    ${holidayRicList}=    Get RIC List From StatBlock    Holiday
+    ${tradeTimeRicList}=    Get RIC List From StatBlock    Trade Time
+    ${StateProcessRicList}    Combine Lists    ${closingrunRicList}    ${DSTRicList}    ${feedTimeRicList}    ${holidayRicList}    ${tradeTimeRicList}
+    [Return]    ${StateProcessRicList}
+
 Get Configure Values
     [Arguments]    @{configList}
     [Documentation]    Get configure items value from MTE config file like StartOfDayTime, EndOfDayTime, RolloverTime....
@@ -556,9 +565,9 @@ MTE or FTE
     ...    Return either 'MTE' or 'FTE'.
     ...    Fail if neither MTE nor FTE is found.
     ${result}=    find processes by pattern    FTE -c ${MTE}
-    Return From Keyword If    len(${result}    FTE
+    Return From Keyword If    len('${result}')    FTE
     ${result}=    find processes by pattern    MTE -c ${MTE}
-    Return From Keyword If    len(${result}    MTE
+    Return From Keyword If    len('${result}')    MTE
     Fail    Neither FTE nor MTE process is running
 
 Persist File Should Exist
@@ -575,6 +584,15 @@ Purge RIC
     ...    --Domain ${domain}    --HandlerName ${MTE}    --HandlerDropType Purge
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
     wait smf log message after time    Drop    ${currDateTime}
+
+Rename Files
+    [Arguments]    ${oldstring}    ${newstring}    @{files}
+    ${newFileList}=    Create List
+    : FOR    ${file}    IN    @{files}
+    \    ${newfile}=    Replace String    ${file}    ${oldstring}    ${newstring}
+    \    Move File    ${file}    ${newfile}
+    \    Append To List    ${newFileList}    ${newfile}
+    [Return]    @{newFileList}
 
 Reset Sequence Numbers
     [Arguments]    @{mach_ip_list}
@@ -611,6 +629,12 @@ Restore EXL Changes
     : FOR    ${file}    IN    @{exlFiles}
     \    Load Single EXL File    ${file}    ${serviceName}    ${CHE_IP}
     [Teardown]
+
+Restore Files
+    [Arguments]    ${origFiles}    ${currFiles}
+    ${numFiles}=    Get Length    ${currFiles}
+    : FOR    ${i}    IN RANGE    ${numFiles}
+    \    Move File    ${currFiles[${i}]}    ${origFiles[${i}]}
 
 Restore MTE Clock Sync
     [Documentation]    If running on a vagrant VirtualBox, re-enable the VirtualBox Guest Additions service. \ This will resync the VM clock to the host machine time.
