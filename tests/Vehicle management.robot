@@ -262,7 +262,7 @@ Verify FMS Extract and Insert
     ${beforeLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localBefore.pcap
     ${afterLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localAfter.pcap
     Extract ICF    ${ric}    ${domain}    ${beforeExtractFile}    ${serviceName}
-    ${FidList}    get REAL Fids in icf file    ${beforeExtractFile}    3
+    ${FidList}    get REAL Fids in icf file    ${beforeExtractFile}    1
     ${newFidNameValue}    ${newFidNumValue}    Create Fid Value Pair    ${FidList}
     ${iniFidNameValue}    ${iniFidNumValue}    Create Fid Value Pair    ${FidList}
     Comment    //set FID 'before' values
@@ -433,6 +433,32 @@ Verify both RIC and SIC rename handled correctly
     [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     ...    AND    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
+Verify FID update via FMS
+    [Documentation]    Verify FID value of a fid name is updated by FMS
+    ...
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2260
+    ${domain}    Get Preferred Domain
+    ${serviceName}    Get FMS Service Name
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
+    ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
+    ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
+    Copy File    ${EXLfullpath}    ${LocalEXLfullpath}
+    ${fieldName}=    set variable    DSPLY_NAME
+    ${fieldValueNew}=    set variable    VerifyFidUpdateTest
+    ${fieldValueOrg}=    Set Field Value in EXL    ${LocalEXLfullpath}    ${ric}    ${domain}    ${fieldName}    ${fieldValueNew}
+    Start Capture MTE Output
+    Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}
+    Wait For FMS Reorg
+    Stop Capture MTE Output    1    15
+    get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
+    ${verifyFIDs}=    Create List    3
+    ${verifyValues}=    Create List    ${fieldValueNew}
+    Run Keyword And Continue On Failure    verify correction change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${verifyFIDs}    ${verifyValues}
+    ${fieldValueOrg}=    Set Field Value in EXL    ${EXLfullpath}    ${ric}    ${domain}    ${fieldName}    ${fieldValueOrg}
+    [Teardown]    Run Keywords    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
+    ...    AND    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local.pcap
+
 *** Keywords ***
 Calculate UpdateSince for REORG
     [Arguments]    ${exlFile}
@@ -545,7 +571,6 @@ Undrop ric
     ...    --Domain ${domain}    --HandlerName ${MTE}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
     wait smf log message after time    Undrop    ${currDateTime}
-
 
 Get Start Time
     [Documentation]    Get startOfday time from MTE config file
