@@ -565,9 +565,9 @@ MTE or FTE
     ...    Return either 'MTE' or 'FTE'.
     ...    Fail if neither MTE nor FTE is found.
     ${result}=    find processes by pattern    FTE -c ${MTE}
-    Return From Keyword If    len(${result}    FTE
+    Return From Keyword If    len('${result}')    FTE
     ${result}=    find processes by pattern    MTE -c ${MTE}
-    Return From Keyword If    len(${result}    MTE
+    Return From Keyword If    len('${result}')    MTE
     Fail    Neither FTE nor MTE process is running
 
 Persist File Should Exist
