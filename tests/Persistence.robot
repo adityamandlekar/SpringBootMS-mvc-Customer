@@ -151,7 +151,7 @@ Verify Recovery if Persist File is Damaged
     [Setup]
     Delete Persist Backup
     ${serviceName}=    Get FMS Service Name
-    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    Wait For Persist File Update
     ${fileList_DAT}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT
     Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_before.csv
     Stop MTE
@@ -166,9 +166,16 @@ Verify Recovery if Persist File is Damaged
     ...    AND    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
 Persistence file FIDs existence check
-    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
-    ...    Make sure below fids don’t exist in the dumped persistence file:
-    ...    6401 DDS_DSO_ID 6480 SPS_SP_RIC 6394 MC_LABEL
+    [Documentation]    Make sure below fids don’t exist in the persistence file:
+    ...    6401 DDS_DSO_ID
+    ...    6480 SPS_SP_RIC
+    ...    6394 MC_LABEL
+    ...    Make sure below fids do exist in the persistence file:
+    ...    1 PROD_PERM
+    ...    15 CURRENCY
+    ...    5257 CONTEXT_ID
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
     ${domain}=    Get Preferred Domain
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
     Wait For Persist File Update
@@ -176,12 +183,12 @@ Persistence file FIDs existence check
     ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
     ${pmatDumpfile}=    Dump Persist File To XML    --ric ${ric}    --domain ${pmatDomain}
     ${fidsSet}    get all fids from PersistXML    ${pmatDumpfile}
-    List Should Not Contain Value    ${fidsSet}    6401
-    List Should Not Contain Value    ${fidsSet}    6480
-    List Should Not Contain Value    ${fidsSet}    6394
-    List Should Contain Value    ${fidsSet}    1
-    List Should Contain Value    ${fidsSet}    15
-    List Should Contain Value    ${fidsSet}    5357
+    List Should Not Contain Value    ${fidsSet}    6401    Persist file should not contain DDS_DSO_ID FID 6401
+    List Should Not Contain Value    ${fidsSet}    6480    Persist file should not contain SPS_SP_RIC FID 6480
+    List Should Not Contain Value    ${fidsSet}    6394    Persist file should not contain MC_LABEL FID 6394
+    List Should Contain Value    ${fidsSet}    1    Persist file should contain PROD_PERM FID 1
+    List Should Contain Value    ${fidsSet}    15    Persist file should contain CURRENCY FID 15
+    List Should Contain Value    ${fidsSet}    5357    Persist file should contain CONTEXT_ID FID 5357
     [Teardown]    Case Teardown    ${pmatDumpfile}
 
 Verify ALL SICs are valid in Persistence file
