@@ -455,7 +455,6 @@ Verify FID update via FMS
     ${verifyFIDs}=    Create List    3
     ${verifyValues}=    Create List    ${fieldValueNew}
     Run Keyword And Continue On Failure    verify correction change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${verifyFIDs}    ${verifyValues}
-    ${fieldValueOrg}=    Set Field Value in EXL    ${EXLfullpath}    ${ric}    ${domain}    ${fieldName}    ${fieldValueOrg}
     [Teardown]    Run Keywords    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     ...    AND    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local.pcap
 
