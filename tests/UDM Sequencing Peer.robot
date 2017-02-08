@@ -37,11 +37,10 @@ Validate Item Sequence Numbering on Failover
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
     Verify MTE State In Specific Box    ${CHE_B_IP}    STANDBY
     Switch To TD Box    ${CHE_B_IP}
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
-    Get MTE Config File
-    set MTE config tag value    ${LOCAL_MTE_CONFIG_FILE}    500    type=\"ul\"    ${True}    BackgroundRebuild    FailoverPublishRate
-    put remote file    ${LOCAL_MTE_CONFIG_FILE}    ${orgCfgFile}
+    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${localCfgFile}=    Get MTE Config File
+    Set Value in MTE Cfg    ${localCfgFile}    FailoverPublishRate    ${500}    add    BackgroundRebuild
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Comment    Inject PCAP1 and get the RIC list of the injected PCAP1
     Reset Sequence Numbers    ${CHE_A_IP}    ${CHE_B_IP}
     Switch To TD Box    ${CHE_A_IP}
@@ -67,7 +66,7 @@ Validate Item Sequence Numbering on Failover
     \    @{seqNumListC1}=    verify message sequence numbers in capture    ${localCapture}    ${ric}    ${domain}    failover
     \    ${lenSeqNumListC1}=    Get Length    ${seqNumListC1}
     \    Should Be True    ${lenSeqNumListC1} >= 2    The number of C1 messages (include response and update) received should be >= 2
-    [Teardown]    Validate Item Sequence Number Logic on Failover Teardown    ${orgCfgFile}    ${backupCfgFile}
+    [Teardown]    Validate Item Sequence Number Logic on Failover Teardown    ${remoteCfgFile}    ${backupCfgFile}
 
 *** Keywords ***
 Validate Item Sequence Number Logic on Failover Teardown
@@ -75,7 +74,5 @@ Validate Item Sequence Number Logic on Failover Teardown
     [Documentation]    Restore MTE config file on standby machine
     Switch To TD Box    ${CHE_B_IP}
     restore remote cfg file    ${orgCfgFile}    ${backupCfgFile}
-    Remove Files    ${LOCAL_MTE_CONFIG_FILE}
-    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
     Stop MTE
     Start MTE

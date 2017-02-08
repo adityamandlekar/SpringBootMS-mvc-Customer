@@ -58,7 +58,7 @@ Verify Sync Pulse Missed QoS
 Verify QoS Failover for Critical Process Failure
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1762 to verify QOS CritProcessFail will increase and failover happen if critical process is shutdown.
     ...
-    ...    1. Stop each of the following critical processes: \ GRS, FMSClient, NetConStat, EventScheduler, StatsGen, GapStatGen, LatencyHandler, StatRicGen.
+    ...    1. Stop each of the critical processes.
     ...    2. Verify LIVE MTE failover after first Critical Process failure.
     ...    3. Verify CritProcessFail count indicates the number of critical processes that are down.
     ...    4. Restart the components.
@@ -68,32 +68,21 @@ Verify QoS Failover for Critical Process Failure
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
     Switch To TD Box    ${CHE_A_IP}
     Verify MTE State In Specific Box    ${CHE_A_IP}    LIVE
-    Stop Process    GRS
-    Comment    Use 'continue on failure' so the processes are restarted even if a validation fails.
-    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
-    Run Keyword and Continue on Failure    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
-    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    ${master_ip}    1    0
-    Stop Process    FMSClient
-    Stop Process    NetConStat
-    Stop Process    EventScheduler
-    Stop Process    StatsGen
-    Stop Process    GapStatGen
-    Stop Process    LatencyHandler
-    Stop Process    DudtGen
-    Stop Process    StatRicGen
-    Run Keyword and Continue on Failure    Verify QoS for CritProcessFail    A    ${master_ip}    9    0
-    Comment    Restart process in same order that SMF starts them
-    Run Keyword and Continue on Failure    Start Process    StatRicGen
-    Run Keyword and Continue on Failure    Start Process    DudtGen
-    Run Keyword and Continue on Failure    Start Process    LatencyHandler
-    Run Keyword and Continue on Failure    Start Process    GapStatGen
-    Run Keyword and Continue on Failure    Start Process    StatsGen
-    Run Keyword and Continue on Failure    Start Process    EventScheduler
-    Run Keyword and Continue on Failure    Start Process    NetConStat
-    Run Keyword and Continue on Failure    Start Process    FMSClient
-    Run Keyword and Continue on Failure    Start Process    GRS
+    ${stopOrder}=    Create List    FMSClient    NetConStat    EventScheduler    StatsGen    GapStatGen
+    ...    LatencyHandler    DudtGen    StatRicGen
+    ${startOrder}=    Copy List    ${stopOrder}
+    Reverse List    ${stopOrder}
+    ${numDown}=    Set Variable    0
+    : FOR    ${proc}    IN    @{stopOrder}
+    \    Stop Process    ${proc}
+    \    ${numDown}=    Evaluate    ${numDown}+1
+    \    Comment    Verify failover occurs after first process is killed.
+    \    Run Keyword If    ${numDown} == 1    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
+    \    Run Keyword If    ${numDown} == 1    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
+    \    Verify QoS for CritProcessFail    A    ${master_ip}    ${numDown}    0
+    Restart Critical Processes    @{startOrder}
     Verify QoS for CritProcessFail    A    ${master_ip}    0    100
-    [Teardown]
+    [Teardown]    Run Keyword If Test Failed    Restart Critical Processes    @{startOrder}
 
 Verify QoS Failover for UDP Feed Line Down
     [Documentation]    Verify that the LIVE MTE fails over to the STANDBY MTE when the UDP feed line is down longer than HiActTimeLimit/LoActTimeLimit configuration value.
@@ -104,7 +93,7 @@ Verify QoS Failover for UDP Feed Line Down
     ...    Verify that failover occurred and MTE B is now LIVE.
     Pass Execution If    '${PROTOCOL}' !='UDP'    Venue Protocol ${PROTOCOL} is not UDP
     Switch To TD Box    ${CHE_A_IP}
-    ${timeoutLimit}=    Set Variable    200
+    ${timeoutLimit}=    Set Variable    ${200}
     ${orgCfgFile}    ${backupCfgFile}    Set UDP Feed Line Timeout    ${timeoutLimit}
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -126,7 +115,7 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     ...    Verify that failover occurred and MTE B is now LIVE.
     Pass Execution If    '${PROTOCOL}' == 'UDP'    Venue Protocol ${PROTOCOL} is not TCP or FTP
     Switch To TD Box    ${CHE_A_IP}
-    ${TimeOut}=    Set Variable    200
+    ${TimeOut}=    Set Variable    ${200}
     ${orgCfgFile}    ${backupCfgFile}    Set TCP-FTP Feed Line Timeout    ${TimeOut}
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
@@ -140,7 +129,7 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     [Teardown]    Run Keyword If    '${PROTOCOL}' != 'UDP'    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
 
 Watchdog QOS - Egress NIC
-    [Documentation]    Test the QOS value and MTE failover when disabling MTE Egress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1966
+    [Documentation]    Test the QOS value and MTE failover when disabling the Egress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1966
     ...
     ...    1. Disable DDNA NIC on LIVE MTE box. \ Verify QOS EgressNIC:50, Total QOS:0. \ Verify STANDBY MTE goes LIVE. \ Enable DDNA NIC. \ Verify QOS returns to 100.\ Standby is receiving Sync Pulses.\ and MTE recovers to STANDBY.
     ...
@@ -213,7 +202,7 @@ Watchdog QOS - Egress NIC
     [Teardown]    QoS Case Teardown
 
 Watchdog QOS - Ingress NIC
-    [Documentation]    Test the QOS value when disable SFH Ingress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1968
+    [Documentation]    Test the QOS value when disable the Ingress NIC http://www.iajira.amers.ime.reuters.com/browse/CATF-1968
     ...
     ...    Test Steps
     ...    1. Verify IngressNIC:100, Total QOS:100
@@ -311,6 +300,12 @@ QoS Case Teardown
     : FOR    ${interfaceName}    IN    @{disabledInterfaceName}
     \    Enable Disable Interface    ${interfaceName}    Enable
 
+Restart Critical Processes
+    [Arguments]    @{startOrder}
+    [Documentation]    Restart the specified list of processes, in the order llisted.
+    : FOR    ${proc}    IN    @{startOrder}
+    \    Run Keyword and Continue on Failure    Start Process    ${proc}
+
 Restore Feed Line Timeout
     [Arguments]    ${orgCfgFile}    ${backupCfgFile}
     [Documentation]    Restore the orginal feed line timeout values (HiActTimeLimit and LoActTimeLimit, HiActTimeOut and LoActTimeOut) in MTE config file and restart dependent components.
@@ -321,24 +316,30 @@ Restore Feed Line Timeout
 Set UDP Feed Line Timeout
     [Arguments]    ${timeoutLimit}
     [Documentation]    Set the feed line timeout values (HiActTimeLimit and LoActTimeLimit) in MTE config file and restart dependent components.
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    set value in MTE cfg    ${orgCfgFile}    HiActTimeLimit    ${timeoutLimit}
-    set value in MTE cfg    ${orgCfgFile}    LoActTimeLimit    ${timeoutLimit}
+    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${localCfgFile}=    Get MTE Config File
+    set value in MTE cfg    ${localCfgFile}    HiActTimeLimit    ${timeoutLimit}
+    set value in MTE cfg    ${localCfgFile}    LoActTimeLimit    ${timeoutLimit}
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Stop SMF
     Start SMF
     Start MTE
-    [Return]    ${orgCfgFile}    ${backupCfgFile}
+    [Return]    ${remoteCfgFile}    ${backupCfgFile}
 
 Set TCP-FTP Feed Line Timeout
     [Arguments]    ${TimeOut}
     [Documentation]    Set the feed line timeout values (HiActTimeOut and LoActTimeOut) in MTE config file and restart dependent components.
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    set value in MTE cfg    ${orgCfgFile}    HiActTimeOut    ${TimeOut}
-    set value in MTE cfg    ${orgCfgFile}    LoActTimeOut    ${TimeOut}
+    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${localCfgFile}=    Get MTE Config File
+    set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${TimeOut}    fail    Inputs    *
+    ...    FHRealtimeLine
+    set value in MTE cfg    ${localCfgFile}    LoActTimeOut    ${TimeOut}    fail    Inputs    *
+    ...    FHRealtimeLine
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Stop SMF
     Start SMF
     Start MTE
-    [Return]    ${orgCfgFile}    ${backupCfgFile}
+    [Return]    ${remoteCfgFile}    ${backupCfgFile}
 
 Verify QoS for CritProcessFail
     [Arguments]    ${node}    ${master_ip}    ${CritProcessFailValue}    ${totalQoSValue}=${EMPTY}

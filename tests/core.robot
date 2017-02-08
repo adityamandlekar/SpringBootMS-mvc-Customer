@@ -41,17 +41,6 @@ Create Unique RIC Name
     ${ric}=    set variable    TEST${text}${dt[0]}${dt[1]}${dt[2]}${dt[3]}${dt[4]}${dt[5]}
     [Return]    ${ric}
 
-Delete GRS PCAP Files
-    [Arguments]    @{mach_ip_list}
-    [Documentation]    Delete the PCAP files created by GRS on each of the specified machines. \ If no machine is specified, delete GRS PCAP files on the current machine.
-    ${host}=    get current connection index
-    @{new_list}    Run Keyword If    len(${mach_ip_list}) == 0    Create List    ${host}
-    ...    ELSE    Create List    @{mach_ip_list}
-    : FOR    ${mach}    IN    @{new_list}
-    \    Run Keyword If    '${mach}' != '${host}'    Switch To TD Box    ${mach}
-    \    Delete Remote Files Matching Pattern    ${BASE_DIR}    *.pcap    ${True}
-    [Teardown]    Switch Connection    ${host}
-
 Delete Persist Files
     delete remote files matching pattern    ${VENUE_DIR}    PERSIST_${MTE}.DAT*    recurse=${True}
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
@@ -117,39 +106,6 @@ Extract ICF
     ...    --Domain ${domain}    --ExcludeNullFields true    --HandlerName ${MTE}    --OutputFile ${extractFile}    --Services ${serviceName}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
 
-Force Persist File Write
-    [Arguments]    ${serviceName}
-    [Documentation]    Force the MTE to write all updates to the Persist file.
-    ...    This is done by putting all feeds into end of feed time; the MTE writes the Persist file as part of end of feed time processing.
-    ...
-    ...    There is currently no Commander command to force a Persist file write. \ If one exists in the future, this KW should be updated to use it instead of end of feed time.
-    ...
-    ...    The returned EXL file lists should be used to call Restore EXL Changes at the end of the test.
-    ...
-    ...    Return:
-    ...    ${exlFiles} : list of exlFiles that were modified by this KW
-    ...    ${modifiedExlFiles} : list of the modified exlFiles
-    ${currDateTime}=    get date and time
-    ${exlFiles}    ${modifiedExlFiles}    Go Into End Feed Time    ${serviceName}
-    Wait SMF Log Message After Time    ${MTE}.*Persist cycle completed    ${currDateTime}    waittime=10    timeout=120
-    [Teardown]
-    [Return]    ${exlFiles}    ${modifiedExlFiles}
-
-Generate FH PCAP File Name
-    [Arguments]    ${service}    ${testCase}    @{keyValuePairs}
-    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
-    ...
-    ...    Generate the file name based on service name, test case and input key/value pairs
-    ...
-    ...    Example:
-    ...    MFDS-Testcase.pcap
-    ...    TDDS_BDDS-MyTestName-FH=TDDS01F.pcap
-    ...    TDDS_BDDS-TransientGap-FH=TDDS01F.pcap
-    ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}
-    ${pcapFileName} =    Catenate    SEPARATOR=    ${REMOTE_TMP_DIR}/    ${pcapFileName}    .pcap
-    ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
-    [Return]    ${pcapFileName}
-
 Generate PCAP File Name
     [Arguments]    ${service}    ${testCase}    ${playbackBindSide}=A    @{keyValuePairs}
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/RECON-19
@@ -158,8 +114,7 @@ Generate PCAP File Name
     ...
     ...    Example:
     ...    MFDS-Testcase-B.pcap
-    ...    TDDS_BDDS-MyTestName-FH=TDDS01F-A.pcap
-    ...    TDDS_BDDS-TransientGap-FH=TDDS01F-A.pcap
+    ...    TDDS_BDDS-TransientGap-domain=MARKET_PRICE-A.pcap
     ${pcapFileName}=    Catenate    SEPARATOR=-    ${service}    ${testCase}    @{keyValuePairs}    ${playbackBindSide}
     ${pcapFileName} =    Catenate    SEPARATOR=    ${PLAYBACK_PCAP_DIR}    ${pcapFileName}    .pcap
     ${pcapFileName} =    Replace String    ${pcapFileName}    ${space}    _
@@ -186,46 +141,18 @@ Get Configure Values
     [Return]    ${retArray}
 
 Get ConnectTimesIdentifier
-    [Arguments]    ${mteConfigFile}    ${fhName}=${FH}
-    [Documentation]    get the ConnectTimesIdentifier (feed times RIC) from venue config file.
-    ...    returns
-    ...    1. list with ConnectTimesIdentifier(s)
+    [Documentation]    Get the combined list of ConnectTimesIdentifier (feed times RIC) from all of the InputPortStatsBlock_* blocks.
     ...
-    ...    Note that there are currently 2 different config file formats - MFDS and HKFE. MFDS may be the "old" way so will check that format if the initial search attempt fails.
-    ...
-    ...    Config file examples:
-    ...
-    ...    HKFE:
-    ...    <Inputs>
-    ...    <Channels type="multistring">
-    ...    <Z>HKF02M</Z>
-    ...    </Channels>
-    ...    <HKF02M>
-    ...    <DictionaryFile>/ThomsonReuters/config/EDFFieldDictionary</DictionaryFile>
-    ...    <FHRealtimeLine>
-    ...    <ConnectTimesIdentifier>HKF%FD01</ConnectTimesIdentifier>
-    ...    <HighActivityTimesIdentifier>HKF%TRD01</HighActivityTimesIdentifier>
-    ...
-    ...
-    ...    MFDS:
-    ...    <!-- Input Channels -->
-    ...    <ConnectTimesRIC>MUT%FD01</ConnectTimesRIC>
-    ...    <HighActivityTimesRIC>MUT%TRD01</HighActivityTimesRIC>
-    ...    <Inputs>
-    ${len}    Get Length    ${fhName}
-    ${connectTimesIdentifier}=    Run Keyword If    ${len} > 0    get MTE config value    ${mteConfigFile}    Inputs    ${fhName}
-    ...    FHRealtimeLine    ConnectTimesIdentifier
-    ...    ELSE    set variable    None
-    Comment    Currently 'get MTE config value' will only return a string value. To align all return from 'Get ConnectTimesIdentifier' is a list, adding return value into a list
-    @{retList}=    Split String    ${connectTimesIdentifier}    ,
-    return from keyword if    '${connectTimesIdentifier}' != 'NOT FOUND' and '${connectTimesIdentifier}' != 'None'    ${retList}
-    ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    FHRealtimeLine    ConnectTimesIdentifier
-    @{retList}=    Remove Duplicates    ${connectTimesIdentifier}
-    return from keyword if    len(${retList}) > 0    ${retList}
-    ${connectTimesIdentifier}=    get MTE config list by path    ${mteConfigFile}    ConnectTimesRIC
-    @{retList}=    Remove Duplicates    ${connectTimesIdentifier}
-    return from keyword if    len(${retList}) > 0    ${retList}
-    FAIL    No ConnectTimesIdentifier found in venue config file: ${mteConfigFile}
+    ...    Returns a list of ConnectTimesIdentifier(s).
+    ${allConnectTimeIdentifiers}=    Create List
+    @{blocks}=    Get Stat Blocks For Category    ${MTE}    InputLineStats
+    : FOR    ${block}    IN    @{blocks}
+    \    ${connectTimesIdentifier}=    Get Stat Block Field    ${MTE}    ${block}    connectTimesIdentifier
+    \    @{retList}=    Split String    ${connectTimesIdentifier}    ,
+    \    Append To List    ${allConnectTimeIdentifiers}    @{retList}
+    ${allConnectTimeIdentifiers}=    Remove Duplicates    ${allConnectTimeIdentifiers}
+    Should Not Be Empty    ${allConnectTimeIdentifiers}    No ConnectTimesIdentifier found.
+    [Return]    ${allConnectTimeIdentifiers}
 
 Get Critical Process Config Info
     [Documentation]    Get the configuration information for the list of processes monitored by CritProcMon.
@@ -251,7 +178,7 @@ Get Domain Names
     [Documentation]    get the Domain names from venue config file.
     ...    returns a list of Domain names.
     ${serviceName}    Get FMS Service Name
-    ${domainList}    get MTE config list by path    ${mteConfigFile}    FMS    ${serviceName}    Domain    Z
+    ${domainList}    get MTE config list by path    ${mteConfigFile}    FMS    ${serviceName}    Domain
     [Return]    @{domainList}
 
 Get FID Values From Refresh Request
@@ -272,7 +199,7 @@ Get FIDFilter File
     ...    1. The file will be saved at Control PC and only removed at Suite Teardown
     ...    2. Suite Variable ${LOCAL_FIDFILTER_FILE} has created to store the fullpath of the config file at Control PC
     ${localFile}=    Get Variable Value    ${LOCAL_FIDFILTER_FILE}
-    Return From Keyword If    '${localFile}' != 'None'    ${localFile}
+    Return From Keyword If    r'${localFile}' != 'None'    ${localFile}
     ${fidfilterFile}=    Set Variable    FIDFilter.txt
     Remote File Should Exist    ${REMOTE_MTE_CONFIG_DIR}/${fidfilterFile}
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${fidfilterFile}
@@ -300,39 +227,18 @@ Get GMT Offset And Apply To Datetime
     [Return]    ${localDatetimeYear}    ${localDatetimeMonth}    ${localDatetimeDay}    ${localDatetimeHour}    ${localDatetimeMin}    ${localDatetimeSec}
 
 Get HighActivityTimesIdentifier
-    [Arguments]    ${mteConfigFile}
-    [Documentation]    get the HighActivityTimesIdentifier (trade times RIC) from venue config file.
-    ...    returns a list of HighActivityTimesIdentifier.
+    [Documentation]    Get the combined list of HighActivityTimesIdentifier (trade times RIC) from all of the InputPortStatsBlock_* blocks.
     ...
-    ...    Note that there are currently 2 different config file formats - MFDS and HKFE. MFDS may be the "old" way so will check that format if the initial search attempt fails.
-    ...
-    ...    Config file examples:
-    ...
-    ...    HKFE:
-    ...    <Inputs>
-    ...    <Channels type="multistring">
-    ...    <Z>HKF02M</Z>
-    ...    </Channels>
-    ...    <HKF02M>
-    ...    <DictionaryFile>/ThomsonReuters/config/EDFFieldDictionary</DictionaryFile>
-    ...    <FHRealtimeLine>
-    ...    <ConnectTimesIdentifier>HKF%FD01</ConnectTimesIdentifier>
-    ...    <HighActivityTimesIdentifier>HKF%TRD01</HighActivityTimesIdentifier>
-    ...
-    ...
-    ...    MFDS:
-    ...    <!-- Input Channels -->
-    ...    <ConnectTimesRIC>MUT%FD01</ConnectTimesRIC>
-    ...    <HighActivityTimesRIC>MUT%TRD01</HighActivityTimesRIC>
-    ...    <Inputs>
-    ${highActivityTimesIdentifier}=    get MTE config value    ${mteConfigFile}    Inputs    ${FH}    FHRealtimeLine    HighActivityTimesIdentifier
-    @{retList}=    Split String    ${highActivityTimesIdentifier}    ,
-    return from keyword if    '${highActivityTimesIdentifier}' != 'NOT FOUND'    @{retList}
-    ${highActivityTimesIdentifier}=    get MTE config value    ${mteConfigFile}    HighActivityTimesRIC
-    @{retList}=    Split String    ${highActivityTimesIdentifier}    ,
-    return from keyword if    '${highActivityTimesIdentifier}' != 'NOT FOUND'    @{retList}
-    FAIL    No HighActivityTimesIdentifier found in venue config file: ${mteConfigFile}
-    [Return]    @{retList}
+    ...    Returns a list of HighActivityTimesIdentifier(s).
+    ${allHighActivityTimesIdentifiers}=    Create List
+    @{blocks}=    Get Stat Blocks For Category    ${MTE}    InputLineStats
+    : FOR    ${block}    IN    @{blocks}
+    \    ${HighActivityTimesIdentifier}=    Get Stat Block Field    ${MTE}    ${block}    highactTimesIdentifier
+    \    @{retList}=    Split String    ${HighActivityTimesIdentifier}    ,
+    \    Append To List    ${allHighActivityTimesIdentifiers}    @{retList}
+    ${allHighActivityTimesIdentifiers}=    Remove Duplicates    ${allHighActivityTimesIdentifiers}
+    Should Not Be Empty    ${allHighActivityTimesIdentifiers}    No highactTimesIdentifier found.
+    [Return]    ${allHighActivityTimesIdentifiers}
 
 Get Label IDs
     [Documentation]    Get the list of labelIDs from MTE config file on current machine.
@@ -351,7 +257,7 @@ Get Mangling Config File
     ...    1. The file will be saved at Control PC and only removed at Suite Teardown
     ...    2. Suite Variable ${LOCAL_MANGLING_CONFIG_FILE} has created to store the fullpath of the config file at Control PC
     ${localFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
-    Return From Keyword If    '${localFile}' != 'None'    ${localFile}
+    Return From Keyword If    r'${localFile}' != 'None'    ${localFile}
     ${manglingFile}=    Set Variable    manglingConfiguration.xml
     Remote File Should Exist    ${REMOTE_MTE_CONFIG_DIR}/${manglingFile}
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${manglingFile}
@@ -360,10 +266,10 @@ Get Mangling Config File
     [Return]    ${localFile}
 
 Get MTE Config File
-    [Documentation]    Get the MTE config file (MTE.xml) from the remote machine and save it as a local file.
+    [Documentation]    Get the MTE config file from the remote machine and save it as a local file.
     ...    If we already have the local file, just return the file name without copying the remote file again.
     ${localFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
-    Return From Keyword If    '${localFile}' != 'None'    ${localFile}
+    Return From Keyword If    r'${localFile}' != 'None'    ${localFile}
     ${localFile}=    Set Variable    ${LOCAL_TMP_DIR}${/}${MTE_CONFIG}
     get remote file    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    ${localFile}
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${localFile}
@@ -469,8 +375,7 @@ Go Into End Feed Time
     ...    ${modifiedExlFiles} : list of the modified exlFiles
     ${secondsBeforeFeedEnd}=    set variable    120
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
-    ${mteConfigFile}=    Get MTE Config File
-    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier
     @{modifiedExlFiles}=    Create List
     @{exlFiles}=    Create List
     : FOR    ${connectTimesIdentifier}    IN    @{connectTimesIdentifierList}
@@ -551,14 +456,6 @@ Inject PCAP File on UDP
     \    Run Keyword    ${cmd}    tcpreplay-edit --enet-vlan=del --pps ${PLAYBACK_PPS} --intf1=${intfName} '${pcapFile}'
     [Teardown]    Switch Connection    ${host}
 
-Inject PCAP File on UDP at MTE Box
-    [Arguments]    ${intfName}    @{pcapFileList}
-    [Documentation]    Start injection of the specified PCAP files on UDP transport with PCapPlybk tool at MTE box
-    : FOR    ${pcapFile}    IN    @{pcapFileList}
-    \    remote file should exist    ${pcapFile}
-    \    ${stdout}    ${rc}    execute_command    PCapPlybk -ifile ${pcapFile} -intf ${intfName} -pps ${PLAYBACK_PPS}    return_rc=True
-    \    Should Be Equal As Integers    ${rc}    0
-
 Insert ICF
     [Arguments]    ${insertFile}    ${serviceName}
     ${returnCode}    ${returnedStdOut}    ${command}    Run FmsCmd    ${CHE_IP}    insert    --InputFile ${insertFile}
@@ -579,9 +476,8 @@ Load All State EXL Files
     ...    If Recon is changed to set ResendFM=0 in the MTE config file, this KW will no longer be needed, as Start MTE will need to load all the EXL files on startup, which will include the state EXL files.
     ${statRicDomain}=    Set Variable    MARKET_PRICE
     ${serviceName}=    get FMS service name
-    ${mteConfigFile}=    Get MTE Config File
-    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
-    @{highActivityIdentifierList}=    Get HighActivityTimesIdentifier    ${mteConfigFile}
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier
+    @{highActivityIdentifierList}=    Get HighActivityTimesIdentifier
     @{feedEXLFiles}=    Create List
     @{holidayEXLFiles}=    Create List
     @{tradeEXLFiles}=    Create List
@@ -664,6 +560,16 @@ MTE Machine Setup
     Run Keyword If    ${memUsage} > 90    Fail    Memory usage > 90%. This would make the system become instable during testing.
     [Return]    ${ret}
 
+MTE or FTE
+    [Documentation]    Determine if this venue has an MTE or FTE.
+    ...    Return either 'MTE' or 'FTE'.
+    ...    Fail if neither MTE nor FTE is found.
+    ${result}=    find processes by pattern    FTE -c ${MTE}
+    Return From Keyword If    len('${result}')    FTE
+    ${result}=    find processes by pattern    MTE -c ${MTE}
+    Return From Keyword If    len('${result}')    MTE
+    Fail    Neither FTE nor MTE process is running
+
 Persist File Should Exist
     ${res}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT    recurse=${True}
     Length Should Be    ${res}    1    PERSIST_${MTE}.DAT file not found (or multiple files found).
@@ -690,10 +596,10 @@ Rename Files
 
 Reset Sequence Numbers
     [Arguments]    @{mach_ip_list}
-    [Documentation]    Reset the FH, GRS, and MTE sequence numbers on each specified machine (default is current machine).
-    ...    Currently this is done by stopping and starting the components and deleting the GRS PCAP and MTE PERSIST files.
+    [Documentation]    Reset the FTE sequence numbers on each specified machine (default is current machine).
+    ...    Currently this is done by stopping and starting the component and deleting the PERSIST files.
     ...    If/when a hook is provided to reset the sequence numbers without restarting the component, it should be used.
-    ...    For peer testing, stop processes and delete files on all machines before restarting processes to avoid GRS peer recovery of sequence numbers.
+    ...    For peer testing, stop processes and delete files on all machines before restarting processes to avoid peer recovery of sequence numbers.
     ...
     ...    This KW also waits for any publishing due to the MTE restart/reorg to complete.
     ...
@@ -706,16 +612,11 @@ Reset Sequence Numbers
     : FOR    ${mach}    IN    @{new_list}
     \    Run Keyword If    '${mach}' != '${host}'    Switch To TD Box    ${mach}
     \    Stop MTE
-    \    Stop Process    GRS
-    \    Stop Process    FHController
-    \    Delete GRS PCAP Files
     \    Delete Persist Files
     Comment    Then, restart everything
     : FOR    ${mach}    IN    @{new_list}
     \    Run Keyword If    '${mach}' != '${host}'    Switch To TD Box    ${mach}
     \    ${currDateTime}    get date and time
-    \    Start Process    GRS
-    \    Start Process    FHController
     \    Start MTE
     \    Wait SMF Log Message After Time    Finished Startup, Begin Regular Execution    ${currDateTime}
     \    Comment    We don't capture the output file, but this waits for any publishing to complete
@@ -835,9 +736,8 @@ Set 24x7 Feed And Trade Time And No Holidays
     ...    Blank out all holidays.
     ${statRicDomain}=    Set Variable    MARKET_PRICE
     ${serviceName}=    get FMS service name
-    ${mteConfigFile}=    Get MTE Config File
-    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier    ${mteConfigFile}    ${EMPTY}
-    @{highActivityIdentifierList}=    Get HighActivityTimesIdentifier    ${mteConfigFile}
+    @{connectTimesIdentifierList}=    Get ConnectTimesIdentifier
+    @{highActivityIdentifierList}=    Get HighActivityTimesIdentifier
     @{holidayEXLFiles}=    Create List
     ${start}=    Set Variable    00:00:00
     ${end}=    Set Variable    23:59:59
@@ -879,7 +779,7 @@ Set Common Suite Variables
     ...    MTE_CONFIG - MTE config file name
     ...    REMOTE_MTE_CONFIG_DIR - path to directory containing the MTE config file on Thunderdome box.
     Set Suite Variable    ${CHE_IP}    ${ip}
-    ${MTE_CONFIG}=    convert to lowercase    ${MTE}.xml
+    ${MTE_CONFIG}=    convert to lowercase    ${MTE}.json
     Set Suite Variable    ${MTE_CONFIG}
     ${fileList}=    search remote files    ${VENUE_DIR}    ${MTE_CONFIG}    recurse=${True}
     Length Should Be    ${fileList}    1    ${MTE_CONFIG} file not found (or multiple files found).
@@ -1005,13 +905,13 @@ Start MTE
     ...    Then load the state EXL files (that were modified by suite setup to set 24x7 feed and trade time).
     ...
     ...    If Recon is changed to set ResendFM=0 in the MTE config file, instead of loading just the state EXL files, this will need to load all of the EXL files (if they have not already been loaded). \ With ResendFM=1, we need to wait for FMS reorg to finish, and then load the state EXL files to override the ones loaded from the FMS server.
-    ${result}=    find processes by pattern    MTE -c ${MTE}
+    ${result}=    find processes by pattern    [FM]TE -c ${MTE}
     ${len}=    Get Length    ${result}
     Run keyword if    ${len} != 0    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
     Run keyword if    ${len} != 0    Load All State EXL Files
     Return from keyword if    ${len} != 0
     run commander    process    start ${MTE}
-    wait for process to exist    MTE -c ${MTE}
+    wait for process to exist    [FM]TE -c ${MTE}
     wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
     Wait For FMS Reorg
     Load All State EXL Files
@@ -1031,7 +931,7 @@ Stop Capture MTE Output
 
 Stop MTE
     run commander    process    stop ${MTE}
-    wait for process to not exist    MTE -c ${MTE}
+    wait for process to not exist    [FM]TE -c ${MTE}
 
 Stop Process
     [Arguments]    ${process}
@@ -1090,11 +990,11 @@ Suite Teardown
     [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
     close all connections
     ${localCfgFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    Run Keyword If    r'${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
     ${localCfgFile}=    Get Variable Value    ${LOCAL_MANGLING_CONFIG_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    Run Keyword If    r'${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
     ${localCfgFile}=    Get Variable Value    ${LOCAL_FIDFILTER_FILE}
-    Run Keyword If    '${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
+    Run Keyword If    r'${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
 
 Switch To TD Box
     [Arguments]    ${ip}
@@ -1155,6 +1055,31 @@ Verify Item Not Persisted
     ${pmatDumpfile}=    Dump Persist File To XML    @{pmatOptargs}
     verify_item_not_in_persist_dump_file    ${pmatDumpfile}    ${ric}    ${sic}
     Remove Files    ${pmatDumpfile}
+
+Verify Peers Match
+    [Arguments]    ${remoteCapture}    ${deleteRemoteCapture}=${True}
+    [Documentation]    For each RIC in the remote capture file, verify the FID values match between A and B instances.
+    ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
+    ${master_ip}    get master box ip    ${ip_list}
+    ${domain}=    Get Preferred Domain
+    Switch To TD Box    ${CHE_A_IP}
+    ${ricList}=    Get RIC List From Remote PCAP    ${remoteCapture}    ${domain}
+    ${remoteRicFile}=    Set Variable    ${REMOTE_TMP_DIR}/ricList.txt
+    Create Remote File Content    ${remoteRicFile}    ${ricList}
+    Comment    Make sure A is LIVE before running Dataview on A.
+    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
+    verify MTE state    LIVE
+    ${A_FIDs}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
+    Run Keyword If    ${deleteRemoteCapture}==${True}    Delete Remote Files    ${remoteCapture}
+    Delete Remote Files    ${remoteRicFile}
+    Comment    Make B LIVE before running Dataview on B.
+    Switch To TD Box    ${CHE_B_IP}
+    Create Remote File Content    ${remoteRicFile}    ${ricList}
+    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
+    verify MTE state    LIVE
+    ${B_FIDs}=    Get FID Values From Refresh Request    ${remoteRicFile}    ${domain}
+    Dictionary of Dictionaries Should Be Equal    ${A_FIDs}    ${B_FIDs}
+    Delete Remote Files    ${remoteRicFile}
 
 Wait For FMS Reorg
     [Arguments]    ${waittime}=5    ${timeout}=600

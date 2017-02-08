@@ -218,8 +218,8 @@ def generate_persistence_backup(keepDays):
         stdout, stderr, rc = _exec_command(cmd)
     
         if rc !=0 or stderr !='':
-            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))                                                                                                                          
-                                                                                                                         
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+    
 def verify_persistence_cleanup(keepDays):
     """ verify if cleanup action has carried out properly after EndOfDay time
         
@@ -240,4 +240,3 @@ def verify_persistence_cleanup(keepDays):
     originalNoOfBackupFile = 1 + int(keepDays) + 1
     if not ((originalNoOfBackupFile - len(listOfPersistBackupFiles)) == 1):
         raise AssertionError('*ERROR* Expected no. of backup file remain after cleanup (%d), but (%d) has found' %(originalNoOfBackupFile-1,len(listOfPersistBackupFiles)))
- 

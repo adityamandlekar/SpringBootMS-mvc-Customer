@@ -57,7 +57,7 @@ def get_outputAddress_and_port_for_mte(labelIDs):
         ipAndPortList = []
         for labelID in labelIDs:
             ipAndPort = []
-            statblockNameCheck = "multicast-" + labelID
+            statblockNameCheck = "multicast-" + str(labelID)
             for statblockName in statblockNames:
                 if (statblockName == statblockNameCheck):
                     ipAndPort = get_stat_block_field(MTE, statblockName, field + 'OutputAddress').strip().split(':')
@@ -94,20 +94,6 @@ def get_stat_block_field(writerName, blockName, fieldName, allowNotFound=False):
             return "Not Found"
         else:
             raise AssertionError('*ERROR* No value found for %s, %s, %s.  Received the following:%s' %(writerName, blockName, fieldName, stdout))
-
-def get_statBlockList_for_fh_output():
-    """get all the stat block name for FH output
-
-    Argument NIL
-    Returns list of stat block name
-
-    Examples:
-    | get statBlockList for fh output | 
-     """
-    
-    statBlockList = get_stat_blocks_for_category(FH, 'OutputStats')
-
-    return statBlockList    
 
 def get_statBlockList_for_mte_output():
     """get all the stat block name for MTE output

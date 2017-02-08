@@ -35,7 +35,6 @@ def count_messages_in_capture(pcapfile, domain):
     try:    
         outputxmlfilelist = get_xml_from_pcap(pcapfile, filterstring, outputfileprefix)
     except AssertionError:
-        print 'DEBUG no messages found'
         return 0
 
     parentName  = 'Message'
@@ -260,10 +259,10 @@ def validate_messages_against_DVT_rules(pcapfile,rulefile):
             if foundErrorHearderLine == 1:
                 errors.append(line)
 
-    if len(errors) != 0:
-        for str in errors:
-            print '*ERROR* DVT Violation: %s' %str
-        raise AssertionError('*ERROR* Found DVT violation')
+    if len(errors) > 20:
+        raise AssertionError('*ERROR* Found %d DVT violation(s), here are the first 10 and last 10 lines:\n%s\n...\n%s' %(len(errors), '\n'.join(errors[:10]), '\n'.join(errors[-10:])))
+    elif len(errors) != 0:
+        raise AssertionError('*ERROR* Found %d DVT violation(s):\n%s' %(len(errors), '\n'.join(errors)))
     os.remove(outputfile)
 
 def verify_all_response_message_num(pcapfile,ricname,domain):
@@ -1292,7 +1291,7 @@ def _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, FID, newDataTyp
         #check if dataType is same as expected value
         if (newDataType != None):          
             if (dataTypeValueList[0].upper() != newDataType.upper()):            
-                print '*ERROR* FID (%s) Data Type in message (%s) is not equal to (%s)' %(FID, dataTypeValueList[0], newDataType)
+                print 'FID (%s) Data Type in message (%s) is not equal to (%s)' %(FID, dataTypeValueList[0], newDataType)
                 return False
 
         #check if FID value is same as expected values (support range of numbers or muliple values split by ',')
@@ -1310,7 +1309,7 @@ def _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, FID, newDataTyp
 
                 if not isFailToConvertInt:
                     if (actIntVal < lowerLimit or actIntVal > upperLimit):
-                        print '*ERROR* FID (%s) value in message (%s) is not within the range of integer values (%s, %s)' %(FID, actIntVal, lowerLimit, upperLimit)
+                        print 'FID (%s) value in message (%s) is not within the range of integer values (%s, %s)' %(FID, actIntVal, lowerLimit, upperLimit)
                         return False
                     return True
 
@@ -1329,10 +1328,10 @@ def _verify_fid_dataType_value_in_dict(fidsDictTypeAndValueList, FID, newDataTyp
                 convertedValueList.append(splitRefValue)
 
             if (not dataTypeValueList[1].upper() in convertedValueList):
-                print '*ERROR* FID (%s) value in message (%s) is not belong to one of the expected valuse in the list (%s)' %(FID, dataTypeValueList[1], convertedValueList)
+                print 'FID (%s) value in message (%s) is not in expected values list (%s)' %(FID, dataTypeValueList[1], convertedValueList)
                 return False
     else:
-        print '*ERROR* Missing FID (%s) in message '%FID
+        print 'Missing FID (%s) in message '%FID
         return False
     return True
 
@@ -1373,12 +1372,15 @@ def _verify_FID_value_in_dict(fidsAndValues,FID,newFIDValue):
         newFIDValue     : Expected value for the given FID no.
         return : Nil         
     """
-    refValue = newFIDValue
-    if (newFIDValue.isdigit() == False):
+    if isinstance(newFIDValue, (int, float, long)):
+        refValue = str(newFIDValue)
+    elif (isinstance(newFIDValue, str) and newFIDValue.isdigit() == False):
         refValue = ""
         for character in newFIDValue:
             refValue = refValue + (character.encode("hex")).upper()
         print '*INFO* FID value is string. Convert FID value from (%s) to Hex (%s)'%(newFIDValue,refValue)
+    else:
+        refValue = newFIDValue
                 
     if (fidsAndValues.has_key(FID)):                        
         if (fidsAndValues[FID] != refValue):
@@ -1706,7 +1708,7 @@ def wait_for_capture_to_complete(instanceName,statBlockList,field,waittime=5,tim
     """wait for capture finish by checking the stat block information
 
     Argument 
-    instanceName : either instance of MTE of FH e.g. MFDS1M or MFDS1F
+    instanceName : name of the instance to check e.g. MFDS1M or MFDS1F
     statBlockList : [list] of stat block name that want to monitor during capture
     field : field name that want to monitor during capture e.g. outputMessageCount
     waittime : how long we wait for each cycle during checking (second)
@@ -1755,21 +1757,6 @@ def wait_for_capture_to_complete(instanceName,statBlockList,field,waittime=5,tim
     
     #Timeout                    
     raise AssertionError('*ERROR* Timeout %ds : Playback has not ended yet for some channel (suggest to adjust timeout)' %(timeout))
-
-def wait_for_fh_capture_to_complete(waittime=5,timeout=30):
-    """wait for FH capture finish by checking the stat block information
-
-    Argument 
-    waittime : how long we wait for each cycle during checking (second)
-    timeout : how long we monitor before we timeout (second)
-
-    Returns NIL.
-
-    Examples:
-    | wait for fh capture to complete | 2 | 300 |
-     """
-    statBlockList = statblock.get_statBlockList_for_fh_output()
-    wait_for_capture_to_complete(FH,statBlockList,'numberMessagesSent',waittime,timeout)
 
 def wait_for_mte_capture_to_complete(waittime=5,timeout=30):
     """wait for MTE capture finish by checking the stat block information

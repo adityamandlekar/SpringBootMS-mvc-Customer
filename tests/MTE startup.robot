@@ -19,13 +19,11 @@ Full Reorg on Startup
 
 Partial REORG on Startup
     [Documentation]    Verify Partial REORG behaviour of MTE http://www.iajira.amers.ime.reuters.com/browse/CATF-1755
-    ${service}    Get FMS Service Name
-    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${service}
+    Wait For Persist File Update
     Stop MTE
     Start MTE
     verify FMS partial reorg
-    [Teardown]    Run Keywords    Restore EXL Changes    ${service}    ${feedEXLFiles}
-    ...    AND    Case Teardown    @{modifiedFeedEXLFiles}
+    [Teardown]
 
 *** Keywords ***
 verify FMS full reorg

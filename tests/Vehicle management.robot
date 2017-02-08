@@ -199,7 +199,7 @@ Verify Reconcile of Cache
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1848
     ...    To verify whether a new RIC can be added and a old RIC can be dropped via reconcile
     ${mteConfigFile}=    Get MTE Config File
-    ${SendRefreshForFullReorg}    Get MTE Config Value    ${mteConfigFile}    SendRefreshForFullReorg
+    ${SendRefreshForFullReorg}    Get MTE Config Value    ${mteConfigFile}    FMS    SendRefreshForFullReorg
     Should Be True    ${SendRefreshForFullReorg} != '1'    SendRefreshForFullReorg should be disabled
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
@@ -297,9 +297,10 @@ Verify Deletion Delay
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${StartOfDayTime}    ${backupCfgFile}    ${orgCfgFile}    Get Start Time
+    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${StartOfDayTime}    Get Start Time
     ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
-    ${Updateflag}    ${StartOfDayGMTUpdate}    Set Start Time    ${orgCfgFile}    ${StartOfDayGMT}
+    ${Updateflag}    ${StartOfDayGMTUpdate}    Set Start Time    ${remoteCfgFile}    ${StartOfDayGMT}
     ${MTETimeOffset}=    Get MTE Machine Time Offset
     Drop ric    ${ric}    ${domain}    ${serviceName}
     Comment    Stopping EventScheduler elimintates extra processing that is done at each start of day and many FMSClient:SocketException messages. We are only interested in the deletion delay change.    This will be restarted during case teardown.
@@ -311,7 +312,7 @@ Verify Deletion Delay
     \    Should Be True    ${ricFields['NON_PUBLISHABLE_REASONS'].find('InDeletionDelay')} != -1
     \    Rollover MTE Start Date    ${StartOfDayGMTUpdate}
     Verify RIC Not In MTE Cache    ${ric}    ${domain}
-    [Teardown]    Tear Down Verify Deletion Delay    ${Updateflag}    ${backupCfgFile}    ${orgCfgFile}    ${MTETimeOffset}
+    [Teardown]    Tear Down Verify Deletion Delay    ${Updateflag}    ${backupCfgFile}    ${remoteCfgFile}    ${MTETimeOffset}
 
 Verify Drop and Undrop from FMSCmd
     [Documentation]    Verify Drop/Undrop form FMSCmd, 1) Verify MTE is running.
@@ -400,9 +401,9 @@ Verify both RIC and SIC rename handled correctly
     ${RIC_After_Rename}    ${SIC_After_Rename}    create_RIC_SIC_rename_file    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${srcFilefullPath}    ${LocalEXLfullpath}
     Get FIDFilter File
     ${constituent_list}=    Get Constituents From FidFilter    ${result[0]['CONTEXT_ID']}
-    Start Capture MTE Output
     Set RIC in EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC_Before_Rename}    ${domain}    ${RIC_After_Rename}
     Set Symbol In EXL    ${LocalEXLfullpath}    ${LocalEXLfullpath}    ${RIC_After_Rename}    ${domain}    ${SIC_After_Rename}
+    Start Capture MTE Output
     Comment    Both SIC and RIC rename in SRC file
     Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    --SRCFile ${srcFilefullPath}
     Wait For FMS Reorg
@@ -427,11 +428,9 @@ Verify both RIC and SIC rename handled correctly
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
     Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${RIC_After_Rename}    ${domain}
-    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
     Verify Item Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
     Verify Item Not Persisted    ${RIC_After_Rename}    ${SIC_After_Rename}    ${domain}
-    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
-    ...    AND    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
+    [Teardown]    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 Verify FID update via FMS
     [Documentation]    Verify FID value of a fid name is updated by FMS
@@ -573,20 +572,21 @@ Undrop ric
 
 Get Start Time
     [Documentation]    Get startOfday time from MTE config file
-    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    ${mteConfigFile}=    Get MTE Config File
-    ${StartOfDayTime}=    get MTE config value    ${mteConfigFile}    StartOfDayTime
-    [Return]    ${StartOfDayTime}    ${backupCfgFile}    ${orgCfgFile}
+    ${localCfgFile}=    Get MTE Config File
+    ${StartOfDayTime}=    get MTE config value    ${localCfgFile}    StartOfDayTime
+    [Return]    ${StartOfDayTime}
 
 Set Start Time
-    [Arguments]    ${orgCfgFile}    ${StartOfDayGMT}
+    [Arguments]    ${remoteCfgFile}    ${StartOfDayGMT}
     [Documentation]    Set StartofDay Time == 00:01 and Updateflag == 1 if when the startoftimeGMT == 00:00 from MTE config otherwise Updateflag == 0
     ...
     ...    Updateflag is used to label if the MTE config is updated in order to decide to need to restore remote config file.
     Return From Keyword if    '${StartOfDayGMT}' != '00:00'    0    ${StartOfDayGMT}
     ${StartOfDayGMTUpdate}    set variable    00:01
     ${Updateflag}    set variable    1
-    set value in MTE cfg    ${orgCfgFile}    StartOfDayTime    ${StartOfDayGMTUpdate}
+    ${localCfgFile}=    Get MTE Config File
+    set value in MTE cfg    ${localCfgFile}    StartOfDayTime    ${StartOfDayGMTUpdate}
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Stop MTE
     Start MTE
     [Return]    ${Updateflag}    ${StartOfDayGMTUpdate}
