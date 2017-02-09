@@ -54,10 +54,12 @@ def get_QOS_value(node, QOSName, che_ip):
             return actualQOSValue
     raise AssertionError('*ERROR* Cannot find the specific QOS Name %s' %QOSName)
 
-def get_SyncPulseMissed(master_ip):
+def get_SyncPulseMissed(master_ip, waittime=5, timeout=30):
     """ get sync pulse missing count through SCWCli
 
         Argument : master_ip - IP of the master SCW box
+                   waittime - specifies the time to wait between checks, in seconds.
+                   timeout - specifies the maximum time to wait, in seconds.
                          
         Return : a list with sync pulse missing count for both instance A instance B i.e. [A-instance-missing-count, B-instance-missing-count]
         
@@ -65,19 +67,26 @@ def get_SyncPulseMissed(master_ip):
         |get SyncPulseMissed |${CHE_A_IP} | 
     """
             
-    syncPulseMissed = []
     cmd = '-ip %s -port %s -user %s -pass %s -entity %s'%(master_ip,SCWCLI_PORT,USERNAME,PASSWORD,MTE)
     ret = _run_local_SCWCLI(cmd).splitlines()
-    for line in ret:
-        if (line.find('SyncPulseMissed') != -1):
-            contents = line.split('|')
-            if (len(contents) >= 5):
-                syncPulseMissed.append(int(contents[3].strip()))
-                syncPulseMissed.append(int(contents[4].strip()))
-                return syncPulseMissed
-            else:
-                raise AssertionError('*ERROR* (%s) not match with expected format |SyncPulseMissed   |ID | A sync pulse | B sync pulse | | |'%(line))
-
+    timeout = int(timeout)
+    waittime = int(waittime)
+    maxtime = time.time() + float(timeout)
+    while time.time() <= maxtime:
+        ret = _run_local_SCWCLI(cmd).splitlines()
+        for line in ret:
+            if (line.find('SyncPulseMissed') != -1):
+                contents = line.split('|')
+                if (len(contents) >= 5):
+                    # make sure the fields are not empty,
+                    # it may take a few seconds after restart for sync pulse info to be available
+                    Acount = contents[3].strip()
+                    Bcount = contents[4].strip()
+                    if Acount.isdigit() and Bcount.isdigit():
+                        return [int(Acount), int(Bcount)]
+                else:
+                    raise AssertionError('*ERROR* (%s) not match with expected format |SyncPulseMissed   |ID | A sync pulse | B sync pulse | | |'%(line))
+        time.sleep(waittime)
     raise AssertionError('*ERROR* No SyncPulseMissed Information found')
 
 def switch_MTE_LIVE_STANDBY_status(node,status,che_ip):
