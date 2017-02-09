@@ -547,7 +547,7 @@ Drop a RIC Case Teardown
     \    ${orgpath}    Get From Dictionary    ${backupEXLs}    ${backuppath}
     \    Copy File    ${backuppath}    ${orgpath}
     : FOR    ${exlfile}    IN    @{processedEXLs}
-    \    Load Single EXL File    ${exlfile}    ${serviceName}    ${CHE_IP}
+    \    Run FmsCmd    ${CHE_IP}    UnDrop    --Services ${serviceName}    --InputFile "${exlfile}"    --HandlerName ${MTE}
     Case Teardown    @{tmpfiles}
 
 Create Fid Value Pair
