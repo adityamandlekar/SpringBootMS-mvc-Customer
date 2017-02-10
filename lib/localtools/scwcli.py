@@ -68,7 +68,6 @@ def get_SyncPulseMissed(master_ip, waittime=5, timeout=30):
     """
             
     cmd = '-ip %s -port %s -user %s -pass %s -entity %s'%(master_ip,SCWCLI_PORT,USERNAME,PASSWORD,MTE)
-    ret = _run_local_SCWCLI(cmd).splitlines()
     timeout = int(timeout)
     waittime = int(waittime)
     maxtime = time.time() + float(timeout)
