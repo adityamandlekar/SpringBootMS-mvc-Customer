@@ -68,12 +68,12 @@ Start MTE for OTFC
     ...    This make original KW 'Start MTE' fail to use in our case.
     ...
     ...    This KW doing similar thing as 'Start MTE' but it would check other important health status and skip checking IsLineHandlerStartupComplete
-    ${result}=    find processes by pattern    MTE -c ${MTE}
+    ${result}=    find processes by pattern    [FM]TE -c ${MTE}
     ${len}=    Get Length    ${result}
     Run keyword if    ${len} != 0    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
     Return from keyword if    ${len} != 0
     run commander    process    start ${MTE}
-    wait for process to exist    MTE -c ${MTE}
+    wait for process to exist    [FM]TE -c ${MTE}
     wait for HealthCheck    ${MTE}    DownstreamRecoveryConfigurationIsvalid
     wait for HealthCheck    ${MTE}    FMSConfigurationIsValid
     wait for HealthCheck    ${MTE}    IsConnectedToFMSClient
@@ -96,13 +96,15 @@ OTFC Setup
     ...    1. Enable OTFC
     ...    2. Disable ResendFM so that No Ric will be created from FMS Server provided EXL files.
     ...    (This actual empty the cache of MTE so that making OTFC easier)
-    ${orgFile}    ${backupFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${remoteCfgFile}    ${backupFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     Set Suite Variable    ${mtecfgfile_backup}    ${backupFile}
-    Set Suite Variable    ${mtecfgfile_org}    ${orgFile}
+    Set Suite Variable    ${mtecfgfile_org}    ${remoteCfgFile}
     Stop MTE
     Comment    Remove all items from MTE cache and stop MTE getting Ric information from FMS server (if exist)
     Delete Persist Files
-    set value in MTE cfg    ${mtecfgfile_org}    ResendFM    0
+    ${localCfgFile}=    Get MTE Config File
+    set value in MTE cfg    ${localCfgFile}    ResendFM    ${0}    add    FMS
     Comment    Enable OTFC for MTE
-    set value in MTE cfg    ${mtecfgfile_org}    EnableOTFC    true
+    set value in MTE cfg    ${localCfgFile}    EnableOTFC    true    add
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Start MTE for OTFC

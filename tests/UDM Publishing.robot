@@ -26,7 +26,7 @@ Empty Payload Detection with Blank FIDFilter
 Empty Payload Detection with Blank TCONF
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1987
     ...
-    ...    Restart MTE with empty tconf file and modified ${MTE}.xml config file. Verify no update messages with playback data. Restart MTE with restored tconf and config file
+    ...    Restart MTE with empty tconf file and modified MTE config file. Verify no update messages with playback data. Restart MTE with restored tconf and config file
     ${fileList}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${remoteConfig}    set variable    ${fileList[0]}
     ${remoteConfigBackup}    set variable    ${fileList[1]}
@@ -34,7 +34,10 @@ Empty Payload Detection with Blank TCONF
     ${rmtCfgPath}=    Replace String    ${rmtCfgPath}    \\    /
     ${remoteEmptyTconf}    set variable    ${rmtCfgPath}/emptyTconf.tconf
     Create Remote File Content    ${remoteEmptyTconf}    //empty file
-    Set Value in MTE cfg    ${remoteConfig}    TransformConfig    emptyTconf.tconf
+    ${localCfgFile}=    Get MTE Config File
+    Set Value in MTE cfg    ${localCfgFile}    TransformConfig    emptyTconf.tconf    fail    Transforms    *
+    ...    TransformContainer
+    Put Remote File    ${localCfgFile}    ${remoteConfig}
     Reset Sequence Numbers
     ${service}    Get FMS Service Name
     ${pcapFileName} =    Generate PCAP File Name    ${service}    General RIC Update
@@ -406,12 +409,13 @@ Get DDS RIC
     ${mteLeadingHyphens}=    Get Substring    ${fiveHyphens}    0    ${mteLeadingOffSet}
     ${mteTrailingHyphens}=    Get Substring    ${fiveHyphens}    0    ${mteTrailingOffSet}
     ${hyphenPaddedMte}=    Catenate    SEPARATOR=    ${mteLeadingHyphens}    ${MTE}    ${mteTrailingHyphens}
-    ${labelLength}=    Get Length    ${labelID}
+    ${labelIDstring}=    Convert To String    ${labelID}
+    ${labelLength}=    Get Length    ${labelIDstring}
     Should Be True    ${labelLength} > 0 and ${labelLength} <= 4    Length of label ID should be greater than 0 and less than or equal to 4
     ${fourZeros}=    Set Variable    0000
     ${labelOffSet}=    Evaluate    4 - ${labelLength}
     ${zeroPaddedLabelID}=    Get Substring    ${fourZeros}    0    ${labelOffSet}
-    ${zeroPaddedLabelID}=    Catenate    SEPARATOR=    ${zeroPaddedLabelID}    ${labelID}
+    ${zeroPaddedLabelID}=    Catenate    SEPARATOR=    ${zeroPaddedLabelID}    ${labelIDstring}
     ${publishedDDSRic}=    Set Variable    .[${hyphenPaddedMte}${instance}${zeroPaddedLabelID}
     [Return]    ${publishedDDSRic}
 

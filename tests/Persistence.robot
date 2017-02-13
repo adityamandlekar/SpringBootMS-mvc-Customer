@@ -57,7 +57,7 @@ Persistence File Loading
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
 Verify Cache Contains Only Configured Context IDs
-    [Documentation]    Verify that all context ids in the MTE cache are listed in <Transforms> section \ in the MTE xml configuration file.
+    [Documentation]    Verify that all context ids in the MTE cache are listed in <Transforms> section \ in the MTE configuration file.
     Stop MTE
     Delete Persist Files
     Start MTE
@@ -112,18 +112,16 @@ Verify New Item Added to Persist File via FMS
     ${newRic}    Create Unique RIC Name    newric
     add ric to exl file    ${EXLfullpath}    ${localRicEXLFile}    ${newRic}    ${None}    ${domain}
     Load Single EXL File    ${localRicEXLFile}    ${serviceName}    ${CHE_IP}
-    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    Wait For Persist File Update
     Verify Item Persisted    ${newRic}    ${EMPTY}    ${domain}
-    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
-    ...    AND    Case Teardown    ${localRicEXLFile}    @{modifiedFeedEXLFiles}
+    [Teardown]    Case Teardown    ${localRicEXLFile}
 
 Verify Realtime MARKET_PRICE Persistence
     [Documentation]    Verify that realtime MARKET_PRICE messages are written to the Persist file at end of feed time.
     ${serviceName}=    Get FMS Service Name
     Comment    Get content of Persist file before injection
-    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    Wait For Persist File Update
     ${persistDump}=    Dump Persist File to Text
-    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
     Reset Sequence Numbers
     ${injectFile}=    Generate PCAP File Name    ${serviceName}    General RIC Update
     ${remoteCapture}=    Inject PCAP File and Wait For Output    ${injectFile}
@@ -135,7 +133,7 @@ Verify Realtime MARKET_PRICE Persistence
     ${re}=    Remove String Using Regexp    ${re}    !\\[|!!
     @{allFidValuesBefore}=    Grep Local File    ${persistDump}    ${re}
     Comment    Get FID values for published RICs from Persist file after injection
-    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    Wait For Persist File Update
     ${persistDump}=    Dump Persist File to Text
     @{allFidValuesAfter}=    Grep Local File    ${persistDump}    ${re}
     : FOR    ${ric}    IN    @{ricList}
@@ -145,29 +143,53 @@ Verify Realtime MARKET_PRICE Persistence
     \    Sort List    ${before}
     \    Sort List    ${after}
     \    Run Keyword And Expect Error    *are different*    Lists Should Be Equal    ${before}    ${after}
-    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
-    ...    AND    Case Teardown    @{modifiedFeedEXLFiles}
+    [Teardown]    Case Teardown    ${persistDump}
+
+Verify Recovery if Persist File is Damaged
+    [Documentation]    Verify the backup persist file (PERSIST_XXX.DAT.LOADED) is loaded if the normal persist file (PERSIST_XXX.DAT) is invalid by comparing two dump cathe files. Restore PERSIST_XXX.DAT and PERSIST_XXX.DAT.LOADED files in the MTE finally.
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2147
+    [Setup]
+    Delete Persist Backup
+    ${serviceName}=    Get FMS Service Name
+    Wait For Persist File Update
+    ${fileList_DAT}=    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    PERSIST_${MTE}.DAT
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_before.csv
+    Stop MTE
+    Create Remote File Content    ${REMOTE_MTE_CONFIG_DIR}/PERSIST_${MTE}.DAT    //file 12345
+    Start MTE
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_after.csv
+    ${removeFMSREORGTIMESTAMP}    Create Dictionary    .*CHE%FMSREORGTIMESTAMP.*=${EMPTY}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_before.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_after.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
+    [Teardown]    Run Keywords    Restore Persistence File    ${fileList_DAT}
+    ...    AND    case teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
 Persistence file FIDs existence check
-    [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
-    ...    Make sure below fids don’t exist in the dumped persistence file:
-    ...    6401 DDS_DSO_ID 6480 SPS_SP_RIC 6394 MC_LABEL
+    [Documentation]    Make sure below fids don’t exist in the persistence file:
+    ...    6401 DDS_DSO_ID
+    ...    6480 SPS_SP_RIC
+    ...    6394 MC_LABEL
+    ...    Make sure below fids do exist in the persistence file:
+    ...    1 PROD_PERM
+    ...    15 CURRENCY
+    ...    5257 CONTEXT_ID
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
     ${domain}=    Get Preferred Domain
-    ${serviceName}=    Get FMS Service Name
     ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    Wait For Persist File Update
     ${cacheDomainName}=    Remove String    ${domain}    _
     ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
     ${pmatDumpfile}=    Dump Persist File To XML    --ric ${ric}    --domain ${pmatDomain}
     ${fidsSet}    get all fids from PersistXML    ${pmatDumpfile}
-    List Should Not Contain Value    ${fidsSet}    6401
-    List Should Not Contain Value    ${fidsSet}    6480
-    List Should Not Contain Value    ${fidsSet}    6394
-    List Should Contain Value    ${fidsSet}    1
-    List Should Contain Value    ${fidsSet}    15
-    List Should Contain Value    ${fidsSet}    5357
-    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
-    ...    AND    Case Teardown    ${pmatDumpfile}    @{modifiedFeedEXLFiles}
+    List Should Not Contain Value    ${fidsSet}    6401    Persist file should not contain DDS_DSO_ID FID 6401
+    List Should Not Contain Value    ${fidsSet}    6480    Persist file should not contain SPS_SP_RIC FID 6480
+    List Should Not Contain Value    ${fidsSet}    6394    Persist file should not contain MC_LABEL FID 6394
+    List Should Contain Value    ${fidsSet}    1    Persist file should contain PROD_PERM FID 1
+    List Should Contain Value    ${fidsSet}    15    Persist file should contain CURRENCY FID 15
+    List Should Contain Value    ${fidsSet}    5357    Persist file should contain CONTEXT_ID FID 5357
+    [Teardown]    Case Teardown    ${pmatDumpfile}
 
 Verify ALL SICs are valid in Persistence file
     [Documentation]    Verify All SICs are available in Persistence file compare to EXL file by CONTEXTID in MTE config file.
@@ -175,7 +197,7 @@ Verify ALL SICs are valid in Persistence file
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2277
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${feedEXLFiles}    ${modifiedFeedEXLFiles}    Force Persist File Write    ${serviceName}
+    Wait For Persist File Update
     ${cacheDomainName}=    Remove String    ${domain}    _
     ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}
     ${pmatDumpfile}=    Dump Persist File To Text    --domain ${pmatDomain}    --fids 5357
@@ -184,8 +206,28 @@ Verify ALL SICs are valid in Persistence file
     ${sicDomain_EXL}    get_SicDomain_in_AllExl_by_ContextID    ${serviceName}    ${contextIds}
     ${sicDomain_persist}    get_SicDomain_in_DumpPersistFile_Txt    ${pmatDumpfile}
     verify_all_sics_in_persistFile    ${sicDomain_persist}    ${sicDomain_EXL}
-    [Teardown]    Run Keywords    Restore EXL Changes    ${serviceName}    ${feedEXLFiles}
-    ...    AND    Case Teardown    ${pmatDumpfile}
+    [Teardown]    Case Teardown    ${pmatDumpfile}
+
+Process failure while loading Persist file
+    [Documentation]    The backup persist file should not be overwritten by a blank persist file during MTE startup. This is to protect against the situation where we have consecutive MTE process failures overwriting the persist file because it hasn't had time to load the original from disk and write it out again after loading before the process fails again.
+    ...
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2216
+    ${serviceName}=    Get FMS Service Name
+    Wait For Persist File Update
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_before.csv
+    Stop MTE
+    @{foundFiles}=    search remote files    ${VENUE_DIR}    PERSIST_${MTE}.DAT.LOADED    ${TRUE}
+    Run Keyword if    len(${foundFiles})    Delete Remote Files    @{foundFiles}
+    Run Commander    process    start ${MTE}
+    Wait for Persist Load to Start
+    Kill Processes    MTE    FTE
+    Start MTE
+    Get Sorted Cache Dump    ${LOCAL_TMP_DIR}/cache_after.csv
+    ${removeFMSREORGTIMESTAMP}    Create Dictionary    .*CHE%FMSREORGTIMESTAMP.*=${EMPTY}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_before.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    Modify Lines Matching Pattern    ${LOCAL_TMP_DIR}/cache_after.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ${removeFMSREORGTIMESTAMP}    ${False}
+    verify csv files match    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
+    [Teardown]    Case Teardown    ${LOCAL_TMP_DIR}/cache_before.csv    ${LOCAL_TMP_DIR}/cache_after.csv
 
 *** Keywords ***
 Delete Persist Backup
@@ -196,29 +238,38 @@ Delete Persist Backup
 Get Backup Keep Days
     [Documentation]    Return the tag value of <NumberOfDailyBackupsToKeep> in MTE config file
     ${mteConfigFile}=    Get MTE Config File
-    ${keepDays}=    get MTE config value    ${mteConfigFile}    DDS    NumberOfDailyBackupsToKeep
+    ${keepDays}=    get MTE config value    ${mteConfigFile}    Persistence    DDS    NumberOfDailyBackupsToKeep
     [Teardown]
     [Return]    ${keepDays}
 
 Go Into EndOfDay time
     [Documentation]    Force MTE go through EndOfDay event
     ${connectTimeRicDomain}=    set variable    MARKET_PRICE
-    ${mteConfigFile}=    Get MTE Config File
-    @{dstRic}=    get MTE config list by path    ${mteConfigFile}    CHE-TimeZoneForConfigTimes
+    ${localCfgFile}=    Get MTE Config File
+    @{dstRic}=    get MTE config list by path    ${localCfgFile}    CHE-TimeZoneForConfigTimes
     @{tdBoxDateTime}=    get date and time
     @{localDateTime}    Get GMT Offset And Apply To Datetime    @{dstRic}[0]    @{tdBoxDateTime}[0]    @{tdBoxDateTime}[1]    @{tdBoxDateTime}[2]    @{tdBoxDateTime}[3]
     ...    @{tdBoxDateTime}[4]    @{tdBoxDateTime}[5]
     ${offsetInSecond}=    set variable    300
     ${endOfDay}    add time to date    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]    ${offsetInSecond} second    result_format=%H:%M
-    ${orgFile}    ${backupFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
-    set value in MTE cfg    ${orgFile}    EndOfDayTime    ${endOfDay}
+    ${remoteCfgFile}    ${backupFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    set value in MTE cfg    ${localCfgFile}    EndOfDayTime    ${endOfDay}    fail
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     stop MTE
     start MTE
     sleep    ${offsetInSecond}
-    restore remote cfg file    ${orgFile}    ${backupFile}
+    restore remote cfg file    ${remoteCfgFile}    ${backupFile}
     stop MTE
     start MTE
     Comment    Revert changes in local venue config file
     Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
-    ${configFileLocal}=    Get MTE Config File
+    Get MTE Config File
     [Teardown]
+
+Restore Persistence File
+    [Arguments]    ${fileList_DAT}
+    [Documentation]    Restore Persistence File, Restart MTE in order to update Persist File in the cache.
+    Stop MTE
+    restore_remote_cfg_file    ${fileList_DAT[0]}    ${fileList_DAT[1]}
+    Start MTE
+    Wait For Persist File Update

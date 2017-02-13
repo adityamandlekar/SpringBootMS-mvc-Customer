@@ -22,11 +22,12 @@ Verify CritProcMon Message Logging
     ...    - Verify the above 2 messages are published within the timeout period
     ...    - Verify the timestamp on the message (b) is >= Timestamp A + configured process uptime.
     @{critProcConfigInfoList}=    Get Critical Process Config Info
-    @{mteInfo}=    Create List    MTE    0    20
+    ${MTEorFTE}=    MTE or FTE
+    @{mteInfo}=    Create List    ${MTEorFTE}    0    20
     Append To List    ${critProcConfigInfoList}    ${mteInfo}
     : FOR    ${critProcConfigInfo}    IN    @{critProcConfigInfoList}
     \    ${configMonProcess}=    set variable    ${critProcConfigInfo[0]}
-    \    ${configMonProcess}=    set variable if    '${configMonProcess}' == 'MTE'    mte -c ${MTE}    ${configMonProcess}
+    \    ${configMonProcess}=    set variable if    '${configMonProcess}' == '$MTEorFTE}'    ${MTEorFTE} -c ${MTE}    ${configMonProcess}
     \    ${configProcUpTime}=    Convert To Integer    ${critProcConfigInfo[2]}
     \    ${waitLogTimeout}=    Evaluate    ${configProcUpTime} + 10
     \    ${currDateTime}=    Get Date and Time
