@@ -1374,7 +1374,7 @@ def _verify_FID_value_in_dict(fidsAndValues,FID,newFIDValue):
     """
     if isinstance(newFIDValue, (int, float, long)):
         refValue = str(newFIDValue)
-    elif (isinstance(newFIDValue, str) and newFIDValue.isdigit() == False):
+    elif (isinstance(newFIDValue, basestring) and newFIDValue.isdigit() == False):
         refValue = ""
         for character in newFIDValue:
             refValue = refValue + (character.encode("hex")).upper()

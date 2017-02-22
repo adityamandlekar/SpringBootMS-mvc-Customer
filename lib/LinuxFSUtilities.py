@@ -250,6 +250,7 @@ class LinuxFSUtilities():
                 # file has changed, now wait for writing to complete
                 fileStartSize = splitInfo[4]
                 while time.time() <= maxtime:
+                    time.sleep(waittime)
                     fileInfo = _ls(filename,'--full-time')
                     splitInfo = fileInfo.split(' ')
                     fileCurrSize = splitInfo[4]
@@ -257,7 +258,6 @@ class LinuxFSUtilities():
                     if fileCurrSize == fileStartSize:
                         return
                     fileStartSize = fileCurrSize
-                    time.sleep(waittime)
                 raise AssertionError('*ERROR* File %s writing did not complete before timeout %ds' %(filename,timeout))
             time.sleep(waittime)
         raise AssertionError('*ERROR* File %s did not change before timeout %ds' %(filename,timeout))
