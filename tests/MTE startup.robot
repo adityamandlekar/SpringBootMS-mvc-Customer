@@ -48,8 +48,8 @@ Verify MTE behavior when FMS Connectivity is not available
     Modify Lines Matching Pattern    ${dstdumpfile_before}    ${dstdumpfile_before}    ${removeFMSREORGTIMESTAMP}    ${False}
     Modify Lines Matching Pattern    ${dstdumpfile_after}    ${dstdumpfile_after}    ${removeFMSREORGTIMESTAMP}    ${False}
     verify csv files match    ${dstdumpfile_before}    ${dstdumpfile_after}    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
-    [Teardown]    Run Keywords    reset ResendFM    ${remoteCfgFile}    ${backupCfgFile}
-    ...    AND    Unblock Dataflow
+    [Teardown]    Unblock Dataflow
+    ...    AND    Run Keywords    reset ResendFM    ${remoteCfgFile}    ${backupCfgFile}
     ...    AND    case teardown    ${dstdumpfile_before}    ${dstdumpfile_after}
 
 *** Keywords ***
@@ -58,3 +58,9 @@ verify FMS full reorg
 
 verify FMS partial reorg
     wait for StatBlock    ${MTE}    FMS    lastReorgType    1
+
+reset ResendFM
+    [Arguments]    ${remoteCfgFile}    ${backupFile}
+    Stop MTE
+    restore remote cfg file    ${remoteCfgFile}    ${backupFile}
+    Start MTE
