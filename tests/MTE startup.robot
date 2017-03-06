@@ -25,9 +25,42 @@ Partial REORG on Startup
     verify FMS partial reorg
     [Teardown]
 
+Verify MTE behavior when FMS Connectivity is not available
+    [Documentation]    Verify MTE behavior when FMS Connectivity is not available
+    ...
+    ...    http://jirag.int.thomsonreuters.com/browse/CATF-2198
+    ${serviceName}=    Get FMS Service Name
+    Wait For Persist File Update
+    Stop MTE
+    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    ${localCfgFile}    Get MTE Config File
+    set value in MTE cfg    ${localCfgFile}    ResendFM    ${1}    add    FMS
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
+    Start MTE
+    ${dstdumpfile_before}=    set variable    ${LOCAL_TMP_DIR}/cachedump_before.csv
+    Get Sorted Cache Dump    ${dstdumpfile_before}
+    block dataflow by port protocol    INPUT    ${PROTOCOL}    ${FMSCMD_PORT}
+    Stop MTE
+    Start MTE
+    ${dstdumpfile_after}=    set variable    ${LOCAL_TMP_DIR}/cachedump_after.csv
+    Get Sorted Cache Dump    ${dstdumpfile_after}
+    ${removeFMSREORGTIMESTAMP}    Create Dictionary    .*CHE%FMSREORGTIMESTAMP.*=${EMPTY}
+    Modify Lines Matching Pattern    ${dstdumpfile_before}    ${dstdumpfile_before}    ${removeFMSREORGTIMESTAMP}    ${False}
+    Modify Lines Matching Pattern    ${dstdumpfile_after}    ${dstdumpfile_after}    ${removeFMSREORGTIMESTAMP}    ${False}
+    verify csv files match    ${dstdumpfile_before}    ${dstdumpfile_after}    ignorefids=ITEM_ID,CURR_SEQ_NUM,TIME_CREATED,LAST_ACTIVITY,LAST_UPDATED,THREAD_ID,ITEM_FAMILY
+    [Teardown]    Unblock Dataflow
+    ...    AND    Run Keywords    reset ResendFM    ${remoteCfgFile}    ${backupCfgFile}
+    ...    AND    case teardown    ${dstdumpfile_before}    ${dstdumpfile_after}
+
 *** Keywords ***
 verify FMS full reorg
     statBlock should be equal    ${MTE}    FMS    lastReorgType    2    lastReorgType should be 2 (Full Reorg)
 
 verify FMS partial reorg
     wait for StatBlock    ${MTE}    FMS    lastReorgType    1
+
+reset ResendFM
+    [Arguments]    ${remoteCfgFile}    ${backupFile}
+    Stop MTE
+    restore remote cfg file    ${remoteCfgFile}    ${backupFile}
+    Start MTE
