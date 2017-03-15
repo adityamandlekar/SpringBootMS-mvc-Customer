@@ -26,7 +26,7 @@ Validate Item Sequence Numbering on Startup
     Run FmsCmd    ${CHE_IP}    Insert    --Services ${service}    --InputFile "${icf_file}"
     Stop Capture MTE Output
     get remote file    ${remoteCapture}    ${localCapture}
-    ${seqNumListC1}=    Verify Message Sequence Numbers In Capture    ${localCapture}    ${ric}    ${domain}    failover
+    ${seqNumListC1}=    Verify Message Sequence Numbers In Capture    ${localCapture}    ${ric}    ${domain}    startup
     Should Be True    len(${seqNumListC1}) >= 2    The number of C1 messages (include response and update) received should be >= 2
     [Teardown]    case teardown    ${localCapture}    ${icf_file}
 
