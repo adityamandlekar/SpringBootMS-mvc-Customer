@@ -1019,67 +1019,6 @@ def verify_unsolicited_response_NOT_in_capture (pcapfile, ric, domain, constitue
     
         os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log") 
 
-def verify_unsolicited_response_sequence_numbers_in_capture(pcapfile, ric, domain, mte_state):
-    """ verify if unsolicited response message sequence numbers for RIC are in increasing order in MTE output pcap message
-        if mte_state is startup, the sequence number should start from 0, then 4, 5, ... n, n+1...
-        if mte_state is failover, the sequence number could start from 1, then 4, 5, ... n, n+1...
-        if mte_state is rollover, the sequence number could start from 3, then 4, 5, ... n, n+1...
-        
-        Argument : pcapfile : MTE output capture pcap file fullpath
-                   ric : published RIC
-                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
-                   mte_state: possible value startup, rollover, failover.
-        return : last item from response message sequence number list
-    """           
-
-    if (os.path.exists(pcapfile) == False):
-        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
-    
-    filterDomain = 'TRWF_TRDM_DMT_'+ domain
-    outputfileprefix = 'test_seqnum_resp_'
-    filterstring = 'AND(All_msgBase_msgKey_domainType = &quot;%s&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_RESPONSE&quot;, Response_responseTypeNum= &quot;TRWF_TRDM_RPT_UNSOLICITED_RESP&quot;)))'%(filterDomain, ric)
-    outputxmlfile = get_xml_from_pcap(pcapfile, filterstring, outputfileprefix)                
-    
-    parentName  = 'Message'
-    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
-    seqNumList = []
-    for messageNode in messages:
-        seqNum = xmlutilities.xml_parse_get_field_for_messageNode(messageNode, 'ItemSeqNum')
-        seqNumList.append(seqNum)
-                
-    if len(seqNumList)== 0:
-        raise AssertionError('*ERROR* response message for %s, %s does not exist.'%(ric,domain)) 
-                
-    for i in xrange(len(seqNumList) - 1):
-        if int(seqNumList[i]) > int(seqNumList[i+1]):
-            print seqNumList
-            raise AssertionError('*ERROR* response message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be after SeqNo[%d] %s.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
-            
-                 
-    for exist_file in outputxmlfile:
-        os.remove(exist_file)
-    os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")       
-    
-    if mte_state == 'startup':
-        if seqNumList[0] != '0':
-            raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 0' %seqNumList[0])  
-        if '1' in seqNumList or '2' in seqNumList or '3' in seqNumList:
-            print seqNumList
-            raise AssertionError('*ERROR* sequence number 1, 2, 3 should not be in the message sequence number List')
-     
-    if mte_state == 'failover':  
-        if seqNumList[0] != '1':
-            raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
-        if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
-            print seqNumList
-            raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list')
-          
-    if mte_state == 'rollover':
-        if seqNumList[0] != '3':
-            raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 3' %seqNumList[0])  
-        
-    return seqNumList[-1]
-
 def verify_updated_message_exist_in_capture(pcapfile, domain):
     """ Verify updates for the domain exist in the pcap file
         Argument : pcapfile : MTE output pcap file fullpath
@@ -1101,63 +1040,6 @@ def verify_updated_message_exist_in_capture(pcapfile, domain):
         os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")   
     else:
        raise AssertionError('*ERROR* No update messages found for domain %s in %s' %(domain, pcapfile))
-
-def verify_updated_message_sequence_numbers_in_capture(pcapfile, ric, domain, mte_state):
-    """ verify if updated message sequence number for RIC are in increasing order in MTE output pcap message
-        if mte_state is startup, the possible sequence number could start from 4 then 5, ... n, n+1...
-        if mte_state is failover, the possible sequence number could start from 1, then 4, 5, ... n, n+1...
-        if mte_state is rollover, the sequence number could start from 3, then 4, 5, ... n, n+1...
-        Argument : pcapfile : MTE output capture pcap file fullpath
-                   ric : published RIC
-                   domain : domain for published RIC in format like MARKET_PRICE, MARKET_BY_ORDER, MARKET_BY_PRICE, MARKET_MAKER etc.
-                   mte_state: possible value startup, rollover, failover.
-        return : First item from update message sequence number list
-    """       
-    if (os.path.exists(pcapfile) == False):
-        raise AssertionError('*ERROR* %s is not found at local control PC' %pcapfile)                       
-    
-    filterDomain = 'TRWF_TRDM_DMT_'+ domain
-    outputfileprefix = 'test_seqnum_update_'
-    
-    filterstring = 'AND(All_msgBase_msgClass = &quot;TRWF_MSG_MC_UPDATE&quot;, AND(All_msgBase_msgKey_name = &quot;%s&quot;, All_msgBase_msgKey_domainType = &quot;%s&quot;))'%(ric, filterDomain)
-    outputxmlfile = get_xml_from_pcap(pcapfile,filterstring,outputfileprefix)
-    parentName  = 'Message'
-    messages = xmlutilities.xml_parse_get_all_elements_by_name(outputxmlfile[0],parentName)
-    
-    seqNumList = []
-    for messageNode in messages:
-        seqNum = xmlutilities.xml_parse_get_field_for_messageNode(messageNode, 'ItemSeqNum')
-        seqNumList.append(seqNum)
-   
-    if len(seqNumList) == 0:
-        raise AssertionError('*ERROR* updated message for %s, %s does not exist.'%(ric,domain)) 
-      
-    for i in xrange(len(seqNumList) - 1):
-        if int(seqNumList[i]) > int(seqNumList[i + 1]):
-            print seqNumList
-            raise AssertionError('*ERROR* update message for %s, %s are not in correct sequence order. SeqNo[%d] %s should be after SeqNo[%d] %s.'%(ric, domain, i, seqNumList[i], i+1, seqNumList[i+1])) 
-        
-    for exist_file in outputxmlfile:
-        os.remove(exist_file)
-    os.remove(os.path.dirname(outputxmlfile[0]) + "/" + outputfileprefix + "xmlfromDAS.log")  
-    
-    if mte_state == 'startup':
-        if seqNumList[0] <= '3':
-            print seqNumList
-            raise AssertionError('*ERROR* sequence number 0, 1, 2, 3 should not be in the message sequence number list')
-     
-    if mte_state == 'failover':  
-        if seqNumList[0] != '1':
-            raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 1' %seqNumList[0])  
-        if '0' in seqNumList or '2' in seqNumList or '3' in seqNumList:
-            print seqNumList
-            raise AssertionError('*ERROR* sequence number 0, 2, 3 should not be in the message sequence number list')
-          
-    if mte_state == 'rollover':
-        if seqNumList[0] != '3':
-            raise AssertionError('*ERROR* sequence number start from %s, instead it should start from 3' %seqNumList[0])            
-        
-    return seqNumList[0]
 
 def _and_DAS_filter_string(filterString1, filterStirng2):
     """  Combine two filterStrings with AND keyword

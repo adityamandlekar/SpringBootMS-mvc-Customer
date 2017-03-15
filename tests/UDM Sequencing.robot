@@ -26,12 +26,8 @@ Validate Item Sequence Numbering on Startup
     Run FmsCmd    ${CHE_IP}    Insert    --Services ${service}    --InputFile "${icf_file}"
     Stop Capture MTE Output
     get remote file    ${remoteCapture}    ${localCapture}
-    ${last_response_seq}    verify unsolicited response sequence numbers in capture    ${localCapture}    ${publishKey}    ${domain}    startup
-    ${first_update_seq}    verify updated message sequence numbers in capture    ${localCapture}    ${publishKey}    ${domain}    startup
-    ${last_response_seq_plus_one} =    Evaluate    ${last_response_seq}+ 1
-    ${first_updatemsg_seq} =    Convert To Integer    ${first_update_seq}
-    Run Keyword If    ${last_response_seq}==0    Should Be Equal    ${first_updatemsg_seq}    4
-    ...    ELSE    Should Be Equal    ${last_response_seq_plus_one}    ${first_updatemsg_seq}
+    ${seqNumListC1}=    Verify Message Sequence Numbers In Capture    ${localCapture}    ${ric}    ${domain}    startup
+    Should Be True    len(${seqNumListC1}) >= 2    The number of C1 messages (include response and update) received should be >= 2
     [Teardown]    case teardown    ${localCapture}    ${icf_file}
 
 *** Keywords ***
