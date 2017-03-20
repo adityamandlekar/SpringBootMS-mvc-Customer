@@ -131,8 +131,9 @@ def verify_QOS_equal_to_specific_value(node, QOSName, QOSValue, che_ip):
         | verify QOS equal to specific value | A | IngressNIC | 100 | ${CHE_IP} |
     """
     actualQOSValue = get_QOS_value(node, QOSName, che_ip)
-    if (int(actualQOSValue) != int(QOSValue)):
-        raise AssertionError('*ERROR* QOS %s on %s is %s, is not equal to %s' %(QOSName,node,actualQOSValue,QOSValue))
+    if (actualQOSValue == QOSValue) or (int(actualQOSValue) == int(QOSValue)):
+        return
+    raise AssertionError('*ERROR* QOS %s on %s is [%s], is not equal to [%s]' %(QOSName,node,actualQOSValue,QOSValue))
 
 def verify_sync_pulse_missed_Qos(syncPulseBefore,syncPulseAfter):
     """ To verify if sync pulse missing count has increased after port has been blocked
@@ -173,9 +174,9 @@ def wait_for_QOS(node, QOSName, QOSValue, che_ip, waittime=10, timeout=100):
     while time.time() <= maxtime:
         time.sleep(waittime)
         actualQOSValue = get_QOS_value(node, QOSName, che_ip)
-        if (int(actualQOSValue) == int(QOSValue)):
+        if (actualQOSValue == QOSValue) or (int(actualQOSValue) == int(QOSValue)):
             return
-    raise AssertionError('*ERROR* QOS %s on %s is %s did not change to %s before timeout %ds' %(QOSName,node,actualQOSValue,QOSValue,timeout))
+    raise AssertionError('*ERROR* QOS %s on %s is [%s] did not change to [%s] before timeout %ds' %(QOSName,node,actualQOSValue,QOSValue,timeout))
 
 def _run_local_SCWCLI(cmd):
     """ Run SCWCli at Slave
