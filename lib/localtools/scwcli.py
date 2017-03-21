@@ -131,8 +131,10 @@ def verify_QOS_equal_to_specific_value(node, QOSName, QOSValue, che_ip):
         | verify QOS equal to specific value | A | IngressNIC | 100 | ${CHE_IP} |
     """
     actualQOSValue = get_QOS_value(node, QOSName, che_ip)
-    if (actualQOSValue == QOSValue) or (int(actualQOSValue) == int(QOSValue)):
+    if actualQOSValue == QOSValue:
         return
+    elif actualQOSValue.isdigit() and QOSValue.isdigit() and (int(actualQOSValue) == int(QOSValue)):
+            return
     raise AssertionError('*ERROR* QOS %s on %s is [%s], is not equal to [%s]' %(QOSName,node,actualQOSValue,QOSValue))
 
 def verify_sync_pulse_missed_Qos(syncPulseBefore,syncPulseAfter):
