@@ -90,3 +90,21 @@ def parse_local_fidfilter_file():
 def get_contextID_from_FidFilter():
     fidfilter = parse_local_fidfilter_file()
     return fidfilter.keys()
+	
+	
+def Verify_if_SHELL_MDAT_present():
+    ret=parse_local_fidfilter_file()
+    fidNotPresent = 1
+    for k in ret.keys():
+    #print ret.get(k).get('0')
+        if '6632' in list(ret.get(k).get('0')):
+            return "The FID is present"
+            fidNotPresent =0
+            break
+        elif '6632' in ret.get(k).get('1'):
+            raise AssertionError('*ERROR* "The FID is present but the constituent is not 0"')
+            fidNotPresent =0
+            break
+
+    if fidNotPresent == 1:
+        raise AssertionError('*ERROR* "The FID is not present"') 

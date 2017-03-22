@@ -64,3 +64,33 @@ Verify FilterString FID usage
     ${filterAsList}=    Split String    ${withoutPunctuation}
     : FOR    ${fid}    IN    @{unexpectedFIDs}
     \    Should Not Contain    ${filterAsList}    ${fid}
+
+Verify all Context IDs are in FIDFilter
+    [Documentation]    Verify all context IDs in cache exist in FIDFilter.txt
+    ...
+    ...    ... http://www.iajira.amers.ime.reuters.com/browse/CATF-2629
+    ${fidFile}    Get FIDFilter File
+    ${dstdumpfile}=    set variable    ${LOCAL_TMP_DIR}/cachedump.csv
+    Get Sorted Cache Dump    ${dstdumpfile}
+    ${cacheContextIDs}    get context ids from cachedump    ${dstdumpfile}
+    ${FIDFiltercontextIDs}    Get ContextID From FidFilter
+    List Should Contain Sub List    ${FIDFiltercontextIDs}    ${cacheContextIDs}
+    [Teardown]    case teardown    ${dstdumpfile}
+
+Verify SHELL_MDAT is mandatory for SHELL RIC
+    [Documentation]    SHELL_MDAT FID is mandatory in FIDFilter.txt for SHELL RIC
+    ...
+    ...
+    ...    1. Do a dump cache and check for Shell in the dump cache file.
+    ...    In the dump cache check for the column : HAS_SHELL_DATA if the value is True. If TRUE proceed to the test step 2.
+    ...    else return saying theat the TestCase is not relevant.
+    ...
+    ...    2. Check for FID 6632 in FIDFilter.txt and its contituent should be 0.
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2240
+    [Timeout]
+    ${value}    Verify If Cachedump Has SHELL RICSs
+    ${localfidFilter}=    set variable    ${LOCAL_TMP_DIR}/cachedump.csv
+    ${localfidFilter}=    Get FIDFilter File
+    Run Keyword If    ${value}>0    Verify If SHELL MDAT Present
+    ...    ELSE    Fail    ${MTE} doesn not have SHELL data.

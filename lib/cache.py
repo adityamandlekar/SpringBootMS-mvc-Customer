@@ -403,3 +403,59 @@ def _convert_domain_to_cache_format(domain):
     else:
         raise AssertionError('*ERROR* Unsupported domain %d' %domain)
     return newDomain
+
+def verify_if_cachedump_has_SHELL_RICs():
+    """Checking how many otf item found in MTE cache dump
+    
+    Returns a list of dictionaries for OTF items (within each dictionary, it has RIC, DOMAIN, PUBLISH_KEY, OTF_STATUS fields)
+
+    Examples:
+    | get otf rics from cache  | MARKET_BY_PRICE 
+    """
+    
+    cacheFile = dump_cache()
+    print cacheFile
+    # create hash of header values
+    cmd = "head -1 %s | tr ',' '\n'" %cacheFile
+    stdout, stderr, rc = _exec_command(cmd)
+    if rc !=0 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+
+    headerList = stdout.strip().split()
+    index = 1;
+    headerDict = {}
+    for fieldName in headerList:
+        headerDict[fieldName] = index
+        index += 1
+    if not headerDict.has_key('HAS_SHELL_DATA'):
+        raise AssertionError('*ERROR* Did not find HAS_SHELL_DATA column in cache file')
+
+    # get all fields for selected RICs
+    #domainCol = headerDict['DOMAIN']
+    ShellCol = headerDict['HAS_SHELL_DATA']
+    print ShellCol
+    cmd = "grep -v TEST %s | awk -F',' '($%s == \"TRUE\") {print}' " %(cacheFile, ShellCol)
+    print '*INFO* cmd=%s' %cmd
+    stdout, stderr, rc = _exec_command(cmd)
+    if rc !=0 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+    
+    rows = stdout.splitlines()        
+    # get the requested fields
+    result = []
+    for row in rows:
+        values = row.split(',')
+        if len(values) != len(headerList):
+            raise AssertionError('*ERROR* Number of values (%d) does not match number of headers (%d)' %(len(values), len(headerList)))
+        
+        fieldDict = {}
+        for i in range(0, len(values)):
+            if (headerList[i] == 'RIC' or headerList[i] == 'HAS_SHELL_DATA'):
+                fieldDict[headerList[i]] = values[i]
+            
+  
+        result.append(fieldDict)
+            
+              
+    _delete_file(cacheFile,'',False)
+    return len(result)	
