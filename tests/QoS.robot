@@ -94,7 +94,8 @@ Verify QoS Failover for UDP Feed Line Down
     Pass Execution If    '${PROTOCOL}' !='UDP'    Venue Protocol ${PROTOCOL} is not UDP
     Switch To TD Box    ${CHE_A_IP}
     ${timeoutLimit}=    Set Variable    ${200}
-    ${orgCfgFile}    ${backupCfgFile}    Set UDP Feed Line Timeout    ${timeoutLimit}
+    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    Set UDP Feed Line Timeout    ${orgCfgFile}    ${timeoutLimit}
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
@@ -116,7 +117,8 @@ Verify QoS Failover for TCP-FTP Feed Line Down
     Pass Execution If    '${PROTOCOL}' == 'UDP'    Venue Protocol ${PROTOCOL} is not TCP or FTP
     Switch To TD Box    ${CHE_A_IP}
     ${TimeOut}=    Set Variable    ${200}
-    ${orgCfgFile}    ${backupCfgFile}    Set TCP-FTP Feed Line Timeout    ${TimeOut}
+    ${orgCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    Set TCP-FTP Feed Line Timeout    ${orgCfgFile}    ${TimeOut}
     ${ip_list}    create list    ${CHE_A_IP}    ${CHE_B_IP}
     ${master_ip}    get master box ip    ${ip_list}
     switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
@@ -314,9 +316,8 @@ Restore Feed Line Timeout
     start MTE
 
 Set UDP Feed Line Timeout
-    [Arguments]    ${timeoutLimit}
+    [Arguments]    ${remoteCfgFile}    ${timeoutLimit}
     [Documentation]    Set the feed line timeout values (HiActTimeLimit and LoActTimeLimit) in MTE config file and restart dependent components.
-    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${localCfgFile}=    Get MTE Config File
     set value in MTE cfg    ${localCfgFile}    HiActTimeLimit    ${timeoutLimit}
     set value in MTE cfg    ${localCfgFile}    LoActTimeLimit    ${timeoutLimit}
@@ -324,12 +325,10 @@ Set UDP Feed Line Timeout
     Stop SMF
     Start SMF
     Start MTE
-    [Return]    ${remoteCfgFile}    ${backupCfgFile}
 
 Set TCP-FTP Feed Line Timeout
-    [Arguments]    ${TimeOut}
+    [Arguments]    ${remoteCfgFile}    ${timeoutLimit}
     [Documentation]    Set the feed line timeout values (HiActTimeOut and LoActTimeOut) in MTE config file and restart dependent components.
-    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${localCfgFile}=    Get MTE Config File
     set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${TimeOut}    fail    Inputs    *
     ...    FHRealtimeLine
@@ -339,7 +338,6 @@ Set TCP-FTP Feed Line Timeout
     Stop SMF
     Start SMF
     Start MTE
-    [Return]    ${remoteCfgFile}    ${backupCfgFile}
 
 Verify QoS for CritProcessFail
     [Arguments]    ${node}    ${master_ip}    ${CritProcessFailValue}    ${totalQoSValue}=${EMPTY}

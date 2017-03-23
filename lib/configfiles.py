@@ -528,7 +528,9 @@ def set_value_in_MTE_cfg(mtecfgfile, tagName, value, actionIfNotPresent='add', *
                  actionIfNotPresent - "skip" : only INFO indicate the tagName not found in config file
                                       "fail" : raise assertion if tagName not found
                                       "add"  " added the tagName to config file (default)
-                 tagPath            -  path of the section where the tag is located (excluding the tagName)
+                 tagPath            - path of the section where the tag is located (excluding the tagName)
+                                      '*' as last entry in tagPath will search the current node and all subnodes, recursively
+                                      only the first tag found will be updated
                 
         return : N/A
         
@@ -620,15 +622,30 @@ def _update_config_dict(node, tagName, value, actionIfNotPresent, *tagPath):
     while len(tagPath):
         t = tagPath.pop(0)
         if t == '*':
+            # '*' can mean 0 levels, so check for tag at current level
+            if len(tagPath) == 0 and tagName in node:
+                break
+            if actionIfNotPresent == 'add':
+                raise AssertionError('actionIfNotPresent=add is not supported for wildcard nodes (*)')
+            foundSubDict = False
             for key,val in node.items():
                 # update each sub-node that is a dictionary
+                 # '*' at end of tagPath can match any number of levels, so process sub-dictionaries
                 if isinstance(val, dict):
-                    _update_config_dict(val, tagName, value, actionIfNotPresent, *tagPath)
-            return
+                    foundSubDict = True
+                    if len(tagPath) == 0:
+                        _update_config_dict(val, tagName, value, actionIfNotPresent, '*')
+                    else:
+                        _update_config_dict(val, tagName, value, actionIfNotPresent, *tagPath)
+            if foundSubDict:
+                return
+            else:
+                # at bottom of the tree and tag not found
+                break
         elif t in node:
             node = node[t]
         elif actionIfNotPresent == "fail":
-            raise AssertionError('*ERROR* Intermediate node %s is missing' %t)
+            raise AssertionError('Intermediate node %s is missing' %t)
         elif actionIfNotPresent == "skip":
             print '*INFO* Intermediate node %s is missing, tag %s will not be added' %(t, tagName)
             return
@@ -641,7 +658,7 @@ def _update_config_dict(node, tagName, value, actionIfNotPresent, *tagPath):
         print '*INFO* updating tag %s with value %s' %(tagName, value)
         node[tagName] = value
     elif actionIfNotPresent == "fail":
-        raise AssertionError('*ERROR* Tag %s is missing from node %s' %(tagName, '->'.join(tagPath)))
+        raise AssertionError('Tag %s is missing from node %s' %(tagName, '->'.join(tagPath)))
     elif actionIfNotPresent == "skip":
         print '*INFO* Tag %s is missing from node %s, will not be added'%(tagName, '->'.join(tagPath))
         return
