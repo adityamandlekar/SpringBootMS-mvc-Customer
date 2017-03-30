@@ -77,7 +77,7 @@ Dump Persist File To Text
     get remote file    ${remotePersist[0]}    ${localPersistFile}
     ${random}=    Generate Random String    4    [NUMBERS]
     ${pmatDumpfile}=    set variable    ${LOCAL_TMP_DIR}${/}pmatDump${random}.txt
-    Run PMAT    dump    --dll Schema_v6.dll    --db ${localPersistFile}    --oformat text    --outf ${pmatDumpfile}    @{optargs}
+    Run PMAT    dump    --dll Schema_v7.dll    --db ${localPersistFile}    --oformat text    --outf ${pmatDumpfile}    @{optargs}
     Remove Files    ${localPersistFile}
     [Return]    ${pmatDumpfile}
 
@@ -96,7 +96,7 @@ Dump Persist File To XML
     get remote file    ${remotePersist[0]}    ${localPersistFile}
     ${random}=    Generate Random String    4    [NUMBERS]
     ${pmatXmlDumpfile}=    set variable    ${LOCAL_TMP_DIR}${/}pmatDump${random}.xml
-    Run PMAT    dump    --dll Schema_v6.dll    --db ${localPersistFile}    --outf ${pmatXmlDumpfile}    @{optargs}
+    Run PMAT    dump    --dll Schema_v7.dll    --db ${localPersistFile}    --outf ${pmatXmlDumpfile}    @{optargs}
     Remove Files    ${localPersistFile}
     [Return]    ${pmatXmlDumpfile}
 
