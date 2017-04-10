@@ -220,16 +220,16 @@ def get_count_of_SHELL_RICs():
     | get_count_of_SHELL_RICs |
     """
     cacheFile = dump_cache()
+    fieldDict ={}
     # create hash of header values
     cmd = "head -1 %s | tr ',' '\n'" %cacheFile
     stdout, stderr, rc = _exec_command(cmd)
-    if rc !=0 or stderr !='':
-        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+    if rc ​!=0 or stderr ​!='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, ​%s ​%s' ​%(cmd,rc,stdout,stderr))
 
     headerList = stdout.strip().split()
     index = 1;
     headerDict = {}
-    fieldDict = {}
     for fieldName in headerList:
         headerDict[fieldName] = index
         index += 1
@@ -238,11 +238,14 @@ def get_count_of_SHELL_RICs():
     
     #Verify if HAS_SHELL_DATA column has 'True' values
     ShellCol = headerDict['HAS_SHELL_DATA']
+    contextIdCol = headerDict['CONTEXT_ID'] - 1
     cmd = "grep -v TEST %s | awk -F',' '($%s == \"TRUE\") {print}' " %(cacheFile, ShellCol)
     print '*INFO* cmd=%s' %cmd
     stdout, stderr, rc = _exec_command(cmd)
     if rc !=0 or stderr !='':
-        raise AssertionError('*ERROR HAS NO SHELL DATA* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+        fieldDict ={}
+        print '*INFO* HAS NO SHELL DATA'
+        return fieldDict
     
     rows = stdout.splitlines()        
     
@@ -251,12 +254,8 @@ def get_count_of_SHELL_RICs():
         values = row.split(',')
         if len(values) != len(headerList):
             raise AssertionError('*ERROR* Number of values (%d) does not match number of headers (%d)' %(len(values), len(headerList)))
- 
-        for i in range(0, len(values)):
-            if (headerList[i] == 'HAS_SHELL_DATA'):
-                if (values[i] == "TRUE"):
-                    fieldDict[values[6]] = fieldDict.get(values[6],0) +1
-                
+        cid = values[contextIdCol]
+        fieldDict[cid] = fieldDict.get(cid,0) + 1       
     _delete_file(cacheFile,'',False)
     return fieldDict
 
