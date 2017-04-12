@@ -105,6 +105,6 @@ def verify_fidfilter_contains_SHELL_MDAT(contextIdsWithSHELL):
                 if constit == "0":
                     if '6632' not in ret[contextID][constit]:
                         raise AssertionError('*ERROR* "SHELL_MDAT FID (6632) does not exist in FIDFilter for contextID %s"',contextID)
-                elif constit != "0":
+                else:
                     if '6632' in ret[contextID][constit]:
                         raise AssertionError('*ERROR* "SHELL_MDAT FID (6632) exists for constituent %s in FIDFilter for contextID %s.  It should be in constituent 0.', contextID)
