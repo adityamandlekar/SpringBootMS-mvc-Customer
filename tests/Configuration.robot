@@ -77,7 +77,6 @@ Verify all Context IDs are in FIDFilter
     List Should Contain Sub List    ${FIDFiltercontextIDs}    ${cacheContextIDs}
     [Teardown]    case teardown    ${dstdumpfile}
 
-
 Verify SHELL_MDAT FID for SHELL RIC
     [Documentation]    For each Context ID that has a SHELL RIC, verify the SHELL_MDAT FID exists in FIDFilter for constituent 0.
 	...
