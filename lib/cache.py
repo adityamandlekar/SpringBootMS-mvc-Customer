@@ -259,7 +259,7 @@ def get_count_of_SHELL_RICs():
         fieldDict[cid] = fieldDict.get(cid,0) + 1       
     _delete_file(cacheFile,'',False)
     return fieldDict
-
+	
 def get_otf_rics_from_cahce(domain):
     """Checking how many otf item found in MTE cache dump
     
