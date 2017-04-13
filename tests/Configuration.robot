@@ -78,8 +78,8 @@ Verify all Context IDs are in FIDFilter
 
 Verify SHELL_MDAT FID for SHELL RIC
     [Documentation]    For each Context ID that has a SHELL RIC, verify the SHELL_MDAT FID exists in FIDFilter for constituent 0
-	...
-	...	http://www.iajira.amers.ime.reuters.com/browse/CATF-2240
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2240
     ${shellCount}    Get Count Of SHELL RICs
     ${localfidFilter}=    Get FIDFilter File
     Verify Fidfilter Contains SHELL MDAT    ${shellCount}

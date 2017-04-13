@@ -97,6 +97,7 @@ def verify_fidfilter_contains_SHELL_MDAT(contextIdsWithSHELL):
     Examples:
     | verify_fidfilter_contains_SHELL_MDAT | ${shellCount} |
     """
+	
     ret=parse_local_fidfilter_file()
     for contextID in ret.keys():
         if contextID in contextIdsWithSHELL:

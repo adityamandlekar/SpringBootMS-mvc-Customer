@@ -220,11 +220,13 @@ def get_count_of_SHELL_RICs():
     """
     cacheFile = dump_cache()
     fieldDict ={}
+    
     # create hash of header values
     cmd = "head -1 %s | tr ',' '\n'" %cacheFile
     stdout, stderr, rc = _exec_command(cmd)
-    if rc ​!=0 or stderr ​!='':
-        raise AssertionError('*ERROR* cmd=%s, rc=%s, ​%s ​%s' ​%(cmd,rc,stdout,stderr))
+#         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
+    if rc !=0 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))    
 
     headerList = stdout.strip().split()
     index = 1;
@@ -246,7 +248,7 @@ def get_count_of_SHELL_RICs():
         return fieldDict
     if rc > 1 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
-     rows = stdout.splitlines()
+    rows = stdout.splitlines()
 	 
     # get the requested fields    
     for row in rows:
