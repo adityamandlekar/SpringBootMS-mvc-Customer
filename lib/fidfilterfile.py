@@ -93,8 +93,7 @@ def get_contextID_from_FidFilter():
 def verify_fidfilter_contains_SHELL_MDAT(contextIdsWithSHELL):
     """ Check if the SHELL RIC for the contextIDs has a contstituent of 0
     Argument : The Dictionary that contains the context ID, FIDs and Constituents
-    Returns : Nil
-    
+    Returns : Nil    
     Examples:
     | verify_fidfilter_contains_SHELL_MDAT | ${shellCount} |
     """

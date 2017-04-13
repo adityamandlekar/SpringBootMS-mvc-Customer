@@ -215,7 +215,6 @@ def get_all_fields_for_ric_from_cache(ric,domain):
 
 def get_count_of_SHELL_RICs():
     """Returns a dictionary with Key : Context IDs and Values: the number of SHELL_RICs
-
     Examples:
     | get_count_of_SHELL_RICs |
     """
@@ -242,13 +241,13 @@ def get_count_of_SHELL_RICs():
     cmd = "grep -v TEST %s | awk -F',' '($%s == \"TRUE\") {print}' " %(cacheFile, ShellCol)
     print '*INFO* cmd=%s' %cmd
     stdout, stderr, rc = _exec_command(cmd)
-    if rc !=0 or stderr !='':
-        fieldDict ={}
+    if rc == 1:
         print '*INFO* HAS NO SHELL DATA'
         return fieldDict
-    
-    rows = stdout.splitlines()        
-    
+    if rc > 1 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+     rows = stdout.splitlines()
+	 
     # get the requested fields    
     for row in rows:
         values = row.split(',')
