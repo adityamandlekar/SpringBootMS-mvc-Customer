@@ -20,7 +20,7 @@ def get_constituents_from_FidFilter(context_id):
         raise AssertionError('*ERROR* No FID dictionary exists in FIDFilter.txt file for Context ID %s' %(context_id))  
     
     return fidDic.keys()
-    
+ 
 def parse_local_fidfilter_file():
     """Get context ID, FIDs and Constituent from the local copy of FIDFilter.txt.
     FIDFilter.txt must be copied to LOCAL_TMP_DIR before calling this Keyword.
@@ -86,7 +86,25 @@ def parse_local_fidfilter_file():
 
     return contextIdsMap
 
-
 def get_contextID_from_FidFilter():
     fidfilter = parse_local_fidfilter_file()
-    return fidfilter.keys()
+    return fidfilter.keys()	
+	
+def verify_fidfilter_contains_SHELL_MDAT(contextIdsWithSHELL):
+    """ Check if the SHELL RIC for the contextIDs has a contstituent of 0
+    Argument : The Dictionary that contains the context ID, FIDs and Constituents
+    Returns : Nil    
+    Examples:
+    | verify_fidfilter_contains_SHELL_MDAT | ${shellCount} |
+    """
+	
+    ret=parse_local_fidfilter_file()
+    for contextID in ret.keys():
+        if contextID in contextIdsWithSHELL:
+            for constit in ret[contextID]:
+                if constit == "0":
+                    if '6632' not in ret[contextID][constit]:
+                        raise AssertionError('*ERROR* "SHELL_MDAT FID (6632) does not exist in FIDFilter for contextID %s"',contextID)
+                else:
+                    if '6632' in ret[contextID][constit]:
+                        raise AssertionError('*ERROR* "SHELL_MDAT FID (6632) exists for constituent %s in FIDFilter for contextID %s.  It should be in constituent 0.', contextID)

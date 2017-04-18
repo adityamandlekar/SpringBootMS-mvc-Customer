@@ -19,6 +19,7 @@ from VenueVariables import *
 def get_context_ids_from_cachedump(cachedump_file_name):  
     """Returns a set of context_ids appeared in the cachedump.csv file.
      Argument : cache dump file full path
+     Return: Returns a list context Ids
 
     Examples:
     | get context ids from cachedump | cachedump file name |     
@@ -38,10 +39,9 @@ def get_context_ids_from_cachedump(cachedump_file_name):
                         context_id_val_set.add(context_id_val)
                         
     except IOError:
-        raise AssertionError('*ERROR* failed to open file %s' %cachedump_file_name)
-        
+        raise AssertionError('*ERROR* failed to open file %s' %cachedump_file_name)   
                 
-    return context_id_val_set   #Set(['3470', '3471', '2452', '1933', '1246', '1405'])
+    return context_id_val_set   
 
 def verify_cache_contains_only_configured_context_ids(cachedump_file_name_full_path,venueConfigFile): 
     """Get set of context ID from cache dump file and venue xml_config file
@@ -213,6 +213,53 @@ def get_all_fields_for_ric_from_cache(ric,domain):
     _delete_file(cacheFile,'',False)
     return valuesToReturn
 
+def get_count_of_SHELL_RICs():
+    """Returns a dictionary with Key : Context IDs and Values: the number of SHELL_RICs
+    Examples:
+    | get_count_of_SHELL_RICs |
+    """
+    cacheFile = dump_cache()
+    fieldDict ={}
+    
+    # create hash of header values
+    cmd = "head -1 %s | tr ',' '\n'" %cacheFile
+    stdout, stderr, rc = _exec_command(cmd)
+#         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
+    if rc !=0 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))    
+
+    headerList = stdout.strip().split()
+    index = 1;
+    headerDict = {}
+    for fieldName in headerList:
+        headerDict[fieldName] = index
+        index += 1
+    if not headerDict.has_key('HAS_SHELL_DATA'):
+        raise AssertionError('*ERROR* Did not find HAS_SHELL_DATA column in cache file')
+    
+    #Verify if HAS_SHELL_DATA column has 'True' values
+    ShellCol = headerDict['HAS_SHELL_DATA']
+    contextIdCol = headerDict['CONTEXT_ID'] - 1
+    cmd = "grep -v TEST %s | awk -F',' '($%s == \"TRUE\") {print}' " %(cacheFile, ShellCol)
+    print '*INFO* cmd=%s' %cmd
+    stdout, stderr, rc = _exec_command(cmd)
+    if rc == 1:
+        print '*INFO* HAS NO SHELL DATA'
+        return fieldDict
+    if rc > 1 or stderr !='':
+        raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
+    rows = stdout.splitlines()
+	 
+    # get the requested fields    
+    for row in rows:
+        values = row.split(',')
+        if len(values) != len(headerList):
+            raise AssertionError('*ERROR* Number of values (%d) does not match number of headers (%d)' %(len(values), len(headerList)))
+        cid = values[contextIdCol]
+        fieldDict[cid] = fieldDict.get(cid,0) + 1       
+    _delete_file(cacheFile,'',False)
+    return fieldDict
+	
 def get_otf_rics_from_cahce(domain):
     """Checking how many otf item found in MTE cache dump
     
@@ -402,4 +449,4 @@ def _convert_domain_to_cache_format(domain):
         newDomain = 'MarketMaker'
     else:
         raise AssertionError('*ERROR* Unsupported domain %d' %domain)
-    return newDomain
+    return newDomain	

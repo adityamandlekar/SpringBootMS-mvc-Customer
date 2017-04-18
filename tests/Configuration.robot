@@ -64,3 +64,22 @@ Verify FilterString FID usage
     ${filterAsList}=    Split String    ${withoutPunctuation}
     : FOR    ${fid}    IN    @{unexpectedFIDs}
     \    Should Not Contain    ${filterAsList}    ${fid}
+
+Verify all Context IDs are in FIDFilter
+    [Documentation]    Verify all context IDs in cache exist in FIDFilter.txt
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2629
+    ${fidFile}    Get FIDFilter File
+    ${dstdumpfile}=    set variable    ${LOCAL_TMP_DIR}/cachedump.csv
+    Get Sorted Cache Dump    ${dstdumpfile}
+    ${cacheContextIDs}    get context ids from cachedump    ${dstdumpfile}
+    ${FIDFiltercontextIDs}    Get ContextID From FidFilter
+    List Should Contain Sub List    ${FIDFiltercontextIDs}    ${cacheContextIDs}
+    [Teardown]    case teardown    ${dstdumpfile}
+
+Verify SHELL_MDAT FID for SHELL RIC
+    [Documentation]    For each Context ID that has a SHELL RIC, verify the SHELL_MDAT FID exists in FIDFilter for constituent 0
+    ...
+    ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2240
+    ${shellCount}    Get Count Of SHELL RICs
+    ${localfidFilter}=    Get FIDFilter File
+    Verify Fidfilter Contains SHELL MDAT    ${shellCount}
