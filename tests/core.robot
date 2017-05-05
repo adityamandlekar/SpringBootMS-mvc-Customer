@@ -623,6 +623,10 @@ Reset Sequence Numbers
     \    Wait For MTE Capture To Complete    5    600
     [Teardown]    Switch Connection    ${host}
 
+Restart SMF
+    Stop SMF
+    Start MTE
+
 Restore EXL Changes
     [Arguments]    ${serviceName}    ${exlFiles}
     [Documentation]    Reload the original version of the EXL files using Fmscmd.
