@@ -625,6 +625,7 @@ Reset Sequence Numbers
 
 Restart SMF
     Stop SMF
+    Start SMF
     Start MTE
 
 Restore EXL Changes

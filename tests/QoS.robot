@@ -79,8 +79,7 @@ Verify QoS Failover for Critical Process Failure
     \    Comment    Verify failover occurs after first process is killed.
     \    Run Keyword If    ${numDown} == 1    Verify MTE State In Specific Box    ${CHE_A_IP}    STANDBY
     \    Run Keyword If    ${numDown} == 1    Verify MTE State In Specific Box    ${CHE_B_IP}    LIVE
-    \    ${numDownString}    Convert To String    ${numDown}
-    \    Verify QoS for CritProcessFail    A    ${master_ip}    ${numDownString}    0
+    \    Verify QoS for CritProcessFail    A    ${master_ip}    ${numDown}    0
     Restart Critical Processes    @{startOrder}
     Verify QoS for CritProcessFail    A    ${master_ip}    0    100
     [Teardown]    Run Keyword If Test Failed    Restart Critical Processes    @{startOrder}
@@ -106,7 +105,7 @@ Verify QoS Failover for UDP Feed Line Down
     Sleep    ${timeoutLimit}
     Verify MTE State IN Specific Box    ${CHE_A_IP}    STANDBY    5    60
     Verify MTE State IN Specific Box    ${CHE_B_IP}    LIVE
-    [Teardown]    Run Keyword If    '${PROTOCOL}' == 'UDP'    Restart SMF
+    [Teardown]    Run Keyword If    '${PROTOCOL}' == 'UDP'    Restore Feed Line Timeout    ${orgCfgFile}    ${backupCfgFile}
 
 Verify QoS Failover for TCP-FTP Feed Line Down
     [Documentation]    Verify that the LIVE MTE fails over to the STANDBY MTE when the TCP-FTP feed line is down longer than HighActTimeOut/LoActTimeOut configuration value.
@@ -309,20 +308,23 @@ Restart Critical Processes
     : FOR    ${proc}    IN    @{startOrder}
     \    Run Keyword and Continue on Failure    Start Process    ${proc}
 
+Restore Feed Line Timeout
+    [Arguments]    ${orgCfgFile}    ${backupCfgFile}
+    [Documentation]    Restore the orginal feed line timeout values (HiActTimeLimit and LoActTimeLimit, HiActTimeOut and LoActTimeOut) in MTE config file and restart dependent components.
+    restore remote cfg file    ${orgCfgFile}    ${backupCfgFile}
+    stop MTE
+    start MTE
+
 Set UDP Feed Line Timeout
     [Arguments]    ${remoteCfgFile}    ${timeoutLimit}
     [Documentation]    Set the feed line timeout values (HiActTimeLimit and LoActTimeLimit) in MTE config file and restart dependent components.
-    ...
-    ...    Remark:
-    ...    The timeout values will be restored at KW teardown.
-    ...    Therefore any future restart of MTE will restore the original setting.
-    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${localCfgFile}=    Get MTE Config File
     set value in MTE cfg    ${localCfgFile}    HiActTimeLimit    ${timeoutLimit}
     set value in MTE cfg    ${localCfgFile}    LoActTimeLimit    ${timeoutLimit}
     Put Remote File    ${localCfgFile}    ${remoteCfgFile}
-    Restart SMF
-    [Teardown]    restore remote cfg file    ${remoteCfgFile}    ${backupCfgFile}
+    Stop SMF
+    Start SMF
+    Start MTE
 
 Set TCP-FTP Feed Line Timeout
     [Arguments]    ${remoteCfgFile}    ${timeoutLimit}

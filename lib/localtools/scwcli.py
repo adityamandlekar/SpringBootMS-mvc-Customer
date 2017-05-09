@@ -130,11 +130,16 @@ def verify_QOS_equal_to_specific_value(node, QOSName, QOSValue, che_ip):
         Examples :
         | verify QOS equal to specific value | A | IngressNIC | 100 | ${CHE_IP} |
     """
+   
     actualQOSValue = get_QOS_value(node, QOSName, che_ip)
-    if actualQOSValue == QOSValue:
+    
+    #Convert everything to string before comparsion
+    actualQOSValueString = str(actualQOSValue).strip()
+    QOSValueString       = str(QOSValue).strip()
+        
+    if actualQOSValueString == QOSValueString:
         return
-    if actualQOSValue.isdigit() and QOSValue.isdigit() and (int(actualQOSValue) == int(QOSValue)):
-        return
+        
     raise AssertionError('*ERROR* QOS %s on %s is [%s], is not equal to [%s]' %(QOSName,node,actualQOSValue,QOSValue))
 
 def verify_sync_pulse_missed_Qos(syncPulseBefore,syncPulseAfter):
@@ -176,10 +181,14 @@ def wait_for_QOS(node, QOSName, QOSValue, che_ip, waittime=10, timeout=100):
     while time.time() <= maxtime:
         time.sleep(waittime)
         actualQOSValue = get_QOS_value(node, QOSName, che_ip)
-        if actualQOSValue == QOSValue:
+        
+        #Convert everything to string before comparsion
+        actualQOSValueString = str(actualQOSValue).strip()
+        QOSValueString       = str(QOSValue).strip()
+        
+        if actualQOSValueString == QOSValueString:
             return
-        if actualQOSValue.isdigit() and QOSValue.isdigit() and (int(actualQOSValue) == int(QOSValue)):
-            return
+
     raise AssertionError('*ERROR* QOS %s on %s is [%s] did not change to [%s] before timeout %ds' %(QOSName,node,actualQOSValue,QOSValue,timeout))
 
 def _run_local_SCWCLI(cmd):
