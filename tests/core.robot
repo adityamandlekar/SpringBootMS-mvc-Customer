@@ -38,12 +38,16 @@ Config Change For Recon On MTE
     ...
     ...    Remark:
     ...    Need to restart MTE before the changes become effective
-    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    HiActTimeLimit    999999    add    HiActTimeLimit
-    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    LoActTimeLimit    999999    add    LoActTimeLimit
-    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    HiActTimeOut    999999    skip    ${EMPTY}
-    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    LoActTimeOut    999999    skip    ${EMPTY}
-    Comment    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    ResendFM    0    add    FMS|ResendFM
-    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    FailoverPublishRate    0    add    BackgroundRebuild|FailoverPublishRate
+    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
+    ${localCfgFile}=    Get MTE Config File
+    set value in MTE cfg    ${localCfgFile}    HiActTimeLimit    ${999999}
+    set value in MTE cfg    ${localCfgFile}    LoActTimeLimit    ${999999}
+    set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${999999}    skip    ${EMPTY}
+    set value in MTE cfg    ${localCfgFile}    LoActTimeOut    ${999999}    skip    ${EMPTY}
+    Comment    set value in MTE cfg    ${localCfgFile}    ResendFM    ${0}    add    FMS
+    set value in MTE cfg    ${localCfgFile}    FailoverPublishRate    ${0}    add    BackgroundRebuild
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
 
 Create Unique RIC Name
     [Arguments]    ${text}=
