@@ -32,6 +32,19 @@ Case Teardown
     [Documentation]    Do test case teardown, e.g. remove temp files.
     Run Keyword if Test Passed    Remove Files    @{tmpfiles}
 
+Config Change For Recon On MTE
+    [Documentation]    Some production setting in MTE config file need to be adjusted before we could successfully carry out functional test.
+    ...
+    ...
+    ...    Remark:
+    ...    Need to restart MTE before the changes become effective
+    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    HiActTimeLimit    999999    add    HiActTimeLimit
+    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    LoActTimeLimit    999999    add    LoActTimeLimit
+    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    HiActTimeOut    999999    skip    ${EMPTY}
+    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    LoActTimeOut    999999    skip    ${EMPTY}
+    Comment    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    ResendFM    0    add    FMS|ResendFM
+    set value in MTE cfg    ${REMOTE_MTE_CONFIG_DIR}/${MTE_CONFIG}    FailoverPublishRate    0    add    BackgroundRebuild|FailoverPublishRate
+
 Create Unique RIC Name
     [Arguments]    ${text}=
     [Documentation]    Create a unique RIC name. Format is 'TEST' + text param + current datetime string (YYYYMMDDHHMMSS}.
@@ -555,6 +568,8 @@ MTE Machine Setup
     start smf
     setUtilPath
     Set 24x7 Feed And Trade Time And No Holidays
+    Config Change For Recon On MTE
+    Stop MTE
     Start MTE
     ${memUsage}    get memory usage
     Run Keyword If    ${memUsage} > 90    Fail    Memory usage > 90%. This would make the system become instable during testing.
@@ -913,6 +928,7 @@ Start MTE
     ${result}=    find processes by pattern    [FM]TE -c ${MTE}
     ${len}=    Get Length    ${result}
     Run keyword if    ${len} != 0    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
+    wait for HealthCheck    ${MTE}    IsConnectedToFMSClient
     Run keyword if    ${len} != 0    Load All State EXL Files
     Return from keyword if    ${len} != 0
     run commander    process    start ${MTE}
