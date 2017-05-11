@@ -1013,6 +1013,10 @@ Suite Setup with Playback
 
 Suite Teardown
     [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
+    Run Keyword If    '${CHE_A_Session}' != '${EMPTY}'    Run Keywords    Switch To TD Box    ${CHE_A_IP}
+    ...    AND    stop smf
+    Run Keyword If    '${CHE_B_Session}' != '${EMPTY}'    Run Keywords    Switch To TD Box    ${CHE_B_IP}
+    ...    AND    stop smf
     close all connections
     ${localCfgFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
     Run Keyword If    r'${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
@@ -1030,6 +1034,7 @@ Switch To TD Box
     ...    ELSE    Fail    Invaild IP
     Set Suite Variable    ${CHE_IP}    ${ip}
     switch connection    ${switchBox}
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
 
 Verify MTE State In Specific Box
     [Arguments]    ${che_ip}    ${state}    ${waittime}=5    ${timeout}=150
