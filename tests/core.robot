@@ -569,11 +569,12 @@ MTE Machine Setup
     ${ret}    open connection    host=${ip}    port=${CHE_PORT}    timeout=6
     login    ${USERNAME}    ${PASSWORD}
     Set Common Suite Variables    ${ip}
-    start smf
     setUtilPath
-    Set 24x7 Feed And Trade Time And No Holidays
     Config Change For Recon On MTE
-    Stop MTE
+    stop smf
+    Delete Persist Files
+    start smf
+    Set 24x7 Feed And Trade Time And No Holidays
     Start MTE
     ${memUsage}    get memory usage
     Run Keyword If    ${memUsage} > 90    Fail    Memory usage > 90%. This would make the system become instable during testing.
@@ -968,9 +969,10 @@ Suite Setup
     [Documentation]    Do test suite level setup, e.g. things that take time and do not need to be repeated for each test case.
     ...    Make sure the CHE_IP machine has the LIVE MTE instance.
     Should Not be Empty    ${CHE_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${EMPTY}
+    Set Suite Variable    ${CHE_B_Session}    ${EMPTY}
     ${ret}    MTE Machine Setup    ${CHE_IP}
     Set Suite Variable    ${CHE_A_Session}    ${ret}
-    Set Suite Variable    ${CHE_B_Session}    ${EMPTY}
     ${ip_list}    Create List
     Run Keyword If    '${CHE_A_IP}' != '' and '${CHE_A_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_A_IP}
     Run Keyword If    '${CHE_B_IP}' != '' and '${CHE_B_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_B_IP}
@@ -985,6 +987,8 @@ Suite Setup Two TD Boxes
     [Documentation]    Setup 2 Sessions for 2 Peer Thunderdome Boxes
     Should Not be Empty    ${CHE_A_IP}
     Should Not be Empty    ${CHE_B_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${EMPTY}
+    Set Suite Variable    ${CHE_B_Session}    ${EMPTY}
     ${ret}    MTE Machine Setup    ${CHE_A_IP}
     Set Suite Variable    ${CHE_A_Session}    ${ret}
     ${ret}    MTE Machine Setup    ${CHE_B_IP}
