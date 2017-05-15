@@ -62,7 +62,7 @@ Verify New Item Added to Persist File via FMS
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1844
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     ${RicEXLfile}    Fetch From Right    ${EXLfullpath}    \\
     ${localRicEXLFile}    set variable    ${LOCAL_TMP_DIR}/${RicEXLfile}

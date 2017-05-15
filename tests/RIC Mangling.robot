@@ -33,7 +33,7 @@ Verify BETA Phase - Disable PE Mangling without Restart
     @{expected_pe}    Create List    4128    4245    4247
     ${expected_RicPrefix}    set variable    ![
     ${domain}=    Get Preferred Domain
-    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${serviceName}=    Get FMS Service Name
     ${exlfile}=    Get EXL For RIC    ${domain}    ${serviceName}    ${sampleRic}
     @{pe}=    get ric fields from EXL    ${exlfile}    ${sampleRic}    PROD_PERM

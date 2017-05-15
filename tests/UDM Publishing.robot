@@ -140,7 +140,7 @@ Verify Message Key Name is Compressed
     ...    ensure all TD CHE releases message key name compression is enabled
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     ${EXLfile}=    Fetch From Right    ${EXLfullpath}    \\
     ${localEXLfile}=    set variable    ${LOCAL_TMP_DIR}/${EXLfile}

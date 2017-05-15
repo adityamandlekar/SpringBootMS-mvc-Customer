@@ -340,7 +340,7 @@ Get RIC From MTE Cache
     ${serviceName}=    get FMS service name
     Run Keyword If    ${manualReconcile}    Run Keywords    wait for HealthCheck    ${MTE}    IsConnectedToFMSClient
     ...    AND    Load All EXL Files    ${serviceName}    ${CHE_IP}
-    ...    AND    Wait For FMS Reorg
+    ...    AND    Wait For Persist File Update
     ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    Get Preferred Domain
     ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
     ${result}    get RIC fields from cache    1    ${domain}    ${contextID}
