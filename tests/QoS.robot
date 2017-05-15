@@ -341,9 +341,7 @@ Set TCP-FTP Feed Line Timeout
     ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${localCfgFile}=    Get MTE Config File
     set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${timeoutLimit}    fail    Inputs    *
-    ...    FHRealtimeLine
     set value in MTE cfg    ${localCfgFile}    LoActTimeOut    ${timeoutLimit}    fail    Inputs    *
-    ...    FHRealtimeLine
     Put Remote File    ${localCfgFile}    ${remoteCfgFile}
     Stop MTE
     Start MTE
