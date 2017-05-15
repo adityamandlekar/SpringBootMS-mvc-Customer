@@ -14,7 +14,7 @@ Verify Long RIC handled correctly
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1648
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     ${EXLfile}=    Fetch From Right    ${EXLfullpath}    \\
     ${localEXLfile}=    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
@@ -37,7 +37,7 @@ Verify PE Change Behavior
     Set Mangling Rule    UNMANGLED
     ${domain}    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${EXLfullpath}    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     @{pe}=    get ric fields from EXL    ${EXLfullpath}    ${ric}    PROD_PERM
     ${penew}=    Evaluate    @{pe}[0] - 1
@@ -61,7 +61,7 @@ Verify New Item Creation via FMS
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1711
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${EXL_File}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     ${uniqueRic}=    Create Unique RIC Name
     add ric to exl file    ${EXL_File}    ${LOCAL_TMP_DIR}/output.exl    ${uniqueRic}    ${uniqueRic}    ${domain}
@@ -76,7 +76,7 @@ Partial REORG on EXL Change
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1791
     ${domain}    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${exlFile}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     ${fieldName}=    set variable    DSPLY_NAME
     ${fieldValueNew}=    set variable    PARTIALREORGTEST
@@ -98,7 +98,7 @@ Verify RIC rename handled correctly
     Comment    //Setup variables for test
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${RIC_Before_Rename}    ${Published_RIC_Before_Rename}    Get RIC From MTE Cache    ${domain}
+    ${RIC_Before_Rename}    ${Published_RIC_Before_Rename}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${RIC_Before_Rename_Trunc}=    Get Substring    ${RIC_Before_Rename}    0    14
     ${RIC_After_Rename}=    Create Unique RIC Name    ${RIC_Before_Rename_Trunc}
     ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${RIC_Before_Rename}
@@ -160,7 +160,7 @@ Drop a RIC by deleting EXL File and Full Reorg
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1850
     ...    To verify whether the RICs in a exl file can be dropped if the exl file is deleted.
     [Setup]    Drop a RIC Case Setup
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${exlFullFileName}=    get EXL for RIC    ${domain}    ${serviceName}    ${ric}
     Append To List    ${processedEXLs}    ${exlFullFileName}
     ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
@@ -179,7 +179,7 @@ Drop a RIC by deleting EXL file from LXL file
     ...    Find a RIC associated exl file. Create LXL file with all exl files for the service except the founded one and place the lxl file to FMAREA/Service/System Files/Reconcile Files folder. \ After reconcile, verify RICs is dropped.
     ${domain}    Get Preferred Domain
     ${service}    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${exlFullFileName}=    get EXL for RIC    ${domain}    ${service}    ${ric}
     ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
     ${service_dir}    Fetch From Left    ${exlFilePath}    \\${service}\\
@@ -203,7 +203,7 @@ Verify Reconcile of Cache
     Should Be True    ${SendRefreshForFullReorg} != '1'    SendRefreshForFullReorg should be disabled
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${exlFullFileName}=    get EXL for RIC    ${domain}    ${serviceName}    ${ric}
     ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
     copy File    ${exlFullFileName}    ${LOCAL_TMP_DIR}/${exlFileName}
@@ -366,7 +366,7 @@ Verify Drop with Purge from FMSCmd
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2352 [MTE] Handling of FMS purge, no deletion delay logic, drop sent to downstream
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${exlFile}=    get EXL for RIC    ${domain}    ${serviceName}    ${ric}
     ${mteConfigFile}=    Get MTE Config File
     ${currDateTime}    get date and time
@@ -438,7 +438,7 @@ Verify FID update via FMS
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2260
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
     ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
     ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}

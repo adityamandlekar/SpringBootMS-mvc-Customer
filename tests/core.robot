@@ -333,10 +333,14 @@ Get Preferred Domain
     [Return]    ${domain}
 
 Get RIC From MTE Cache
-    [Arguments]    ${requestedDomain}=${EMPTY}    ${contextID}=${EMPTY}
+    [Arguments]    ${requestedDomain}=${EMPTY}    ${contextID}=${EMPTY}    ${manualReconcile}=${False}
     [Documentation]    Get a single RIC name from MTE cache for the specified Domain and contextID.
     ...    If no Domain is specified it will call Get Preferred Domain to get the domain name to use.
     ...    If no contextID is specified, it will use any contextID
+    ${serviceName}=    get FMS service name
+    Run Keyword If    ${manualReconcile}    Run Keywords    wait for HealthCheck    ${MTE}    IsConnectedToFMSClient
+    ...    AND    Load All EXL Files    ${serviceName}    ${CHE_IP}
+    ...    AND    Wait For FMS Reorg
     ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    Get Preferred Domain
     ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
     ${result}    get RIC fields from cache    1    ${domain}    ${contextID}
