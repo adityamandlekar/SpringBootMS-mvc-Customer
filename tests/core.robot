@@ -978,14 +978,6 @@ Suite Setup
     Set Suite Variable    ${CHE_B_Session}    ${EMPTY}
     ${ret}    MTE Machine Setup    ${CHE_IP}
     Set Suite Variable    ${CHE_A_Session}    ${ret}
-    ${ip_list}    Create List
-    Run Keyword If    '${CHE_A_IP}' != '' and '${CHE_A_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_A_IP}
-    Run Keyword If    '${CHE_B_IP}' != '' and '${CHE_B_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_B_IP}
-    ${master_ip}    get master box ip    ${ip_list}
-    Run Keyword If    '${CHE_IP}'=='${CHE_A_IP}'    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
-    ...    ELSE IF    '${CHE_IP}'=='${CHE_B_IP}'    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
-    ...    ELSE    Fail    CHE_IP does not equal CHE_A_IP or CHE_B_IP in VenueVariables
-    Verify MTE State In Specific Box    ${CHE_IP}    LIVE
     [Return]    ${ret}
 
 Suite Setup Two TD Boxes
