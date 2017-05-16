@@ -390,6 +390,8 @@ Verify both RIC and SIC rename handled correctly
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2149
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
+    Run Keywords    Load All EXL Files    ${serviceName}    ${CHE_IP}
+    ...    AND    Wait For FMS Reorg
     ${result}=    get RIC fields from cache    1    ${domain}    ${EMPTY}
     ${RIC_Before_Rename}    set variable    ${result[0]['RIC']}
     ${SIC_Before_Rename} =    set variable    ${result[0]['SIC']}

@@ -43,8 +43,8 @@ Config Change For Recon On MTE
     ${localCfgFile}=    Get MTE Config File
     set value in MTE cfg    ${localCfgFile}    HiActTimeLimit    ${999999}
     set value in MTE cfg    ${localCfgFile}    LoActTimeLimit    ${999999}
-    set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${999999}    skip    ${EMPTY}
-    set value in MTE cfg    ${localCfgFile}    LoActTimeOut    ${999999}    skip    ${EMPTY}
+    set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${999999}    skip    Inputs    *
+    set value in MTE cfg    ${localCfgFile}    LoActTimeOut    ${999999}    skip    Inputs    *
     Comment    set value in MTE cfg    ${localCfgFile}    ResendFM    ${0}    add    FMS
     set value in MTE cfg    ${localCfgFile}    FailoverPublishRate    ${0}    add    BackgroundRebuild
     Put Remote File    ${localCfgFile}    ${remoteCfgFile}
@@ -338,9 +338,8 @@ Get RIC From MTE Cache
     ...    If no Domain is specified it will call Get Preferred Domain to get the domain name to use.
     ...    If no contextID is specified, it will use any contextID
     ${serviceName}=    get FMS service name
-    Run Keyword If    ${manualReconcile}    Run Keywords    wait for HealthCheck    ${MTE}    IsConnectedToFMSClient
-    ...    AND    Load All EXL Files    ${serviceName}    ${CHE_IP}
-    ...    AND    Wait For Persist File Update
+    Run Keyword If    ${manualReconcile}    Run Keywords    Load All EXL Files    ${serviceName}    ${CHE_IP}
+    ...    AND    Wait For FMS Reorg
     ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    Get Preferred Domain
     ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
     ${result}    get RIC fields from cache    1    ${domain}    ${contextID}
@@ -486,6 +485,7 @@ Insert ICF
 Load All EXL Files
     [Arguments]    ${service}    ${headendIP}    @{optargs}
     [Documentation]    Loads all EXL files for a given service using FMSCMD. The FMS files for the given service must be on the local machine. The input parameters to this keyword are the FMS service name and headend's IP.
+    wait for HealthCheck    ${MTE}    IsConnectedToFMSClient
     ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${headendIP}    Recon    --Services ${service}
     ...    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS files \ ${returnedStdOut}
@@ -541,6 +541,7 @@ Load Mangling Settings
 Load Single EXL File
     [Arguments]    ${exlFile}    ${service}    ${headendIP}    @{optargs}
     [Documentation]    Loads a single EXL file using FMSCMD. The EXL file must be on the local machine. Inputs for this keyword are the EXL Filename including the path, the FMS service and the headend's IP.
+    wait for HealthCheck    ${MTE}    IsConnectedToFMSClient
     ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${headendIP}    Process    --Services ${service}
     ...    --InputFile "${exlFile}"    --AllowSICChange true    --AllowRICChange true    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
@@ -936,9 +937,9 @@ Start MTE
     ...    If Recon is changed to set ResendFM=0 in the MTE config file, instead of loading just the state EXL files, this will need to load all of the EXL files (if they have not already been loaded). \ With ResendFM=1, we need to wait for FMS reorg to finish, and then load the state EXL files to override the ones loaded from the FMS server.
     ${result}=    find processes by pattern    [FM]TE -c ${MTE}
     ${len}=    Get Length    ${result}
-    Run keyword if    ${len} != 0    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
-    wait for HealthCheck    ${MTE}    IsConnectedToFMSClient
-    Run keyword if    ${len} != 0    Load All State EXL Files
+    Run keyword if    ${len} != 0    Run Keywords    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5
+    ...    timeout=600
+    ...    AND    Load All State EXL Files
     Return from keyword if    ${len} != 0
     run commander    process    start ${MTE}
     wait for process to exist    [FM]TE -c ${MTE}
