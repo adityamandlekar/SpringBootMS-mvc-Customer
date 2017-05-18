@@ -48,8 +48,9 @@ Verify Half Day Holiday
     ${startDateTime}=    Set Variable    @{localDateTime}[0]-@{localDateTime}[1]-@{localDateTime}[2] @{localDateTime}[3]:@{localDateTime}[4]:@{localDateTime}[5]
     @{blocks}    Get Stat Blocks For Category    ${MTE}    InputLineStats
     ${noOfInputLine}    Get Length    ${blocks}
-    ${timeoutValue}    Evaluate    ${noOfInputLine}*3
-    ${endDateTime}=    add time to date    ${startDateTime}    2 minute    exclude_millis=yes
+    ${timeoutInMinutes}    Evaluate    ${noOfInputLine}*3/60
+    ${timeoutInMinutes}    Set Variable If    ${timeoutInMinutes} < 2    2    ${timeoutInMinutes}
+    ${endDateTime}=    add time to date    ${startDateTime}    ${timeoutInMinutes} minute    exclude_millis=yes
     Go Into Datetime    HOL    ${holidayStatField}    ${feedHolidayEXL}    ${feedHolidayRic}    ${connectTimesIdentifier}    ${feedTimeRic}
     ...    ${startDateTime}    ${endDateTime}
     ${timeoutInSeconds}    Evaluate    ${timeoutInMinutes}*60
