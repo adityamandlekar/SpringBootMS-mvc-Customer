@@ -167,6 +167,7 @@ Get ConnectTimesIdentifier
     \    ${connectTimesIdentifier}=    Get Stat Block Field    ${MTE}    ${block}    connectTimesIdentifier
     \    @{retList}=    Split String    ${connectTimesIdentifier}    ,
     \    Append To List    ${allConnectTimeIdentifiers}    @{retList}
+    \    Sleep    1
     ${allConnectTimeIdentifiers}=    Remove Duplicates    ${allConnectTimeIdentifiers}
     Should Not Be Empty    ${allConnectTimeIdentifiers}    No ConnectTimesIdentifier found.
     [Return]    ${allConnectTimeIdentifiers}
@@ -253,6 +254,7 @@ Get HighActivityTimesIdentifier
     \    ${HighActivityTimesIdentifier}=    Get Stat Block Field    ${MTE}    ${block}    highactTimesIdentifier
     \    @{retList}=    Split String    ${HighActivityTimesIdentifier}    ,
     \    Append To List    ${allHighActivityTimesIdentifiers}    @{retList}
+    \    Sleep    1
     ${allHighActivityTimesIdentifiers}=    Remove Duplicates    ${allHighActivityTimesIdentifiers}
     Should Not Be Empty    ${allHighActivityTimesIdentifiers}    No highactTimesIdentifier found.
     [Return]    ${allHighActivityTimesIdentifiers}
