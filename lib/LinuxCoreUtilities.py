@@ -234,12 +234,16 @@ class LinuxCoreUtilities():
                     raise AssertionError('*ERROR* Invalid IP address %s' %ip)     
                            
         listOfInterfacesNames = self._get_all_interfaces_names()
+
         for interfaceName in listOfInterfacesNames:
             cmd = 'ifconfig ' + interfaceName + ' | grep \"inet addr\" | awk \'BEGIN {FS=":"}{print $2}\''
             stdout, stderr, rc = _exec_command(cmd)
                 
             if rc !=0 or stderr !='':
-                raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))     
+				cmd = 'ifconfig ' + interfaceName + ' | grep \"inet\" | awk \'BEGIN {FS=" "}{print $2}\''
+                stdout, stderr, rc = _exec_command(cmd)
+				if rc !=0 or stderr !='':
+				    raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr)) 
                         
             if len(stdout) > 0: 
                 listofContent = stdout.split()
