@@ -240,10 +240,10 @@ class LinuxCoreUtilities():
             stdout, stderr, rc = _exec_command(cmd)
                 
             if rc !=0 or stderr !='':
-				cmd = 'ifconfig ' + interfaceName + ' | grep \"inet\" | awk \'BEGIN {FS=" "}{print $2}\''
+                cmd = 'ifconfig ' + interfaceName + ' | grep \"inet\" | awk \'BEGIN {FS=" "}{print $2}\''
                 stdout, stderr, rc = _exec_command(cmd)
-				if rc !=0 or stderr !='':
-				    raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr)) 
+                if rc !=0 or stderr !='':
+                    raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr)) 
                         
             if len(stdout) > 0: 
                 listofContent = stdout.split()
