@@ -232,25 +232,18 @@ class LinuxCoreUtilities():
             for component in ipComponents:
                 if not(component.isdigit()):
                     raise AssertionError('*ERROR* Invalid IP address %s' %ip)     
-                           
-        listOfInterfacesNames = self._get_all_interfaces_names()
-
-        for interfaceName in listOfInterfacesNames:
-            cmd = 'ifconfig ' + interfaceName + ' | grep \"inet addr\" | awk \'BEGIN {FS=":"}{print $2}\''
-            stdout, stderr, rc = _exec_command(cmd)
-                
-            if rc !=0 or stderr !='':
-                cmd = 'ifconfig ' + interfaceName + ' | grep \"inet\" | awk \'BEGIN {FS=" "}{print $2}\''
-                stdout, stderr, rc = _exec_command(cmd)
-                if rc !=0 or stderr !='':
-                    raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr)) 
-                        
-            if len(stdout) > 0: 
-                listofContent = stdout.split()
-                if (listofContent[0] == ip):
-                    return interfaceName
-                   
-        raise AssertionError('*ERROR* Fail to get the interface name for %s' %ip)
+          
+        cmd = 'ip addr' + '| grep \"inet ' + ip + '\"' + '| awk \'BEGIN {FS=" "}{print $7}\''
+        stdout, stderr, rc = _exec_command(cmd)  
+          
+        if rc !=0 or stderr !='':
+            raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))  
+              
+        if len(stdout) > 0:
+            return stdout.strip()
+        
+        raise AssertionError('*ERROR* Fail to get the interface name for %s' %ip) 
+      
 
     def get_memory_usage(self):
         """
