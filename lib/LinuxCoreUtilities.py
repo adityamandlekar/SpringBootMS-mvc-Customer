@@ -233,7 +233,7 @@ class LinuxCoreUtilities():
                 if not(component.isdigit()):
                     raise AssertionError('*ERROR* Invalid IP address %s' %ip)     
           
-        cmd = 'ip addr' + '| grep \"inet ' + ip + '/"' + '| awk \'BEGIN {FS=" "}{print $7}\''
+        cmd = 'ip addr' + '| grep "inet ' + ip + '/"' + '| awk \'BEGIN {FS=" "}{print $7}\''
         stdout, stderr, rc = _exec_command(cmd)  
           
         if rc !=0 or stderr !='':
