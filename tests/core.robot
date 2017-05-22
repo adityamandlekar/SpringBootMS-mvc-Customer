@@ -167,7 +167,6 @@ Get ConnectTimesIdentifier
     \    ${connectTimesIdentifier}=    Get Stat Block Field    ${MTE}    ${block}    connectTimesIdentifier
     \    @{retList}=    Split String    ${connectTimesIdentifier}    ,
     \    Append To List    ${allConnectTimeIdentifiers}    @{retList}
-    \    Sleep    1
     ${allConnectTimeIdentifiers}=    Remove Duplicates    ${allConnectTimeIdentifiers}
     Should Not Be Empty    ${allConnectTimeIdentifiers}    No ConnectTimesIdentifier found.
     [Return]    ${allConnectTimeIdentifiers}
@@ -254,7 +253,6 @@ Get HighActivityTimesIdentifier
     \    ${HighActivityTimesIdentifier}=    Get Stat Block Field    ${MTE}    ${block}    highactTimesIdentifier
     \    @{retList}=    Split String    ${HighActivityTimesIdentifier}    ,
     \    Append To List    ${allHighActivityTimesIdentifiers}    @{retList}
-    \    Sleep    1
     ${allHighActivityTimesIdentifiers}=    Remove Duplicates    ${allHighActivityTimesIdentifiers}
     Should Not Be Empty    ${allHighActivityTimesIdentifiers}    No highactTimesIdentifier found.
     [Return]    ${allHighActivityTimesIdentifiers}
@@ -340,13 +338,15 @@ Get RIC From MTE Cache
     ...    If no Domain is specified it will call Get Preferred Domain to get the domain name to use.
     ...    If no contextID is specified, it will use any contextID
     ${serviceName}=    get FMS service name
-    Run Keyword If    ${manualReconcile}    Run Keywords    Load All EXL Files    ${serviceName}    ${CHE_IP}
+    Run Keyword If    ${manualReconcile} and ${REORG_FROM_FMS_SERVER}    Run Keywords    Load All EXL Files    ${serviceName}    ${CHE_IP}
     ...    AND    Wait For FMS Reorg
+    ${REORG_FROM_FMS_SERVER}    Run Keyword If    ${manualReconcile}     Set Suite Variable    ${False}
     ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    Get Preferred Domain
     ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
     ${result}    get RIC fields from cache    1    ${domain}    ${contextID}
     ${ric}=    set variable    ${result[0]['RIC']}
     ${publish_key}=    set variable    ${result[0]['PUBLISH_KEY']}
+    Log    ${REORG_FROM_FMS_SERVER}
     [Teardown]
     [Return]    ${ric}    ${publish_key}
 
@@ -578,10 +578,11 @@ MTE Machine Setup
     Set Common Suite Variables    ${ip}
     setUtilPath
     Config Change For Recon On MTE
-    stop smf
-    Delete Persist Files
+    Comment    stop smf
+    Comment    Delete Persist Files
     start smf
     Set 24x7 Feed And Trade Time And No Holidays
+    Stop MTE
     Start MTE
     ${memUsage}    get memory usage
     Run Keyword If    ${memUsage} > 90    Fail    Memory usage > 90%. This would make the system become instable during testing.
@@ -817,6 +818,7 @@ Set Common Suite Variables
     Length Should Be    ${fileList}    1    ${MTE_CONFIG} file not found (or multiple files found).
     ${dirAndFile}=    Split String From Right    ${fileList[0]}    /    max_split=1
     Set Suite Variable    ${REMOTE_MTE_CONFIG_DIR}    ${dirAndFile[0]}
+    Set Suite Variable    ${REORG_FROM_FMS_SERVER}    ${True}
 
 Set DST Datetime In EXL
     [Arguments]    ${srcFile}    ${dstFile}    ${ric}    ${domain}    ${startDateTime}    ${endDateTime}
@@ -948,6 +950,7 @@ Start MTE
     wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
     Wait For FMS Reorg
     Load All State EXL Files
+    Set Suite Variable    ${REORG_FROM_FMS_SERVER}    ${True}
 
 Start Process
     [Arguments]    ${process}
