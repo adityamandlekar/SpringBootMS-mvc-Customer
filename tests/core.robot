@@ -378,11 +378,11 @@ Get RIC Sample
     [Arguments]    ${domain}
     [Documentation]    Get a single RIC name (SIC and Publish Key) \ exist in both MTE cache and local EXL Files for the specified domain
     ${serviceName}=    Get FMS Service Name
-    Run Keyword If    ${LAST_REORG_IS_FROM_FMS_SERVER}    Run Keywords    Load All EXL Files    ${serviceName}    ${CHE_IP}
+    Run Keyword If    ${REORG_FROM_FMS_SERVER}    Run Keywords    Load All EXL Files    ${serviceName}    ${CHE_IP}
     ...    AND    Wait For FMS Reorg
     ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${EXLfullpath}    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
-    Set Suite Variable    ${LAST_REORG_IS_FROM_FMS_SERVER}    ${False}
+    Set Suite Variable    ${REORG_FROM_FMS_SERVER}    ${False}
     [Return]    ${EXLfullpath}    ${sic}    ${ric}    ${publishKey}
 
 Get Sorted Cache Dump
