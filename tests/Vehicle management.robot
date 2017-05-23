@@ -383,48 +383,44 @@ Verify both RIC and SIC rename handled correctly
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2149
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    Run Keywords    Load All EXL Files    ${serviceName}    ${CHE_IP}
-    ...    AND    Wait For FMS Reorg
-    ${result}=    get RIC fields from cache    1    ${domain}    ${EMPTY}
-    ${RIC_Before_Rename}    set variable    ${result[0]['RIC']}
-    ${SIC_Before_Rename} =    set variable    ${result[0]['SIC']}
-    ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${RIC_Before_Rename}
-    ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
-    ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
-    Copy File    ${EXLfullpath}    ${LocalEXLfullpath}
+    ${exlFullpath}    ${sic_before_rename}    ${ric_before_rename}    ${publishKey}    Get RIC Sample    ${domain}
+    ${result}=    Get RIC Fields From Cache    1    ${domain}    ${EMPTY}
+    ${exlFile}    Fetch From Right    ${exlFullpath}    \\
+    ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${exlFile}
+    Copy File    ${exlFullpath}    ${LocalEXLfullpath}
     ${srcFilefullPath}    set variable    ${LOCAL_TMP_DIR}/ChangeSicRic.src
-    ${RIC_After_Rename}    ${SIC_After_Rename}    create_RIC_SIC_rename_file    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${srcFilefullPath}    ${LocalEXLfullpath}
+    ${ric_after_rename}    ${sic_after_rename}    create_RIC_SIC_rename_file    ${ric_before_rename}    ${sic_before_rename}    ${srcFilefullPath}    ${LocalEXLfullpath}
     Get FIDFilter File
     ${constituent_list}=    Get Constituents From FidFilter    ${result[0]['CONTEXT_ID']}
-    Set RIC in EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC_Before_Rename}    ${domain}    ${RIC_After_Rename}
-    Set Symbol In EXL    ${LocalEXLfullpath}    ${LocalEXLfullpath}    ${RIC_After_Rename}    ${domain}    ${SIC_After_Rename}
+    Set RIC in EXL    ${exlFullpath}    ${LocalEXLfullpath}    ${ric_before_rename}    ${domain}    ${ric_after_rename}
+    Set Symbol In EXL    ${LocalEXLfullpath}    ${LocalEXLfullpath}    ${ric_after_rename}    ${domain}    ${sic_after_rename}
     Start Capture MTE Output
     Comment    Both SIC and RIC rename in SRC file
     Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    --SRCFile ${srcFilefullPath}
     Wait For FMS Reorg
-    Verify RIC NOT In MTE Cache    ${RIC_Before_Rename}    ${domain}
-    ${RIC_After_Rename}    ${Published_RIC_After_Rename}    Verify RIC In MTE Cache    ${RIC_After_Rename}    ${domain}
+    Verify RIC NOT In MTE Cache    ${ric_before_rename}    ${domain}
+    ${ric_after_rename}    ${Published_RIC_After_Rename}    Verify RIC In MTE Cache    ${ric_after_rename}    ${domain}
     Send TRWF2 Refresh Request    ${Published_RIC_After_Rename}    ${domain}
     Wait For Persist File Update    5    60
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_2.pcap
     verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${Published_RIC_After_Rename}    ${domain}    ${constituent_list}
-    Verify Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
-    Verify Item Not Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
-    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${RIC_Before_Rename}    ${domain}
+    Verify Item Persisted    ${ric_after_rename}    ${EMPTY}    ${domain}
+    Verify Item Not Persisted    ${ric_before_rename}    ${sic_before_rename}    ${domain}
+    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${ric_before_rename}    ${domain}
     Start Capture MTE Output
-    Purge RIC    ${RIC_After_Rename}    ${domain}    ${serviceName}
-    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
+    Purge RIC    ${ric_after_rename}    ${domain}    ${serviceName}
+    Load Single EXL File    ${exlFullpath}    ${serviceName}    ${CHE_IP}
     Wait For FMS Reorg
-    ${RIC_Before_Rename}    ${Published_RIC_Before_Rename}    Verify RIC In MTE Cache    ${RIC_Before_Rename}    ${domain}
-    Verify RIC Not In MTE Cache    ${RIC_After_Rename}    ${domain}
+    ${ric_before_rename}    ${Published_RIC_Before_Rename}    Verify RIC In MTE Cache    ${ric_before_rename}    ${domain}
+    Verify RIC Not In MTE Cache    ${ric_after_rename}    ${domain}
     Send TRWF2 Refresh Request    ${Published_RIC_Before_Rename}    ${domain}
     Wait For Persist File Update    5    60
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
-    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${RIC_After_Rename}    ${domain}
-    Verify Item Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
-    Verify Item Not Persisted    ${RIC_After_Rename}    ${SIC_After_Rename}    ${domain}
+    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${ric_after_rename}    ${domain}
+    Verify Item Persisted    ${ric_before_rename}    ${sic_before_rename}    ${domain}
+    Verify Item Not Persisted    ${ric_after_rename}    ${sic_after_rename}    ${domain}
     [Teardown]    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 Verify FID update via FMS
