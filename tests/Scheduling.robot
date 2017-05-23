@@ -132,10 +132,10 @@ Verify Manual ClosingRun
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1886
     ...
     ...    The test case is used to verify the manual closing run, including doing a Closing Run for a specific RIC, a Closing Run for a specific Exl file and a Closing Run for a specific Closing Run RIC
-    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache
     ${domain}    Get Preferred Domain
-    Manual ClosingRun for a RIC    ${sampleRic}    ${publishKey}    ${domain}
-    Manual ClosingRun for the EXL File including target Ric    ${sampleRic}    ${publishKey}    ${domain}
+    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    Manual ClosingRun for a RIC    ${ric}    ${publishKey}    ${domain}
+    Manual ClosingRun for the EXL File including target Ric    ${ric}    ${publishKey}    ${domain}
     Manual ClosingRun for ClosingRun Rics    ${serviceName}
 
 Verify ES persists State Processing RICs

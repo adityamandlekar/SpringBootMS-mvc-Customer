@@ -13,7 +13,7 @@ Validate Item Sequence Numbering on Startup
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     ${domain}    Get Preferred Domain
-    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${service}    Get FMS Service Name
     ${icf_file}=    set variable    ${LOCAL_TMP_DIR}/extract_output.icf
     Run FmsCmd    ${CHE_IP}    Extract    --Services ${service}    --RIC ${ric}    --HandlerName ${MTE}    --Domain ${domain}

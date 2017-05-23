@@ -18,10 +18,10 @@ Verify SOU Phase - Internal PE
     @{expected_pe}    Create List    4128    4245    4247
     ${expected_RicPrefix}    set variable    ![
     ${domain}    Get Preferred Domain
-    ${sampleRic}    ${pubRic}    Get RIC from MTE Cache    ${domain}
+    ${sic}    ${ric}    ${publishKey}    Get RIC from MTE Cache    ${domain}
     Set Mangling Rule    SOU
-    ${output}    Send TRWF2 Refresh Request    ${expected_RicPrefix}${sampleRic}    ${domain}
-    Run Keyword And Continue On Failure    verify mangling from dataview response    ${output}    ${expected_pe}    ${expected_RicPrefix}${sampleRic}
+    ${output}    Send TRWF2 Refresh Request    ${expected_RicPrefix}${ric}    ${domain}
+    Run Keyword And Continue On Failure    verify mangling from dataview response    ${output}    ${expected_pe}    ${expected_RicPrefix}${ric}
     Load Mangling Settings
 
 Verify BETA Phase - Disable PE Mangling without Restart
@@ -33,10 +33,8 @@ Verify BETA Phase - Disable PE Mangling without Restart
     @{expected_pe}    Create List    4128    4245    4247
     ${expected_RicPrefix}    set variable    ![
     ${domain}=    Get Preferred Domain
-    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}    manualReconcile=${True}
-    ${serviceName}=    Get FMS Service Name
-    ${exlfile}=    Get EXL For RIC    ${domain}    ${serviceName}    ${sampleRic}
-    @{pe}=    get ric fields from EXL    ${exlfile}    ${sampleRic}    PROD_PERM
+    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    @{pe}=    get ric fields from EXL    ${exlFullpath}    ${ric}    PROD_PERM
     ${penew}=    set variable    @{pe}[0]
     ${localcapture}    Change Phase    SOU    BETA
     ${remotedumpfile}=    dump cache
@@ -46,7 +44,7 @@ Verify BETA Phase - Disable PE Mangling without Restart
     ${length}    Get Length    ${matchedLines}
     Should Be Equal    ${length}    ${0}    Phase isn't changed successfully    ${False}
     Get FIDFilter File
-    Run Keyword And Continue On Failure    verify PE Change in message    ${localcapture}    ${expected_RicPrefix}${sampleRic}    ${expected_pe}    ${penew}    ${domain}
+    Run Keyword And Continue On Failure    verify PE Change in message    ${localcapture}    ${expected_RicPrefix}${ric}    ${expected_pe}    ${penew}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify Electron RRG Phase - RIC Mangling change without Restart
@@ -58,7 +56,7 @@ Verify Electron RRG Phase - RIC Mangling change without Restart
     ${beta_RicPrefix}    set variable    ![
     ${expected_RicPrefix}    set variable    !!
     ${domain}=    Get Preferred Domain
-    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${localcapture}=    Change Phase    BETA    RRG
     ${remotedumpfile}=    dump cache
     ${matchedLines}    grep_remote_file    ${remotedumpfile}    ,Elektron Beta,
@@ -67,8 +65,8 @@ Verify Electron RRG Phase - RIC Mangling change without Restart
     ${length}    Get Length    ${matchedLines}
     Should Be Equal    ${length}    ${0}    Phase wasn't changed successfully    ${False}
     Get FIDFilter File
-    Run Keyword And Continue On Failure    verify DROP message in itemstatus messages    ${localcapture}    ${beta_RicPrefix}${sampleRic}    ${domain}
-    Run Keyword And Continue On Failure    verify all response message num    ${localcapture}    ${expected_RicPrefix}${sampleRic}    ${domain}
+    Run Keyword And Continue On Failure    verify DROP message in itemstatus messages    ${localcapture}    ${beta_RicPrefix}${ric}    ${domain}
+    Run Keyword And Continue On Failure    verify all response message num    ${localcapture}    ${expected_RicPrefix}${ric}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify IDN RRG Phase - RIC Mangling change without Restart
@@ -80,7 +78,7 @@ Verify IDN RRG Phase - RIC Mangling change without Restart
     ...    _Test Case - Verify Production Phase -- No mangling, changes applied without Restart_
     ${rrg_RicPrefix}    set variable    !!
     ${domain}=    Get Preferred Domain
-    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${localcapture}    Change Phase    RRG    UNMANGLED
     ${remotedumpfile}=    dump cache
     ${matchedLines}    grep_remote_file    ${remotedumpfile}    ,Elektron RRG,
@@ -89,8 +87,8 @@ Verify IDN RRG Phase - RIC Mangling change without Restart
     ${length}    Get Length    ${matchedLines}
     Should Be Equal    ${length}    ${0}    Mangled isn't removed    ${False}
     Get FIDFilter File
-    Run Keyword And Continue On Failure    verify DROP message in itemstatus messages    ${localcapture}    ${rrg_RicPrefix}${sampleRic}    ${domain}
-    Run Keyword And Continue On Failure    verify all response message num    ${localcapture}    ${sampleRic}    ${domain}
+    Run Keyword And Continue On Failure    verify DROP message in itemstatus messages    ${localcapture}    ${rrg_RicPrefix}${ric}    ${domain}
+    Run Keyword And Continue On Failure    verify all response message num    ${localcapture}    ${ric}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify Mangling by Context ID

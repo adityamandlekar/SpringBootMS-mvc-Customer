@@ -18,18 +18,18 @@ Verify Live Instance Publishing
     Switch To TD Box    ${CHE_A_IP}
     Force MTE to Status    ${master_ip}    A    LIVE
     ${domain}=    Get Preferred Domain
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${ret}    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
+    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${ret}    Send TRWF2 Refresh Request    ${publishKey}    ${domain}
     Should Not be Empty    ${ret}    CHE_A is LIVE box , should have output
     Switch To TD Box    ${CHE_B_IP}
-    ${ret}    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
+    ${ret}    Send TRWF2 Refresh Request    ${publishKey}    ${domain}
     Should be Empty    ${ret}    CHE_B is STANDBY box , should NOT have output
     Switch To TD Box    ${CHE_B_IP}
     Force MTE to Status    ${master_ip}    B    LIVE
-    ${ret}    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
+    ${ret}    Send TRWF2 Refresh Request    ${publishKey}    ${domain}
     Should Not be Empty    ${ret}    CHE_B is LIVE box , should have output
     Switch To TD Box    ${CHE_A_IP}
-    ${ret}    Send TRWF2 Refresh Request    ${pubRic}    ${domain}
+    ${ret}    Send TRWF2 Refresh Request    ${publishKey}    ${domain}
     Should be Empty    ${ret}    CHE_A is STANDBY box , should NOT have output
 
 *** Keywords ***

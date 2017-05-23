@@ -333,22 +333,18 @@ Get Preferred Domain
     [Return]    ${domain}
 
 Get RIC From MTE Cache
-    [Arguments]    ${requestedDomain}=${EMPTY}    ${contextID}=${EMPTY}    ${manualReconcile}=${False}
-    [Documentation]    Get a single RIC name from MTE cache for the specified Domain and contextID.
+    [Arguments]    ${requestedDomain}=${EMPTY}    ${contextID}=${EMPTY}
+    [Documentation]    Get a single RIC name (SIC and Publish Key) \ from MTE cache for the specified Domain and contextID.
     ...    If no Domain is specified it will call Get Preferred Domain to get the domain name to use.
     ...    If no contextID is specified, it will use any contextID
-    ${serviceName}=    get FMS service name
-    Run Keyword If    ${manualReconcile} and ${REORG_FROM_FMS_SERVER}    Run Keywords    Load All EXL Files    ${serviceName}    ${CHE_IP}
-    ...    AND    Wait For FMS Reorg
-    ${REORG_FROM_FMS_SERVER}    Run Keyword If    ${manualReconcile}     Set Suite Variable    ${False}
     ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    Get Preferred Domain
     ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
     ${result}    get RIC fields from cache    1    ${domain}    ${contextID}
+    ${sic}=    set variable    ${result[0]['SIC']}
     ${ric}=    set variable    ${result[0]['RIC']}
-    ${publish_key}=    set variable    ${result[0]['PUBLISH_KEY']}
-    Log    ${REORG_FROM_FMS_SERVER}
+    ${publishKey}=    set variable    ${result[0]['PUBLISH_KEY']}
     [Teardown]
-    [Return]    ${ric}    ${publish_key}
+    [Return]    ${sic}    ${ric}    ${publishKey}
 
 Get RIC List From Remote PCAP
     [Arguments]    ${remoteCapture}    ${domain}
@@ -377,6 +373,17 @@ Get RIC List From StatBlock
     ${ricList}=    Run Keyword if    '${ricType}'=='Trade Time'    get stat blocks for category    ${MTE}    TradeTimes
     Return from keyword if    '${ricType}'=='Trade Time'    ${ricList}
     FAIL    RIC not found. Valid choices are: 'Closing Run', 'DST', 'Feed Time', 'Holiday', 'Trade Time'
+
+Get RIC Sample
+    [Arguments]    ${domain}
+    [Documentation]    Get a single RIC name (SIC and Publish Key) \ exist in both MTE cache and local EXL Files for the specified domain
+    ${serviceName}=    Get FMS Service Name
+    Run Keyword If    ${LAST_REORG_IS_FROM_FMS_SERVER}    Run Keywords    Load All EXL Files    ${serviceName}    ${CHE_IP}
+    ...    AND    Wait For FMS Reorg
+    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${EXLfullpath}    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
+    Set Suite Variable    ${LAST_REORG_IS_FROM_FMS_SERVER}    ${False}
+    [Return]    ${EXLfullpath}    ${sic}    ${ric}    ${publishKey}
 
 Get Sorted Cache Dump
     [Arguments]    ${destfile}    # where will the csv be copied back
