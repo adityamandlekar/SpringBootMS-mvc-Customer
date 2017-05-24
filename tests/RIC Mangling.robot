@@ -178,14 +178,14 @@ Verify Mangling Rule On All Context IDs
     : FOR    ${contextid}    IN    @{specialContextId}
     \    ${status}    ${return}    run keyword and ignore error    Get RIC From MTE Cache    ${EMPTY}    ${contextid}
     \    Continue For Loop If    '${status}' =='FAIL'
-    \    ${sampleRic}    ${publishKey}    set variable    ${return}
+    \    ${sic}    ${sampleRic}    ${publishKey}    set variable    ${return}
     \    ${expectedPrefix}    Get From Dictionary    ${specialContextId}    ${contextid}
     \    Should Be Equal    ${publishKey}    ${expectedPrefix}${sampleRic}    The mangling is not set for context id ${contextid}
     \    Remove Values From List    ${allcontextids}    ${contextid}
     : FOR    ${contextid}    IN    @{allcontextids}
     \    ${status}    ${return}    run keyword and ignore error    Get RIC From MTE Cache    ${EMPTY}    ${contextid}
     \    Continue For Loop If    '${status}' =='FAIL'
-    \    ${sampleRic}    ${publishKey}    set variable    ${return}
+    \    ${sic}    ${sampleRic}    ${publishKey}    set variable    ${return}
     \    Should Be Equal    ${publishKey}    ${sampleRic}    The mangling is not the default for context id ${contextid}
 
 Verify Mangling by Context ID Case Setup

@@ -167,7 +167,7 @@ Drop a RIC by deleting EXL File and Full Reorg
     Load All EXL Files    ${serviceName}    ${CHE_IP}
     wait smf log message after time    Drop message sent    ${currentDateTime}
     Verify RIC is Dropped In MTE Cache    ${ric}    ${domain}
-    [Teardown]    Drop a RIC Case Teardown    ${LOCAL_TMP_DIR}/${exlFileName}
+    [Teardown]    Drop a RIC Case Teardown    ${serviceName}    ${LOCAL_TMP_DIR}/${exlFileName}
 
 Drop a RIC by deleting EXL file from LXL file
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1924
@@ -525,7 +525,7 @@ Drop a RIC Case Setup
     Set Suite Variable    ${backupEXLs}
 
 Drop a RIC Case Teardown
-    [Arguments]    @{tmpfiles}
+    [Arguments]    ${serviceName}    @{tmpfiles}
     [Documentation]    The teardown will restore all backup EXL in @{backupEXLs}, and reload all exl files in @{processedEXLs}, and remove temporary files.
     : FOR    ${backuppath}    IN    @{backupEXLs}
     \    ${orgpath}    Get From Dictionary    ${backupEXLs}    ${backuppath}
