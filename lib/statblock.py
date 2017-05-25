@@ -78,12 +78,7 @@ def get_stat_block_field(writerName, blockName, fieldName, allowNotFound=False):
             
     cmd = "%s -f %s %s %s" %(utilpath.STATBLOCKFIELDREADER, writerName, blockName, fieldName)
     stdout, stderr, rc = _exec_command(cmd)
-
-    #Debugging : when we encountered rc = 2 , we sleep 10 seconds and retry one more time.
-    if rc == 2:
-        time.sleep(20)
-        stdout, stderr, rc = _exec_command(cmd)
-        
+    
 #   print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
     if rc !=0 or stderr !='':
         if allowNotFound:
