@@ -384,6 +384,7 @@ Verify both RIC and SIC rename handled correctly
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
     ${exlFullpath}    ${sic_before_rename}    ${ric_before_rename}    ${publishKey}    Get RIC Sample    ${domain}
+    ${mangle}    Fetch From Left    ${publishKey}    ${ric_before_rename}
     ${result}=    Get RIC Fields From Cache    1    ${domain}    ${EMPTY}
     ${exlFile}    Fetch From Right    ${exlFullpath}    \\
     ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${exlFile}
@@ -418,9 +419,10 @@ Verify both RIC and SIC rename handled correctly
     Wait For Persist File Update    5    60
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
-    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${ric_after_rename}    ${domain}
+    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${mangle}${ric_after_rename}    ${domain}
     Verify Item Persisted    ${ric_before_rename}    ${sic_before_rename}    ${domain}
     Verify Item Not Persisted    ${ric_after_rename}    ${sic_after_rename}    ${domain}
+    Load Mangling Settings
     [Teardown]    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 Verify FID update via FMS
