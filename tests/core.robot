@@ -377,6 +377,14 @@ Get RIC List From StatBlock
 Get RIC Sample
     [Arguments]    ${domain}
     [Documentation]    Get a single RIC name (SIC and Publish Key) \ exist in both MTE cache and local EXL Files for the specified domain
+    ...
+    ...
+    ...    Remark:
+    ...    ${REORG_FROM_FMS_SERVER} is Suite Variable which will be created and initialize in Suite Setup to ${True}
+    ...    Every call of "Start MTE" will also reset this variable to ${True}
+    ...    ${REORG_FROM_FMS_SERVER} = ${True} indicate that MTE has been sync up its cache from FMS server before.
+    ...
+    ...    ${REORG_FROM_FMS_SERVER} will set to ${False} after Get RIC Sample as a call of "Load All EXL Files" will used within the KW to sync up the MTE cache with local EXL files.
     ${serviceName}=    Get FMS Service Name
     Run Keyword If    ${REORG_FROM_FMS_SERVER}    Run Keywords    Load All EXL Files    ${serviceName}    ${CHE_IP}
     ...    AND    Wait For FMS Reorg
@@ -818,6 +826,7 @@ Set Common Suite Variables
     ...    CHE_IP - address of the current CHE box
     ...    MTE_CONFIG - MTE config file name
     ...    REMOTE_MTE_CONFIG_DIR - path to directory containing the MTE config file on Thunderdome box.
+    ...    REORG_FROM_FMS_SERVER = ${True} indicate that MTE has been sync up its cache from FMS server before.
     Set Suite Variable    ${CHE_IP}    ${ip}
     ${MTE_CONFIG}=    convert to lowercase    ${MTE}.json
     Set Suite Variable    ${MTE_CONFIG}
@@ -946,6 +955,9 @@ Start MTE
     ...    Then load the state EXL files (that were modified by suite setup to set 24x7 feed and trade time).
     ...
     ...    If Recon is changed to set ResendFM=0 in the MTE config file, instead of loading just the state EXL files, this will need to load all of the EXL files (if they have not already been loaded). \ With ResendFM=1, we need to wait for FMS reorg to finish, and then load the state EXL files to override the ones loaded from the FMS server.
+    ...
+    ...    Remark:
+    ...    ${REORG_FROM_FMS_SERVER} = ${True} indicate that MTE has been sync up its cache from FMS server before.
     ${result}=    find processes by pattern    [FM]TE -c ${MTE}
     ${len}=    Get Length    ${result}
     Run keyword if    ${len} != 0    Run Keywords    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5
