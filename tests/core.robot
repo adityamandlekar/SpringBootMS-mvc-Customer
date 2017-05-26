@@ -340,11 +340,10 @@ Get RIC From MTE Cache
     ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    Get Preferred Domain
     ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
     ${result}    get RIC fields from cache    1    ${domain}    ${contextID}
-    ${sic}=    set variable    ${result[0]['SIC']}
     ${ric}=    set variable    ${result[0]['RIC']}
     ${publishKey}=    set variable    ${result[0]['PUBLISH_KEY']}
     [Teardown]
-    [Return]    ${sic}    ${ric}    ${publishKey}
+    [Return]    ${ric}    ${publishKey}
 
 Get RIC List From Remote PCAP
     [Arguments]    ${remoteCapture}    ${domain}
@@ -388,10 +387,10 @@ Get RIC Sample
     ${serviceName}=    Get FMS Service Name
     Run Keyword If    ${REORG_FROM_FMS_SERVER}    Run Keywords    Load All EXL Files    ${serviceName}    ${CHE_IP}
     ...    AND    Wait For FMS Reorg
-    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${EXLfullpath}    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
     Set Suite Variable    ${REORG_FROM_FMS_SERVER}    ${False}
-    [Return]    ${EXLfullpath}    ${sic}    ${ric}    ${publishKey}
+    [Return]    ${EXLfullpath}    ${ric}    ${publishKey}
 
 Get Sorted Cache Dump
     [Arguments]    ${destfile}    # where will the csv be copied back

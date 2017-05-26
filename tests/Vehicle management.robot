@@ -14,7 +14,7 @@ Verify Long RIC handled correctly
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1648
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     ${exlFile}=    Fetch From Right    ${exlFullpath}    \\
     ${localEXLfile}=    set variable    ${LOCAL_TMP_DIR}/${exlFile}
     ${long_ric}=    Create Unique RIC Name    32_chars_total
@@ -36,7 +36,7 @@ Verify PE Change Behavior
     Set Mangling Rule    UNMANGLED
     ${domain}    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     @{pe}=    Get Ric Fields From EXL    ${exlFullpath}    ${ric}    PROD_PERM
     ${penew}=    Evaluate    @{pe}[0] - 1
     ${penew}=    Convert To String    ${penew}
@@ -59,7 +59,7 @@ Verify New Item Creation via FMS
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1711
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     ${uniqueRic}=    Create Unique RIC Name
     Add Ric To Exl File    ${exlFullpath}    ${LOCAL_TMP_DIR}/output.exl    ${uniqueRic}    ${uniqueRic}    ${domain}
     Load Single EXL File    ${LOCAL_TMP_DIR}/output.exl    ${serviceName}    ${CHE_IP}
@@ -73,7 +73,7 @@ Partial REORG on EXL Change
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1791
     ${domain}    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     ${fieldName}=    set variable    DSPLY_NAME
     ${fieldValueNew}=    set variable    PARTIALREORGTEST
     ${fieldValueOrg}=    Set Field Value in EXL    ${exlFullpath}    ${ric}    ${domain}    ${fieldName}    ${fieldValueNew}
@@ -94,7 +94,7 @@ Verify RIC rename handled correctly
     Comment    //Setup variables for test
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${exlFullpath}    ${sic}    ${ric_before_rename}    ${publishKey_before_rename}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric_before_rename}    ${publishKey_before_rename}    Get RIC Sample    ${domain}
     ${ric_before_rename_trunc}    Get Substring    ${ric_before_rename}    0    14
     ${ric_after_rename}    Create Unique RIC Name    ${ric_before_rename_trunc}
     ${exlFile}    Fetch From Right    ${exlFullpath}    \\
@@ -142,7 +142,7 @@ Verify FMS Rebuild
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1849
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     Start Capture MTE Output
     rebuild ric    ${serviceName}    ${ric}    ${domain}
     Stop Capture MTE Output
@@ -157,7 +157,7 @@ Drop a RIC by deleting EXL File and Full Reorg
     [Setup]    Drop a RIC Case Setup
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     Append To List    ${processedEXLs}    ${exlFullpath}
     ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullpath}
     copy File    ${exlFullpath}    ${LOCAL_TMP_DIR}/${exlFileName}
@@ -175,7 +175,7 @@ Drop a RIC by deleting EXL file from LXL file
     ...    Find a RIC associated exl file. Create LXL file with all exl files for the service except the founded one and place the lxl file to FMAREA/Service/System Files/Reconcile Files folder. \ After reconcile, verify RICs is dropped.
     ${domain}    Get Preferred Domain
     ${service}    Get FMS Service Name
-    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullpath}
     ${service_dir}    Fetch From Left    ${exlFilePath}    \\${service}\\
     ${recon_files_dir}=    set variable    ${service_dir}\\${service}\\System Files\\Reconcile Files
@@ -198,7 +198,7 @@ Verify Reconcile of Cache
     Should Be True    ${SendRefreshForFullReorg} != '1'    SendRefreshForFullReorg should be disabled
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullpath}
     copy File    ${exlFullpath}    ${LOCAL_TMP_DIR}/${exlFileName}
     ${newRICName}    Create Unique RIC Name
@@ -250,7 +250,7 @@ Verify FMS Extract and Insert
     ...    Test Case - Verify FMS Extract and Insert : http://www.iajira.amers.ime.reuters.com/browse/CATF-1892
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${beforeExtractFile}    set variable    ${LOCAL_TMP_DIR}/beforeExtractFile.icf
     ${afterExtractFile}    set variable    ${LOCAL_TMP_DIR}/afterExtractFile.icf
     ${beforeLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localBefore.pcap
@@ -290,7 +290,7 @@ Verify Deletion Delay
     [Setup]    Disable MTE Clock Sync
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${StartOfDayTime}    Get Start Time
     ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
@@ -325,7 +325,7 @@ Verify Drop and Undrop from FMSCmd
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2009
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${mteConfigFile}=    Get MTE Config File
     ${currDateTime}    get date and time
     Get FIDFilter File
@@ -360,7 +360,7 @@ Verify Drop with Purge from FMSCmd
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2352 [MTE] Handling of FMS purge, no deletion delay logic, drop sent to downstream
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     ${mteConfigFile}=    Get MTE Config File
     ${currDateTime}    get date and time
     Get FIDFilter File
@@ -383,8 +383,9 @@ Verify both RIC and SIC rename handled correctly
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2149
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${exlFullpath}    ${sic_before_rename}    ${ric_before_rename}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric_before_rename}    ${publishKey}    Get RIC Sample    ${domain}
     ${result}=    Get RIC Fields From Cache    1    ${domain}    ${EMPTY}
+    ${sic_before_rename}    set variable    ${result[0]['SIC']}
     ${exlFile}    Fetch From Right    ${exlFullpath}    \\
     ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${exlFile}
     Copy File    ${exlFullpath}    ${LocalEXLfullpath}
@@ -429,7 +430,7 @@ Verify FID update via FMS
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2260
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     ${EXLfile}    Fetch From Right    ${exlFullpath}    \\
     ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
     Copy File    ${exlFullpath}    ${LocalEXLfullpath}

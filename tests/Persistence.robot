@@ -62,7 +62,7 @@ Verify New Item Added to Persist File via FMS
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1844
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     ${RicEXLfile}    Fetch From Right    ${exlFullpath}    \\
     ${localRicEXLFile}    set variable    ${LOCAL_TMP_DIR}/${RicEXLfile}
     ${newRic}    Create Unique RIC Name    newric
@@ -133,7 +133,7 @@ Persistence file FIDs existence check
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
     ${domain}=    Get Preferred Domain
-    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     Wait For Persist File Update
     ${cacheDomainName}=    Remove String    ${domain}    _
     ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}

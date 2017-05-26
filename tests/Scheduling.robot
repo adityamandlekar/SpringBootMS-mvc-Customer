@@ -133,7 +133,7 @@ Verify Manual ClosingRun
     ...
     ...    The test case is used to verify the manual closing run, including doing a Closing Run for a specific RIC, a Closing Run for a specific Exl file and a Closing Run for a specific Closing Run RIC
     ${domain}    Get Preferred Domain
-    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     Manual ClosingRun for a RIC    ${ric}    ${publishKey}    ${domain}
     Manual ClosingRun for the EXL File including target Ric    ${ric}    ${publishKey}    ${domain}
     Manual ClosingRun for ClosingRun Rics    ${serviceName}

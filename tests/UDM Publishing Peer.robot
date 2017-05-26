@@ -18,7 +18,7 @@ Verify Live Instance Publishing
     Switch To TD Box    ${CHE_A_IP}
     Force MTE to Status    ${master_ip}    A    LIVE
     ${domain}=    Get Preferred Domain
-    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${ret}    Send TRWF2 Refresh Request    ${publishKey}    ${domain}
     Should Not be Empty    ${ret}    CHE_A is LIVE box , should have output
     Switch To TD Box    ${CHE_B_IP}

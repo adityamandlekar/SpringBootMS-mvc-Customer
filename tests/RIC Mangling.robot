@@ -18,7 +18,7 @@ Verify SOU Phase - Internal PE
     @{expected_pe}    Create List    4128    4245    4247
     ${expected_RicPrefix}    set variable    ![
     ${domain}    Get Preferred Domain
-    ${sic}    ${ric}    ${publishKey}    Get RIC from MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     Set Mangling Rule    SOU
     ${output}    Send TRWF2 Refresh Request    ${expected_RicPrefix}${ric}    ${domain}
     Run Keyword And Continue On Failure    verify mangling from dataview response    ${output}    ${expected_pe}    ${expected_RicPrefix}${ric}
@@ -33,7 +33,7 @@ Verify BETA Phase - Disable PE Mangling without Restart
     @{expected_pe}    Create List    4128    4245    4247
     ${expected_RicPrefix}    set variable    ![
     ${domain}=    Get Preferred Domain
-    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     @{pe}=    get ric fields from EXL    ${exlFullpath}    ${ric}    PROD_PERM
     ${penew}=    set variable    @{pe}[0]
     ${localcapture}    Change Phase    SOU    BETA
@@ -56,7 +56,7 @@ Verify Electron RRG Phase - RIC Mangling change without Restart
     ${beta_RicPrefix}    set variable    ![
     ${expected_RicPrefix}    set variable    !!
     ${domain}=    Get Preferred Domain
-    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${localcapture}=    Change Phase    BETA    RRG
     ${remotedumpfile}=    dump cache
     ${matchedLines}    grep_remote_file    ${remotedumpfile}    ,Elektron Beta,
@@ -78,7 +78,7 @@ Verify IDN RRG Phase - RIC Mangling change without Restart
     ...    _Test Case - Verify Production Phase -- No mangling, changes applied without Restart_
     ${rrg_RicPrefix}    set variable    !!
     ${domain}=    Get Preferred Domain
-    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${localcapture}    Change Phase    RRG    UNMANGLED
     ${remotedumpfile}=    dump cache
     ${matchedLines}    grep_remote_file    ${remotedumpfile}    ,Elektron RRG,
@@ -178,14 +178,14 @@ Verify Mangling Rule On All Context IDs
     : FOR    ${contextid}    IN    @{specialContextId}
     \    ${status}    ${return}    run keyword and ignore error    Get RIC From MTE Cache    ${EMPTY}    ${contextid}
     \    Continue For Loop If    '${status}' =='FAIL'
-    \    ${sic}    ${sampleRic}    ${publishKey}    set variable    ${return}
+    \    ${sampleRic}    ${publishKey}    set variable    ${return}
     \    ${expectedPrefix}    Get From Dictionary    ${specialContextId}    ${contextid}
     \    Should Be Equal    ${publishKey}    ${expectedPrefix}${sampleRic}    The mangling is not set for context id ${contextid}
     \    Remove Values From List    ${allcontextids}    ${contextid}
     : FOR    ${contextid}    IN    @{allcontextids}
     \    ${status}    ${return}    run keyword and ignore error    Get RIC From MTE Cache    ${EMPTY}    ${contextid}
     \    Continue For Loop If    '${status}' =='FAIL'
-    \    ${sic}    ${sampleRic}    ${publishKey}    set variable    ${return}
+    \    ${sampleRic}    ${publishKey}    set variable    ${return}
     \    Should Be Equal    ${publishKey}    ${sampleRic}    The mangling is not the default for context id ${contextid}
 
 Verify Mangling by Context ID Case Setup

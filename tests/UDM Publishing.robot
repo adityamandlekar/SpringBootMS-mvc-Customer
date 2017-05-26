@@ -140,7 +140,7 @@ Verify Message Key Name is Compressed
     ...    ensure all TD CHE releases message key name compression is enabled
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${exlFullpath}    ${sic}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     ${exlFile}=    Fetch From Right    ${exlFullpath}    \\
     ${localEXLfile}=    set variable    ${LOCAL_TMP_DIR}/${exlFile}
     ${long_ric}=    Create Unique RIC Name    32_chars_total
@@ -388,7 +388,7 @@ Verify TRWF Update Type
     Reset Sequence Numbers
     Verify Realtime Update    ${pcapFileName}
     ${domain}    Get Preferred Domain
-    ${sic}    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     Manual ClosingRun for a RIC    ${ric}    ${publishKey}    ${domain}
 
 *** Keywords ***
