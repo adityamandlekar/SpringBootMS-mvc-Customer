@@ -140,12 +140,11 @@ Verify Message Key Name is Compressed
     ...    ensure all TD CHE releases message key name compression is enabled
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
-    ${EXLfile}=    Fetch From Right    ${EXLfullpath}    \\
-    ${localEXLfile}=    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFile}=    Fetch From Right    ${exlFullpath}    \\
+    ${localEXLfile}=    set variable    ${LOCAL_TMP_DIR}/${exlFile}
     ${long_ric}=    Create Unique RIC Name    32_chars_total
-    Set RIC In EXL    ${EXLfullpath}    ${localEXLfile}    ${ric}    ${domain}    ${long_ric}
+    Set RIC In EXL    ${exlFullpath}    ${localEXLfile}    ${ric}    ${domain}    ${long_ric}
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     ${localCapture}=    set variable    ${LOCAL_TMP_DIR}/local_capture.pcap
     Start Capture MTE Output    ${remoteCapture}
@@ -153,9 +152,9 @@ Verify Message Key Name is Compressed
     Wait For Persist File Update    5    60
     Stop Capture MTE Output    1    5
     get remote file    ${remoteCapture}    ${localCapture}
-    ${mangle}    Fetch From Left    ${pubRic}    ${ric}
+    ${mangle}    Fetch From Left    ${publishKey}    ${ric}
     verify key compression in message    ${localCapture}    ${mangle}${long_ric}
-    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
+    Load Single EXL File    ${exlFullpath}    ${serviceName}    ${CHE_IP}
     [Teardown]    case teardown    ${localCapture}
 
 Verify SPS RIC is published
@@ -389,8 +388,8 @@ Verify TRWF Update Type
     Reset Sequence Numbers
     Verify Realtime Update    ${pcapFileName}
     ${domain}    Get Preferred Domain
-    ${sampleRic}    ${publishKey}    Get RIC From MTE Cache    ${domain}
-    Manual ClosingRun for a RIC    ${sampleRic}    ${publishKey}    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    Manual ClosingRun for a RIC    ${ric}    ${publishKey}    ${domain}
 
 *** Keywords ***
 Delete Persist Files and Restart MTE

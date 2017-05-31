@@ -62,12 +62,11 @@ Verify New Item Added to Persist File via FMS
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1844
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
-    ${RicEXLfile}    Fetch From Right    ${EXLfullpath}    \\
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${RicEXLfile}    Fetch From Right    ${exlFullpath}    \\
     ${localRicEXLFile}    set variable    ${LOCAL_TMP_DIR}/${RicEXLfile}
     ${newRic}    Create Unique RIC Name    newric
-    add ric to exl file    ${EXLfullpath}    ${localRicEXLFile}    ${newRic}    ${None}    ${domain}
+    add ric to exl file    ${exlFullpath}    ${localRicEXLFile}    ${newRic}    ${None}    ${domain}
     Load Single EXL File    ${localRicEXLFile}    ${serviceName}    ${CHE_IP}
     Wait For Persist File Update
     Verify Item Persisted    ${newRic}    ${EMPTY}    ${domain}
@@ -134,7 +133,7 @@ Persistence file FIDs existence check
     ...
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1845
     ${domain}=    Get Preferred Domain
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     Wait For Persist File Update
     ${cacheDomainName}=    Remove String    ${domain}    _
     ${pmatDomain}=    Map to PMAT Numeric Domain    ${cacheDomainName}

@@ -78,14 +78,14 @@ def get_stat_block_field(writerName, blockName, fieldName, allowNotFound=False):
             
     cmd = "%s -f %s %s %s" %(utilpath.STATBLOCKFIELDREADER, writerName, blockName, fieldName)
     stdout, stderr, rc = _exec_command(cmd)
-
-#         print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
+    
+#   print 'DEBUG cmd=%s, rc=%s, stdout=%s stderr=%s' %(cmd,rc,stdout,stderr)
     if rc !=0 or stderr !='':
         if allowNotFound:
             return "Not Found"
         else:
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
-    
+                
     value = re.search(r'^Value:(.*)$', stdout, re.MULTILINE)
     if value:
         return value.group(1).strip()
