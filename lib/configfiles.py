@@ -1,11 +1,8 @@
 ﻿from __future__ import with_statement
 import json
-import os
 import os.path
 import re
 from sets import Set
-import string
-import xml
 import xml.etree.ElementTree as ET
 from LinuxFSUtilities import LinuxFSUtilities
 from utils.ssh import _exec_command, _search_file
@@ -86,7 +83,6 @@ def get_context_ids_from_config_file(venueConfigFile):
 
     context_id_set = Set()
 
-    match = []
     match = get_MTE_config_key_list(venueConfigFile,'Transforms')
 
     for m in match:
@@ -125,7 +121,6 @@ def Get_future_config_times(configNameList,configValueList, GMTOffset, currentDa
     Examples :
           | get future config times | ${configNameList} | ${configValueList} | 28800 | ${currentDateTime}
     """
-    configValueOrginList = configValueList
     retDict = {}
     currentDateTimeStr = '%4d-%02d-%02d %02d:%02d:00'%(int(currentDateTime[0]),int(currentDateTime[1]),int(currentDateTime[2]),int(currentDateTime[3]),int(currentDateTime[4]))
 
@@ -193,7 +188,7 @@ def get_GRS_stream_names_from_config_file(grs_config_file):
         data = json.load(data_file)
         if (data.has_key('inputs')):
             
-            for mte, item in (data['inputs']).iteritems():
+            for item in (data['inputs']).values():
                 streamNames += item['lines'].keys()
 
     return streamNames
@@ -381,9 +376,9 @@ def get_multicast_address_from_label_file(ddnLabels_file, labelID, mteName=""):
                 providers = node.findall('provider')
                 found = False
                 for provider in providers:
-                   if provider.get('NAME') == mteName:
-                    multTagText = provider.find('cvaMultTag').text
-                    found = True
+                    if provider.get('NAME') == mteName:
+                        multTagText = provider.find('cvaMultTag').text
+                        found = True
                 if not (found):
                     raise AssertionError('*ERROR* could not find provider NAME = %s text for labelID %s' %(mteName, labelID))
             else:
@@ -606,9 +601,9 @@ def _search_MTE_config_file(venueConfigFile,*path):
         else:
             return []
     if isinstance(node, list):
-         return node
+        return node
     elif isinstance(node, dict):
-        return keys(node)
+        return node.keys()
     else:
         return [node]
     
@@ -628,9 +623,9 @@ def _update_config_dict(node, tagName, value, actionIfNotPresent, *tagPath):
             if actionIfNotPresent == 'add':
                 raise AssertionError('actionIfNotPresent=add is not supported for wildcard nodes (*)')
             foundSubDict = False
-            for key,val in node.items():
+            for val in node.values():
                 # update each sub-node that is a dictionary
-                 # '*' at end of tagPath can match any number of levels, so process sub-dictionaries
+                # '*' at end of tagPath can match any number of levels, so process sub-dictionaries
                 if isinstance(val, dict):
                     foundSubDict = True
                     if len(tagPath) == 0:
