@@ -27,7 +27,8 @@ def wait_GMI_message_after_time(message, timeRef, isCaseSensitive=False, waittim
     """
     refDate = '%s-%s-%s' %(timeRef[0], timeRef[1], timeRef[2])
     refTime = '%s:%s:%s' %(timeRef[3], timeRef[4], timeRef[5])
-    currentFile = '%s/EventLogAdapterGMILog.txt' %(SMFLOGDIR)
+    currentFile                 = '%s/EventLogAdapterGMILog.txt' %(SMFLOGDIR)
+    currentFileUsingCompass     = '%s/EventLogAdapterGMILogDisabled.txt' %(SMFLOGDIR)
 
     # convert  unicode to int (it is unicode if it came from the Robot test)
     timeout = int(timeout)
@@ -42,7 +43,16 @@ def wait_GMI_message_after_time(message, timeRef, isCaseSensitive=False, waittim
                 if (len(logDateTime) >= 2):
                     if logDateTime[0].strip() >= refDate and logDateTime[1].strip() >= refTime:
                         return
+        retMessages = LinuxFSUtilities().grep_remote_file(currentFileUsingCompass, message, isCaseSensitive=isCaseSensitive)
+        if (len(retMessages) > 0):
+            logContents = retMessages[-1].split('|')
+            if (len(logContents) >= 2):
+                logDateTime = logContents[0].split('T')
+                if (len(logDateTime) >= 2):
+                    if logDateTime[0].strip() >= refDate and logDateTime[1].strip() >= refTime:
+                        return                        
         time.sleep(waittime)
+        
     raise AssertionError('*ERROR* Fail to get pattern \'%s\' from smfGMI log before timeout %ds' %(message, timeout)) 
 
 def wait_smf_log_does_not_contain(message, isCaseSensitive=False, waittime=2, timeout=60):

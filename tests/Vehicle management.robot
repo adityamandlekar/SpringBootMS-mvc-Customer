@@ -14,12 +14,11 @@ Verify Long RIC handled correctly
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1648
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
-    ${EXLfile}=    Fetch From Right    ${EXLfullpath}    \\
-    ${localEXLfile}=    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFile}=    Fetch From Right    ${exlFullpath}    \\
+    ${localEXLfile}=    set variable    ${LOCAL_TMP_DIR}/${exlFile}
     ${long_ric}=    Create Unique RIC Name    32_chars_total
-    Set RIC In EXL    ${EXLfullpath}    ${localEXLfile}    ${ric}    ${domain}    ${long_ric}
+    Set RIC In EXL    ${exlFullpath}    ${localEXLfile}    ${ric}    ${domain}    ${long_ric}
     ${remoteCapture}=    set variable    ${REMOTE_TMP_DIR}/capture.pcap
     Start Capture MTE Output    ${remoteCapture}
     Load Single EXL File    ${localEXLfile}    ${serviceName}    ${CHE_IP}
@@ -28,7 +27,7 @@ Verify Long RIC handled correctly
     ${newRic}    ${newPubRic}    Run Keyword And Continue On Failure    Verify RIC In MTE Cache    ${long_ric}    ${domain}
     Run Keyword And Continue On Failure    Verify RIC Published    ${remoteCapture}    ${localEXLfile}    ${newPubRic}    ${domain}
     Run Keyword And Continue On Failure    Verify Item Persisted    ${long_ric}    ${EMPTY}    ${domain}
-    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
+    Load Single EXL File    ${exlFullpath}    ${serviceName}    ${CHE_IP}
     Wait For Persist File Update
     [Teardown]    case teardown    ${localEXLfile}
 
@@ -37,21 +36,20 @@ Verify PE Change Behavior
     Set Mangling Rule    UNMANGLED
     ${domain}    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${EXLfullpath}    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
-    @{pe}=    get ric fields from EXL    ${EXLfullpath}    ${ric}    PROD_PERM
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    @{pe}=    Get Ric Fields From EXL    ${exlFullpath}    ${ric}    PROD_PERM
     ${penew}=    Evaluate    @{pe}[0] - 1
     ${penew}=    Convert To String    ${penew}
-    ${exlfile}=    Fetch From Right    ${EXLfullpath}    \\
+    ${exlfile}=    Fetch From Right    ${exlFullpath}    \\
     ${exlmodified} =    set variable    ${LOCAL_TMP_DIR}/${exlfile}_modified.exl
-    Set PE in EXL    ${EXLfullpath}    ${exlmodified}    ${ric}    ${domain}    ${penew}
+    Set PE in EXL    ${exlFullpath}    ${exlmodified}    ${ric}    ${domain}    ${penew}
     Start Capture MTE Output
     Load Single EXL File    ${exlmodified}    ${serviceName}    ${CHE_IP}
     Stop Capture MTE Output    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     Get FIDFilter File
-    Run Keyword And Continue On Failure    verify PE Change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${pe}    ${penew}    ${domain}
-    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
+    Run Keyword And Continue On Failure    verify PE Change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${publishKey}    ${pe}    ${penew}    ${domain}
+    Load Single EXL File    ${exlFullpath}    ${serviceName}    ${CHE_IP}
     Load Mangling Settings
     Wait For Persist File Update
     [Teardown]    case teardown    ${exlmodified}    ${LOCAL_TMP_DIR}/capture_local.pcap
@@ -61,10 +59,9 @@ Verify New Item Creation via FMS
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1711
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${EXL_File}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     ${uniqueRic}=    Create Unique RIC Name
-    add ric to exl file    ${EXL_File}    ${LOCAL_TMP_DIR}/output.exl    ${uniqueRic}    ${uniqueRic}    ${domain}
+    Add Ric To Exl File    ${exlFullpath}    ${LOCAL_TMP_DIR}/output.exl    ${uniqueRic}    ${uniqueRic}    ${domain}
     Load Single EXL File    ${LOCAL_TMP_DIR}/output.exl    ${serviceName}    ${CHE_IP}
     Wait For FMS Reorg
     ${ricFields}=    Get All Fields For RIC From Cache    ${ric}    ${domain}
@@ -76,69 +73,67 @@ Partial REORG on EXL Change
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1791
     ${domain}    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${exlFile}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     ${fieldName}=    set variable    DSPLY_NAME
     ${fieldValueNew}=    set variable    PARTIALREORGTEST
-    ${fieldValueOrg}=    Set Field Value in EXL    ${exlFile}    ${ric}    ${domain}    ${fieldName}    ${fieldValueNew}
+    ${fieldValueOrg}=    Set Field Value in EXL    ${exlFullpath}    ${ric}    ${domain}    ${fieldName}    ${fieldValueNew}
     Start Capture MTE output
-    ${UpdateSince}=    Calculate UpdateSince for REORG    ${exlFile}
+    ${UpdateSince}=    Calculate UpdateSince for REORG    ${exlFullpath}
     Trigger Partial REORG    ${UpdateSince}    ${serviceName}
     Stop Capture MTE output    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     ${verifyFIDs}=    Create List    3
     ${verifyValues}=    Create List    ${fieldValueNew}
-    Run Keyword And Continue On Failure    verify correction change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${verifyFIDs}    ${verifyValues}
-    ${fieldValueOrg}=    Set Field Value in EXL    ${exlFile}    ${ric}    ${domain}    ${fieldName}    ${fieldValueOrg}
-    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
+    Run Keyword And Continue On Failure    verify correction change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${publishKey}    ${verifyFIDs}    ${verifyValues}
+    ${fieldValueOrg}=    Set Field Value in EXL    ${exlFullpath}    ${ric}    ${domain}    ${fieldName}    ${fieldValueOrg}
+    Load Single EXL File    ${exlFullpath}    ${serviceName}    ${CHE_IP}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify RIC rename handled correctly
     [Documentation]    Verify RIC rename appeared in the cache dump file and updated persist file
     Comment    //Setup variables for test
-    ${domain}=    Get Preferred Domain
-    ${serviceName}=    Get FMS Service Name
-    ${RIC_Before_Rename}    ${Published_RIC_Before_Rename}    Get RIC From MTE Cache    ${domain}
-    ${RIC_Before_Rename_Trunc}=    Get Substring    ${RIC_Before_Rename}    0    14
-    ${RIC_After_Rename}=    Create Unique RIC Name    ${RIC_Before_Rename_Trunc}
-    ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${RIC_Before_Rename}
-    ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
-    ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
-    ${contextIDs}=    Get Ric Fields from EXL    ${EXLfullpath}    ${RIC_Before_Rename}    CONTEXT_ID
+    ${domain}    Get Preferred Domain
+    ${serviceName}    Get FMS Service Name
+    ${exlFullpath}    ${ric_before_rename}    ${publishKey_before_rename}    Get RIC Sample    ${domain}
+    ${ric_before_rename_trunc}    Get Substring    ${ric_before_rename}    0    14
+    ${ric_after_rename}    Create Unique RIC Name    ${ric_before_rename_trunc}
+    ${exlFile}    Fetch From Right    ${exlFullpath}    \\
+    ${localEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${exlFile}
+    ${contextIDs}    Get Ric Fields from EXL    ${exlFullpath}    ${ric_before_rename}    CONTEXT_ID
     Get FIDFilter File
-    ${constituent_list}=    Get Constituents From FidFilter    ${contextIDs[0]}
+    ${constituent_list}    Get Constituents From FidFilter    ${contextIDs[0]}
     Comment    //Start test. Test 1: Check that the new RIC that we are about to create is NOT already in the cache
     Start Capture MTE Output
-    Copy File    ${EXLfullpath}    ${LocalEXLfullpath}
-    Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}
+    Copy File    ${exlFullpath}    ${localEXLfullpath}
+    Load Single EXL File    ${localEXLfullpath}    ${serviceName}    ${CHE_IP}
     Wait For FMS Reorg
-    Verify RIC NOT In MTE Cache    ${RIC_After_Rename}    ${domain}
+    Verify RIC NOT In MTE Cache    ${ric_after_rename}    ${domain}
     Comment    //Start test. Test 2: Check that the RIC can be renamed and that the existing RIC is no longer in the cache
     Start Capture MTE Output
-    Set RIC in EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC_Before_Rename}    ${domain}    ${RIC_After_Rename}
-    Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}
+    Set RIC in EXL    ${exlFullpath}    ${localEXLfullpath}    ${ric_before_rename}    ${domain}    ${ric_after_rename}
+    Load Single EXL File    ${localEXLfullpath}    ${serviceName}    ${CHE_IP}
     Wait For FMS Reorg
-    Verify RIC NOT In MTE Cache    ${RIC_Before_Rename}    ${domain}
-    ${ric}    ${Published_RIC_After_Rename}    Verify RIC In MTE Cache    ${RIC_After_Rename}    ${domain}
+    Verify RIC NOT In MTE Cache    ${ric_before_rename}    ${domain}
+    ${ric}    ${Published_RIC_After_Rename}    Verify RIC In MTE Cache    ${ric_after_rename}    ${domain}
     Send TRWF2 Refresh Request    ${Published_RIC_After_Rename}    ${domain}
     Wait For Persist File Update    5    60
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_2.pcap
     verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${Published_RIC_After_Rename}    ${domain}    ${constituent_list}
-    Verify Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
+    Verify Item Persisted    ${ric_after_rename}    ${EMPTY}    ${domain}
     Comment    //Start test. Test 3: Check that the new RIC can be renamed back to the original name.
     Comment    //This also reverts the state back to as the begining of the test
     Start Capture MTE Output
-    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
+    Load Single EXL File    ${exlFullpath}    ${serviceName}    ${CHE_IP}
     Wait For FMS Reorg
-    Verify RIC NOT In MTE Cache    ${RIC_After_Rename}    ${domain}
-    ${ric}    ${Published_RIC_Before_Rename}    Verify RIC In MTE Cache    ${RIC_Before_Rename}    ${domain}
+    Verify RIC NOT In MTE Cache    ${ric_after_rename}    ${domain}
+    ${ric}    ${Published_RIC_Before_Rename}    Verify RIC In MTE Cache    ${ric_before_rename}    ${domain}
     Send TRWF2 Refresh Request    ${Published_RIC_Before_Rename}    ${domain}
     Wait For Persist File Update    5    60
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
     Verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${Published_RIC_Before_Rename}    ${domain}    ${constituent_list}
-    Verify Item Persisted    ${RIC_Before_Rename}    ${EMPTY}    ${domain}
+    Verify Item Persisted    ${ric_before_rename}    ${EMPTY}    ${domain}
     [Teardown]    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 Verify FMS Rebuild
@@ -147,31 +142,32 @@ Verify FMS Rebuild
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-1849
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     Start Capture MTE Output
     rebuild ric    ${serviceName}    ${ric}    ${domain}
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     Get FIDFilter File
-    Run Keyword And Continue On Failure    verify all response message num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
+    Run Keyword And Continue On Failure    verify all response message num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${publishKey}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Drop a RIC by deleting EXL File and Full Reorg
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1850
     ...    To verify whether the RICs in a exl file can be dropped if the exl file is deleted.
     [Setup]    Drop a RIC Case Setup
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${exlFullFileName}=    get EXL for RIC    ${domain}    ${serviceName}    ${ric}
-    Append To List    ${processedEXLs}    ${exlFullFileName}
-    ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
-    copy File    ${exlFullFileName}    ${LOCAL_TMP_DIR}/${exlFileName}
-    remove file    ${exlFullFileName}
-    Set To Dictionary    ${backupEXLs}    ${LOCAL_TMP_DIR}/${exlFileName}    ${exlFullFileName}
+    ${domain}=    Get Preferred Domain
+    ${serviceName}=    Get FMS Service Name
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    Append To List    ${processedEXLs}    ${exlFullpath}
+    ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullpath}
+    copy File    ${exlFullpath}    ${LOCAL_TMP_DIR}/${exlFileName}
+    remove file    ${exlFullpath}
+    Set To Dictionary    ${backupEXLs}    ${LOCAL_TMP_DIR}/${exlFileName}    ${exlFullpath}
     ${currentDateTime}    get date and time
     Load All EXL Files    ${serviceName}    ${CHE_IP}
     wait smf log message after time    Drop message sent    ${currentDateTime}
     Verify RIC is Dropped In MTE Cache    ${ric}    ${domain}
-    [Teardown]    Drop a RIC Case Teardown    ${LOCAL_TMP_DIR}/${exlFileName}
+    [Teardown]    Drop a RIC Case Teardown    ${serviceName}    ${LOCAL_TMP_DIR}/${exlFileName}
 
 Drop a RIC by deleting EXL file from LXL file
     [Documentation]    http://www.iajira.amers.ime.reuters.com/browse/CATF-1924
@@ -179,9 +175,8 @@ Drop a RIC by deleting EXL file from LXL file
     ...    Find a RIC associated exl file. Create LXL file with all exl files for the service except the founded one and place the lxl file to FMAREA/Service/System Files/Reconcile Files folder. \ After reconcile, verify RICs is dropped.
     ${domain}    Get Preferred Domain
     ${service}    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${exlFullFileName}=    get EXL for RIC    ${domain}    ${service}    ${ric}
-    ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullpath}
     ${service_dir}    Fetch From Left    ${exlFilePath}    \\${service}\\
     ${recon_files_dir}=    set variable    ${service_dir}\\${service}\\System Files\\Reconcile Files
     ${tmp_lxl}    set variable    ${recon_files_dir}\\tmp.lxl
@@ -190,7 +185,7 @@ Drop a RIC by deleting EXL file from LXL file
     Run FmsCmd    ${CHE_IP}    Recon    --Services ${service}    --InputFile "${tmp_lxl}"    --HandlerName ${MTE}    --UseReconcileLXL true
     Wait For Persist File Update
     Run Keyword And Continue On Failure    Verify RIC is Dropped In MTE Cache    ${ric}    ${domain}
-    Run FmsCmd    ${CHE_IP}    UnDrop    --Services ${service}    --InputFile "${exlFullFileName}"    --HandlerName ${MTE}
+    Run FmsCmd    ${CHE_IP}    UnDrop    --Services ${service}    --InputFile "${exlFullpath}"    --HandlerName ${MTE}
     Wait For Persist File Update
     Verify RIC In MTE Cache    ${ric}    ${domain}
     [Teardown]    Remove Files    ${tmp_lxl}
@@ -203,20 +198,19 @@ Verify Reconcile of Cache
     Should Be True    ${SendRefreshForFullReorg} != '1'    SendRefreshForFullReorg should be disabled
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${exlFullFileName}=    get EXL for RIC    ${domain}    ${serviceName}    ${ric}
-    ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullFileName}
-    copy File    ${exlFullFileName}    ${LOCAL_TMP_DIR}/${exlFileName}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${exlFilePath}    ${exlFileName}    Split Path    ${exlFullpath}
+    copy File    ${exlFullpath}    ${LOCAL_TMP_DIR}/${exlFileName}
     ${newRICName}    Create Unique RIC Name
-    Set Symbol In EXL    ${exlFullFileName}    ${exlFullFileName}    ${ric}    ${domain}    ${newRICName}
-    Set RIC In EXL    ${exlFullFileName}    ${exlFullFileName}    ${ric}    ${domain}    ${newRICName}
+    Set Symbol In EXL    ${exlFullpath}    ${exlFullpath}    ${ric}    ${domain}    ${newRICName}
+    Set RIC In EXL    ${exlFullpath}    ${exlFullpath}    ${ric}    ${domain}    ${newRICName}
     ${currentDateTime}    get date and time
     Run Keyword And Continue On Failure    Load All EXL Files    ${serviceName}    ${CHE_IP}
-    copy File    ${LOCAL_TMP_DIR}/${exlFileName}    ${exlFullFileName}
+    copy File    ${LOCAL_TMP_DIR}/${exlFileName}    ${exlFullpath}
     wait smf log message after time    FMS REORG DONE    ${currentDateTime}
     Verify RIC In MTE Cache    ${newRICName}    ${domain}
     Run Keyword And Continue On Failure    Verify RIC is Dropped In MTE Cache    ${ric}    ${domain}
-    Load Single EXL File    ${exlFullFileName}    ${serviceName}    ${CHE_IP}
+    Load Single EXL File    ${exlFullpath}    ${serviceName}    ${CHE_IP}
     Verify RIC In MTE Cache    ${ric}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/${exlFileName}
 
@@ -256,7 +250,7 @@ Verify FMS Extract and Insert
     ...    Test Case - Verify FMS Extract and Insert : http://www.iajira.amers.ime.reuters.com/browse/CATF-1892
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${beforeExtractFile}    set variable    ${LOCAL_TMP_DIR}/beforeExtractFile.icf
     ${afterExtractFile}    set variable    ${LOCAL_TMP_DIR}/afterExtractFile.icf
     ${beforeLocalPcap}    set variable    ${LOCAL_TMP_DIR}/capture_localBefore.pcap
@@ -271,14 +265,14 @@ Verify FMS Extract and Insert
     Insert ICF    ${beforeExtractFile}    ${serviceName}
     Stop Capture MTE Output    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${beforeLocalPcap}
-    ${initialAllFidsValues}    get FidValue in message    ${beforeLocalPcap}    ${pubRic}    UPDATE
+    ${initialAllFidsValues}    get FidValue in message    ${beforeLocalPcap}    ${publishKey}    UPDATE
     Comment    //set FID 'after' values
     modify REAL items in icf    ${beforeExtractFile}    ${afterExtractFile}    ${ric}    ${domain}    ${newFidNameValue}
     Start Capture MTE Output
     Insert ICF    ${afterExtractFile}    ${serviceName}
     Stop Capture MTE Output    1    15
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${afterLocalPcap}
-    ${newAllFidsValues}    get FidValue in message    ${afterLocalPcap}    ${pubRic}    UPDATE
+    ${newAllFidsValues}    get FidValue in message    ${afterLocalPcap}    ${publishKey}    UPDATE
     Comment    //Verify \
     Dictionary Should Contain Sub Dictionary    ${initialAllFidsValues}    ${iniFidNumValue}
     Dictionary Should Contain Sub Dictionary    ${newAllFidsValues}    ${newFidNumValue}
@@ -296,7 +290,7 @@ Verify Deletion Delay
     [Setup]    Disable MTE Clock Sync
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
     ${StartOfDayTime}    Get Start Time
     ${StartOfDayGMT}    Convert to GMT    ${StartOfDayTime}
@@ -331,7 +325,7 @@ Verify Drop and Undrop from FMSCmd
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2009
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
     ${mteConfigFile}=    Get MTE Config File
     ${currDateTime}    get date and time
     Get FIDFilter File
@@ -341,14 +335,14 @@ Verify Drop and Undrop from FMSCmd
     Verify RIC Is Dropped In MTE Cache    ${ric}    ${domain}
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
-    verify DROP message in itemstatus messages    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
+    verify DROP message in itemstatus messages    ${LOCAL_TMP_DIR}/capture_local.pcap    ${publishKey}    ${domain}
     Start Capture MTE Output
     Undrop ric    ${ric}    ${domain}    ${serviceName}
     wait smf log message after time    was Undropped    ${currDateTime}
     Verify RIC In MTE Cache    ${ric}    ${domain}
     Stop Capture MTE Output
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
-    verify_all_response_message_num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
+    verify_all_response_message_num    ${LOCAL_TMP_DIR}/capture_local.pcap    ${publishKey}    ${domain}
     [Teardown]    case teardown    ${LOCAL_TMP_DIR}/capture_local.pcap
 
 Verify Drop with Purge from FMSCmd
@@ -366,8 +360,7 @@ Verify Drop with Purge from FMSCmd
     ...    http://www.iajira.amers.ime.reuters.com/browse/CATF-2352 [MTE] Handling of FMS purge, no deletion delay logic, drop sent to downstream
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${exlFile}=    get EXL for RIC    ${domain}    ${serviceName}    ${ric}
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
     ${mteConfigFile}=    Get MTE Config File
     ${currDateTime}    get date and time
     Get FIDFilter File
@@ -377,10 +370,10 @@ Verify Drop with Purge from FMSCmd
     Stop Capture MTE Output
     Verify RIC Not In MTE Cache    ${ric}    ${domain}
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
-    verify DROP message in itemstatus messages    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${domain}
+    verify DROP message in itemstatus messages    ${LOCAL_TMP_DIR}/capture_local.pcap    ${publishKey}    ${domain}
     ${res}=    Send TRWF2 Refresh Request    ${ric}    ${domain}
     Should Be Empty    ${res}
-    [Teardown]    Load Single EXL File    ${exlFile}    ${serviceName}    ${CHE_IP}
+    [Teardown]    Load Single EXL File    ${exlFullpath}    ${serviceName}    ${CHE_IP}
 
 Verify both RIC and SIC rename handled correctly
     [Documentation]    Rename both RIC and SIC.
@@ -390,47 +383,45 @@ Verify both RIC and SIC rename handled correctly
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2149
     ${domain}=    Get Preferred Domain
     ${serviceName}=    Get FMS Service Name
-    ${result}=    get RIC fields from cache    1    ${domain}    ${EMPTY}
-    ${RIC_Before_Rename}    set variable    ${result[0]['RIC']}
-    ${SIC_Before_Rename} =    set variable    ${result[0]['SIC']}
-    ${Published_RIC_Before_Rename}    set variable    ${result[0]['PUBLISH_KEY']}
-    ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${RIC_Before_Rename}
-    ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
-    ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
-    Copy File    ${EXLfullpath}    ${LocalEXLfullpath}
+    ${exlFullpath}    ${ric_before_rename}    ${published_ric_before_rename}    Get RIC Sample    ${domain}
+    ${result}=    Get RIC Fields From Cache    1    ${domain}    ${EMPTY}
+    ${sic_before_rename}    set variable    ${result[0]['SIC']}
+    ${exlFile}    Fetch From Right    ${exlFullpath}    \\
+    ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${exlFile}
+    Copy File    ${exlFullpath}    ${LocalEXLfullpath}
     ${srcFilefullPath}    set variable    ${LOCAL_TMP_DIR}/ChangeSicRic.src
-    ${RIC_After_Rename}    ${SIC_After_Rename}    create_RIC_SIC_rename_file    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${srcFilefullPath}    ${LocalEXLfullpath}
+    ${ric_after_rename}    ${sic_after_rename}    create_RIC_SIC_rename_file    ${ric_before_rename}    ${sic_before_rename}    ${srcFilefullPath}    ${LocalEXLfullpath}
     Get FIDFilter File
     ${constituent_list}=    Get Constituents From FidFilter    ${result[0]['CONTEXT_ID']}
-    Set RIC in EXL    ${EXLfullpath}    ${LocalEXLfullpath}    ${RIC_Before_Rename}    ${domain}    ${RIC_After_Rename}
-    Set Symbol In EXL    ${LocalEXLfullpath}    ${LocalEXLfullpath}    ${RIC_After_Rename}    ${domain}    ${SIC_After_Rename}
+    Set RIC in EXL    ${exlFullpath}    ${LocalEXLfullpath}    ${ric_before_rename}    ${domain}    ${ric_after_rename}
+    Set Symbol In EXL    ${LocalEXLfullpath}    ${LocalEXLfullpath}    ${ric_after_rename}    ${domain}    ${sic_after_rename}
     Start Capture MTE Output
     Comment    Both SIC and RIC rename in SRC file
     Load Single EXL File    ${LocalEXLfullpath}    ${serviceName}    ${CHE_IP}    --SRCFile ${srcFilefullPath}
     Wait For FMS Reorg
-    Verify RIC NOT In MTE Cache    ${RIC_Before_Rename}    ${domain}
-    ${RIC_After_Rename}    ${Published_RIC_After_Rename}    Verify RIC In MTE Cache    ${RIC_After_Rename}    ${domain}
-    Send TRWF2 Refresh Request    ${Published_RIC_After_Rename}    ${domain}
+    Verify RIC NOT In MTE Cache    ${ric_before_rename}    ${domain}
+    ${ric_after_rename}    ${published_ric_after_rename}    Verify RIC In MTE Cache    ${ric_after_rename}    ${domain}
+    Send TRWF2 Refresh Request    ${published_ric_after_rename}    ${domain}
     Wait For Persist File Update    5    60
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_2.pcap
-    verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${Published_RIC_After_Rename}    ${domain}    ${constituent_list}
-    Verify Item Persisted    ${RIC_After_Rename}    ${EMPTY}    ${domain}
-    Verify Item Not Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
-    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${Published_RIC_Before_Rename}    ${domain}
+    verify Unsolicited Response In Capture    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${published_ric_after_rename}    ${domain}    ${constituent_list}
+    Verify Item Persisted    ${ric_after_rename}    ${EMPTY}    ${domain}
+    Verify Item Not Persisted    ${ric_before_rename}    ${sic_before_rename}    ${domain}
+    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${published_ric_before_rename}    ${domain}
     Start Capture MTE Output
-    Purge RIC    ${RIC_After_Rename}    ${domain}    ${serviceName}
-    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
+    Purge RIC    ${ric_after_rename}    ${domain}    ${serviceName}
+    Load Single EXL File    ${exlFullpath}    ${serviceName}    ${CHE_IP}
     Wait For FMS Reorg
-    ${RIC_Before_Rename}    ${Published_RIC_Before_Rename}    Verify RIC In MTE Cache    ${RIC_Before_Rename}    ${domain}
-    Verify RIC Not In MTE Cache    ${RIC_After_Rename}    ${domain}
-    Send TRWF2 Refresh Request    ${Published_RIC_Before_Rename}    ${domain}
+    ${ric_before_rename}    ${published_ric_before_rename}    Verify RIC In MTE Cache    ${ric_before_rename}    ${domain}
+    Verify RIC Not In MTE Cache    ${ric_after_rename}    ${domain}
+    Send TRWF2 Refresh Request    ${published_ric_before_rename}    ${domain}
     Wait For Persist File Update    5    60
     Stop Capture MTE Output
     Get Remote File    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
-    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${Published_RIC_After_Rename}    ${domain}
-    Verify Item Persisted    ${RIC_Before_Rename}    ${SIC_Before_Rename}    ${domain}
-    Verify Item Not Persisted    ${RIC_After_Rename}    ${SIC_After_Rename}    ${domain}
+    Verify DROP Message in ItemStatus Messages    ${LOCAL_TMP_DIR}/capture_local_3.pcap    ${published_ric_after_rename}    ${domain}
+    Verify Item Persisted    ${ric_before_rename}    ${sic_before_rename}    ${domain}
+    Verify Item Not Persisted    ${ric_after_rename}    ${sic_after_rename}    ${domain}
     [Teardown]    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local_2.pcap    ${LOCAL_TMP_DIR}/capture_local_3.pcap
 
 Verify FID update via FMS
@@ -439,11 +430,10 @@ Verify FID update via FMS
     ...    http://jirag.int.thomsonreuters.com/browse/CATF-2260
     ${domain}    Get Preferred Domain
     ${serviceName}    Get FMS Service Name
-    ${ric}    ${pubRic}    Get RIC From MTE Cache    ${domain}
-    ${EXLfullpath}=    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
-    ${EXLfile}    Fetch From Right    ${EXLfullpath}    \\
+    ${exlFullpath}    ${ric}    ${publishKey}    Get RIC Sample    ${domain}
+    ${EXLfile}    Fetch From Right    ${exlFullpath}    \\
     ${LocalEXLfullpath}    set variable    ${LOCAL_TMP_DIR}/${EXLfile}
-    Copy File    ${EXLfullpath}    ${LocalEXLfullpath}
+    Copy File    ${exlFullpath}    ${LocalEXLfullpath}
     ${fieldName}=    set variable    DSPLY_NAME
     ${fieldValueNew}=    set variable    VerifyFidUpdateTest
     ${fieldValueOrg}=    Set Field Value in EXL    ${LocalEXLfullpath}    ${ric}    ${domain}    ${fieldName}    ${fieldValueNew}
@@ -454,7 +444,7 @@ Verify FID update via FMS
     get remote file    ${REMOTE_TMP_DIR}/capture.pcap    ${LOCAL_TMP_DIR}/capture_local.pcap
     ${verifyFIDs}=    Create List    3
     ${verifyValues}=    Create List    ${fieldValueNew}
-    Run Keyword And Continue On Failure    verify correction change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${pubRic}    ${verifyFIDs}    ${verifyValues}
+    Run Keyword And Continue On Failure    verify correction change in message    ${LOCAL_TMP_DIR}/capture_local.pcap    ${publishKey}    ${verifyFIDs}    ${verifyValues}
     [Teardown]    Run Keywords    Load Single EXL File    ${EXLfullpath}    ${serviceName}    ${CHE_IP}
     ...    AND    case teardown    ${LocalEXLfullpath}    ${LOCAL_TMP_DIR}/capture_local.pcap
 
@@ -525,9 +515,7 @@ Convert to GMT
     [Return]    ${GMTTime}
 
 Drop a RIC Case Setup
-    [Documentation]    The setup will get FMS service name to ${serviceName} and get perferred domain to ${domain}.
-    ...
-    ...    A list variable @{processedEXLs} will be created. all exl files which should be reloaded when teardown can be added into @{processedEXLs}.
+    [Documentation]    A list variable @{processedEXLs} will be created. all exl files which should be reloaded when teardown can be added into @{processedEXLs}.
     ...
     ...    A dictionary variable @{backupedEXLs} will be created as well. If you modify/delete EXLs, the orginal should be backup to a local path. Both orginal file path and backup file should be added into @{backupedEXLs}
     ...    e.g. Set To Dictionary |${backupEXLs} |${backuppath} | ${orgpath}
@@ -536,13 +524,9 @@ Drop a RIC Case Setup
     Set Suite Variable    @{processedEXLs}
     ${backupEXLs}    Create Dictionary
     Set Suite Variable    ${backupEXLs}
-    ${serviceName}    Get FMS Service Name
-    Set Suite Variable    ${serviceName}
-    ${domain}    Get Preferred Domain
-    Set Suite Variable    ${domain}
 
 Drop a RIC Case Teardown
-    [Arguments]    @{tmpfiles}
+    [Arguments]    ${serviceName}    @{tmpfiles}
     [Documentation]    The teardown will restore all backup EXL in @{backupEXLs}, and reload all exl files in @{processedEXLs}, and remove temporary files.
     : FOR    ${backuppath}    IN    @{backupEXLs}
     \    ${orgpath}    Get From Dictionary    ${backupEXLs}    ${backuppath}

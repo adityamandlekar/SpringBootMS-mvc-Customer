@@ -112,19 +112,15 @@ def start_smf():
     if rc != 3: # rc==3 means SMF is not running
         if rc !=0 or stderr !='':
             raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
-        if stdout.find('SMF is running')!= -1:
-            print '*INFO* %s' %stdout
-            return 0
+        print '*INFO* %s' %stdout
+        return 0
     cmd = 'service smf start'
     stdout, stderr, rc = _exec_command(cmd)
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
-    if stdout.find('SMF service is already started')!= -1 or stdout.find(r'SMF is started.')!= -1:
-        print '*INFO* %s' %stdout
-    else:
-        raise AssertionError('*ERROR* cmd=%s, %s' %(cmd,stdout)) 
+    print '*INFO* %s' %stdout
         
-def stop_smf():
+def stop_smf(waittime=30, timeout=600):
     """Stop the Server Management Foundation process.
     Does not return a value.
 
@@ -133,17 +129,27 @@ def stop_smf():
     """
     cmd = 'service smf status'
     stdout, stderr, rc = _exec_command(cmd)
+    print '*INFO* %s' %stdout
     if rc == 3: # rc==3 means SMF is not running
-            print '*INFO* %s' %stdout
-            return 0
+        return 0
+    print '*INFO* Stopping SMF'
     cmd = 'service smf stop'
     stdout, stderr, rc = _exec_command(cmd)
     if rc !=0 or stderr !='':
         raise AssertionError('*ERROR* cmd=%s, rc=%s, %s %s' %(cmd,rc,stdout,stderr))
-    if stdout.find('SMF is stopped successfully')!= -1:
-        print '*INFO* %s' %stdout
-    else:
-        raise AssertionError('*ERROR* cmd=%s, %s' %(cmd,stdout))
+    
+    #The smf stop may return before everything is stopped.  Make sure it is fully stopped.
+    timeout = int(timeout)
+    waittime = int(waittime)
+    maxtime = time.time() + float(timeout)
+    cmd = 'service smf status'
+    while time.time() <= maxtime:
+        stdout, stderr, rc = _exec_command(cmd)
+        if rc == 3: # rc==3 means SMF is not running
+            print '*INFO* %s' %stdout
+            return 0
+        time.sleep(waittime)
+    raise AssertionError('*ERROR* Stop SMF did not complete within %s seconds' %(timeout))
 
 def wait_for_process_to_exist(pattern, waittime=2, timeout=60):
     """Wait until a process matching the specified pattern exists.

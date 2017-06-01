@@ -29,17 +29,23 @@ def get_context_ids_from_cachedump(cachedump_file_name):
         
     context_id_val_set = Set()
     n = 0
+    context_id_idx = -1
     try:
         with open(cachedump_file_name) as fileobj:
             for line in fileobj:
                 n = n+1
+                if n==1:
+                    context_id_val = line.split(",")
+                    context_id_idx = context_id_val.index("CONTEXT_ID")
                 if n>1:
-                    context_id_val = line.split(",")[6]
+                    context_id_val = line.split(",")[context_id_idx]
                     if context_id_val:
                         context_id_val_set.add(context_id_val)
                         
     except IOError:
-        raise AssertionError('*ERROR* failed to open file %s' %cachedump_file_name)   
+        raise AssertionError('*ERROR* failed to open file %s' %cachedump_file_name) 
+    except IndexError:
+        raise AssertionError('*ERROR* [CONTEXT_ID] column not found in cachedump file')
                 
     return context_id_val_set   
 

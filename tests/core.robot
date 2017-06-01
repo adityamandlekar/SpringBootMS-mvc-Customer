@@ -32,6 +32,23 @@ Case Teardown
     [Documentation]    Do test case teardown, e.g. remove temp files.
     Run Keyword if Test Passed    Remove Files    @{tmpfiles}
 
+Config Change For Recon On MTE
+    [Documentation]    Some production setting in MTE config file need to be adjusted before we could successfully carry out functional test.
+    ...
+    ...
+    ...    Remark:
+    ...    Need to restart MTE before the changes become effective
+    ${remoteCfgFile}    ${backupCfgFile}    backup remote cfg file    ${REMOTE_MTE_CONFIG_DIR}    ${MTE_CONFIG}
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
+    ${localCfgFile}=    Get MTE Config File
+    set value in MTE cfg    ${localCfgFile}    HiActTimeLimit    ${999999}
+    set value in MTE cfg    ${localCfgFile}    LoActTimeLimit    ${999999}
+    set value in MTE cfg    ${localCfgFile}    HiActTimeOut    ${999999}    skip    Inputs    *
+    set value in MTE cfg    ${localCfgFile}    LoActTimeOut    ${999999}    skip    Inputs    *
+    Comment    set value in MTE cfg    ${localCfgFile}    ResendFM    ${0}    add    FMS
+    set value in MTE cfg    ${localCfgFile}    FailoverPublishRate    ${0}    add    BackgroundRebuild
+    Put Remote File    ${localCfgFile}    ${remoteCfgFile}
+
 Create Unique RIC Name
     [Arguments]    ${text}=
     [Documentation]    Create a unique RIC name. Format is 'TEST' + text param + current datetime string (YYYYMMDDHHMMSS}.
@@ -317,16 +334,16 @@ Get Preferred Domain
 
 Get RIC From MTE Cache
     [Arguments]    ${requestedDomain}=${EMPTY}    ${contextID}=${EMPTY}
-    [Documentation]    Get a single RIC name from MTE cache for the specified Domain and contextID.
+    [Documentation]    Get a single RIC name (SIC and Publish Key) \ from MTE cache for the specified Domain and contextID.
     ...    If no Domain is specified it will call Get Preferred Domain to get the domain name to use.
     ...    If no contextID is specified, it will use any contextID
     ${preferredDomain}=    Run Keyword If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    Get Preferred Domain
     ${domain}=    Set Variable If    '${requestedDomain}'=='${EMPTY}' and '${contextID}' =='${EMPTY}'    ${preferredDomain}    ${requestedDomain}
     ${result}    get RIC fields from cache    1    ${domain}    ${contextID}
     ${ric}=    set variable    ${result[0]['RIC']}
-    ${publish_key}=    set variable    ${result[0]['PUBLISH_KEY']}
+    ${publishKey}=    set variable    ${result[0]['PUBLISH_KEY']}
     [Teardown]
-    [Return]    ${ric}    ${publish_key}
+    [Return]    ${ric}    ${publishKey}
 
 Get RIC List From Remote PCAP
     [Arguments]    ${remoteCapture}    ${domain}
@@ -355,6 +372,25 @@ Get RIC List From StatBlock
     ${ricList}=    Run Keyword if    '${ricType}'=='Trade Time'    get stat blocks for category    ${MTE}    TradeTimes
     Return from keyword if    '${ricType}'=='Trade Time'    ${ricList}
     FAIL    RIC not found. Valid choices are: 'Closing Run', 'DST', 'Feed Time', 'Holiday', 'Trade Time'
+
+Get RIC Sample
+    [Arguments]    ${domain}
+    [Documentation]    Get a single RIC name (SIC and Publish Key) \ exist in both MTE cache and local EXL Files for the specified domain
+    ...
+    ...
+    ...    Remark:
+    ...    ${REORG_FROM_FMS_SERVER} is Suite Variable which will be created and initialize in Suite Setup to ${True}
+    ...    Every call of "Start MTE" will also reset this variable to ${True}
+    ...    ${REORG_FROM_FMS_SERVER} = ${True} indicate that MTE has been sync up its cache from FMS server before.
+    ...
+    ...    ${REORG_FROM_FMS_SERVER} will set to ${False} after Get RIC Sample as a call of "Load All EXL Files" will used within the KW to sync up the MTE cache with local EXL files.
+    ${serviceName}=    Get FMS Service Name
+    Run Keyword If    ${REORG_FROM_FMS_SERVER}    Run Keywords    Load All EXL Files    ${serviceName}    ${CHE_IP}
+    ...    AND    Wait For FMS Reorg
+    ${ric}    ${publishKey}    Get RIC From MTE Cache    ${domain}
+    ${EXLfullpath}    Get EXL For RIC    ${domain}    ${serviceName}    ${ric}
+    Set Suite Variable    ${REORG_FROM_FMS_SERVER}    ${False}
+    [Return]    ${EXLfullpath}    ${ric}    ${publishKey}
 
 Get Sorted Cache Dump
     [Arguments]    ${destfile}    # where will the csv be copied back
@@ -465,6 +501,7 @@ Insert ICF
 Load All EXL Files
     [Arguments]    ${service}    ${headendIP}    @{optargs}
     [Documentation]    Loads all EXL files for a given service using FMSCMD. The FMS files for the given service must be on the local machine. The input parameters to this keyword are the FMS service name and headend's IP.
+    wait for HealthCheck    ${MTE}    IsConnectedToFMSClient
     ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${headendIP}    Recon    --Services ${service}
     ...    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS files \ ${returnedStdOut}
@@ -520,6 +557,7 @@ Load Mangling Settings
 Load Single EXL File
     [Arguments]    ${exlFile}    ${service}    ${headendIP}    @{optargs}
     [Documentation]    Loads a single EXL file using FMSCMD. The EXL file must be on the local machine. Inputs for this keyword are the EXL Filename including the path, the FMS service and the headend's IP.
+    wait for HealthCheck    ${MTE}    IsConnectedToFMSClient
     ${returnCode}    ${returnedStdOut}    ${command} =    Run FmsCmd    ${headendIP}    Process    --Services ${service}
     ...    --InputFile "${exlFile}"    --AllowSICChange true    --AllowRICChange true    @{optargs}
     Should Be Equal As Integers    0    ${returnCode}    Failed to load FMS file \ ${returnedStdOut}
@@ -552,9 +590,13 @@ MTE Machine Setup
     ${ret}    open connection    host=${ip}    port=${CHE_PORT}    timeout=6
     login    ${USERNAME}    ${PASSWORD}
     Set Common Suite Variables    ${ip}
-    start smf
     setUtilPath
+    Config Change For Recon On MTE
+    Comment    stop smf
+    Comment    Delete Persist Files
+    start smf
     Set 24x7 Feed And Trade Time And No Holidays
+    Stop MTE
     Start MTE
     ${memUsage}    get memory usage
     Run Keyword If    ${memUsage} > 90    Fail    Memory usage > 90%. This would make the system become instable during testing.
@@ -622,6 +664,11 @@ Reset Sequence Numbers
     \    Comment    We don't capture the output file, but this waits for any publishing to complete
     \    Wait For MTE Capture To Complete    5    600
     [Teardown]    Switch Connection    ${host}
+
+Restart SMF
+    Stop SMF
+    Start SMF
+    Start MTE
 
 Restore EXL Changes
     [Arguments]    ${serviceName}    ${exlFiles}
@@ -778,6 +825,7 @@ Set Common Suite Variables
     ...    CHE_IP - address of the current CHE box
     ...    MTE_CONFIG - MTE config file name
     ...    REMOTE_MTE_CONFIG_DIR - path to directory containing the MTE config file on Thunderdome box.
+    ...    REORG_FROM_FMS_SERVER = ${True} indicate that MTE has been sync up its cache from FMS server before.
     Set Suite Variable    ${CHE_IP}    ${ip}
     ${MTE_CONFIG}=    convert to lowercase    ${MTE}.json
     Set Suite Variable    ${MTE_CONFIG}
@@ -785,6 +833,7 @@ Set Common Suite Variables
     Length Should Be    ${fileList}    1    ${MTE_CONFIG} file not found (or multiple files found).
     ${dirAndFile}=    Split String From Right    ${fileList[0]}    /    max_split=1
     Set Suite Variable    ${REMOTE_MTE_CONFIG_DIR}    ${dirAndFile[0]}
+    Set Suite Variable    ${REORG_FROM_FMS_SERVER}    ${True}
 
 Set DST Datetime In EXL
     [Arguments]    ${srcFile}    ${dstFile}    ${ric}    ${domain}    ${startDateTime}    ${endDateTime}
@@ -905,16 +954,21 @@ Start MTE
     ...    Then load the state EXL files (that were modified by suite setup to set 24x7 feed and trade time).
     ...
     ...    If Recon is changed to set ResendFM=0 in the MTE config file, instead of loading just the state EXL files, this will need to load all of the EXL files (if they have not already been loaded). \ With ResendFM=1, we need to wait for FMS reorg to finish, and then load the state EXL files to override the ones loaded from the FMS server.
+    ...
+    ...    Remark:
+    ...    ${REORG_FROM_FMS_SERVER} = ${True} indicate that MTE has been sync up its cache from FMS server before.
     ${result}=    find processes by pattern    [FM]TE -c ${MTE}
     ${len}=    Get Length    ${result}
-    Run keyword if    ${len} != 0    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
-    Run keyword if    ${len} != 0    Load All State EXL Files
+    Run keyword if    ${len} != 0    Run Keywords    wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5
+    ...    timeout=600
+    ...    AND    Load All State EXL Files
     Return from keyword if    ${len} != 0
     run commander    process    start ${MTE}
     wait for process to exist    [FM]TE -c ${MTE}
     wait for HealthCheck    ${MTE}    IsLinehandlerStartupComplete    waittime=5    timeout=600
     Wait For FMS Reorg
     Load All State EXL Files
+    Set Suite Variable    ${REORG_FROM_FMS_SERVER}    ${True}
 
 Start Process
     [Arguments]    ${process}
@@ -943,23 +997,18 @@ Suite Setup
     [Documentation]    Do test suite level setup, e.g. things that take time and do not need to be repeated for each test case.
     ...    Make sure the CHE_IP machine has the LIVE MTE instance.
     Should Not be Empty    ${CHE_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${EMPTY}
+    Set Suite Variable    ${CHE_B_Session}    ${EMPTY}
     ${ret}    MTE Machine Setup    ${CHE_IP}
     Set Suite Variable    ${CHE_A_Session}    ${ret}
-    Set Suite Variable    ${CHE_B_Session}    ${EMPTY}
-    ${ip_list}    Create List
-    Run Keyword If    '${CHE_A_IP}' != '' and '${CHE_A_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_A_IP}
-    Run Keyword If    '${CHE_B_IP}' != '' and '${CHE_B_IP}' != 'null'    Append To List    ${ip_list}    ${CHE_B_IP}
-    ${master_ip}    get master box ip    ${ip_list}
-    Run Keyword If    '${CHE_IP}'=='${CHE_A_IP}'    switch MTE LIVE STANDBY status    A    LIVE    ${master_ip}
-    ...    ELSE IF    '${CHE_IP}'=='${CHE_B_IP}'    switch MTE LIVE STANDBY status    B    LIVE    ${master_ip}
-    ...    ELSE    Fail    CHE_IP does not equal CHE_A_IP or CHE_B_IP in VenueVariables
-    Verify MTE State In Specific Box    ${CHE_IP}    LIVE
     [Return]    ${ret}
 
 Suite Setup Two TD Boxes
     [Documentation]    Setup 2 Sessions for 2 Peer Thunderdome Boxes
     Should Not be Empty    ${CHE_A_IP}
     Should Not be Empty    ${CHE_B_IP}
+    Set Suite Variable    ${CHE_A_Session}    ${EMPTY}
+    Set Suite Variable    ${CHE_B_Session}    ${EMPTY}
     ${ret}    MTE Machine Setup    ${CHE_A_IP}
     Set Suite Variable    ${CHE_A_Session}    ${ret}
     ${ret}    MTE Machine Setup    ${CHE_B_IP}
@@ -988,6 +1037,10 @@ Suite Setup with Playback
 
 Suite Teardown
     [Documentation]    Do test suite level teardown, e.g. closing ssh connections.
+    Run Keyword If    '${CHE_A_Session}' != '${EMPTY}'    Run Keywords    Switch To TD Box    ${CHE_A_IP}
+    ...    AND    stop smf
+    Run Keyword If    '${CHE_B_Session}' != '${EMPTY}'    Run Keywords    Switch To TD Box    ${CHE_B_IP}
+    ...    AND    stop smf
     close all connections
     ${localCfgFile}=    Get Variable Value    ${LOCAL_MTE_CONFIG_FILE}
     Run Keyword If    r'${localCfgFile}' != 'None'    Remove File    ${localCfgFile}
@@ -1005,6 +1058,7 @@ Switch To TD Box
     ...    ELSE    Fail    Invaild IP
     Set Suite Variable    ${CHE_IP}    ${ip}
     switch connection    ${switchBox}
+    Set Suite Variable    ${LOCAL_MTE_CONFIG_FILE}    ${None}
 
 Verify MTE State In Specific Box
     [Arguments]    ${che_ip}    ${state}    ${waittime}=5    ${timeout}=150
