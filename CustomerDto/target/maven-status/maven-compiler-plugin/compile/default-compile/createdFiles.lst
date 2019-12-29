@@ -1,6 +1,6 @@
-web\Customercontroller.class
-CustomerSpringbootMSApplication.class
-web\model\CustomerDto$CustomerDtoBuilder.class
-web\model\CustomerDto.class
-services\CustomerService.class
-services\CustomerServiceImpl.class
+com\adim\springbootMS\web\controller\Customercontroller.class
+com\adim\springbootMS\CustomerSpringbootMSApplication.class
+com\adim\springbootMS\web\model\CustomerDto.class
+com\adim\springbootMS\services\CustomerService.class
+com\adim\springbootMS\services\CustomerServiceImpl.class
+com\adim\springbootMS\web\model\CustomerDto$CustomerDtoBuilder.class

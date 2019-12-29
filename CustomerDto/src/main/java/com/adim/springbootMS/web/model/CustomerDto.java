@@ -14,4 +14,6 @@ import java.util.UUID;
 public class CustomerDto {
     private UUID uid;
     private String customerName;
+
+
 }
